@@ -15,6 +15,7 @@ class QuoteAttributes(BaseModel):
 class QuoteRelationships(BaseModel):
     vendor: JSONAPIRelationships
     location: JSONAPIRelationships
+    customer: JSONAPIRelationships
 
 class QuoteResourceObject(JSONAPIResourceIdentifier):
     attributes: QuoteAttributes
@@ -64,3 +65,15 @@ class NewQuoteRequest(BaseModel):
     """Create either the new high-level quote or
     the associated products & accessories with an existing quote"""
     data: NewQuoteResourceObject|NewQuoteDetailResourceObject
+
+
+## Quote Modifications
+class ExistingQuote(NewQuoteResourceObject):
+    id: str|int
+
+class ExistingQuoteDetail(NewQuoteDetailResourceObject):
+    id: str|int
+
+class ExistingQuoteRequest(BaseModel):
+    """For patch requests on existing quotes, which will have an ID"""
+    data: ExistingQuote|ExistingQuoteDetail

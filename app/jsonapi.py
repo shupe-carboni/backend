@@ -31,7 +31,7 @@ class JSONAPIResponse(BaseModel):
     included: Optional[list[JSONAPIResourceObject]] = []
 
 class JSONAPIResourceIdentifier(BaseModel):
-    id: str
+    id: str|int
     type: str
 
 class JSONAPIRelationshipLinks(BaseModel):
@@ -39,7 +39,7 @@ class JSONAPIRelationshipLinks(BaseModel):
     related: str
 
 class JSONAPIRelationships(BaseModel):
-    links: JSONAPIRelationshipLinks
+    links: Optional[JSONAPIRelationshipLinks]
     data: JSONAPIResourceIdentifier
 
 class JSONAPIRequestData(BaseModel):
