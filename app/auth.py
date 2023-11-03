@@ -126,13 +126,11 @@ def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
 def find_duplicates(input_list):
     seen = set()
     duplicates = set()
-    
     for item in input_list:
         if item in seen:
             duplicates.add(item)
         else:
             seen.add(item)
-    
     return duplicates
 
 async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(token_auth_scheme)):
