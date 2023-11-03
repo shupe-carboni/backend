@@ -3,10 +3,10 @@ Define the JSON:API specification, which acts as a contract
 for requests and responses for the API
 """
 
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field, BeforeValidator
+from typing import Optional, Annotated
 
-JSONAPI_CONTENT_TYPE = 'application/vnd.api+json'
+StringToNum = Annotated[int, BeforeValidator(lambda num: int(num))]
 
 class JSONAPIResourceObject(BaseModel):
     id: str
@@ -40,7 +40,7 @@ class JSONAPIRelationshipLinks(BaseModel):
 
 class JSONAPIRelationships(BaseModel):
     links: Optional[JSONAPIRelationshipLinks]
-    data: JSONAPIResourceIdentifier
+    data: Optional[JSONAPIResourceIdentifier|list[JSONAPIResourceIdentifier]]
 
 class JSONAPIRequestData(BaseModel):
     data: JSONAPIResourceObject
@@ -57,9 +57,9 @@ class Pagination(BaseModel):
     last: str
 
 class Query(BaseModel):
-    include: Optional[str] = None
+    include: Optional[str|None] = None
     sort: Optional[str] = None
-    fields: Optional[str] = None
-    filter: Optional[str] = None
-    page: Optional[str] = None
-
+    # fields: implemented at runtime
+    # filter: implemented at runtime
+    page_number: Optional[StringToNum] = None
+    page_size: Optional[StringToNum] = None

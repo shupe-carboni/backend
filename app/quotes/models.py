@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 from typing import Optional
 from datetime import datetime
-from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier
+from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query
+
+TYPES = {'quotes', 'quotes_products', 'customers', 'locations', 'vendors'} # NOTE replace with dynamic loading from SQLAlchemy Models
 
 ## Unique Quote Information
 class QuoteAttributes(BaseModel):
@@ -16,6 +18,7 @@ class QuoteRelationships(BaseModel):
     vendor: JSONAPIRelationships
     location: JSONAPIRelationships
     customer: JSONAPIRelationships
+    products: JSONAPIRelationships
 
 class QuoteResourceObject(JSONAPIResourceIdentifier):
     attributes: QuoteAttributes
@@ -52,20 +55,16 @@ class QuoteDetailResponse(BaseModel):
 
 ## New Quotes
 class NewQuoteResourceObject(BaseModel):
+    """new quote request"""
     type: str
     attributes: QuoteAttributes
     relationships: QuoteRelationships
     
 class NewQuoteDetailResourceObject(BaseModel):
+    """add detail/products to an existing quote"""
     type: str
     attributes: QuoteDetailAttributes
     relationships: QuoteDetailRelationships
-
-class NewQuoteRequest(BaseModel):
-    """Create either the new high-level quote or
-    the associated products & accessories with an existing quote"""
-    data: NewQuoteResourceObject|NewQuoteDetailResourceObject
-
 
 ## Quote Modifications
 class ExistingQuote(NewQuoteResourceObject):
@@ -74,6 +73,11 @@ class ExistingQuote(NewQuoteResourceObject):
 class ExistingQuoteDetail(NewQuoteDetailResourceObject):
     id: str|int
 
-class ExistingQuoteRequest(BaseModel):
-    """For patch requests on existing quotes, which will have an ID"""
-    data: ExistingQuote|ExistingQuoteDetail
+
+QuoteQuery = create_model(
+    'QuoteQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f"field_{field}":(Optional[str], None) for field in TYPES},
+    **{f"filter_{field}":(Optional[str], None) for field in QuoteAttributes.model_fields.keys()},
+)
+
