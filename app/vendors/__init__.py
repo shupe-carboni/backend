@@ -1,0 +1,1 @@
+from app.vendors.vendors import vendors
