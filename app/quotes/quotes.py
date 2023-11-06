@@ -24,11 +24,7 @@ async def quotes_collection(
 async def quote_detail(
         quote_id: int,
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> QuoteDetailResponse:
-    """
-        Rather than just a single quote from the quote collection,
-        show more details about the quote like products & accessories with their quantities
-    """
+    ) -> QuoteResponse:
     raise HTTPException(status_code=501)
 
 @quotes.delete('/{quote_id}')
