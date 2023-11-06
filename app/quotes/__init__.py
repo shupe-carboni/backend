@@ -1,0 +1,1 @@
+from app.quotes.quotes import quotes
