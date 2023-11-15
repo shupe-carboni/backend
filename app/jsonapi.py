@@ -31,8 +31,12 @@ class JSONAPIResponse(BaseModel):
     included: Optional[list[JSONAPIResourceObject]] = []
 
 class JSONAPIResourceIdentifier(BaseModel):
-    id: str|int
+    id: int|str
     type: str
+
+class JSONAPIRelationshipsResponse(BaseModel):
+    meta: Optional[dict] = {}
+    data: list[JSONAPIResourceIdentifier]|JSONAPIResourceIdentifier
 
 class JSONAPIRelationshipLinks(BaseModel):
     self: str
