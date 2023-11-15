@@ -3,13 +3,11 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.quotes.models import (
     QuoteResponse,
-    QuoteDetailResponse,
     NewQuoteResourceObject,
-    NewQuoteDetailResourceObject,
     ExistingQuote,
-    ExistingQuoteDetail,
     QuoteQuery 
 )
+from app.products.models import ProductResponse, NewProductResourceObject, ExistingProduct
 
 quotes = APIRouter(prefix='/quotes', tags=['quotes'])
 
@@ -34,6 +32,15 @@ async def delete_quote(
     ) -> None:
     raise HTTPException(status_code=501)
 
+@quotes.delete('/{quote_id}/products/{product_id}')
+async def delete_product(
+        quote_id: int,
+        product_id: int,
+        token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
+    ) -> None:
+    raise HTTPException(status_code=501)
+
+
 @quotes.post('')
 async def new_quote(
         body: NewQuoteResourceObject,
@@ -42,10 +49,10 @@ async def new_quote(
     raise HTTPException(status_code=501)
 
 @quotes.post('/{quote_id}/products')
-async def add_products(
-        body: NewQuoteDetailResourceObject,
+async def add_product(
+        body: NewProductResourceObject,
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> QuoteDetailResponse:
+    ) -> ProductResponse:
     raise HTTPException(status_code=501)
 
 @quotes.patch('/{quote_id}')
@@ -57,9 +64,9 @@ async def modify_quote(
     raise HTTPException(status_code=501)
 
 @quotes.patch('/{quote_id}/products')
-async def modify_products(
+async def modify_product(
         quote_id: int,
-        body: ExistingQuoteDetail,
+        body: ExistingProduct,
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> QuoteDetailResponse:
+    ) -> ProductResponse:
     raise HTTPException(status_code=501)
