@@ -29,28 +29,6 @@ class QuoteResponse(BaseModel):
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
 
-
-
-## Products & quantities associated with quotes
-class QuoteDetailAttributes(BaseModel):
-    product_tag: Optional[str] = Field(alias="product-tag")
-    product_model: Optional[str] = Field(alias="product-model")
-    brand: Optional[str]
-    qty: int
-
-class QuoteDetailRelationships(BaseModel):
-    quote: JSONAPIRelationships
-
-class QuoteDetailResourceObject(JSONAPIResourceIdentifier):
-    attributes: QuoteDetailAttributes
-    relationships: QuoteDetailRelationships
-
-class QuoteDetailResponse(BaseModel):
-    """products & accessories with quantities associated with a quote"""
-    meta: Optional[dict] = {}
-    data: QuoteDetailResourceObject|None
-
-
 ## New Quotes
 class NewQuoteResourceObject(BaseModel):
     """new quote request"""
@@ -58,18 +36,10 @@ class NewQuoteResourceObject(BaseModel):
     attributes: QuoteAttributes
     relationships: QuoteRelationships
     
-class NewQuoteDetailResourceObject(BaseModel):
-    """add detail/products to an existing quote"""
-    type: str
-    attributes: QuoteDetailAttributes
-    relationships: QuoteDetailRelationships
-
 ## Quote Modifications
 class ExistingQuote(NewQuoteResourceObject):
     id: str|int
 
-class ExistingQuoteDetail(NewQuoteDetailResourceObject):
-    id: str|int
 
 
 # dyanamically created Pydantic Model extends on the non-dyanmic JSON:API Query Model
