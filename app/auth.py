@@ -22,16 +22,24 @@ status_codes = {
 }
 
 class QuotePermPriority(Enum):
-    customer_std = 0
-    customer_manager = 1
-    customer_admin = 2
-    sca_employee = 3
+    customer_std = 10
+    customer_manager = 11
+    customer_admin = 12
+    sca_employee = 20
 
     def __lt__(self, other: Enum):
         return self.value < other.value
 
+class VendorPermPriority(Enum):
+    customer = 10
+    sca_employee = 20
+    sca_admin = 21
+
+    def __lt__(self, other: Enum):
+        return self.value < other.value
 class Permissions(Enum):
     quotes = QuotePermPriority
+    vendors = VendorPermPriority
 
 class VerifiedToken(BaseModel):
     """
@@ -45,7 +53,7 @@ class VerifiedToken(BaseModel):
     """
     token: bytes
     exp: int
-    permissions: dict[str,Enum]
+    permissions: dict[str,int]
     nickname: str
     name: str
     email: str
@@ -118,9 +126,13 @@ def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
         if resource in all_permissions_dict:
             # set the permissions to the most restictive (lowest priority enum value)
             # if more than one permission value is provided for a resource
-            if all_permissions_dict[resource] < resource_perms[permission]:
+            try:
+               current_perm_lvl = resource_perms[permission] 
+            except KeyError:
+                current_perm_lvl = 0
+            if all_permissions_dict[resource] < current_perm_lvl:
                 continue
-        all_permissions_dict[resource] = resource_perms[permission]
+        all_permissions_dict[resource] = current_perm_lvl
     return all_permissions_dict
 
 def find_duplicates(input_list):
