@@ -1,6 +1,13 @@
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, create_model, Field
 from typing import Optional
-from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query
+from app.jsonapi import (
+    JSONAPIRelationships,
+    JSONAPIResourceObject,
+    Pagination,
+    JSONAPIResourceIdentifier,
+    Query,
+    JSONAPIRelationshipsResponse
+)
 
 ## Vendor
 class VendorAttributes(BaseModel):
@@ -10,16 +17,29 @@ class VendorAttributes(BaseModel):
     phone: int
 
 class VendorRelationships(BaseModel):
-    info:  JSONAPIRelationships
+    info: JSONAPIRelationships
 
-class VendorResourceObject(JSONAPIResourceIdentifier):
+class VendorResourceIdentifier(JSONAPIResourceIdentifier):
+    type: str = "vendors"
+
+class VendorResourceObject(VendorResourceIdentifier):
     attributes: VendorAttributes
     relationships: VendorRelationships
+
+class VendorRelationshipsResponse(JSONAPIRelationshipsResponse):
+    data: list[VendorResourceIdentifier]|VendorResourceIdentifier
+
 class VendorResponse(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[VendorResourceObject]]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
+
+class RelatedVendorResponse(VendorResponse):
+    """When pulling as a related object, included is always empty
+        and links are not in the object"""
+    included: dict = {}
+    links: dict = Field(..., exclude=True)
 
 ## Vendor Info
 class VendorInfoAttributes(BaseModel):
@@ -40,14 +60,13 @@ class VendorInfoResponse(BaseModel):
     links: Optional[Pagination]
 
 class NewVendorInfoResourceObject(BaseModel):
-    type: str
+    type: str = "vendors"
     attributes: VendorInfoAttributes
     relationships: VendorInfoRelationships
 
 ## Vendor Modifications
 class ExistingVendorInfo(NewVendorInfoResourceObject):
     id: str|int
-    ...
 
 VendorQuery = create_model(
     'VendorQuery',
