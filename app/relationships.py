@@ -1,28 +1,57 @@
 """Catch-all for undocumented links"""
-from fastapi import APIRouter, Depends, HTTPException
-from app.jsonapi import JSONAPIResourceObject
-from app import auth
+from fastapi import APIRouter, HTTPException, status
 
-relationships = APIRouter()
+err_desc_template = "{link_type} link {primary}/{id_}/{secondary} has not been implemented"
+responses = {
+    status.HTTP_501_NOT_IMPLEMENTED: {
+        "description": "Not Implemented",
+        "content": {
+            "application/json": {
+                "example": {
+                    "detail": err_desc_template.format(
+                        link_type="related",
+                        primary="quotes",
+                        id_=1,
+                        secondary="customer"
+                    )
+                }
+            }        
+        }
+    }
+}
 
-@relationships.get("/{primary}/{id_}/{secondary}", tags=["relationships"])
+relationships = APIRouter(responses=responses)
+
+@relationships.get("/{primary}/{id_}/{secondary}", tags=["Not Implemented"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
 def get_related_handler(
         primary: str,
         id_: int,
         secondary: str,
-        token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> JSONAPIResourceObject:
-    """Returns a collection of resource objects representing the secondary resource
+    ):
+    """When implemented, returns a collection of resource objects representing the secondary resource
         similar to GET /secondary filtering for the primary resource id_"""
-    raise HTTPException(status_code=501)
+    link_type = "related"
+    msg = err_desc_template.format(
+        link_type=link_type,
+        primary=primary,
+        id_=id_,
+        secondary=secondary
+    )
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
 
-@relationships.get("/{primary}/{id_}/relationships/{secondary}", tags=["relationships"])
+@relationships.get("/{primary}/{id_}/relationships/{secondary}", tags=["Not Implemented"], status_code=status.HTTP_501_NOT_IMPLEMENTED)
 def get_self_relationship_handler(
         primary: str,
         id_: int,
         secondary: str,
-        token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
     ):
-    """Returns a list of Resource Identifiers: { "type": type, "id": id } related to id_
+    """When implemented, returns a list of Resource Identifiers: { "type": type, "id": id } related to id_
         where the type is the seconady resource"""
-    raise HTTPException(status_code=501)
+    link_type = "self"
+    msg = err_desc_template.format(
+        link_type=link_type,
+        primary=primary,
+        id_=id_,
+        secondary=secondary
+    )
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
