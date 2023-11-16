@@ -25,6 +25,7 @@ class PlaceAttributes(BaseModel):
 # Schema
 class PlaceRelationships(BaseModel):
     locations: JSONAPIRelationships
+    quotes: JSONAPIRelationships
 
 class PlaceResourceObject(PlaceResourceIdentifier):
     attributes: PlaceAttributes

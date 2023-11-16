@@ -19,6 +19,7 @@ class LocationRelationshipsResponse(JSONAPIRelationshipsResponse):
 ## Location
 # Schema
 class LocationRelationships(BaseModel):
+    place: JSONAPIRelationships
     customer: JSONAPIRelationships
     customer_users: JSONAPIRelationships = Field(alias='customer-users')
 
