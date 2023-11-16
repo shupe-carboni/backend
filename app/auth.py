@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import bcrypt
-from enum import Enum
+from enum import Enum, IntEnum
 from hashlib import sha256
 from dotenv import load_dotenv; load_dotenv()
 from pydantic import BaseModel, field_validator
@@ -21,22 +21,17 @@ status_codes = {
     401: status.HTTP_401_UNAUTHORIZED
 }
 
-class QuotePermPriority(Enum):
+class QuotePermPriority(IntEnum):
     customer_std = 10
     customer_manager = 11
     customer_admin = 12
     sca_employee = 20
 
-    def __lt__(self, other: Enum):
-        return self.value < other.value
-
-class VendorPermPriority(Enum):
+class VendorPermPriority(IntEnum):
     customer = 10
     sca_employee = 20
     sca_admin = 21
 
-    def __lt__(self, other: Enum):
-        return self.value < other.value
 class Permissions(Enum):
     quotes = QuotePermPriority
     vendors = VendorPermPriority
@@ -53,7 +48,7 @@ class VerifiedToken(BaseModel):
     """
     token: bytes
     exp: int
-    permissions: dict[str,int]
+    permissions: dict[str,Enum]
     nickname: str
     name: str
     email: str
@@ -123,13 +118,13 @@ def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
         resource, permission = perm.split(':')
         permission = permission.replace('-','_')
         resource_perms = Permissions[resource].value
+        try:
+            current_perm_lvl = resource_perms[permission] 
+        except KeyError:
+            current_perm_lvl = 0
         if resource in all_permissions_dict:
             # set the permissions to the most restictive (lowest priority enum value)
             # if more than one permission value is provided for a resource
-            try:
-               current_perm_lvl = resource_perms[permission] 
-            except KeyError:
-                current_perm_lvl = 0
             if all_permissions_dict[resource] < current_perm_lvl:
                 continue
         all_permissions_dict[resource] = current_perm_lvl
