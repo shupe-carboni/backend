@@ -4,7 +4,7 @@ from app import auth
 
 from app.quotes.models import RelatedQuoteResponse, QuoteRelationshipsResponse
 
-product_rel = APIRouter(tags=['products'])
+product_rel = APIRouter(prefix='/products', tags=['products'])
 
 @product_rel.get('/{product_id}/quotes')
 async def related_quotes(

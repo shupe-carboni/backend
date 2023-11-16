@@ -6,7 +6,7 @@ from app.customers.models import RelatedCustomerResponse, CustomerRelationshipsR
 from app.places.models import RelatedPlaceResponse, PlaceRelationshipsResponse
 
 
-location_rel = APIRouter(tags=['locations'])
+location_rel = APIRouter(prefix='/locations', tags=['locations'])
 
 @location_rel.get('/{location_id}/customers')
 async def related_customer(
