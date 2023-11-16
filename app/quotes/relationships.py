@@ -5,7 +5,7 @@ from app import auth
 
 from app.vendors.models import RelatedVendorResponse, VendorRelationshipsResponse
 from app.customers.models import RelatedCustomerResponse, CustomerRelationshipsResponse
-from app.locations.models import RelatedLocationResponse, LocationRelationshipsResponse
+from app.places.models import RelatedPlaceResponse, PlaceRelationshipsResponse
 from app.products.models import RelatedProductResponse, ProductRelationshipsResponse
 
 quote_rel = APIRouter(tags=['quotes'])
@@ -17,11 +17,11 @@ async def related_vendor(
     ) -> RelatedVendorResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/locations')
-async def related_location(
+@quote_rel.get('/{quote_id}/places')
+async def related_place(
         quote_id: int,
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> RelatedLocationResponse:
+    ) -> RelatedPlaceResponse:
     raise HTTPException(status_code=501)
 
 @quote_rel.get('/{quote_id}/customers')
@@ -45,11 +45,11 @@ async def quote_vendor_relationships(
     ) -> VendorRelationshipsResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/relationships/locations')
-async def quote_location_relationships(
+@quote_rel.get('/{quote_id}/relationships/places')
+async def quote_place_relationships(
         quote_id: int,
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
-    ) -> LocationRelationshipsResponse:
+    ) -> PlaceRelationshipsResponse:
     raise HTTPException(status_code=501)
 
 @quote_rel.get('/{quote_id}/relationships/customers')

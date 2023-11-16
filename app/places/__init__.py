@@ -1,0 +1,1 @@
+from app.places.relationships import place_rel
