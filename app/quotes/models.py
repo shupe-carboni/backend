@@ -1,7 +1,13 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Optional
 from datetime import datetime
-from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query
+from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query, JSONAPIRelationshipsResponse
+
+class QuoteResourceIdentifier(JSONAPIResourceIdentifier):
+    type: str = "quotes"
+
+class QuoteRelationshipsResponse(JSONAPIRelationshipsResponse):
+    data: list[QuoteResourceIdentifier]|QuoteResourceIdentifier
 
 ## Unique Quote Information
 class QuoteAttributes(BaseModel):
@@ -14,7 +20,7 @@ class QuoteAttributes(BaseModel):
 
 class QuoteRelationships(BaseModel):
     vendor: JSONAPIRelationships
-    location: JSONAPIRelationships
+    place: JSONAPIRelationships
     customer: JSONAPIRelationships
     products: JSONAPIRelationships
 
@@ -28,6 +34,12 @@ class QuoteResponse(BaseModel):
     data: Optional[list[QuoteResourceObject]]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
+
+class RelatedQuoteResponse(QuoteResponse):
+    """When pulling as a related object, included is always empty
+        and links are not in the object"""
+    included: dict = {}
+    links: dict = Field(..., exclude=True)
 
 ## New Quotes
 class NewQuoteResourceObject(BaseModel):
