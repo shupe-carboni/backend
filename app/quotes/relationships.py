@@ -1,4 +1,3 @@
-
 from fastapi import HTTPException, Depends
 from fastapi.routing import APIRouter
 from app import auth
