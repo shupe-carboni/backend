@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 ## Routers ##
 from app import relationships
@@ -10,6 +12,17 @@ from app.places import places, place_rel
 from app.products import product_rel
 
 app = FastAPI()
+ORIGINS = os.getenv('ORIGINS')
+ORIGINS_REGEX = os.getenv('ORIGINS_REGEX')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ORIGINS,
+    allow_origin_regex=ORIGINS_REGEX,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 ## order matters
 app.include_router(vendors)
