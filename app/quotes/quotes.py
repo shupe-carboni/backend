@@ -13,7 +13,7 @@ quotes = APIRouter(prefix='/quotes', tags=['quotes'])
 
 @quotes.get('', response_model=QuoteResponse)
 async def quote_collection(
-        query: QuoteQuery=Depends(),
+        query: QuoteQuery=Depends(), # type: ignore
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
     ) -> QuoteResponse:
     raise HTTPException(status_code=501)

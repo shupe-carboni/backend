@@ -15,7 +15,7 @@ vendors = APIRouter(prefix='/vendors', tags=['vendors'])
 
 @vendors.get('', response_model=VendorResponse)
 async def vendor_collection(
-        query: VendorQuery=Depends(),
+        query: VendorQuery=Depends(), # type: ignore
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
     ) -> VendorResponse:
     raise HTTPException(status_code=501)

@@ -8,7 +8,7 @@ customers = APIRouter(prefix='/customers', tags=['customers'])
 
 @customers.get('')
 async def customer_collection(
-        query: CustomerQuery=Depends(),
+        query: CustomerQuery=Depends(), # type: ignore
         token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)
     ) -> CustomerResponse:
     raise HTTPException(status_code=501)
