@@ -1,3 +1,4 @@
+from dotenv import load_dotenv; load_dotenv()
 import os
 from copy import copy
 import pandas as pd
@@ -16,6 +17,8 @@ from programs import CustomerProgram
 
 
 NOMENCLATURE_COL_WIDTH = 20
+NOMENCLATURES = os.getenv('NOMENCLATURES')
+STATIC_DIR = os.getenv('STATIC_DIR')
 
 class AnchorPosition:
     def __init__(self, anchor_cell: str, offset_x: int, offset_y: int) -> None:
@@ -120,13 +123,13 @@ class PriceBook:
         self.template_wb = opxl.load_workbook(template)
         self._9_col_template = self.template_wb['9-col']
         self.parts_template = self.template_wb['parts-template']
-        self.nomenclatures = opxl.load_workbook('./templates/nomenclatures.xlsx')
+        self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
         self.save_path = os.path.join(save_path, self.program.new_file_name())
         self.check_for_existing_file()
         self.cursor = Cursor()
         adp_logo = Logo(
-            img_path='./static/adp-program-logo.png',
+            img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
             price_pos=AnchorPosition("E2", offset_x=0, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
@@ -135,7 +138,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
         sca_logo = Logo(
-            img_path='./static/sca-logo.png',
+            img_path=os.path.join(STATIC_DIR,'sca-logo.png'),
             price_pos=AnchorPosition("H1", offset_x=100, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
@@ -469,12 +472,22 @@ class PriceBook:
             return oemseries[start:end]
 
         data['OEM Series'] = data['OEM Series'].fillna(data['OutdoorModel']).apply(set_series_name)
-        # data.loc[data['OEMName'] == 'YORK', 'OEM Series'] = data.loc[data['OEMName'] == 'YORK', 'OutdoorModel'].str.slice(0,3)
-        # data.loc[data['OutdoorModel'].str.startswith('YHE'), 'OEM Series'] = 'YHE'
         ratings: dict[str, pd.DataFrame] = {
             oem_series: data[data['OEM Series'] == oem_series]
             for oem_series in data['OEM Series'].unique()
         }
+        substituted_series = []
+        new_series = dict()
+        for series, data in ratings.items():
+            unique_oems = data['OEM Name'].unique().tolist()
+            if len(unique_oems) > 1:
+                for oem in unique_oems:
+                    new_series[f'{series} {oem}'] = data[data['OEM Name'] == oem]
+                substituted_series.append(series)
+        if substituted_series:
+            ratings |= new_series
+            for series in substituted_series:
+                del ratings[series]
 
         for tab, table in ratings.items():
             rows = table.shape[0]
