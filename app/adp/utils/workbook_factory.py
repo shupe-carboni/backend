@@ -1,3 +1,4 @@
+from dotenv import load_dotenv; load_dotenv()
 import os
 import pandas as pd
 from typing import Iterable, Literal
@@ -10,8 +11,9 @@ from db.db import Database
 
 
 TODAY = str(datetime.today().date())
-SAVE_DIR = '/mnt/c/users/carbo/OneDrive/Desktop/new-progs'
-TEMPLATES = './templates/template.xlsx'
+SAVE_DIR = os.getenv('SAVE_DIR')
+TEMPLATES = os.getenv('TEMPLATES')
+LOGOS_DIR = os.getenv('LOGOS_DIR')
 db = Database('adp')
 
 def build_coil_programs(customers: pd.Series, programs: pd.DataFrame, ratings: pd.DataFrame) -> dict[str, dict[str, list[pd.DataFrame]]]:
@@ -107,8 +109,9 @@ def add_customer_terms_parts_and_logo_path(programs: dict[str, dict[str, list]])
         }
         ## logo_path
         logo_path = alias_mapping.loc[alias_mapping['adp_alias'] == customer, 'logo_path'].item()
+        full_logo_path = os.path.join(LOGOS_DIR, logo_path)
         ## program gen
-        full_program = CustomerProgram(**progs, parts=customer_parts, terms=terms, logo_path=logo_path)
+        full_program = CustomerProgram(**progs, parts=customer_parts, terms=terms, logo_path=full_logo_path)
         full_programs.append(full_program)
     return full_programs
 
