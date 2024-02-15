@@ -12,6 +12,7 @@ email-validator==2.0.0.post2
 et-xmlfile==1.1.0
 fastapi==0.103.2
 greenlet==3.0.2
+gunicorn==21.2.0
 h11==0.14.0
 httpcore==0.18.0
 httptools==0.6.0
