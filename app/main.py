@@ -51,18 +51,18 @@ async def test_db():
         'port': os.environ.get('RDS_PORT'),
         'user': os.environ.get('RDS_USER')
     }
-    assert_failure = f"env vars not properly initiatlized\nname={conn_params['database']}\nhost={conn_params['host']}\npw={conn_params['password']}\nport={conn_params['host']}\nun={conn_params['user']}"
-    if not all(list(conn_params.values())):
-        return {'assertion_failure': assert_failure}
-    conn = psycopg2.connect(**conn_params)
     try:
+        conn = psycopg2.connect(**conn_params)
         with conn as cur:
             cur.execute('SELECT version();')
             db_version = cur.fetchone()
             return {'db_version': db_version}
     except Exception:
         import traceback as tb
-        return {'error_tb': tb.format_exc()}
+        return {
+            'error_tb': tb.format_exc(),
+            'conn_params': conn_params
+        }
 
     finally:
         conn.close()
