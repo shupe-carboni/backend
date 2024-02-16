@@ -43,12 +43,13 @@ async def home():
 @app.get('/test-db')
 async def test_db():
     import psycopg2
+    from dotenv import load_dotenv; load_dotenv()
     conn_params = {
         'database': os.environ.get('RDS_DB_NAME'),
         'host': os.environ.get('RDS_HOSTNAME'),
         'password': os.environ.get('RDS_PASSWORD'),
         'port': os.environ.get('RDS_PORT'),
-        'user': os.environ.get('RDS_USERNAME')
+        'user': os.environ.get('RDS_USER')
     }
     assert_failure = f"env vars not properly initiatlized\nname={conn_params['database']}\nhost={conn_params['host']}\npw={conn_params['password']}\nport={conn_params['host']}\nun={conn_params['user']}"
     if not all(list(conn_params.values())):
