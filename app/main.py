@@ -61,7 +61,6 @@ async def test_db():
         import traceback as tb
         return {
             'error_tb': tb.format_exc(),
-            'conn_params': conn_params
         }
     finally:
         try:
