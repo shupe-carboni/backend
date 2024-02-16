@@ -39,3 +39,31 @@ app.include_router(relationships)
 @app.get('/')
 async def home():
     return RedirectResponse('/docs')
+
+@app.get('/test-db')
+async def test_db():
+    import psycopg2
+    from dotenv import load_dotenv; load_dotenv()
+    conn_params = {
+        'database': os.environ.get('RDS_DB_NAME'),
+        'host': os.environ.get('RDS_HOSTNAME'),
+        'password': os.environ.get('RDS_PASSWORD'),
+        'port': os.environ.get('RDS_PORT'),
+        'user': os.environ.get('RDS_USER')
+    }
+    try:
+        conn = psycopg2.connect(**conn_params)
+        with conn.cursor() as cur:
+            cur.execute('SELECT version();')
+            db_version = cur.fetchone()
+            return {'db_version': db_version}
+    except Exception:
+        import traceback as tb
+        return {
+            'error_tb': tb.format_exc(),
+        }
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
