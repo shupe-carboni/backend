@@ -64,4 +64,7 @@ async def test_db():
             'conn_params': conn_params
         }
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except:
+            pass
