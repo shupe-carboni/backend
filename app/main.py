@@ -53,7 +53,7 @@ async def test_db():
     }
     try:
         conn = psycopg2.connect(**conn_params)
-        with conn as cur:
+        with conn.cursor() as cur:
             cur.execute('SELECT version();')
             db_version = cur.fetchone()
             return {'db_version': db_version}
@@ -63,6 +63,5 @@ async def test_db():
             'error_tb': tb.format_exc(),
             'conn_params': conn_params
         }
-
     finally:
         conn.close()
