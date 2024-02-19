@@ -1,12 +1,13 @@
 from dotenv import load_dotenv; load_dotenv()
 import os
 import pandas as pd
+from dataclasses import dataclass
 from typing import Iterable, Literal
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, numbers
-from adp_models import Fields
-from programs import CoilProgram, AirHandlerProgram, CustomerProgram
-from utils.pricebook import PriceBook
+from app.adp.adp_models import Fields
+from app.adp.programs import CoilProgram, AirHandlerProgram, CustomerProgram
+from app.adp.utils.pricebook import PriceBook
 from app.db import Database
 
 
@@ -15,6 +16,12 @@ SAVE_DIR = os.getenv('SAVE_DIR')
 TEMPLATES = os.getenv('TEMPLATES')
 LOGOS_DIR = os.getenv('LOGOS_DIR')
 db = Database('adp')
+
+@dataclass
+class ProgramFile:
+    file_name: str
+    file_data: bytes
+
 
 def build_coil_programs(customers: pd.Series, programs: pd.DataFrame, ratings: pd.DataFrame) -> dict[str, dict[str, list[pd.DataFrame]]]:
     coil_customers = customers
@@ -122,26 +129,17 @@ def combine_programs(
     all_customers = {customer for customer in coil_progs} | {customer for customer in ah_progs}
     return {customer: coil_progs.get(customer,{'coils': list()})|ah_progs.get(customer,{'air_handlers': list()}) for customer in all_customers}
 
-def generate_programs(
-        all: bool=False,
-        sca_customers: dict[str,tuple]|None=None,
-        stage: Literal['ACTIVE', 'PROPOSEED', 'REJECTED', 'REMOVED']=None):
-    DATABASE = Database('adp')
+def generate_program(
+        sca_customer_id: int,
+        stage: Literal['ACTIVE', 'PROPOSED', 'REJECTED', 'REMOVED']='ACTIVE'
+    ) -> ProgramFile:
+    DATABASE = db
     customers_table = DATABASE.load_df('customers')
+    sca_customer_name = customers_table.loc[customers_table['id'] == sca_customer_id, 'customer'].drop_duplicates().item()
     tables = ["coil_programs", "ah_programs", "program_ratings"]
-    skipped = []
-    if all:
-        coil_progs, ah_progs, ratings = [DATABASE.load_df(table_name=table) for table in tables]
-    elif sca_customers:
-        coil_progs, ah_progs, ratings = [DATABASE.load_df(table_name=table, customers=list(sca_customers['customers'])) for table in tables]
-    else:
-        coil_progs, ah_progs = [DATABASE.load_df(table_name=table, is_null="last_file_gen") for table in tables[:-1]]
-        ratings = DATABASE.load_df(table_name='program_ratings')
-    
-    if stage:
-        coil_progs = coil_progs[coil_progs['stage'] == stage.upper()]
-        ah_progs = ah_progs[ah_progs['stage'] == stage.upper()]
-
+    coil_progs, ah_progs, ratings = [DATABASE.load_df(table_name=table, customers=[sca_customer_name]) for table in tables]
+    coil_progs = coil_progs[coil_progs['stage'] == stage.upper()]
+    ah_progs = ah_progs[ah_progs['stage'] == stage.upper()]
     try:
         coil_customers = coil_progs.loc[:,Fields.ADP_ALIAS.formatted()].drop_duplicates()
         ah_customers = ah_progs.loc[:,Fields.ADP_ALIAS.formatted()].drop_duplicates()
@@ -149,52 +147,41 @@ def generate_programs(
             build_coil_programs(coil_customers, coil_progs, ratings),
             build_ah_programs(ah_customers, ah_progs, ratings)
         )
-
         all_full_programs = add_customer_terms_parts_and_logo_path(programs=progs)
         for full_program in all_full_programs:
             print(f"generating {full_program}")
-            if not os.path.exists(os.path.join(SAVE_DIR, full_program.new_file_name())):
-                for prog in full_program:
-                    print(f'\t{prog}')
-                PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)\
-                    .build_program()\
-                    .attach_nomenclature_tab()\
-                    .attach_ratings()\
-                    .attach_parts()\
-                    .save_and_close()
-            else:
-                sca_customer_name = customers_table.loc[customers_table['adp_alias'] == full_program.customer, "customer"].item()
-                skipped.append(sca_customer_name)
-                print(f"File already exists for {sca_customer_name}")
+            for prog in full_program:
+                print(f'\t{prog}')
+            # BUG the method as originally conceived saved multiple files to disk. Now it's assuming one file
+            new_program_file = ProgramFile(
+                    file_data=PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
+                                .build_program()
+                                .attach_nomenclature_tab()
+                                .attach_ratings()
+                                .attach_parts()
+                                .save_and_close(),
+                    file_name=full_program.new_file_name()
+            )
     except Exception:
         import traceback as tb
         print("Error occurred while trying to generate programs")
         print(tb.format_exc())
     else:
         tables.remove('program_ratings')
-        update_dates_in_tables(db=DATABASE, tables=tables, all=all, customers=sca_customers, skipped=skipped)
+        update_dates_in_tables(db=DATABASE, tables=tables, customers=dict(customers=tuple(sca_customer_name)))
+        return new_program_file
 
 def update_dates_in_tables(
         db: Database,
         tables: Iterable[str],
-        all: bool=False,
         customers: dict[str, tuple]|None=None,
-        skipped: list=None,
     ) -> None:
-    if all:
-        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date;""" for table in tables]
-        params = {'date': TODAY}
-    elif customers:
-        not_skipped_customers = dict(customers=tuple([customer for customer in customers['customers'] if customer not in skipped]))
-        if not_skipped_customers['customers']:
-            coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE "Customer" IN :customers;""" for table in tables]
-            params = not_skipped_customers | {"date": TODAY}
-        else:
-            print("No programs updated")
-            return None
+    if customers:
+        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE "Customer" IN :customers;""" for table in tables]
+        params = customers | {"date": TODAY}
     else:
-        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = %s WHERE last_file_gen IS NULL;""" for table in tables]
-        params = (TODAY, )
+        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE last_file_gen IS NULL;""" for table in tables]
+        params = dict(date=TODAY)
 
     for q in coil_update_q, ah_update_q:
         db.execute_and_commit(q, params)

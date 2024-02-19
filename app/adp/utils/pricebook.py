@@ -1,6 +1,7 @@
 from dotenv import load_dotenv; load_dotenv()
 import os
 from copy import copy
+from io import BytesIO
 import pandas as pd
 import openpyxl as opxl
 from typing import Literal
@@ -13,12 +14,13 @@ from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
-from programs import CustomerProgram
-
+from app.adp.programs import CustomerProgram
 
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
 STATIC_DIR = os.getenv('STATIC_DIR')
+
+class FileGenExecption(Exception): ...
 
 class AnchorPosition:
     def __init__(self, anchor_cell: str, offset_x: int, offset_y: int) -> None:
@@ -126,7 +128,8 @@ class PriceBook:
         self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
         self.save_path = os.path.join(save_path, self.program.new_file_name())
-        self.check_for_existing_file()
+        self.active_wb = self.template_wb
+        self.active = self._9_col_template
         self.cursor = Cursor()
         adp_logo = Logo(
             img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
@@ -157,16 +160,6 @@ class PriceBook:
         )
         self.logos = Logos(adp_logo, sca_logo, customer_logo)
     
-    def check_for_existing_file(self):
-        if os.path.exists(self.save_path):
-            self.active_wb = opxl.load_workbook(self.save_path)
-            self.active = self.active_wb.active
-            self.existing_file = True
-        else:
-            self.active_wb = self.template_wb
-            self.active = self._9_col_template
-            self.existing_file = False
-
     def copy_cell_style(self, src_cell, new_cell):
         # Copy font, fill, border, and alignment
         new_cell.font = copy(src_cell.font)
@@ -208,14 +201,8 @@ class PriceBook:
             title: str,
             sheet_type: str,
         ) -> 'PriceBook':
-        if self.existing_file:
-            # existing files would be overwritten
-            # but existing sheet names are handled automatically by appending an integer
-            new_sheet: Worksheet = self.active_wb.create_sheet(title=title.strip(), index=-2)
-            self.copy_dimensions(template, new_sheet)
-        else:
-            new_sheet = self.active_wb.copy_worksheet(template)
-            new_sheet.title = title.strip()
+        new_sheet = self.active_wb.copy_worksheet(template)
+        new_sheet.title = title.strip()
         self.active = new_sheet
         for logo in self.logos:
             logo_img = logo.create_image(sheet_type=sheet_type)
@@ -229,21 +216,7 @@ class PriceBook:
         new_sheet_template = self._9_col_template
         self.min_col, self.min_row, self.max_col, self.max_row = range_boundaries("A12:I15")
         self.product_block: tuple[tuple[Cell]] = self._9_col_template["A12:I15"]
-
         new_sheet = self.new_sheet(template=new_sheet_template, title=title, sheet_type=sheet_type)
-        if self.existing_file:
-            self.cursor.move_by(11-3)
-            self.append_blank_product_block()
-            self.cursor.move_to(10,1)
-            confidential_pricing = self.active_cell(value="Confidential Pricing")
-            confidential_pricing.font = Font(name='Calibri', size=16, bold=True) 
-            confidential_pricing.alignment = Alignment(horizontal='center', vertical='center')
-            self.active.merge_cells(
-                    start_row= self.cursor.row,
-                    end_row=self.cursor.row,
-                    start_column=self.min_col,
-                    end_column=self.max_col
-                )
         self.cursor.move_to(1,1)
         return new_sheet
     
@@ -351,25 +324,26 @@ class PriceBook:
             self.active.column_dimensions[col_letter].width = NOMENCLATURE_COL_WIDTH
         return self
     
-    def save_and_close(self):
+    def save_and_close(self) -> BytesIO:
+        file_obj = BytesIO()
         try:
-            if not self.existing_file:
-                self.active_wb.remove(self._9_col_template)
-                self.active_wb.remove(self.template_wb['ratings'])
-                for option in ('long', 'med', 'short'):
-                    self.active_wb.remove(self.template_wb[f'nomen-{option}'])
-                self.active_wb.remove(self.parts_template)
+            self.active_wb.remove(self._9_col_template)
+            self.active_wb.remove(self.template_wb['ratings'])
+            for option in ('long', 'med', 'short'):
+                self.active_wb.remove(self.template_wb[f'nomen-{option}'])
+            self.active_wb.remove(self.parts_template)
             # set the opening sheet to the first sheet, which should be the model list
             self.active_wb.active = 0
-            self.active_wb.save(self.save_path)
+            self.active_wb.save(file_obj)
         except IndexError as e:
             import traceback as tb
             print(f"file empty on save for {self.program.customer}")
             print(tb.format_exc())
-            os.remove(self.save_path)
+            raise FileGenExecption
         finally:
             self.template_wb.close()
-        return self
+        file_obj.seek(0)
+        return file_obj
     
     def add_footer(self) -> 'PriceBook':
         for name, value in self.program.terms.items():
@@ -459,7 +433,7 @@ class PriceBook:
 
     def attach_ratings(self) -> 'PriceBook':
         data = self.program.ratings
-        if data.empty or self.existing_file:
+        if data.empty:
             return self
 
         def set_series_name(oemseries: str) -> str:
