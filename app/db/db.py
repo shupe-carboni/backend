@@ -6,7 +6,11 @@ from typing import Iterable, Any
 from sqlalchemy import create_engine, text, URL
 from pandas import DataFrame, read_sql
 
-class Status(StrEnum):
+# NOTE `load_df` is too specific to the "adp" databse
+
+class Stage(StrEnum):
+    """used for separating product and pricing status by line item while
+        keeping the history of proposals and active pricing used"""
     PROPOSED = auto()
     ACTIVE = auto()
     REJECTED = auto()

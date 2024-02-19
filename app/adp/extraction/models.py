@@ -8,7 +8,7 @@ from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from adp_models import MODELS, S, Fields, ModelSeries
 from utils.validator import Validator
-from app.db import Database, Status
+from app.db import Database, Stage
 import warnings; warnings.simplefilter('ignore')
 
 DATABASE = Database('adp')
@@ -213,7 +213,7 @@ def add_models_to_program(adp_alias: str, models: list[str]) -> None:
     df['adp_alias'] = adp_alias
     price_models_by_customer_discounts(df)
     df['Customer'] = sca_customer_name
-    df['stage'] = Status.PROPOSED.name
+    df['stage'] = Stage.PROPOSED.name
     separate_product_types_and_commit_to_db(df)
 
 def reprice_programs() -> None:
