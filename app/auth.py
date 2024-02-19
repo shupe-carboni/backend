@@ -27,12 +27,19 @@ class QuotePermPriority(IntEnum):
     customer_admin = 12
     sca_employee = 20
 
+class ADPPermPriority(IntEnum):
+    customer_std = 10
+    customer_manager = 11
+    customer_admin = 12
+    sca_employee = 20
+
 class VendorPermPriority(IntEnum):
     customer = 10
     sca_employee = 20
     sca_admin = 21
 
 class Permissions(Enum):
+    adp = ADPPermPriority
     quotes = QuotePermPriority
     vendors = VendorPermPriority
 
