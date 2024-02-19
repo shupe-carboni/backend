@@ -1,5 +1,5 @@
 import re
-from adp_models.model_series import ModelSeries
+from app.adp.adp_models.model_series import ModelSeries
 
 class Validator:
     def __init__(self, raw_text: str, model_series: ModelSeries) -> None:

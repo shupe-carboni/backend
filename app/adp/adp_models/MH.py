@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields, Cabinet
-import pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+import app.adp.pricing.mh as pricing
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -41,8 +41,8 @@ class MH(ModelSeries):
         return "Manufactured Housing Coils"
 
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.mh.pricing
-        adders_ = pricing.mh.adders
+        pricing_ = pricing.pricing
+        adders_ = pricing.adders
 
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(int(self.attributes['meter']), 0)

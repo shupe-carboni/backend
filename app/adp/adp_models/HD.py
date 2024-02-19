@@ -1,5 +1,5 @@
 import re
-from adp_models.model_series import ModelSeries, Fields, Cabinet
+from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.db import Database
 
 DATABASE = Database('adp')

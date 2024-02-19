@@ -1,1 +1,1 @@
-from pricing.sc.pricing import pricing
+from app.adp.pricing.sc.pricing import pricing

@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields, Cabinet
-import pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+import app.adp.pricing.sc as pricing
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -62,7 +62,7 @@ class SC(ModelSeries):
         return f'{seer} {config} Service Coils - {cased}'
 
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.sc.pricing
+        pricing_ = pricing.pricing
         pricing_ = pricing_.loc[
             pricing_['model'].apply(lambda regex: self.regex_match(regex)),
             :]

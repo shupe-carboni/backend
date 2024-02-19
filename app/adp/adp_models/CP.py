@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields
-import pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields
+import app.adp.pricing.cp as pricing
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -64,7 +64,7 @@ class CP(ModelSeries):
         return f'Soffit Mount {cased} Air Handlers - {material} - {motor}'
 
     def get_zero_disc_price(self) -> int:
-        pricing_ = pricing.cp.pricing
+        pricing_ = pricing.pricing
         return pricing_.loc[pricing_[self.attributes['mat']] == str(self),'price'].item()
 
     def record(self) -> dict:

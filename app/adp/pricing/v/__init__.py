@@ -1,2 +1,2 @@
-from pricing.v.pricing import pricing, adders
+from app.adp.pricing.v.pricing import pricing, adders
 

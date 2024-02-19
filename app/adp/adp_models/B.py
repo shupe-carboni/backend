@@ -1,6 +1,6 @@
 import re
-import pricing
-from adp_models.model_series import ModelSeries, Fields
+import app.adp.pricing.b as pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -56,8 +56,8 @@ class B(ModelSeries):
         return f'Hydronic {orientation} Air Handlers - {motor}'
     
     def calc_zero_disc_price(self) -> int:
-        adders_ = pricing.b.adders
-        pricing_ = pricing.b.pricing
+        adders_ = pricing.adders
+        pricing_ = pricing.pricing
         pricing_ = pricing_.loc[
             (pricing_['tonnage'] == int(self.attributes['ton']))
             & (pricing_['slab'] == self.attributes['scode']), :]

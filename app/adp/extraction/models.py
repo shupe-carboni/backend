@@ -6,10 +6,12 @@ import pandas as pd
 import openpyxl as opxl
 from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
-from adp_models import MODELS, S, Fields, ModelSeries
-from utils.validator import Validator
+from app.adp.adp_models import MODELS, S, Fields, ModelSeries
+from app.adp.utils.validator import Validator
 from app.db import Database, Stage
 import warnings; warnings.simplefilter('ignore')
+
+# NOTE in `extract_models` replace with in-mem collection of files passed in from api
 
 DATABASE = Database('adp')
 CUSTOMERS = DATABASE.load_df('customers')
@@ -193,7 +195,7 @@ def separate_product_types_and_commit_to_db(data: pd.DataFrame):
     DATABASE.upload_df(ah_progs, 'ah_programs', if_exists='append')
 
 def extract_models() -> None:
-    dir = '/home/carboni/sca-scratchspace/adp-program-reformat/old-style' # NOTE replace with in-mem collection of files passed in from api
+    dir = '/home/carboni/sca-scratchspace/adp-program-reformat/old-style'
     result = extract_all_programs_from_dir(dir=dir)
     price_models_by_customer_discounts(result)
     result.insert(0,'Customer', result['Program'].apply(set_customer_name))

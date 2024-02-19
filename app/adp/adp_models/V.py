@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields, Cabinet
-import pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+import app.adp.pricing.v as pricing
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -61,8 +61,8 @@ class V(ModelSeries):
         return f'Dedicated Horizontal "A" {material} Coils - {paint}'
     
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.v.pricing
-        adders_ = pricing.v.adders
+        pricing_ = pricing.pricing
+        adders_ = pricing.adders
 
         result = pricing_.loc[
             pricing_['slab'] == int(self.attributes['scode']),

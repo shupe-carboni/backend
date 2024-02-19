@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields
-from utils.validator import Validator
+from app.adp.adp_models.model_series import ModelSeries, Fields
+from app.adp.utils.validator import Validator
 from app.db import Database
 
 DATABASE = Database('adp')

@@ -1,6 +1,6 @@
 import re
-from adp_models.model_series import ModelSeries, Fields
-import pricing
+from app.adp.adp_models.model_series import ModelSeries, Fields
+import app.adp.pricing.s as pricing
 from app.db import Database
 
 DATABASE = Database('adp')
@@ -46,8 +46,8 @@ class S(ModelSeries):
         return f'Wall Mount Air Handlers - {motor}'
 
     def calc_zero_disc_price(self) -> int:
-        adders_ = pricing.s.adders
-        pricing_ = pricing.s.pricing
+        adders_ = pricing.adders
+        pricing_ = pricing.pricing
         pricing_ = pricing_.loc[
             pricing_['model'].apply(lambda regex: self.regex_match(regex)),
             :]
