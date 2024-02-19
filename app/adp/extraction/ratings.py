@@ -7,7 +7,7 @@ from typing import NamedTuple
 from sqlalchemy.engine.cursor import CursorResult
 from openpyxl.worksheet.worksheet import Worksheet
 import warnings; warnings.simplefilter('ignore')
-from db.db import Database
+from app.db import Database
 
 DATABASE = Database('adp')
 TODAY = str(datetime.today().date())

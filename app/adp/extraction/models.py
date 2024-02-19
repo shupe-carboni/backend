@@ -8,7 +8,7 @@ from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from adp_models import MODELS, S, Fields, ModelSeries
 from utils.validator import Validator
-from db.db import Database, Status
+from app.db import Database, Status
 import warnings; warnings.simplefilter('ignore')
 
 DATABASE = Database('adp')

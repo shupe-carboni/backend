@@ -1,7 +1,7 @@
 import re
 from adp_models.model_series import ModelSeries, Fields
 import pricing
-from db.db import Database
+from app.db import Database
 
 DATABASE = Database('adp')
 

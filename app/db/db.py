@@ -1,10 +1,9 @@
-import re
-from enum import StrEnum, auto
 from dotenv import load_dotenv; load_dotenv()
-from os import getenv;
+import re
+import os
+from enum import StrEnum, auto
 from typing import Iterable, Any
-from sqlalchemy import create_engine, text
-import psycopg2 as pg
+from sqlalchemy import create_engine, text, URL
 from pandas import DataFrame, read_sql
 
 class Status(StrEnum):
@@ -16,11 +15,22 @@ class Status(StrEnum):
 
 class Database:
 
-    _connection_str = getenv('DATABASE')
+    conn_params = {
+        'database': os.environ.get('RDS_DB_NAME'),
+        'host': os.environ.get('RDS_HOSTNAME'),
+        'password': os.environ.get('RDS_PASSWORD'),
+        'port': os.environ.get('RDS_PORT'),
+        'username': os.environ.get('RDS_USER')
+    }
+
+    _connection_url = URL.create('postgresql',**conn_params)
+    # without doing this, the password is not properly passed due to url encoding
+    # when passing the URL object
+    _connection_str = _connection_url.render_as_string(hide_password=False)
     ENGINE = create_engine(_connection_str)
 
     def __init__(self, database_name: str='') -> None:
-        self.PREFIX = database_name + "_"
+        self.PREFIX = database_name + "_" if database_name else None
     
     def __str__(self) -> str:
         return f"<Database obj, connection_path: {self._connection_str}, subgroup: {self.PREFIX[:-1]}>"
@@ -32,21 +42,21 @@ class Database:
         full_table_name = self.full_table_name(table_name)
         data.to_sql(full_table_name, con=self.ENGINE, if_exists=if_exists, index=False)
         if primary_key and if_exists == 'replace':
-            conn = pg.connect(self._connection_str)
-            try:
-                with conn.cursor() as cur:
-                    sql = f"""
-                            ALTER TABLE {full_table_name}
-                            ADD COLUMN id SERIAL PRIMARY KEY;
-                    """
-                    cur.execute(sql)
-            except Exception as e:
-                print(e)
-                conn.rollback()
-            else:
-                conn.commit()
-            finally:
-                conn.close()
+            with self.ENGINE.connect() as conn:
+                with conn as cur:
+                    try:
+                        sql = f"""
+                                ALTER TABLE {full_table_name}
+                                ADD COLUMN id SERIAL PRIMARY KEY;
+                        """
+                        cur.execute(text(sql))
+                    except Exception as e:
+                        print(e)
+                        conn.rollback()
+                    else:
+                        conn.commit()
+                    finally:
+                        conn.close()
 
     def load_df(self, table_name: str, customers: list[str]=None, is_null: str=None, use_alias: bool=False) -> DataFrame:
         sql = f"""SELECT * FROM {self.full_table_name(table_name)}"""
@@ -77,3 +87,11 @@ class Database:
             else:
                 conn.commit()
         return result
+    
+    def test(self) -> str:
+        with self.ENGINE.connect() as conn:
+            with conn as cur:
+                result = cur.execute(text('SELECT version();'))
+                return result.fetchone()[0]
+
+

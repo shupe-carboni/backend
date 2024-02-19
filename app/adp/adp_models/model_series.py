@@ -1,5 +1,5 @@
 import re
-from db.db import Database
+from app.db import Database
 from enum import Enum, StrEnum, auto
 
 DATABASE = Database('adp')

@@ -1,4 +1,4 @@
-from db.db import Database
+from app.db import Database
 from pandas import DataFrame
 DATABASE = Database('adp')
 

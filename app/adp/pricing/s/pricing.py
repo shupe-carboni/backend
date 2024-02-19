@@ -1,5 +1,5 @@
 
-from db.db import Database
+from app.db import Database
 
 db = Database('adp')
 
