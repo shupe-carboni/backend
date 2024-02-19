@@ -11,6 +11,7 @@ from app.customers import customers, customer_rel
 from app.locations import location_rel
 from app.places import places, place_rel
 from app.products import product_rel
+from app.adp import adp
 
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')
@@ -35,6 +36,7 @@ app.include_router(location_rel)
 places.include_router(place_rel)
 app.include_router(places)
 app.include_router(product_rel)
+app.include_router(adp)
 app.include_router(relationships)
 
 @app.get('/')
