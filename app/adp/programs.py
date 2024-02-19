@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 import pandas as pd
-from adp_models import Fields
+from app.adp.adp_models import Fields
 
 class Program:
     def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
@@ -151,7 +151,7 @@ class CustomerProgram:
         if "'" in customer_name:
             # title() capitalizes or leaves alone letters after an apostrophe
             customer_name = re.sub(r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name)
-        return f"{customer_name} 2024 Strategy {TODAY}.xlsx".replace('/','_')
+        return f"{customer_name} 2024 Strategy {TODAY}".replace('/','_')
 
     def filter_ratings(self) -> None:
         if not self.ratings.empty:
