@@ -5,7 +5,6 @@ from app.db import Database
 
 DATABASE = Database('adp')
 
-
 class MH(ModelSeries):
     text_len = (7,)
     regex = r'''
@@ -51,23 +50,23 @@ class MH(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
-            Fields.MODEL_NUMBER.formatted(): str(self),
-            Fields.CATEGORY.formatted(): self.category(),
-            Fields.MPG.name: self.mat_grp,
-            Fields.SERIES.formatted(): self.__series_name__(),
-            Fields.TONNAGE.formatted(): self.tonnage,
-            Fields.PALLET_QTY.formatted(): self.pallet_qty,
-            Fields.WIDTH.formatted(): self.width,
-            Fields.DEPTH.formatted(): self.depth,
-            Fields.HEIGHT.formatted(): self.height,
-            Fields.WEIGHT.formatted(): self.weight,
-            Fields.CABINET.formatted(): self.cabinet_config.name.title(),
-            Fields.METERING.formatted(): self.metering,
-            Fields.ZERO_DISCOUNT_PRICE.formatted(): self.zero_disc_price,
-            Fields.RATINGS_AC_TXV.formatted(): self.ratings_ac_txv,
-            Fields.RATINGS_HP_TXV.formatted(): self.ratings_hp_txv,
-            Fields.RATINGS_PISTON.formatted(): self.ratings_piston,
-            Fields.RATINGS_FIELD_TXV.formatted(): self.ratings_field_txv,
+            Fields.MODEL_NUMBER.value: str(self),
+            Fields.CATEGORY.value: self.category(),
+            Fields.MPG.value: self.mat_grp,
+            Fields.SERIES.value: self.__series_name__(),
+            Fields.TONNAGE.value: self.tonnage,
+            Fields.PALLET_QTY.value: self.pallet_qty,
+            Fields.WIDTH.value: self.width,
+            Fields.DEPTH.value: self.depth,
+            Fields.HEIGHT.value: self.height,
+            Fields.WEIGHT.value: self.weight,
+            Fields.CABINET.value: self.cabinet_config.name.title(),
+            Fields.METERING.value: self.metering,
+            Fields.ZERO_DISCOUNT_PRICE.value: self.zero_disc_price,
+            Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,
+            Fields.RATINGS_HP_TXV.value: self.ratings_hp_txv,
+            Fields.RATINGS_PISTON.value: self.ratings_piston,
+            Fields.RATINGS_FIELD_TXV.value: self.ratings_field_txv,
         }
         model_record.update(values)
         return model_record

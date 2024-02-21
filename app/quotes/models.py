@@ -18,6 +18,10 @@ class QuoteAttributes(BaseModel):
     expires: datetime
     document: str|None
 
+    class Config:
+        # allows an unpack of the python-dict in snake_case
+        populate_by_name = True
+
 class QuoteRelationships(BaseModel):
     vendor: JSONAPIRelationships
     place: JSONAPIRelationships
@@ -56,7 +60,7 @@ class ExistingQuote(NewQuoteResourceObject):
 
 # dyanamically created Pydantic Model extends on the non-dyanmic JSON:API Query Model
 # by pre-defining and auto-documenting all filter and field square bracket parameters
-QuoteQuery = create_model(
+QuoteQuery: type[BaseModel] = create_model(
     'QuoteQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in QuoteRelationships.model_fields.keys()},

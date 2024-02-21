@@ -54,7 +54,7 @@ class CF(ModelSeries):
 
     def record(self) -> dict:
         self._record.update({
-            Fields.PRIVATE_LABEL.formatted(): str(self),
-            Fields.CATEGORY.formatted(): self.model_obj.category(),
+            Fields.PRIVATE_LABEL.value: str(self),
+            Fields.CATEGORY.value: self.model_obj.category(),
         })
         return self._record

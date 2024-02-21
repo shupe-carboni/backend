@@ -143,20 +143,20 @@ class HE(ModelSeries)
     def record(self) -> dict:
         model_record = super().record()
         values = {
-            Fields.SHEET.formatted(): self.sheet,
-            Fields.MODEL_NUMBER.formatted(): str(self),
-            Fields.CATEGORY.formatted(): self.category(),
-            Fields.MPG.name: self.mat_grp,
-            Fields.SERIES.formatted(): self.__series_name__(),
-            Fields.TONNAGE.formatted(): self.tonnage,
-            Fields.PALLET_QTY.formatted(): self.pallet_qty,
-            Fields.WIDTH.formatted(): self.width,
-            Fields.DEPTH.formatted(): self.depth,
-            Fields.HEIGHT.formatted(): self.height,
-            Fields.WEIGHT.formatted(): self.weight,
-            Fields.CABINET.formatted(): self.cabinet_config.name.title(),
-            Fields.METERING.formatted(): self.metering,
-            Fields.ZERO_DISCOUNT_PRICE.formatted(): self.zero_disc_price,
+            Fields.SHEET.value: self.sheet,
+            Fields.MODEL_NUMBER.value: str(self),
+            Fields.CATEGORY.value: self.category(),
+            Fields.MPG.value: self.mat_grp,
+            Fields.SERIES.value: self.__series_name__(),
+            Fields.TONNAGE.value: self.tonnage,
+            Fields.PALLET_QTY.value: self.pallet_qty,
+            Fields.WIDTH.value: self.width,
+            Fields.DEPTH.value: self.depth,
+            Fields.HEIGHT.value: self.height,
+            Fields.WEIGHT.value: self.weight,
+            Fields.CABINET.value: self.cabinet_config.name.title(),
+            Fields.METERING.value: self.metering,
+            Fields.ZERO_DISCOUNT_PRICE.value: self.zero_disc_price,
         }
         model_record.update(values)
         return model_record
@@ -219,9 +219,9 @@ def extract_all_programs_from_dir(dir: str) -> pd.DataFrame:
         df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
         if df.isna().all().all():
             pass
-        df['Program'] = program
+        df['program'] = program
         dfs.append(df)
-    result = pd.concat(dfs).sort_values(by=['Program','Category','Series','MPG','Tonnage','Width'])
+    result = pd.concat(dfs).sort_values(by=['program','category','series','mpg','tonnage','width'])
     return result
 ```
 This data gets additional treatment for customer-specific information (i.e. pricing, past sales) and it is then saved into a database, separating coils from air handlers.

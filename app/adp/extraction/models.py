@@ -72,9 +72,9 @@ def extract_all_programs_from_dir(dir: str) -> pd.DataFrame:
         df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
         if df.isna().all().all():
             pass
-        df['Program'] = program
+        df['program'] = program
         dfs.append(df)
-    result = pd.concat(dfs).sort_values(by=['Program','Category','Series','MPG','Tonnage','Width'])
+    result = pd.concat(dfs).sort_values(by=['program','category','series','mpg','tonnage','width'])
     return result
         
 def price_models_by_customer_discounts(program_data: pd.DataFrame):
@@ -85,12 +85,12 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
     # sales['CustName'] = sales['CustName'].str.replace(r'.*WINAIR$', 'WINSUPPLY', regex=True)
 
     def calc_prices(data: pd.Series) -> pd.Series:
-        no_disc_price = int(data['Zero Discount Price'])
+        no_disc_price = int(data['zero discount price'])
         if 'adp_alias' in data.index:
             adp_alias = data['adp_alias']
             has_alias = True
         else:
-            prog: str = data['Program']
+            prog: str = data['program']
             adp_alias = progs_to_alias.loc[progs_to_alias['program'] == prog, 'adp_alias']
             if adp_alias.empty:
                 has_alias = False
@@ -104,14 +104,14 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
             snp = 0
             snp_disc = 0
         else:
-            mat_group: str = data['MPG']
+            mat_group: str = data['mpg']
             mat_group_disc: pd.Series = mat_grp_discounts.loc[
                 (mat_grp_discounts['adp_alias'] == adp_alias)
                 & (mat_grp_discounts['mat_grp'] == mat_group),
                 'discount'
             ]
             mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
-            model_num: str = data['Model Number']
+            model_num: str = data['model number']
             snp: pd.Series = snps.loc[
                 (snps['adp_alias'] == adp_alias)
                 & (snps['model'] == model_num),
@@ -123,20 +123,20 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
             mat_group_price = int(math.floor(mat_group_price + 0.5))
             mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
         result = {
-            Fields.MATERIAL_GROUP_DISCOUNT.formatted(): mat_group_disc if mat_group_disc else None,
-            Fields.MATERIAL_GROUP_NET_PRICE.formatted(): mat_group_price if mat_group_price else None,
-            Fields.SNP_DISCOUNT.formatted(): snp_disc if snp_disc else None,
-            Fields.SNP_PRICE.formatted(): snp if snp else None,
-            Fields.NET_PRICE.formatted(): min([price for price in (snp, mat_group_price, no_disc_price) if price])
+            Fields.MATERIAL_GROUP_DISCOUNT.value: mat_group_disc if mat_group_disc else None,
+            Fields.MATERIAL_GROUP_NET_PRICE.value: mat_group_price if mat_group_price else None,
+            Fields.SNP_DISCOUNT.value: snp_disc if snp_disc else None,
+            Fields.SNP_PRICE.value: snp if snp else None,
+            Fields.NET_PRICE.value: min([price for price in (snp, mat_group_price, no_disc_price) if price])
         }
         return pd.Series(result)
 
     program_data[
-        [Fields.MATERIAL_GROUP_DISCOUNT.formatted(),
-         Fields.MATERIAL_GROUP_NET_PRICE.formatted(),
-         Fields.SNP_DISCOUNT.formatted(),
-         Fields.SNP_PRICE.formatted(),
-         Fields.NET_PRICE.formatted()
+        [Fields.MATERIAL_GROUP_DISCOUNT.value,
+         Fields.MATERIAL_GROUP_NET_PRICE.value,
+         Fields.SNP_DISCOUNT.value,
+         Fields.SNP_PRICE.value,
+         Fields.NET_PRICE.value
         ]] = program_data.apply(calc_prices, axis=1, result_type='expand')
 
     return
@@ -144,13 +144,13 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
     ## sales calcuation cut out of the method above ^^ ##
 
     # def get_sales(data: pd.Series) -> pd.Series:
-    #     prog: str = data['Program']
+    #     prog: str = data['program']
     #     adp_alias = progs_to_alias.loc[progs_to_alias['program'] == prog, 'adp_alias']
     #     adp_alias = adp_alias.item() if not adp_alias.empty else None
     #     if not adp_alias:
-    #         return pd.Series({'Sales 2022': 0, 'Sales 2023': 0, 'Total': 0})
-    #     model_num: str = data['Model Number']
-    #     mat_group: str = data['MPG']
+    #         return pd.Series({'sales 2022': 0, 'sales 2023': 0, 'total': 0})
+    #     model_num: str = data['model_number']
+    #     mat_group: str = data['mpg']
     #     model_sales = sales.loc[
     #         (sales['CustName'] == adp_alias)
     #         & (sales['Description'] == model_num)
@@ -158,22 +158,22 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
     #         ['Year', 'Sales']
     #     ]
     #     if model_sales.empty:
-    #         return pd.Series({'Sales 2022': 0, 'Sales 2023': 0, 'Total': 0})
+    #         return pd.Series({'sales 2022': 0, 'sales 2023': 0, 'total': 0})
     #     model_sales_by_year = model_sales.groupby('Year')['Sales'].sum().sort_index(ascending=True)
     #     if 2022 not in model_sales_by_year.index:
     #         model_sales_by_year['2022'] = 0
     #     if 2023 not in model_sales_by_year.index:
     #         model_sales_by_year['2023'] = 0
-    #     model_sales_by_year.index = [f'Sales {year}' for year in model_sales_by_year.index]
-    #     model_sales_by_year['Total'] = model_sales_by_year.sum()
+    #     model_sales_by_year.index = [f'sales_{year}' for year in model_sales_by_year.index]
+    #     model_sales_by_year['total'] = model_sales_by_year.sum()
     #     model_sales_by_year = model_sales_by_year.apply(lambda val: f'{val:.2f}')
     #     return model_sales_by_year
     
 
     # program_data[
-    #     [Fields.SALES_2022.formatted(),
-    #      Fields.SALES_2023.formatted(),
-    #      Fields.TOTAL.formatted(),
+    #     [Fields.SALES_2022.value,
+    #      Fields.SALES_2023.value,
+    #      Fields.TOTAL.value,
     #     ]] = program_data.apply(get_sales, axis=1, result_type='expand')
 
 
@@ -186,11 +186,11 @@ def set_customer_name(program: str) -> str|None:
     return customer if customer else '#N/A'
 
 def separate_product_types_and_commit_to_db(data: pd.DataFrame):
-    ah_filter = data['Motor'].isna()
+    ah_filter = data['motor'].isna()
     coil_progs = data[ah_filter].dropna(axis=1, how='all')
     ah_progs = data[~ah_filter].dropna(axis=1, how='all')
-    coil_progs['Effective Date'] = TODAY
-    ah_progs['Effective Date'] = TODAY
+    coil_progs['effective date'] = TODAY
+    ah_progs['effective date'] = TODAY
     DATABASE.upload_df(coil_progs, 'coil_programs', if_exists='append')
     DATABASE.upload_df(ah_progs, 'ah_programs', if_exists='append')
 
@@ -198,7 +198,7 @@ def extract_models() -> None:
     dir = '/home/carboni/sca-scratchspace/adp-program-reformat/old-style'
     result = extract_all_programs_from_dir(dir=dir)
     price_models_by_customer_discounts(result)
-    result.insert(0,'Customer', result['Program'].apply(set_customer_name))
+    result.insert(0,'customer', result['program'].apply(set_customer_name))
     separate_product_types_and_commit_to_db(result)
 
 
@@ -214,7 +214,7 @@ def add_models_to_program(adp_alias: str, models: list[str]) -> None:
     df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
     df['adp_alias'] = adp_alias
     price_models_by_customer_discounts(df)
-    df['Customer'] = sca_customer_name
+    df['customer'] = sca_customer_name
     df['stage'] = Stage.PROPOSED.name
     separate_product_types_and_commit_to_db(df)
 

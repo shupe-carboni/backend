@@ -42,7 +42,7 @@ class Fields(StrEnum):
     RATINGS_AC_TXV = auto()
     RATINGS_HP_TXV = auto()
     RATINGS_PISTON = auto()
-    RATINGS_FIELD_TXV= auto()
+    RATINGS_FIELD_TXV = auto()
 
     def formatted(self):
         if self.name == 'ADP_ALIAS':
@@ -159,36 +159,36 @@ class ModelSeries:
     
     def record(self) -> dict:
         return {
-            Fields.CATEGORY.formatted(): None,
-            Fields.MODEL_NUMBER.formatted(): None,
-            Fields.PRIVATE_LABEL.formatted(): None,
-            Fields.MPG.name: None,
-            Fields.SERIES.formatted(): None,
-            Fields.TONNAGE.formatted(): None,
-            Fields.PALLET_QTY.formatted(): None,
-            Fields.MIN_QTY.formatted(): None,
-            Fields.WIDTH.formatted(): None,
-            Fields.DEPTH.formatted(): None,
-            Fields.HEIGHT.formatted(): None,
-            Fields.LENGTH.formatted(): None,
-            Fields.WEIGHT.formatted(): None,
-            Fields.METERING.formatted(): None,
-            Fields.MOTOR.formatted(): None,
-            Fields.HEAT.formatted(): None,
-            Fields.CABINET.formatted(): None,
-            Fields.ZERO_DISCOUNT_PRICE.formatted(): None,
-            Fields.MATERIAL_GROUP_DISCOUNT.formatted(): None,
-            Fields.MATERIAL_GROUP_NET_PRICE.formatted(): None,
-            Fields.SNP_DISCOUNT.formatted(): None,
-            Fields.SNP_PRICE.formatted(): None,
-            Fields.NET_PRICE.formatted(): None,
-            Fields.SALES_2022.formatted(): None,
-            Fields.SALES_2023.formatted(): None,
-            Fields.TOTAL.formatted(): None,
-            Fields.RATINGS_AC_TXV.formatted(): None,
-            Fields.RATINGS_HP_TXV.formatted(): None,
-            Fields.RATINGS_PISTON.formatted(): None,
-            Fields.RATINGS_FIELD_TXV.formatted(): None,
+            Fields.CATEGORY.value: None,
+            Fields.MODEL_NUMBER.value: None,
+            Fields.PRIVATE_LABEL.value: None,
+            Fields.MPG.value: None,
+            Fields.SERIES.value: None,
+            Fields.TONNAGE.value: None,
+            Fields.PALLET_QTY.value: None,
+            Fields.MIN_QTY.value: None,
+            Fields.WIDTH.value: None,
+            Fields.DEPTH.value: None,
+            Fields.HEIGHT.value: None,
+            Fields.LENGTH.value: None,
+            Fields.WEIGHT.value: None,
+            Fields.METERING.value: None,
+            Fields.MOTOR.value: None,
+            Fields.HEAT.value: None,
+            Fields.CABINET.value: None,
+            Fields.ZERO_DISCOUNT_PRICE.value: None,
+            Fields.MATERIAL_GROUP_DISCOUNT.value: None,
+            Fields.MATERIAL_GROUP_NET_PRICE.value: None,
+            Fields.SNP_DISCOUNT.value: None,
+            Fields.SNP_PRICE.value: None,
+            Fields.NET_PRICE.value: None,
+            Fields.SALES_2022.value: None,
+            Fields.SALES_2023.value: None,
+            Fields.TOTAL.value: None,
+            Fields.RATINGS_AC_TXV.value: None,
+            Fields.RATINGS_HP_TXV.value: None,
+            Fields.RATINGS_PISTON.value: None,
+            Fields.RATINGS_FIELD_TXV.value: None,
         }
 
     def regex_match(self, pattern: str, ref: str=None) -> bool:

@@ -7,20 +7,20 @@ class Program:
     def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         self._data = data
         self.customer = customer
-        self.product_categories = data[Fields.CATEGORY.formatted()].drop_duplicates()
+        self.product_categories = data[Fields.CATEGORY.value].drop_duplicates()
         self.ratings = ratings
-        if data[Fields.PRIVATE_LABEL.formatted()].isna().all():
-            self.product_series_contained = set(data[Fields.SERIES.formatted()].unique().tolist())
+        if data[Fields.PRIVATE_LABEL.value].isna().all():
+            self.product_series_contained = set(data[Fields.SERIES.value].unique().tolist())
         else:
             self.product_series_contained = {'CE'}
 
     def category_data(self, category) -> pd.DataFrame:
-        data = self._data.loc[self._data[Fields.CATEGORY.formatted()] == category,:]
+        data = self._data.loc[self._data[Fields.CATEGORY.value] == category,:]
         return (
             data
                 .dropna(how='all', axis=1)
                 .drop(columns=[
-                    Fields.CATEGORY.formatted()
+                    Fields.CATEGORY.value
                     ])
         )
 
@@ -29,8 +29,8 @@ class CoilProgram(Program):
 
     def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         super().__init__(customer, data, ratings)
-        self.length_or_depth = Fields.DEPTH.formatted()
-        self.model_number = Fields.MODEL_NUMBER.formatted()
+        self.length_or_depth = Fields.DEPTH.value
+        self.model_number = Fields.MODEL_NUMBER.value
 
     def __str__(self) -> str:
         return "Coils"
@@ -38,27 +38,27 @@ class CoilProgram(Program):
     def features(self):
         return [
             self.model_number,
-            Fields.PALLET_QTY.formatted(),
-            Fields.WIDTH.formatted(),
+            Fields.PALLET_QTY.value,
+            Fields.WIDTH.value,
             self.length_or_depth,
-            Fields.HEIGHT.formatted(),
-            Fields.WEIGHT.formatted(),
-            Fields.CABINET.formatted(),
-            Fields.METERING.formatted(),
-            Fields.NET_PRICE.formatted()
+            Fields.HEIGHT.value,
+            Fields.WEIGHT.value,
+            Fields.CABINET.value,
+            Fields.METERING.value,
+            Fields.NET_PRICE.value
         ] 
 
     def category_data(self, category) -> pd.DataFrame:
         data = super().category_data(category)
-        if Fields.LENGTH.formatted() in data.columns:
-            self.length_or_depth = Fields.LENGTH.formatted()
+        if Fields.LENGTH.value in data.columns:
+            self.length_or_depth = Fields.LENGTH.value
         else:
-            self.length_or_depth = Fields.DEPTH.formatted()
+            self.length_or_depth = Fields.DEPTH.value
 
-        if Fields.PRIVATE_LABEL.formatted() in data.columns:
-            self.model_number = Fields.PRIVATE_LABEL.formatted()
+        if Fields.PRIVATE_LABEL.value in data.columns:
+            self.model_number = Fields.PRIVATE_LABEL.value
         else:
-            self.model_number = Fields.MODEL_NUMBER.formatted()
+            self.model_number = Fields.MODEL_NUMBER.value
 
         data = data[self.features()].rename(
                 columns={'Private Label': 'Model Number'}
@@ -69,8 +69,8 @@ class AirHandlerProgram(Program):
 
     def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         super().__init__(customer, data, ratings)
-        self.pallet_or_min = Fields.MIN_QTY.formatted()
-        self.model_number = Fields.MODEL_NUMBER.formatted()
+        self.pallet_or_min = Fields.MIN_QTY.value
+        self.model_number = Fields.MODEL_NUMBER.value
     
     def __str__(self) -> str:
         return "Air Handlers"
@@ -79,29 +79,29 @@ class AirHandlerProgram(Program):
             return [
             self.model_number,
             self.pallet_or_min,
-            Fields.WIDTH.formatted(), 
-            Fields.DEPTH.formatted(), 
-            Fields.HEIGHT.formatted(),
-            Fields.WEIGHT.formatted(),
-            Fields.HEAT.formatted(),
-            Fields.METERING.formatted(),
-            Fields.NET_PRICE.formatted()
+            Fields.WIDTH.value, 
+            Fields.DEPTH.value, 
+            Fields.HEIGHT.value,
+            Fields.WEIGHT.value,
+            Fields.HEAT.value,
+            Fields.METERING.value,
+            Fields.NET_PRICE.value
         ]
 
     def category_data(self, category) -> pd.DataFrame:
         data = super().category_data(category)
-        if Fields.WEIGHT.formatted() not in data.columns:
-            data[Fields.WEIGHT.formatted()] = '--'
+        if Fields.WEIGHT.value not in data.columns:
+            data[Fields.WEIGHT.value] = '--'
 
-        if Fields.PRIVATE_LABEL.formatted() in data.columns:
-            self.model_number = Fields.PRIVATE_LABEL.formatted()
+        if Fields.PRIVATE_LABEL.value in data.columns:
+            self.model_number = Fields.PRIVATE_LABEL.value
         else:
-            self.model_number = Fields.MODEL_NUMBER.formatted()
+            self.model_number = Fields.MODEL_NUMBER.value
 
-        if Fields.PALLET_QTY.formatted() in data.columns:
-            self.pallet_or_min = Fields.PALLET_QTY.formatted()
+        if Fields.PALLET_QTY.value in data.columns:
+            self.pallet_or_min = Fields.PALLET_QTY.value
         else:
-            self.pallet_or_min = Fields.MIN_QTY.formatted()
+            self.pallet_or_min = Fields.MIN_QTY.value
         
         features = self.features()
 

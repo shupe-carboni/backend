@@ -28,11 +28,11 @@ def build_coil_programs(customers: pd.Series, programs: pd.DataFrame, ratings: p
     coil_progs = programs
     progs = {customer: {'coils': list()} for customer in coil_customers}
     for customer in coil_customers:
-        data = coil_progs.loc[coil_progs[Fields.ADP_ALIAS.formatted()] == customer, :]
-        sca_customer_name = data[Fields.CUSTOMER.formatted()].drop_duplicates().item()
+        data = coil_progs.loc[coil_progs[Fields.ADP_ALIAS.value] == customer, :]
+        sca_customer_name = data[Fields.CUSTOMER.value].drop_duplicates().item()
         data = data.iloc[:,1:-1]
-        data = data.sort_values(by=['Category','Series','MPG','Metering','Tonnage','Width','Height']).drop_duplicates()
-        prog_ratings = ratings.loc[ratings['Customer'] == sca_customer_name,:].drop(columns=['Customer'])
+        data = data.sort_values(by=['category','series','mpg','metering','tonnage','width','height']).drop_duplicates()
+        prog_ratings = ratings.loc[ratings['customer'] == sca_customer_name,:].drop(columns=['customer'])
         progs[customer]['coils'].append(CoilProgram(customer=customer, data=data, ratings=prog_ratings))
     return progs
     
@@ -41,13 +41,13 @@ def build_ah_programs(customers: pd.Series, programs: pd.DataFrame, ratings: pd.
     ah_progs = programs
     progs = {customer: {'air_handlers': list()} for customer in ah_customers}
     for customer in ah_customers:
-        data: pd.DataFrame = ah_progs.loc[ah_progs[Fields.ADP_ALIAS.formatted()] == customer,:]
-        sca_customer_name = data[Fields.CUSTOMER.formatted()].drop_duplicates().item()
+        data: pd.DataFrame = ah_progs.loc[ah_progs[Fields.ADP_ALIAS.value] == customer,:]
+        sca_customer_name = data[Fields.CUSTOMER.value].drop_duplicates().item()
         data = data.iloc[:,1:-1]
         data['heat_num'] = data['Heat'].str.extract(r'(\d+|\d\.\d)\s*kW').fillna(0).astype(float).astype(int)
-        data = data.sort_values(by=['Category','Series','MPG','Tonnage','Width','heat_num']).drop_duplicates()
+        data = data.sort_values(by=['category','series','mpg','tonnage','width','heat_num']).drop_duplicates()
         data = data.drop(columns='heat_num')
-        prog_ratings = ratings.loc[ratings['Customer'] == sca_customer_name,:].drop(columns=['Customer'])
+        prog_ratings = ratings.loc[ratings['customer'] == sca_customer_name,:].drop(columns=['customer'])
         progs[customer]['air_handlers'].append(AirHandlerProgram(customer=customer, data=data, ratings=prog_ratings))
     return progs
 
@@ -141,8 +141,8 @@ def generate_program(
     coil_progs = coil_progs[coil_progs['stage'] == stage.upper()]
     ah_progs = ah_progs[ah_progs['stage'] == stage.upper()]
     try:
-        coil_customers = coil_progs.loc[:,Fields.ADP_ALIAS.formatted()].drop_duplicates()
-        ah_customers = ah_progs.loc[:,Fields.ADP_ALIAS.formatted()].drop_duplicates()
+        coil_customers = coil_progs.loc[:,Fields.ADP_ALIAS.value].drop_duplicates()
+        ah_customers = ah_progs.loc[:,Fields.ADP_ALIAS.value].drop_duplicates()
         progs = combine_programs(
             build_coil_programs(coil_customers, coil_progs, ratings),
             build_ah_programs(ah_customers, ah_progs, ratings)
@@ -177,7 +177,7 @@ def update_dates_in_tables(
         customers: dict[str, tuple]|None=None,
     ) -> None:
     if customers:
-        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE "Customer" IN :customers;""" for table in tables]
+        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer IN :customers;""" for table in tables]
         params = customers | {"date": TODAY}
     else:
         coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE last_file_gen IS NULL;""" for table in tables]

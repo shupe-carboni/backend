@@ -75,7 +75,7 @@ def extract_ratings_all_ratings_from_dir(dir: str) -> tuple[pd.DataFrame, pd.Dat
         df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
         if df.isna().all().all():
             pass
-        df['Customer'] = customer
+        df['customer'] = customer
         dfs.append(df)
         errors.append(pd.DataFrame(data[customer]['errors'], columns=['File', 'Sheet']))
     result = pd.concat(dfs)
@@ -235,6 +235,6 @@ def extract_ratings() -> None:
 
 def add_rating_to_program(adp_alias: str, rating: dict[str,str]) -> None:
     sca_customer_name = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == adp_alias, 'customer']
-    rating |= {'Customer': sca_customer_name}
+    rating |= {'customer': sca_customer_name}
     rating_df = pd.DataFrame(rating)
     find_ratings_in_reference_and_update_file(ratings=rating_df)

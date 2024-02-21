@@ -44,7 +44,7 @@ class RelatedPlaceResponse(PlaceResponse):
     included: dict = {}
     links: dict = Field(..., exclude=True)
 
-PlaceQuery = create_model(
+PlaceQuery: type[BaseModel] = create_model(
     'PlaceQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in PlaceRelationships.model_fields.keys()},
