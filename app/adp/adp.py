@@ -1,42 +1,29 @@
-import typing
+from typing import Literal, Optional, Mapping, Any, Annotated
 from fastapi import HTTPException, Depends, status
 from starlette.background import BackgroundTask
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRouter
-from typing import Literal
+
 from app import auth
 import app.adp.main as api
 from app.adp.models import CoilProgQuery, CoilProgResp
-
-# TODO instead of just plain token authenication, use dependency injection to ensure that the user has
-#       permissions for ADP specifically, and return the permission enum
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
 
 class XLSXFileResponse(StreamingResponse):
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     def __init__(self, 
-            content: typing.Any, 
+            content: Any, 
             status_code: int = 200, 
-            headers: typing.Optional[typing.Mapping[str, str]] = None, 
-            media_type: typing.Optional[str] = None, 
-            background: typing.Optional[BackgroundTask] = None, 
+            headers: Optional[Mapping[str, str]] = None, 
+            media_type: Optional[str] = None, 
+            background: Optional[BackgroundTask] = None, 
             filename: str = "download") -> None:
         super().__init__(content, status_code, headers, media_type, background)
         # NOTE escaped quotes are needed for filenames with spaces
         self.raw_headers.append((b"Content-Disposition",f"attachment; filename=\"{filename}.xlsx\"".encode('latin-1')))
 
-def adp_perms_present(token: auth.VerifiedToken = Depends(auth.authenticate_auth0_token)) -> auth.VerifiedToken:
-    """chained dependency on authentication enforcing that the auth token
-        contains defined permissions for use of the ADP resource"""
-    if token.perm_level('adp') < 0:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail='Permissions for accesss to ADP have not been defined.'
-        )
-    return token
-
-ADPPerm = typing.Annotated[auth.VerifiedToken, Depends(adp_perms_present)]
+ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 
 @adp.get('/programs')
 def all_programs(
@@ -44,8 +31,9 @@ def all_programs(
         query: CoilProgQuery,   # type: ignore
     ):
     """list out all programs"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.get('{adp_customer_id}/programs')
+@adp.get('/{adp_customer_id}/program')
 def customer_program(
         token: ADPPerm,
         adp_customer_id: int,
@@ -53,10 +41,14 @@ def customer_program(
         stage: api.Stage='active',
     ) -> CoilProgResp:
     """Generate a program excel file and return for download or just the data in json format"""
-    print(token.perm_level('adp'))
-    if return_type == 'file':
-        file = api.generate_program(sca_customer_id=adp_customer_id, stage=stage.upper())
-        return XLSXFileResponse(content=file.file_data, filename=file.file_name)
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        if return_type == 'file':
+            stage_str = stage.upper()
+            file = api.generate_program(customer_id=adp_customer_id, stage=stage_str)
+            return XLSXFileResponse(content=file.file_data, filename=file.file_name)
+    else:
+        print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.post('{adp_customer_id}/program/coils')
 def add_to_coil_program(
@@ -64,6 +56,7 @@ def add_to_coil_program(
         program_details: None,
         ):
     """add coil product for a customer"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.post('{adp_customer_id}/program/air-handlers')
 def add_to_ah_program(
@@ -71,3 +64,4 @@ def add_to_ah_program(
         program_details: None,
     ):
     """modify product listed on an existing program"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
