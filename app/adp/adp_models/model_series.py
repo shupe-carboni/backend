@@ -10,7 +10,7 @@ class Cabinet(Enum):
     PAINTED = 2
 
 class Fields(StrEnum):
-    CUSTOMER = auto()
+    CUSTOMER_ID = auto()
     ADP_ALIAS = auto()
     PROGRAM = auto()
     CATEGORY = auto()
@@ -36,9 +36,6 @@ class Fields(StrEnum):
     SNP_DISCOUNT = auto()
     SNP_PRICE = auto()
     NET_PRICE = auto()
-    SALES_2022 = auto()
-    SALES_2023 = auto()
-    TOTAL = auto()
     RATINGS_AC_TXV = auto()
     RATINGS_HP_TXV = auto()
     RATINGS_PISTON = auto()
@@ -182,9 +179,6 @@ class ModelSeries:
             Fields.SNP_DISCOUNT.value: None,
             Fields.SNP_PRICE.value: None,
             Fields.NET_PRICE.value: None,
-            Fields.SALES_2022.value: None,
-            Fields.SALES_2023.value: None,
-            Fields.TOTAL.value: None,
             Fields.RATINGS_AC_TXV.value: None,
             Fields.RATINGS_HP_TXV.value: None,
             Fields.RATINGS_PISTON.value: None,

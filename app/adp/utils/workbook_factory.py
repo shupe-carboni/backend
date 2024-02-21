@@ -23,165 +23,144 @@ class ProgramFile:
     file_data: bytes
 
 
-def build_coil_programs(customers: pd.Series, programs: pd.DataFrame, ratings: pd.DataFrame) -> dict[str, dict[str, list[pd.DataFrame]]]:
-    coil_customers = customers
-    coil_progs = programs
-    progs = {customer: {'coils': list()} for customer in coil_customers}
-    for customer in coil_customers:
-        data = coil_progs.loc[coil_progs[Fields.ADP_ALIAS.value] == customer, :]
-        sca_customer_name = data[Fields.CUSTOMER.value].drop_duplicates().item()
-        data = data.iloc[:,1:-1]
-        data = data.sort_values(by=['category','series','mpg','metering','tonnage','width','height']).drop_duplicates()
-        prog_ratings = ratings.loc[ratings['customer'] == sca_customer_name,:].drop(columns=['customer'])
-        progs[customer]['coils'].append(CoilProgram(customer=customer, data=data, ratings=prog_ratings))
-    return progs
+def build_coil_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> CoilProgram:
+    program_data = program_data.drop(columns=['customer_id'])
+    program_data = program_data.sort_values(by=[
+        Fields.CATEGORY.value,
+        Fields.SERIES.value,
+        Fields.MPG.value,
+        Fields.METERING.value,
+        Fields.TONNAGE.value,
+        Fields.WIDTH.value,
+        Fields.HEIGHT.value
+    ]).drop_duplicates()
+    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
+    return CoilProgram(program_data=program_data, ratings=prog_ratings)
     
-def build_ah_programs(customers: pd.Series, programs: pd.DataFrame, ratings: pd.DataFrame) -> dict[str, dict[str, list[pd.DataFrame]]]:
-    ah_customers = customers
-    ah_progs = programs
-    progs = {customer: {'air_handlers': list()} for customer in ah_customers}
-    for customer in ah_customers:
-        data: pd.DataFrame = ah_progs.loc[ah_progs[Fields.ADP_ALIAS.value] == customer,:]
-        sca_customer_name = data[Fields.CUSTOMER.value].drop_duplicates().item()
-        data = data.iloc[:,1:-1]
-        data['heat_num'] = data['Heat'].str.extract(r'(\d+|\d\.\d)\s*kW').fillna(0).astype(float).astype(int)
-        data = data.sort_values(by=['category','series','mpg','tonnage','width','heat_num']).drop_duplicates()
-        data = data.drop(columns='heat_num')
-        prog_ratings = ratings.loc[ratings['customer'] == sca_customer_name,:].drop(columns=['customer'])
-        progs[customer]['air_handlers'].append(AirHandlerProgram(customer=customer, data=data, ratings=prog_ratings))
-    return progs
+def build_ah_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> AirHandlerProgram:
+    program_data = program_data.drop(columns=['customer_id'])
+    temp_heat_num_col = 'heat_num'
+    program_data[temp_heat_num_col] = program_data[Fields.HEAT.value].str.extract(r'(\d+|\d\.\d)\s*kW').fillna(0).astype(float).astype(int)
+    program_data = program_data.sort_values(by=[
+        Fields.CATEGORY.value,
+        Fields.SERIES.value,
+        Fields.MPG.value,
+        Fields.TONNAGE.value,
+        Fields.WIDTH.value,
+        temp_heat_num_col
+    ]).drop_duplicates()
+    program_data = program_data.drop(columns=[temp_heat_num_col])
+    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
+    return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
-def add_customer_terms_parts_and_logo_path(programs: dict[str, dict[str, list]]) -> list[CustomerProgram]:
-    DATABASE = Database('adp')
-    footers_info = DATABASE.load_df("customer_terms")
-    prog_parts = DATABASE.load_df('program_parts_expanded')
-    pref_parts_customers = DATABASE.load_df('preferred_parts_customers')
-    alias_mapping = DATABASE.load_df('customers')
-    full_programs = list()
-    ## collect full customer programs
-    for customer, progs in programs.items():
-        ## parts
-        alias_id = alias_mapping.loc[alias_mapping['adp_alias'] == customer,'id'].drop_duplicates().item()\
-            if customer in alias_mapping['adp_alias'].values else None
-        if not alias_id:
-            print(customer)
-            raise Exception("customer not found")
-        else:
-            sca_customer_name: str = alias_mapping.loc[alias_mapping['adp_alias'] == customer, 'customer'].item()
-        customer_parts = prog_parts.loc[prog_parts['customer_id'] == alias_id,:].drop(columns='customer_id')
-        customer_preferred = customer in pref_parts_customers['adp_alias'].values
-        ## specific column name for pricing is to be set
-        if customer_preferred:
-            part_price_col = 'preferred'
-            # some "preferred" pricing is left blank, so default the price to standard pricing
-            customer_parts[part_price_col] = customer_parts[part_price_col].fillna(customer_parts['standard'])
-        else:
-            part_price_col = 'standard'
-        customer_parts = customer_parts[['part_number', 'description', 'pkg_qty', part_price_col]]
-        ## footer
-        footer = footers_info[footers_info['customer'] == sca_customer_name]
-        try:
-            payment_terms = footer['terms'].item()
-            pre_paid_freight = footer['ppf'].item()
-            effective_date = str(footer['effective_date'].item())
-        except:
-            print("footer capture failed")
-            print(customer)
-            print(footer)
-        terms = {
-            'Payment Terms': {
-                'value': payment_terms,
-                'style': {
-                    'font': Font(bold=True),
-                    'alignment': Alignment(horizontal='right')
-                }
-            },
-            'Freight': {
-                'value': pre_paid_freight,
-                'style': {
-                    'number_format': numbers.FORMAT_CURRENCY_USD,
-                    'font': Font(bold=True),
-                    'alignment': Alignment(horizontal='right')
-                }
-            },
-            'Effective Date': {
-                'value': datetime.strptime(effective_date, r'%Y-%m-%d %H:%M:%S'),
-                'style': {
-                    'font': Font(bold=True),
-                    'alignment': Alignment(horizontal='right'),
-                    'number_format': numbers.FORMAT_DATE_YYYYMMDD2
+def add_customer_terms_parts_and_logo_path(customer_id: int, coil_prog: CoilProgram, ah_prog: AirHandlerProgram) -> CustomerProgram:
+    footer = db.load_df("customer_terms_by_customer_id", customer_id=customer_id)
+    prog_parts = db.load_df('program_parts_expanded', customer_id=customer_id)
+    alias_mapping = db.load_df('customers')
+    alias_mapping = alias_mapping[alias_mapping['id'] == customer_id]
+    alias_name = alias_mapping[Fields.ADP_ALIAS.value].item()
+    ## parts
+    customer_parts = prog_parts.drop(columns='customer_id')
+    customer_preferred = alias_mapping['preferred_parts'].item() == True
+    ## specific column name for pricing is to be set
+    if customer_preferred:
+        part_price_col = 'preferred'
+        # some "preferred" pricing is left blank, so default the price to standard pricing
+        customer_parts[part_price_col] = customer_parts[part_price_col].fillna(customer_parts['standard'])
+    else:
+        part_price_col = 'standard'
+    customer_parts = customer_parts[['part_number', 'description', 'pkg_qty', part_price_col]]
+    ## footer
+    try:
+        payment_terms = footer['terms'].item()
+        pre_paid_freight = footer['ppf'].item()
+        effective_date = str(footer['effective_date'].item())
+    except:
+        print("footer capture failed")
+        print(alias_name)
+    terms = {
+        'Payment Terms': {
+            'value': payment_terms,
+            'style': {
+                'font': Font(bold=True),
+                'alignment': Alignment(horizontal='right')
+            }
+        },
+        'Freight': {
+            'value': pre_paid_freight,
+            'style': {
+                'number_format': numbers.FORMAT_CURRENCY_USD,
+                'font': Font(bold=True),
+                'alignment': Alignment(horizontal='right')
+            }
+        },
+        'Effective Date': {
+            'value': datetime.strptime(effective_date, r'%Y-%m-%d %H:%M:%S'),
+            'style': {
+                'font': Font(bold=True),
+                'alignment': Alignment(horizontal='right'),
+                'number_format': numbers.FORMAT_DATE_YYYYMMDD2
 
-                }
             }
         }
-        ## logo_path
-        logo_path = alias_mapping.loc[alias_mapping['adp_alias'] == customer, 'logo_path'].item()
-        full_logo_path = os.path.join(LOGOS_DIR, logo_path)
-        ## program gen
-        full_program = CustomerProgram(**progs, parts=customer_parts, terms=terms, logo_path=full_logo_path)
-        full_programs.append(full_program)
-    return full_programs
-
-def combine_programs(
-        coil_progs: dict[str, dict[str, list[pd.DataFrame]]],
-        ah_progs: dict[str, dict[str, list[pd.DataFrame]]]
-    ) -> dict[str, dict[str, list[pd.DataFrame]]]:
-    all_customers = {customer for customer in coil_progs} | {customer for customer in ah_progs}
-    return {customer: coil_progs.get(customer,{'coils': list()})|ah_progs.get(customer,{'air_handlers': list()}) for customer in all_customers}
+    }
+    ## logo_path
+    logo_path = alias_mapping['logo_path'].item()
+    full_logo_path = os.path.join(LOGOS_DIR, logo_path)
+    return CustomerProgram(
+            customer_id=customer_id,
+            customer_name=alias_name,
+            coils=coil_prog,
+            air_handlers=ah_prog,
+            parts=customer_parts,
+            terms=terms,
+            logo_path=full_logo_path
+        )
 
 def generate_program(
-        sca_customer_id: int,
+        customer_id: int,
         stage: Literal['ACTIVE', 'PROPOSED', 'REJECTED', 'REMOVED']='ACTIVE'
     ) -> ProgramFile:
-    DATABASE = db
-    customers_table = DATABASE.load_df('customers')
-    sca_customer_name = customers_table.loc[customers_table['id'] == sca_customer_id, 'customer'].drop_duplicates().item()
     tables = ["coil_programs", "ah_programs", "program_ratings"]
-    coil_progs, ah_progs, ratings = [DATABASE.load_df(table_name=table, customers=[sca_customer_name]) for table in tables]
-    coil_progs = coil_progs[coil_progs['stage'] == stage.upper()]
-    ah_progs = ah_progs[ah_progs['stage'] == stage.upper()]
+    coil_prog_table, ah_prog_table, ratings = [db.load_df(table_name=table, customer_id=customer_id) for table in tables]
+    coil_prog_table = coil_prog_table[coil_prog_table['stage'] == stage.upper()]
+    ah_prog_table = ah_prog_table[ah_prog_table['stage'] == stage.upper()]
     try:
-        coil_customers = coil_progs.loc[:,Fields.ADP_ALIAS.value].drop_duplicates()
-        ah_customers = ah_progs.loc[:,Fields.ADP_ALIAS.value].drop_duplicates()
-        progs = combine_programs(
-            build_coil_programs(coil_customers, coil_progs, ratings),
-            build_ah_programs(ah_customers, ah_progs, ratings)
+        coil_prog = build_coil_program(coil_prog_table, ratings)
+        ah_prog = build_ah_program(ah_prog_table, ratings)
+        full_program = add_customer_terms_parts_and_logo_path(
+            customer_id=customer_id,
+            coil_prog=coil_prog,
+            ah_prog=ah_prog
         )
-        all_full_programs = add_customer_terms_parts_and_logo_path(programs=progs)
-        for full_program in all_full_programs:
-            print(f"generating {full_program}")
-            for prog in full_program:
-                print(f'\t{prog}')
-            # BUG the method as originally conceived saved multiple files to disk. Now it's assuming one file
-            new_program_file = ProgramFile(
-                    file_data=PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
-                                .build_program()
-                                .attach_nomenclature_tab()
-                                .attach_ratings()
-                                .attach_parts()
-                                .save_and_close(),
-                    file_name=full_program.new_file_name()
-            )
+        print(f"generating {full_program}")
+        for prog in full_program:
+            print(f'\t{prog}')
+        price_book = (PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
+                            .build_program()
+                            .attach_nomenclature_tab()
+                            .attach_ratings()
+                            .attach_parts()
+                            .save_and_close())
+        new_program_file = ProgramFile(
+            file_data=price_book,
+            file_name=full_program.new_file_name()
+        )
     except Exception:
         import traceback as tb
         print("Error occurred while trying to generate programs")
         print(tb.format_exc())
     else:
         tables.remove('program_ratings')
-        update_dates_in_tables(db=DATABASE, tables=tables, customers=dict(customers=tuple(sca_customer_name)))
+        update_dates_in_tables(db=db, tables=tables, customer_id=customer_id)
         return new_program_file
 
 def update_dates_in_tables(
         db: Database,
         tables: Iterable[str],
-        customers: dict[str, tuple]|None=None,
+        customer_id: int=None
     ) -> None:
-    if customers:
-        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer IN :customers;""" for table in tables]
-        params = customers | {"date": TODAY}
-    else:
-        coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE last_file_gen IS NULL;""" for table in tables]
-        params = dict(date=TODAY)
-
+    coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer_id IN :customers;""" for table in tables]
+    params = {"customers": (customer_id,), "date": TODAY}
     for q in coil_update_q, ah_update_q:
         db.execute_and_commit(q, params)

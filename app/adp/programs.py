@@ -4,15 +4,14 @@ import pandas as pd
 from app.adp.adp_models import Fields
 
 class Program:
-    def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
-        self._data = data
-        self.customer = customer
-        self.product_categories = data[Fields.CATEGORY.value].drop_duplicates()
+    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+        self._data = program_data
+        self.product_categories = program_data[Fields.CATEGORY.value].drop_duplicates()
         self.ratings = ratings
-        if data[Fields.PRIVATE_LABEL.value].isna().all():
-            self.product_series_contained = set(data[Fields.SERIES.value].unique().tolist())
+        if program_data[Fields.PRIVATE_LABEL.value].isna().all():
+            self.product_series_contained = set(program_data[Fields.SERIES.value].unique().tolist())
         else:
-            self.product_series_contained = {'CE'}
+            self.product_series_contained = {'CE'} | set(program_data[Fields.SERIES.value].unique().tolist()).intersection({'CP'})
 
     def category_data(self, category) -> pd.DataFrame:
         data = self._data.loc[self._data[Fields.CATEGORY.value] == category,:]
@@ -24,11 +23,10 @@ class Program:
                     ])
         )
 
-
 class CoilProgram(Program):
 
-    def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
-        super().__init__(customer, data, ratings)
+    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+        super().__init__(program_data, ratings)
         self.length_or_depth = Fields.DEPTH.value
         self.model_number = Fields.MODEL_NUMBER.value
 
@@ -61,14 +59,14 @@ class CoilProgram(Program):
             self.model_number = Fields.MODEL_NUMBER.value
 
         data = data[self.features()].rename(
-                columns={'Private Label': 'Model Number'}
+                columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
             )
         return data
 
 class AirHandlerProgram(Program):
 
-    def __init__(self, customer: str, data: pd.DataFrame, ratings: pd.DataFrame) -> None:
-        super().__init__(customer, data, ratings)
+    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+        super().__init__(program_data, ratings)
         self.pallet_or_min = Fields.MIN_QTY.value
         self.model_number = Fields.MODEL_NUMBER.value
     
@@ -106,28 +104,28 @@ class AirHandlerProgram(Program):
         features = self.features()
 
         data = data[features].rename(
-                columns={'Private Label': 'Model Number'}
+                columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
             )
         return data
 
 class CustomerProgram:
     def __init__(
             self,
+            customer_id: int,
+            customer_name: str,
             logo_path: str,
-            coils: list[CoilProgram]=None,
-            air_handlers: list[AirHandlerProgram]=None,
+            coils: CoilProgram=None,
+            air_handlers: AirHandlerProgram=None,
             parts: pd.DataFrame=None,
             terms: dict[str, str|dict]=None
         ) -> None:
         if not (coils or air_handlers):
             raise Exception("Either a Coil Program or an Air Handler Program are required")
-        elif coils:
-            self.customer = coils[0].customer
-        else:
-            self.customer = air_handlers[0].customer
        
+        self.customer_id = customer_id
+        self.customer_name = customer_name
         self.ratings = pd.DataFrame()
-        self.progs: list[Program] = [*coils, *air_handlers]
+        self.progs: list[Program] = [coils, air_handlers]
         self.progs = [prog for prog in self.progs if prog]
         self.series_contained = set()
         for prog in self.progs:
@@ -147,7 +145,7 @@ class CustomerProgram:
 
     def new_file_name(self) -> str:
         TODAY = datetime.today().date()
-        customer_name = self.customer.title()
+        customer_name = self.customer_name.title()
         if "'" in customer_name:
             # title() capitalizes or leaves alone letters after an apostrophe
             customer_name = re.sub(r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name)
@@ -162,7 +160,7 @@ class CustomerProgram:
                 if not value:
                     return False
                 for prog in self.progs:
-                    ratings_models: pd.Series = prog._data.loc[:,prog._data.columns.str.contains('Ratings')].stack(future_stack=True)
+                    ratings_models: pd.Series = prog._data.loc[:,prog._data.columns.str.contains('ratings')].stack(future_stack=True)
                     ratings_models = ratings_models.drop_duplicates().dropna().reset_index(drop=True)
                     if ratings_models.apply(lambda ref: re.match(ref, value) is not None).any():
                         return True

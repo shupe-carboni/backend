@@ -11,7 +11,6 @@ from app.db import Database
 
 DATABASE = Database('adp')
 TODAY = str(datetime.today().date())
-PROGS_TO_ALIAS = DATABASE.load_df('programs_to_customer')
 CUSTOMERS = DATABASE.load_df('customers')
 
 class NotEnoughData(Exception):
@@ -53,35 +52,35 @@ class Rating:
         }
 
 
-def extract_ratings_all_ratings_from_dir(dir: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    data: dict[str, dict[str, set[Rating] | list[tuple[str, str]]]] = dict()
-    ## ratings extraction
-    for root, _, files in os.walk(dir):
-        for file in files:
-            program: str = os.path.basename(file).replace('.xlsx','')
-            program = re.sub(r'\d{4}-\d{1,2}-\d{1,2}', '', program).strip()
-            alias = PROGS_TO_ALIAS.loc[PROGS_TO_ALIAS['program'] == program,'adp_alias'].item()
-            customer = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == alias, 'customer'].item()
-            if not data.get(customer):
-                data[customer] = {'ratings': set()}
-                data[customer]['errors'] = list()
-            results = extract_ratings_from_file(os.path.join(root,file))
-            data[customer]['ratings'] |= results
-    # formatting into a df and tagging the program
-    dfs = []
-    errors = []
-    for customer in data:
-        records = [record.record() for record in data[customer]['ratings']]
-        df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
-        if df.isna().all().all():
-            pass
-        df['customer'] = customer
-        dfs.append(df)
-        errors.append(pd.DataFrame(data[customer]['errors'], columns=['File', 'Sheet']))
-    result = pd.concat(dfs)
-    result = result.loc[~result['AHRINumber'].astype(str).str.contains("AHRINumber"), :]
-    errors = pd.concat(errors)
-    return result, errors
+# def extract_ratings_all_ratings_from_dir(dir: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+#     data: dict[str, dict[str, set[Rating] | list[tuple[str, str]]]] = dict()
+#     ## ratings extraction
+#     for root, _, files in os.walk(dir):
+#         for file in files:
+#             program: str = os.path.basename(file).replace('.xlsx','')
+#             program = re.sub(r'\d{4}-\d{1,2}-\d{1,2}', '', program).strip()
+#             alias = PROGS_TO_ALIAS.loc[PROGS_TO_ALIAS['program'] == program,'adp_alias'].item()
+#             customer = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == alias, 'customer'].item()
+#             if not data.get(customer):
+#                 data[customer] = {'ratings': set()}
+#                 data[customer]['errors'] = list()
+#             results = extract_ratings_from_file(os.path.join(root,file))
+#             data[customer]['ratings'] |= results
+#     # formatting into a df and tagging the program
+#     dfs = []
+#     errors = []
+#     for customer in data:
+#         records = [record.record() for record in data[customer]['ratings']]
+#         df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
+#         if df.isna().all().all():
+#             pass
+#         df['customer'] = customer
+#         dfs.append(df)
+#         errors.append(pd.DataFrame(data[customer]['errors'], columns=['File', 'Sheet']))
+#     result = pd.concat(dfs)
+#     result = result.loc[~result['AHRINumber'].astype(str).str.contains("AHRINumber"), :]
+#     errors = pd.concat(errors)
+#     return result, errors
 
 def extract_ratings_from_file(file: str) -> set[Rating]:
     wb = opxl.load_workbook(file, data_only=True)
@@ -225,13 +224,6 @@ def update_ratings_reference():
     finally:
         process_complete = True
         print("Update Complete")
-
-def extract_ratings() -> None:
-    dir = '/home/carboni/sca-scratchspace/adp-program-reformat/old-style'
-    result, errors = extract_ratings_all_ratings_from_dir(dir)
-    find_ratings_in_reference_and_update_file(ratings=result)
-    if not errors.empty:
-        errors.to_csv('./db/ratings_errors.csv',index=False)
 
 def add_rating_to_program(adp_alias: str, rating: dict[str,str]) -> None:
     sca_customer_name = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == adp_alias, 'customer']

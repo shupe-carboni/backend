@@ -62,15 +62,17 @@ class Database:
                     finally:
                         conn.close()
 
-    def load_df(self, table_name: str, customers: list[str]=None, is_null: str=None, use_alias: bool=False) -> DataFrame:
+    def load_df(
+            self,
+            table_name: str,
+            customer_id: int=None,
+            is_null: str=None,
+        ) -> DataFrame:
         sql = f"""SELECT * FROM {self.full_table_name(table_name)}"""
         params = None
-        if customers:
-            if use_alias:
-                sql += """ WHERE adp_alias IN %(customers)s"""
-            else:
-                sql += """ WHERE "Customer" IN %(customers)s"""
-            params = dict(customers=tuple(customers))
+        if customer_id:
+            sql += """ WHERE customer_id IN %(customer_id)s"""
+            params = dict(customer_id=(customer_id,))
         elif is_null:
             sql += f""" WHERE {is_null} IS NULL"""
         sql += ";"

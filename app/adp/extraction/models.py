@@ -15,7 +15,6 @@ import warnings; warnings.simplefilter('ignore')
 
 DATABASE = Database('adp')
 CUSTOMERS = DATABASE.load_df('customers')
-progs_to_alias = DATABASE.load_df('programs_to_customer')
 TODAY = str(datetime.today().date())
 
 def extract_models_from_sheet(sheet: Worksheet) -> list[ModelSeries]:
@@ -86,42 +85,25 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
 
     def calc_prices(data: pd.Series) -> pd.Series:
         no_disc_price = int(data['zero discount price'])
-        if 'adp_alias' in data.index:
-            adp_alias = data['adp_alias']
-            has_alias = True
-        else:
-            prog: str = data['program']
-            adp_alias = progs_to_alias.loc[progs_to_alias['program'] == prog, 'adp_alias']
-            if adp_alias.empty:
-                has_alias = False
-            else:
-                adp_alias = adp_alias.item()
-                has_alias = True
-        
-        if not has_alias:
-            mat_group_disc = 0
-            mat_group_price = 0
-            snp = 0
-            snp_disc = 0
-        else:
-            mat_group: str = data['mpg']
-            mat_group_disc: pd.Series = mat_grp_discounts.loc[
-                (mat_grp_discounts['adp_alias'] == adp_alias)
-                & (mat_grp_discounts['mat_grp'] == mat_group),
-                'discount'
-            ]
-            mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
-            model_num: str = data['model number']
-            snp: pd.Series = snps.loc[
-                (snps['adp_alias'] == adp_alias)
-                & (snps['model'] == model_num),
-                'price'
-            ]
-            snp = snp.item() if not snp.empty else 0
-            snp_disc = f'{(1 - (snp / no_disc_price)) * 100:.1f}' if snp else 0
-            mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
-            mat_group_price = int(math.floor(mat_group_price + 0.5))
-            mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
+        adp_alias = data['adp_alias']
+        mat_group: str = data['mpg']
+        mat_group_disc: pd.Series = mat_grp_discounts.loc[
+            (mat_grp_discounts['adp_alias'] == adp_alias)
+            & (mat_grp_discounts['mat_grp'] == mat_group),
+            'discount'
+        ]
+        mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
+        model_num: str = data['model_number']
+        snp: pd.Series = snps.loc[
+            (snps['adp_alias'] == adp_alias)
+            & (snps['model'] == model_num),
+            'price'
+        ]
+        snp = snp.item() if not snp.empty else 0
+        snp_disc = f'{(1 - (snp / no_disc_price)) * 100:.1f}' if snp else 0
+        mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
+        mat_group_price = int(math.floor(mat_group_price + 0.5))
+        mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
         result = {
             Fields.MATERIAL_GROUP_DISCOUNT.value: mat_group_disc if mat_group_disc else None,
             Fields.MATERIAL_GROUP_NET_PRICE.value: mat_group_price if mat_group_price else None,
@@ -177,14 +159,6 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
     #     ]] = program_data.apply(get_sales, axis=1, result_type='expand')
 
 
-def set_customer_name(program: str) -> str|None:
-    adp_alias_1 = progs_to_alias.loc[progs_to_alias['program'] == program, 'adp_alias']
-    adp_alias = adp_alias_1.item() if not adp_alias_1.empty and not adp_alias_1.isna().any() else None
-    if adp_alias is None:
-        return '#N/A'
-    customer: str = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == adp_alias,'customer'].item() if adp_alias else ''
-    return customer if customer else '#N/A'
-
 def separate_product_types_and_commit_to_db(data: pd.DataFrame):
     ah_filter = data['motor'].isna()
     coil_progs = data[ah_filter].dropna(axis=1, how='all')
@@ -193,14 +167,6 @@ def separate_product_types_and_commit_to_db(data: pd.DataFrame):
     ah_progs['effective date'] = TODAY
     DATABASE.upload_df(coil_progs, 'coil_programs', if_exists='append')
     DATABASE.upload_df(ah_progs, 'ah_programs', if_exists='append')
-
-def extract_models() -> None:
-    dir = '/home/carboni/sca-scratchspace/adp-program-reformat/old-style'
-    result = extract_all_programs_from_dir(dir=dir)
-    price_models_by_customer_discounts(result)
-    result.insert(0,'customer', result['program'].apply(set_customer_name))
-    separate_product_types_and_commit_to_db(result)
-
 
 def add_models_to_program(adp_alias: str, models: list[str]) -> None:
     aliases = DATABASE.load_df('customers',customers=[adp_alias], use_alias=True)[['customer', 'adp_alias']]
