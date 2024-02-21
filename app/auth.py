@@ -190,3 +190,14 @@ async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(t
         else:
             error = "No RSA key found in JWT Header"
     raise HTTPException(status_code=status_codes[401], detail=str(error)) 
+
+def adp_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    """chained dependency on authentication enforcing that the auth token
+        contains defined permissions for use of the ADP resource"""
+    perm_level = token.perm_level('adp')
+    if perm_level < 0 or not perm_level:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail='Permissions for accesss to ADP have not been defined.'
+        )
+    return token
