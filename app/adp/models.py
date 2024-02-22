@@ -1,6 +1,7 @@
 
-from pydantic import BaseModel, Field, create_model, root_validator
+from pydantic import BaseModel, Field, create_model, model_validator
 from typing import Optional
+from datetime import datetime
 from app.jsonapi import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
@@ -37,31 +38,28 @@ class CoilProgAttrs(BaseModel):
     snp_discount: int = Field(alias='snp-discount')
     snp_price: int = Field(alias='snp-price')
     net_price: int = Field(alias='net-price')
+    effective_date: datetime = Field(alias='effective-date')
+    last_file_gen: datetime = Field(alias='last-file-gen')
+    stage: int
     # intentionally leaving out Ratings model regexes
     #   ratings-ac-txv
     #   ratings-hp-txv
     #   ratings-piston
     #   ratings-field-txv
-    effective_date: int = Field(alias='effective-date')
-    last_file_gen: int = Field(alias='last-file-gen')
-    stage: int
 
     class Config:
         # allows an unpack of the python-dict in snake_case
         populate_by_name = True
     
-    @root_validator(pre=False, skip_on_failure=True)
-    def depth_or_length(cls, values: dict):
-        depth = values.get('depth')
-        length = values.get('length')
-        depth_length = (depth, length)
-        match depth_length:
+    @model_validator(mode='after')
+    def depth_or_length(self) -> 'CoilProgAttrs':
+        depth, length = self.depth, self.length
+        match depth, length:
             case (None, None):
-                raise ValueError('Either depth or length should be specified')
+                raise ValueError('Either depth or length is required')
             case (float(), float()):
-                raise ValueError('Cannot have both depth and length specified. One or the other should be left blank.')
-            case _:
-                return values
+                raise ValueError('Cannot have both depth and length.')
+        return self
 
 
 class CoilProgRels(BaseModel):
