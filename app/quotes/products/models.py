@@ -9,19 +9,22 @@ from app.jsonapi import (
 )
 
 class ProductResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "products"
+    type: str = "quote_products"
 
 class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[ProductResourceIdentifier]|ProductResourceIdentifier
 
-## Place
-# Schema
 ## Products & quantities associated with quotes
+# Schema
 class ProductAttributes(BaseModel):
-    product_tag: Optional[str] = Field(alias="product-tag")
-    product_model: Optional[str] = Field(alias="product-model")
-    brand: Optional[str]
+    request_brand: Optional[str] = Field(alias='request-brand')
+    request_tag_or_model: str = Field(alias="product-tag-or-model")
+    product_model_quoted: Optional[str] = Field(alias="product-model-quoted")
     qty: int
+    price: Optional[float]
+
+    class Config:
+        populate_by_name = True
 
 # Schema
 class ProductRelationships(BaseModel):

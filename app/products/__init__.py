@@ -1,1 +1,0 @@
-from app.products.relationships import product_rel
