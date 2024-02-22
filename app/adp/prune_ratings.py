@@ -1,12 +1,11 @@
 import re
 import pandas as pd
-from app.db import Database
+from app.db import ADP_DB
 
-db = Database('adp')
 
-coil_models_by_customer = db.load_df('coil_programs')
-ah_models_by_customer = db.load_df('ah_programs')
-ratings_by_customer = db.load_df('program_ratings')
+# coil_models_by_customer = db.load_df('coil_programs')
+# ah_models_by_customer = db.load_df('ah_programs')
+# ratings_by_customer = db.load_df('program_ratings')
 
 def prune() -> None:
     coil_models_by_customer = coil_models_by_customer.loc[:, ((coil_models_by_customer.columns.str.contains('ratings')) | (coil_models_by_customer.columns.isin(['customer'])))]
@@ -31,10 +30,10 @@ def prune() -> None:
                 return True
         return False
 
-    ratings_by_customer['keep'] = ratings_by_customer.apply(mark_to_keep, axis=1)
-    the_pruned_ids = ratings_by_customer.loc[ratings_by_customer['keep'] == False, 'id']
-    sql = """DELETE FROM program_ratings WHERE id = :record_id"""
-    for id in the_pruned_ids.values:
-        print(f"removing rating with id {id}")
-        db.execute_and_commit(sql=sql, params={'record_id': int(id)})
+    # ratings_by_customer['keep'] = ratings_by_customer.apply(mark_to_keep, axis=1)
+    # the_pruned_ids = ratings_by_customer.loc[ratings_by_customer['keep'] == False, 'id']
+    # sql = """DELETE FROM program_ratings WHERE id = :record_id"""
+    # for id in the_pruned_ids.values:
+    #     print(f"removing rating with id {id}")
+    #     db.execute_and_commit(sql=sql, params={'record_id': int(id)})
     # ratings_by_customer.to_csv('/mnt/c/users/carbo/OneDrive/Desktop/ratings-pruning.csv')
