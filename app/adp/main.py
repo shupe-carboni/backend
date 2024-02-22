@@ -1,6 +1,3 @@
-from datetime import datetime
-from pandas import ExcelWriter
-import warnings; warnings.simplefilter('ignore')
 from app.adp import prune_ratings
 from app.adp.utils.workbook_factory import generate_program
 from app.adp.extraction.parts import add_parts_to_program
