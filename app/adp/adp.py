@@ -82,3 +82,12 @@ def add_to_ah_program(
     ):
     """modify product listed on an existing program"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@adp.post('{adp_customer_id}/program/ratings')
+def add_to_ah_program(
+        token: ADPPerm,
+        ratings: None,
+        session: NewSession
+    ):
+    """modify product listed on an existing program"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
