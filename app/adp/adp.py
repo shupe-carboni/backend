@@ -5,11 +5,11 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRouter
 
 from app import auth
-import app.adp.main as api
+from app.db import Session, ADP_DB, Stage
+from app.adp.main import generate_program
 from app.adp.models import CoilProgQuery, CoilProgResp
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
-
 class XLSXFileResponse(StreamingResponse):
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     def __init__(self, 
@@ -24,28 +24,43 @@ class XLSXFileResponse(StreamingResponse):
         self.raw_headers.append((b"Content-Disposition",f"attachment; filename=\"{filename}.xlsx\"".encode('latin-1')))
 
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
+NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 @adp.get('/programs')
 def all_programs(
         token: ADPPerm,
         query: CoilProgQuery,   # type: ignore
+        session: NewSession
     ):
     """list out all programs"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.get('/{adp_customer_id}/program')
 def customer_program(
+        session: NewSession,
         token: ADPPerm,
         adp_customer_id: int,
-        return_type: Literal['file', 'json'],
-        stage: api.Stage='active',
+        stage: Stage='active',
     ) -> CoilProgResp:
     """Generate a program excel file and return for download or just the data in json format"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
-        if return_type == 'file':
-            stage_str = stage.upper()
-            file = api.generate_program(customer_id=adp_customer_id, stage=stage_str)
-            return XLSXFileResponse(content=file.file_data, filename=file.file_name)
+        print("allowed")
+    else:
+        print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@adp.get('/{adp_customer_id}/program/download')
+def customer_program(
+        session: NewSession,
+        adp_customer_id: int,
+        one_time_hash: str,
+        stage: Stage='active',
+    ) -> XLSXFileResponse:
+    """Generate a program excel file and return for download"""
+    if one_time_hash:
+        stage_str = stage.upper()
+        file = generate_program(session=session, customer_id=adp_customer_id, stage=stage_str)
+        return XLSXFileResponse(content=file.file_data, filename=file.file_name)
     else:
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
@@ -54,6 +69,7 @@ def customer_program(
 def add_to_coil_program(
         token: ADPPerm,
         program_details: None,
+        session: NewSession
         ):
     """add coil product for a customer"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
@@ -62,6 +78,7 @@ def add_to_coil_program(
 def add_to_ah_program(
         token: ADPPerm,
         program_details: None,
+        session: NewSession
     ):
     """modify product listed on an existing program"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
