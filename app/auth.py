@@ -38,10 +38,16 @@ class VendorPermPriority(IntEnum):
     sca_employee = 20
     sca_admin = 21
 
+class CustomersPermPriority(IntEnum):
+    customer = 0
+    sca_employee = 20
+    sca_admin = 21
+
 class Permissions(Enum):
     adp = ADPPermPriority
     quotes = QuotePermPriority
     vendors = VendorPermPriority
+    customers = CustomersPermPriority
 
 class VerifiedToken(BaseModel):
     """
@@ -191,13 +197,29 @@ async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(t
             error = "No RSA key found in JWT Header"
     raise HTTPException(status_code=status_codes[401], detail=str(error)) 
 
-def adp_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
-    """chained dependency on authentication enforcing that the auth token
-        contains defined permissions for use of the ADP resource"""
-    perm_level = token.perm_level('adp')
-    if perm_level < 0 or not perm_level:
+
+def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
+    perm_level = token.perm_level(category)
+    if not perm_level:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail='Permissions for accesss to ADP have not been defined.'
+            status_code=status_codes[401],
+            detail=f'Permissions for accesss to {category.title()} have not been defined.'
+        )
+    elif perm_level < 0:
+        raise HTTPException(
+            status_code=status_codes[401],
+            detail=f'Accesss to {category.title()} are restricted.'
         )
     return token
+
+def adp_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'adp')
+
+def vendor_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'vendors')
+
+def quotes_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'quotes')
+
+def customers_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'customers')
