@@ -2,7 +2,6 @@ from datetime import datetime
 from pandas import ExcelWriter
 import warnings; warnings.simplefilter('ignore')
 from app.adp import prune_ratings
-from app.db import Database, Stage
 from app.adp.utils.workbook_factory import generate_program
 from app.adp.extraction.parts import add_parts_to_program
 from app.adp.extraction.models import  add_models_to_program
@@ -12,15 +11,13 @@ from app.adp.extraction.ratings import (
     update_all_unregistered_program_ratings
 )
 
-adp_db = Database('adp')
-
-def generate_programs_file() -> None:
-    from app.db import Database
-    db = Database('adp')
-    TODAY = str(datetime.today().date())
-    with ExcelWriter(f'~/Desktop/all-sca-programs {TODAY}.xlsx') as file:
-        db.load_df('coil_programs').drop_duplicates().to_excel(file, 'Coils', index=False)
-        db.load_df('ah_programs').drop_duplicates().to_excel(file, 'Air Handlers', index=False)
+# def generate_programs_file() -> None:
+#     from app.db import Database
+#     db = Database('adp')
+#     TODAY = str(datetime.today().date())
+#     with ExcelWriter(f'~/Desktop/all-sca-programs {TODAY}.xlsx') as file:
+#         db.load_df('coil_programs').drop_duplicates().to_excel(file, 'Coils', index=False)
+#         db.load_df('ah_programs').drop_duplicates().to_excel(file, 'Air Handlers', index=False)
 
 # extract_models()
 # add_models_to_program(adp_alias=sys.argv[2], models=models)
