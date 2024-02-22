@@ -5,12 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 ## Routers ##
 from app import relationships
-from app.quotes import quotes, quote_rel
+from app.quotes import quotes, quote_rel, product_rel
 from app.vendors import vendors
 from app.customers import customers, customer_rel
 from app.locations import location_rel
-from app.places import places, place_rel
-from app.products import product_rel
+# from app.places import places, place_rel
 from app.adp import adp
 
 app = FastAPI()
@@ -33,8 +32,8 @@ app.include_router(quotes)
 customers.include_router(customer_rel)
 app.include_router(customers)
 app.include_router(location_rel)
-places.include_router(place_rel)
-app.include_router(places)
+# places.include_router(place_rel)
+# app.include_router(places)
 app.include_router(product_rel)
 app.include_router(adp)
 app.include_router(relationships)
