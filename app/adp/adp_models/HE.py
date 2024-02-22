@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.he as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class HE(ModelSeries):
     text_len = (18,)
@@ -20,8 +20,8 @@ class HE(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    pallet_qtys = DATABASE.load_df('he_pallet_qty')
-    weights = DATABASE.load_df('he_weights')
+    pallet_qtys = ADP_DB.load_df(session=session, table_name='he_pallet_qty')
+    weights = ADP_DB.load_df(session=session, table_name='he_weights')
 
     mat_config_map = {
         'E': {
@@ -94,7 +94,7 @@ class HE(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_ = pricing.pricing
         adders_ = pricing.adders
-        core_configs = DATABASE.load_df('he_core_configs')
+        core_configs = ADP_DB.load_df(session=session, table_name='he_core_configs')
 
         if self.depth == 'uncased':
             col = self.depth

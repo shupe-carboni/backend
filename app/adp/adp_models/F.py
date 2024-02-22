@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.f as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class F(ModelSeries):
     text_len = (13,)
@@ -18,7 +18,7 @@ class F(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
         '''
-    specs = DATABASE.load_df('f_dims')
+    specs = ADP_DB.load_df(session=session, table_name='f_dims')
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)
         self.min_qty = 4

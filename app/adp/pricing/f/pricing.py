@@ -1,9 +1,9 @@
-from app.db import Database
+from app.db import ADP_DB
 
-db = Database('adp')
+session = next(ADP_DB.get_db())
 
-pricing = db.load_df('pricing_f_series')
-__adders_df = db.load_df('price_adders')
+pricing = ADP_DB.load_df(session=session, table_name='pricing_f_series')
+__adders_df = ADP_DB.load_df(session=session, table_name='price_adders')
 __adders_df = __adders_df.loc[__adders_df['series'] == 'F', ['key', 'price']]
 adders = dict()
 for row in __adders_df.itertuples():

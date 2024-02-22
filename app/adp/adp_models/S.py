@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.s as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class S(ModelSeries):
     text_len = (8,)
@@ -15,7 +15,7 @@ class S(ModelSeries):
         (?P<ton>\d{2})
         (?P<heat>(\d{2}|(XX)))
     '''
-    specs = DATABASE.load_df('s_dims')
+    specs = ADP_DB.load_df(session=session, table_name='s_dims')
     weight_by_material = {
         'K': 'weight_cu',
         'L': 'weight_cu',

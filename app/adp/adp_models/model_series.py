@@ -1,8 +1,8 @@
 import re
-from app.db import Database
+from app.db import ADP_DB
 from enum import Enum, StrEnum, auto
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class Cabinet(Enum):
     UNCASED = 0
@@ -60,7 +60,7 @@ class ModelSeries:
     text_len: int
     regex: str
 
-    mat_grps = DATABASE.load_df('material_groups')
+    mat_grps = ADP_DB.load_df(session=session, table_name='material_groups')
     coil_depth_mapping = {
         'A': 'uncased',
         'C': 20.5,

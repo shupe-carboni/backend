@@ -1,9 +1,9 @@
 import re
 import app.adp.pricing.b as pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class B(ModelSeries):
     text_len = (13,)
@@ -19,7 +19,7 @@ class B(ModelSeries):
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
         '''
-    specs = DATABASE.load_df('b_dims')
+    specs = ADP_DB.load_df(session=session, table_name='b_dims')
     hydronic_heat = {
         '00': 'no heat',
         '2P': '2 row hot water coil with pump assembly',

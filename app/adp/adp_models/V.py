@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.v as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class V(ModelSeries):
     text_len = (11,)
@@ -16,7 +16,7 @@ class V(ModelSeries):
         (?P<scode>\d{2})
         (?P<meter>\d)
         '''
-    specs = DATABASE.load_df('v_or_hd_len_pallet_weights')
+    specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
     material_weight = {
         'D': 'WEIGHT_CU',
         'P': 'WEIGHT_AL'

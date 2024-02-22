@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.cp as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class CP(ModelSeries):
     text_len = (14,13)
@@ -21,7 +21,7 @@ class CP(ModelSeries):
         (?P<option>C?)
         (?P<drain>R?)
     '''
-    specs = DATABASE.load_df('cp_dims')
+    specs = ADP_DB.load_df(session=session, table_name='cp_dims')
     metering_mapping_ = {
         'A': 'Piston (R-410A) w/ Access Port',
         'H': 'Non-bleed HP-A/C TXV (R-410A)'

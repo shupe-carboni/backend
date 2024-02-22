@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.hh as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 
 class HH(ModelSeries):
@@ -21,7 +21,7 @@ class HH(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    specs = DATABASE.load_df('hh_weights_pallet')
+    specs = ADP_DB.load_df(session=session, table_name='hh_weights_pallet')
 
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)

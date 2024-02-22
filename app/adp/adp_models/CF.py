@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.adp.utils.validator import Validator
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 
 class CF(ModelSeries):
@@ -17,7 +17,7 @@ class CF(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
     '''
-    mappings = DATABASE.load_df('carrier_cf_label_mapping')
+    mappings = ADP_DB.load_df(session=session, table_name='carrier_cf_label_mapping')
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)
         self.tonnage = int(self.attributes['ton'])

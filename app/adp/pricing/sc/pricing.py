@@ -1,4 +1,4 @@
-from app.db import Database
+from app.db import ADP_DB
 
-db = Database('adp')
-pricing = db.load_df('pricing-sc-series')
+session = next(ADP_DB.get_db())
+pricing = ADP_DB.load_df(session=session, table_name='pricing-sc-series')

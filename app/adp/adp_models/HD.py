@@ -1,8 +1,8 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class HD(ModelSeries):
     text_len = (18,)
@@ -19,7 +19,7 @@ class HD(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    specs = DATABASE.load_df('v_or_hd_len_pallet_weights')
+    specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
 
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)

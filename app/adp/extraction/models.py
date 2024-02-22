@@ -8,13 +8,13 @@ from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
-from app.db import Database, Stage
+from app.db import ADP_DB, Stage
 import warnings; warnings.simplefilter('ignore')
 
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
 
-DATABASE = Database('adp')
-CUSTOMERS = DATABASE.load_df('customers')
+session = next(ADP_DB.get_db())
+CUSTOMERS = ADP_DB.load_df(session=session, table_name='customers')
 TODAY = str(datetime.today().date())
 
 def extract_models_from_sheet(sheet: Worksheet) -> list[ModelSeries]:
@@ -77,8 +77,8 @@ def extract_all_programs_from_dir(dir: str) -> pd.DataFrame:
     return result
         
 def price_models_by_customer_discounts(program_data: pd.DataFrame):
-    mat_grp_discounts = DATABASE.load_df('material_group_discounts')
-    snps = DATABASE.load_df('snps').drop_duplicates()
+    mat_grp_discounts = ADP_DB.load_df(session=session, table_name='material_group_discounts')
+    snps = ADP_DB.load_df(session=session, table_name='snps').drop_duplicates()
     # sales['Description'] = sales['Description'].str.extract(r'^([^ ]+)')
     # sales['CustName'] = sales['CustName'].str.replace(r'^WINSUPPLY.*', 'WINSUPPLY', regex=True)
     # sales['CustName'] = sales['CustName'].str.replace(r'.*WINAIR$', 'WINSUPPLY', regex=True)
@@ -165,11 +165,11 @@ def separate_product_types_and_commit_to_db(data: pd.DataFrame):
     ah_progs = data[~ah_filter].dropna(axis=1, how='all')
     coil_progs['effective date'] = TODAY
     ah_progs['effective date'] = TODAY
-    DATABASE.upload_df(coil_progs, 'coil_programs', if_exists='append')
-    DATABASE.upload_df(ah_progs, 'ah_programs', if_exists='append')
+    ADP_DB.upload_df(session=session, data=coil_progs, table_name='coil_programs', if_exists='append')
+    ADP_DB.upload_df(session=session, data=ah_progs, table_name='ah_programs', if_exists='append')
 
 def add_models_to_program(adp_alias: str, models: list[str]) -> None:
-    aliases = DATABASE.load_df('customers',customers=[adp_alias], use_alias=True)[['customer', 'adp_alias']]
+    aliases = ADP_DB.load_df(session=session, table_name='customers',customers=[adp_alias], use_alias=True)[['customer', 'adp_alias']]
     sca_customer_name = aliases.loc[aliases['adp_alias'] == adp_alias, 'customer'].drop_duplicates().item()
     model_objs: set[ModelSeries] = set()
     for model in models:
@@ -185,10 +185,10 @@ def add_models_to_program(adp_alias: str, models: list[str]) -> None:
     separate_product_types_and_commit_to_db(df)
 
 def reprice_programs() -> None:
-    aliases = DATABASE.load_df('customers')[['customer', 'adp_alias']]
+    aliases = ADP_DB.load_df(session=session, table_name='customers')[['customer', 'adp_alias']]
     for customer in aliases.itertuples():
         sca_customer_name = customer.customer
         adp_customer_name = customer.adp_alias
         for table in ('coil_programs', 'ah_programs'):
-            prog_data = DATABASE.load_df(table)
+            prog_data = ADP_DB.load_df(session=session, table_name=table)
         ...

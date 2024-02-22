@@ -1,9 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.sc as pricing
-from app.db import Database
+from app.db import ADP_DB
 
-DATABASE = Database('adp')
+session = next(ADP_DB.get_db())
 
 class SC(ModelSeries):
     text_len = (7,)
@@ -19,7 +19,7 @@ class SC(ModelSeries):
         'H': ('Horizontal','Aluminum'),
         'S': ('Horizontal Slab','Copper')
     }
-    specs = DATABASE.load_df('sc_all_features')
+    specs = ADP_DB.load_df(session=session, table_name='sc_all_features')
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)
         self.metering = 'Piston (R-410a or R-22)'
