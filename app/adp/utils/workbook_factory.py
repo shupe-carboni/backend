@@ -8,14 +8,13 @@ from openpyxl.styles import Font, Alignment, numbers
 from app.adp.adp_models import Fields
 from app.adp.programs import CoilProgram, AirHandlerProgram, CustomerProgram
 from app.adp.utils.pricebook import PriceBook
-from app.db import Database
+from app.db import Session, ADP_DB
 
 
 TODAY = str(datetime.today().date())
 SAVE_DIR = os.getenv('SAVE_DIR')
 TEMPLATES = os.getenv('TEMPLATES')
 LOGOS_DIR = os.getenv('LOGOS_DIR')
-db = Database('adp')
 
 @dataclass
 class ProgramFile:
@@ -53,10 +52,10 @@ def build_ah_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> AirHa
     prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
-def add_customer_terms_parts_and_logo_path(customer_id: int, coil_prog: CoilProgram, ah_prog: AirHandlerProgram) -> CustomerProgram:
-    footer = db.load_df("customer_terms_by_customer_id", customer_id=customer_id)
-    prog_parts = db.load_df('program_parts_expanded', customer_id=customer_id)
-    alias_mapping = db.load_df('customers')
+def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, coil_prog: CoilProgram, ah_prog: AirHandlerProgram) -> CustomerProgram:
+    footer = ADP_DB.load_df(session=session, table_name="customer_terms_by_customer_id", customer_id=customer_id)
+    prog_parts = ADP_DB.load_df(session=session, table_name='program_parts_expanded', customer_id=customer_id)
+    alias_mapping = ADP_DB.load_df(session=session, table_name='customers')
     alias_mapping = alias_mapping[alias_mapping['id'] == customer_id]
     alias_name = alias_mapping[Fields.ADP_ALIAS.value].item()
     ## parts
@@ -118,17 +117,19 @@ def add_customer_terms_parts_and_logo_path(customer_id: int, coil_prog: CoilProg
         )
 
 def generate_program(
+        session: Session,
         customer_id: int,
         stage: Literal['ACTIVE', 'PROPOSED', 'REJECTED', 'REMOVED']='ACTIVE'
     ) -> ProgramFile:
     tables = ["coil_programs", "ah_programs", "program_ratings"]
-    coil_prog_table, ah_prog_table, ratings = [db.load_df(table_name=table, customer_id=customer_id) for table in tables]
+    coil_prog_table, ah_prog_table, ratings = [ADP_DB.load_df(session=session, table_name=table, customer_id=customer_id) for table in tables]
     coil_prog_table = coil_prog_table[coil_prog_table['stage'] == stage.upper()]
     ah_prog_table = ah_prog_table[ah_prog_table['stage'] == stage.upper()]
     try:
         coil_prog = build_coil_program(coil_prog_table, ratings)
         ah_prog = build_ah_program(ah_prog_table, ratings)
         full_program = add_customer_terms_parts_and_logo_path(
+            session=session,
             customer_id=customer_id,
             coil_prog=coil_prog,
             ah_prog=ah_prog
@@ -152,15 +153,16 @@ def generate_program(
         print(tb.format_exc())
     else:
         tables.remove('program_ratings')
-        update_dates_in_tables(db=db, tables=tables, customer_id=customer_id)
+        update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
         return new_program_file
 
 def update_dates_in_tables(
-        db: Database,
+        session: Session,
         tables: Iterable[str],
         customer_id: int=None
     ) -> None:
     coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer_id IN :customers;""" for table in tables]
     params = {"customers": (customer_id,), "date": TODAY}
-    for q in coil_update_q, ah_update_q:
-        db.execute_and_commit(q, params)
+    with session.begin():
+        for q in coil_update_q, ah_update_q:
+            ADP_DB.execute(session, q, params)
