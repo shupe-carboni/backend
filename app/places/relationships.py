@@ -3,7 +3,7 @@ from fastapi.routing import APIRouter
 from app import auth
 
 from app.locations.models import RelatedLocationResponse, LocationRelationshipsResponse
-from app.quotes.models import RelatedQuoteResponse, QuoteRelationshipsResponse
+from app.quotes.job_quotes.models import RelatedQuoteResponse, QuoteRelationshipsResponse
 
 place_rel = APIRouter(tags=['places'])
 
