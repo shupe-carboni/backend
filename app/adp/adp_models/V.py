@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.v as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class V(ModelSeries):
     text_len = (11,)
@@ -16,13 +14,13 @@ class V(ModelSeries):
         (?P<scode>\d{2})
         (?P<meter>\d)
         '''
-    specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
     material_weight = {
         'D': 'WEIGHT_CU',
         'P': 'WEIGHT_AL'
     }
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
         if self.attributes['paint'] == 'V':
             self.cabinet_config = Cabinet.EMBOSSED
         else:
@@ -61,14 +59,11 @@ class V(ModelSeries):
         return f'Dedicated Horizontal "A" {material} Coils - {paint}'
     
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
-        adders_ = pricing.adders
-
+        pricing_, adders_ = pricing.load_pricing(session=self.session)
         result = pricing_.loc[
             pricing_['slab'] == int(self.attributes['scode']),
             self.cabinet_config.name
             ].item()
-
         result += adders_.get(int(self.attributes['meter']),0)
         return result
 

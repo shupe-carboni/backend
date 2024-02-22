@@ -62,12 +62,11 @@ class Database:
         full_table_name = self.full_table_name(table_name)
         data.to_sql(full_table_name, con=session.get_bind(), if_exists=if_exists, index=False)
         if primary_key and if_exists == 'replace':
-            with session.begin() as session:
-                sql = f"""
-                        ALTER TABLE {full_table_name}
-                        ADD COLUMN id SERIAL PRIMARY KEY;
-                """
-                session.execute(text(sql))
+            sql = f"""
+                    ALTER TABLE {full_table_name}
+                    ADD COLUMN id SERIAL PRIMARY KEY;
+            """
+            session.execute(text(sql))
 
     def load_df(
             self,

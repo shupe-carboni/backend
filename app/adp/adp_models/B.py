@@ -1,9 +1,7 @@
 import re
 import app.adp.pricing.b as pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class B(ModelSeries):
     text_len = (13,)
@@ -19,7 +17,6 @@ class B(ModelSeries):
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
         '''
-    specs = ADP_DB.load_df(session=session, table_name='b_dims')
     hydronic_heat = {
         '00': 'no heat',
         '2P': '2 row hot water coil with pump assembly',
@@ -29,8 +26,9 @@ class B(ModelSeries):
         '3N': '3 row hot water coil without pump assembly',
         '4N': '4 row hot water coil without pump assembly',
     }
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='b_dims')
         self.min_qty = 4
         model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]
         self.width = model_specs['width'].item()
@@ -56,8 +54,7 @@ class B(ModelSeries):
         return f'Hydronic {orientation} Air Handlers - {motor}'
     
     def calc_zero_disc_price(self) -> int:
-        adders_ = pricing.adders
-        pricing_ = pricing.pricing
+        pricing_, adders_ = pricing.load_pricing(session=self.session)
         pricing_ = pricing_.loc[
             (pricing_['tonnage'] == int(self.attributes['ton']))
             & (pricing_['slab'] == self.attributes['scode']), :]

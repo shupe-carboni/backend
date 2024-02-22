@@ -8,16 +8,13 @@ from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Stage
+from app.db import ADP_DB, Stage, Session
 import warnings; warnings.simplefilter('ignore')
 
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
-
-session = next(ADP_DB.get_db())
-CUSTOMERS = ADP_DB.load_df(session=session, table_name='customers')
 TODAY = str(datetime.today().date())
 
-def extract_models_from_sheet(sheet: Worksheet) -> list[ModelSeries]:
+def extract_models_from_sheet(session: Session, sheet: Worksheet) -> list[ModelSeries]:
     """iterates over cell contents
         and uses Validator to see if the content appears to be
         a valid ADP part number.
@@ -35,7 +32,7 @@ def extract_models_from_sheet(sheet: Worksheet) -> list[ModelSeries]:
             except IndexError:
                 break
             for m in MODELS:
-                if model_clean := Validator(val, m).is_model():
+                if model_clean := Validator(session, val, m).is_model():
                     if isinstance(model_clean, S):
                         if model_clean.get('heat') == 'XX':
                             for heat_option in ('05', '07', '10'):
@@ -48,40 +45,16 @@ def extract_models_from_sheet(sheet: Worksheet) -> list[ModelSeries]:
                         models.append(model_clean)
     return models
 
-def extract_models_from_file(file: str) -> set[ModelSeries]:
+def extract_models_from_file(session: Session, file: str) -> set[ModelSeries]:
     wb = opxl.load_workbook(file)
     models = list()
     for sheet in wb.worksheets:
-        models.extend(extract_models_from_sheet(sheet=sheet))
+        models.extend(extract_models_from_sheet(session=session, sheet=sheet))
     return set(models)
 
-def extract_all_programs_from_dir(dir: str) -> pd.DataFrame:
-    data: dict[str, dict[str, set[ModelSeries]]] = dict()
-    for root, _, files in os.walk(dir):
-        for file in files:
-            program: str = os.path.basename(file).replace('.xlsx','')
-            program = re.sub(r'\d{4}-\d{1,2}-\d{1,2}', '', program).strip()
-            results = extract_models_from_file(os.path.join(root,file))
-            if not data.get(program):
-                data[program] = {'models': set()}
-            data[program]['models'] |= results
-    dfs = []
-    for program in data:
-        records = [record.record() for record in data[program]['models']]
-        df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
-        if df.isna().all().all():
-            pass
-        df['program'] = program
-        dfs.append(df)
-    result = pd.concat(dfs).sort_values(by=['program','category','series','mpg','tonnage','width'])
-    return result
-        
-def price_models_by_customer_discounts(program_data: pd.DataFrame):
+def price_models_by_customer_discounts(session: Session, program_data: pd.DataFrame):
     mat_grp_discounts = ADP_DB.load_df(session=session, table_name='material_group_discounts')
     snps = ADP_DB.load_df(session=session, table_name='snps').drop_duplicates()
-    # sales['Description'] = sales['Description'].str.extract(r'^([^ ]+)')
-    # sales['CustName'] = sales['CustName'].str.replace(r'^WINSUPPLY.*', 'WINSUPPLY', regex=True)
-    # sales['CustName'] = sales['CustName'].str.replace(r'.*WINAIR$', 'WINSUPPLY', regex=True)
 
     def calc_prices(data: pd.Series) -> pd.Series:
         no_disc_price = int(data['zero discount price'])
@@ -123,7 +96,41 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
 
     return
     
-    ## sales calcuation cut out of the method above ^^ ##
+def separate_product_types_and_commit_to_db(session: Session, data: pd.DataFrame):
+    ah_filter = data['motor'].isna()
+    coil_progs = data[ah_filter].dropna(axis=1, how='all')
+    ah_progs = data[~ah_filter].dropna(axis=1, how='all')
+    coil_progs['effective date'] = TODAY
+    ah_progs['effective date'] = TODAY
+    ADP_DB.upload_df(session=session, data=coil_progs, table_name='coil_programs', if_exists='append')
+    ADP_DB.upload_df(session=session, data=ah_progs, table_name='ah_programs', if_exists='append')
+
+def add_models_to_program(session: Session, adp_alias: str, models: list[str]) -> None:
+    aliases = ADP_DB.load_df(session=session, table_name='customers', customer_id=[adp_alias])[['customer', 'adp_alias']]
+    sca_customer_name = aliases.loc[aliases['adp_alias'] == adp_alias, 'customer'].drop_duplicates().item()
+    model_objs: set[ModelSeries] = set()
+    for model in models:
+        for m in MODELS:
+            if model_obj := Validator(session, model, m).is_model():
+                model_objs.add(model_obj)
+    records = [model.record() for model in model_objs]
+    df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
+    df['adp_alias'] = adp_alias
+    price_models_by_customer_discounts(session=session, program_data=df)
+    df['customer'] = sca_customer_name
+    df['stage'] = Stage.PROPOSED.name
+    with session.begin():
+        separate_product_types_and_commit_to_db(session=session, data=df)
+    return
+
+def reprice_programs(session: Session) -> None:
+    aliases = ADP_DB.load_df(session=session, table_name='customers')[['customer', 'adp_alias']]
+    for customer in aliases.itertuples():
+        sca_customer_name = customer.customer
+        adp_customer_name = customer.adp_alias
+        for table in ('coil_programs', 'ah_programs'):
+            prog_data = ADP_DB.load_df(session=session, table_name=table)
+        ...
 
     # def get_sales(data: pd.Series) -> pd.Series:
     #     prog: str = data['program']
@@ -157,38 +164,3 @@ def price_models_by_customer_discounts(program_data: pd.DataFrame):
     #      Fields.SALES_2023.value,
     #      Fields.TOTAL.value,
     #     ]] = program_data.apply(get_sales, axis=1, result_type='expand')
-
-
-def separate_product_types_and_commit_to_db(data: pd.DataFrame):
-    ah_filter = data['motor'].isna()
-    coil_progs = data[ah_filter].dropna(axis=1, how='all')
-    ah_progs = data[~ah_filter].dropna(axis=1, how='all')
-    coil_progs['effective date'] = TODAY
-    ah_progs['effective date'] = TODAY
-    ADP_DB.upload_df(session=session, data=coil_progs, table_name='coil_programs', if_exists='append')
-    ADP_DB.upload_df(session=session, data=ah_progs, table_name='ah_programs', if_exists='append')
-
-def add_models_to_program(adp_alias: str, models: list[str]) -> None:
-    aliases = ADP_DB.load_df(session=session, table_name='customers',customers=[adp_alias], use_alias=True)[['customer', 'adp_alias']]
-    sca_customer_name = aliases.loc[aliases['adp_alias'] == adp_alias, 'customer'].drop_duplicates().item()
-    model_objs: set[ModelSeries] = set()
-    for model in models:
-        for m in MODELS:
-            if model_obj := Validator(model,m).is_model():
-                model_objs.add(model_obj)
-    records = [model.record() for model in model_objs]
-    df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
-    df['adp_alias'] = adp_alias
-    price_models_by_customer_discounts(df)
-    df['customer'] = sca_customer_name
-    df['stage'] = Stage.PROPOSED.name
-    separate_product_types_and_commit_to_db(df)
-
-def reprice_programs() -> None:
-    aliases = ADP_DB.load_df(session=session, table_name='customers')[['customer', 'adp_alias']]
-    for customer in aliases.itertuples():
-        sca_customer_name = customer.customer
-        adp_customer_name = customer.adp_alias
-        for table in ('coil_programs', 'ah_programs'):
-            prog_data = ADP_DB.load_df(session=session, table_name=table)
-        ...

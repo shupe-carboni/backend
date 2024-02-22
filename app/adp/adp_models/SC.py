@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.sc as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class SC(ModelSeries):
     text_len = (7,)
@@ -19,9 +17,9 @@ class SC(ModelSeries):
         'H': ('Horizontal','Aluminum'),
         'S': ('Horizontal Slab','Copper')
     }
-    specs = ADP_DB.load_df(session=session, table_name='sc_all_features')
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='sc_all_features')
         self.metering = 'Piston (R-410a or R-22)'
         width_height: int = int(self.attributes['width_height'])
         if width_height % 10 in (2,7):
@@ -62,7 +60,8 @@ class SC(ModelSeries):
         return f'{seer} {config} Service Coils - {cased}'
 
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
+        pricing_ = pricing.load_pricing(session=self.session)
+
         pricing_ = pricing_.loc[
             pricing_['model'].apply(lambda regex: self.regex_match(regex)),
             :]

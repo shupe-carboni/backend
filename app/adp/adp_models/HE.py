@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.he as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class HE(ModelSeries):
     text_len = (18,)
@@ -20,8 +18,6 @@ class HE(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    pallet_qtys = ADP_DB.load_df(session=session, table_name='he_pallet_qty')
-    weights = ADP_DB.load_df(session=session, table_name='he_weights')
 
     mat_config_map = {
         'E': {
@@ -46,8 +42,10 @@ class HE(ModelSeries):
         '22': ('Left Hand', 'Multiposition'),
     }
 
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.pallet_qtys = ADP_DB.load_df(session=session, table_name='he_pallet_qty')
+        self.weights = ADP_DB.load_df(session=session, table_name='he_weights')
         if self.attributes['paint'] == 'H':
             self.cabinet_config = Cabinet.EMBOSSED
         else:
@@ -92,9 +90,8 @@ class HE(ModelSeries):
 
     
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
-        adders_ = pricing.adders
-        core_configs = ADP_DB.load_df(session=session, table_name='he_core_configs')
+        pricing_, adders_ = pricing.load_pricing(session=self.session)
+        core_configs = ADP_DB.load_df(session=self.session, table_name='he_core_configs')
 
         if self.depth == 'uncased':
             col = self.depth

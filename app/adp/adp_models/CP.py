@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.cp as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class CP(ModelSeries):
     text_len = (14,13)
@@ -21,14 +19,14 @@ class CP(ModelSeries):
         (?P<option>C?)
         (?P<drain>R?)
     '''
-    specs = ADP_DB.load_df(session=session, table_name='cp_dims')
     metering_mapping_ = {
         'A': 'Piston (R-410A) w/ Access Port',
         'H': 'Non-bleed HP-A/C TXV (R-410A)'
     }
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
         self.pallet_qty = 8
+        self.specs = ADP_DB.load_df(session=session, table_name='cp_dims')
         model_specs = self.specs.loc[
                 (self.specs['series'] == self.attributes['series'])
                 & (self.specs['motor'] == self.attributes['motor'])
@@ -64,7 +62,7 @@ class CP(ModelSeries):
         return f'Soffit Mount {cased} Air Handlers - {material} - {motor}'
 
     def get_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
+        pricing_ = pricing.load_pricing(session=self.session)
         return pricing_.loc[pricing_[self.attributes['mat']] == str(self),'price'].item()
 
     def record(self) -> dict:

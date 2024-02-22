@@ -1,8 +1,6 @@
 import re
-from app.db import ADP_DB
+from app.db import ADP_DB, Session
 from enum import Enum, StrEnum, auto
-
-session = next(ADP_DB.get_db())
 
 class Cabinet(Enum):
     UNCASED = 0
@@ -60,7 +58,6 @@ class ModelSeries:
     text_len: int
     regex: str
 
-    mat_grps = ADP_DB.load_df(session=session, table_name='material_groups')
     coil_depth_mapping = {
         'A': 'uncased',
         'C': 20.5,
@@ -124,8 +121,10 @@ class ModelSeries:
         20: '20 kW',
     }
 
-    def __init__(self, re_match: re.Match):
+    def __init__(self, db_session: Session, re_match: re.Match):
+        self.mat_grps = ADP_DB.load_df(session=db_session, table_name='material_groups')
         self.attributes = re_match.groupdict()
+        self.session = db_session
     
     def __str__(self) -> str:
         return "".join(self.attributes.values())

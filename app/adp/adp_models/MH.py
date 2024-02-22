@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.mh as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class MH(ModelSeries):
     text_len = (7,)
@@ -14,9 +12,9 @@ class MH(ModelSeries):
         (?P<scode>\d{2})
         (?P<meter>\d)
         '''
-    specs = ADP_DB.load_df(session=session, table_name='mh_pallet_weight_height')
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='mh_pallet_weight_height')
         self.cabinet_config = Cabinet.UNCASED
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.material = 'Copper'
@@ -40,8 +38,7 @@ class MH(ModelSeries):
         return "Manufactured Housing Coils"
 
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
-        adders_ = pricing.adders
+        pricing_, adders_ = pricing.load_pricing(session=self.session)
 
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(int(self.attributes['meter']), 0)

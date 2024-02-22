@@ -1,3 +1,4 @@
+# NOTE DELETE THIS WHOLE FILE??
 from pydantic import BaseModel, Field, create_model
 from typing import Optional
 from app.jsonapi import (

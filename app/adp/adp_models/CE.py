@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class CE(ModelSeries):
     text_len = (10,)
@@ -22,9 +20,9 @@ class CE(ModelSeries):
         'S': ('Slab','CD'),
         'V': ('Vertical', 'CA')
     }
-    specs = ADP_DB.load_df(session=session, table_name='ce_dims')
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session,re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='ce_dims')
         self.configuration = self.ce_configurations[self.attributes['config']]
         self.mat_grp = self.configuration[1]
         self.cabinet_config = Cabinet.PAINTED

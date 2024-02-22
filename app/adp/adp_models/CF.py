@@ -1,10 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
-
+from app.db import ADP_DB, Session
 
 class CF(ModelSeries):
     text_len = (12,)
@@ -17,9 +14,9 @@ class CF(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
     '''
-    mappings = ADP_DB.load_df(session=session, table_name='carrier_cf_label_mapping')
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.mappings = ADP_DB.load_df(session=session, table_name='carrier_cf_label_mapping')
         self.tonnage = int(self.attributes['ton'])
         actual_model = self.mappings.loc[
             self.mappings['model_alias'] == str(self)[:-3],

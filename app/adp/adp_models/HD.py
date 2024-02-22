@@ -1,8 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class HD(ModelSeries):
     text_len = (18,)
@@ -19,10 +17,10 @@ class HD(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
 
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
         if self.attributes['paint'] == 'H':
             self.cabinet_config = Cabinet.EMBOSSED
         else:

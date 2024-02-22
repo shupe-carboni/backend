@@ -21,10 +21,10 @@ class HH(ModelSeries):
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
-    specs = ADP_DB.load_df(session=session, table_name='hh_weights_pallet')
 
     def __init__(self, re_match: re.Match):
         super().__init__(re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='hh_weights_pallet')
         self.cabinet_config = Cabinet.EMBOSSED
         width = int(self.attributes['width'])
         self.width = width//10 + (5/8) + 4 + (3/8)
@@ -49,8 +49,7 @@ class HH(ModelSeries):
         return "Horizontal Slab Coils"
     
     def calc_zero_disc_price(self) -> int:
-        pricing_ = pricing.pricing
-        adders_ = pricing.adders
+        pricing_, adders_ = pricing.load_pricing(session=session)
 
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(int(self.attributes['meter']), 0)

@@ -10,7 +10,7 @@ from app.jsonapi import (
 )
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "customers"
+    type: str = "sca-customers"
 
 class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[CustomerResourceIdentifier]|CustomerResourceIdentifier

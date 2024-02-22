@@ -1,5 +1,5 @@
-from app.db import ADP_DB
+from app.db import ADP_DB, Session
 
-session = next(ADP_DB.get_db())
-
-pricing = ADP_DB.load_df(session=session, table_name='pricing-cp-series')
+def load_pricing(session: Session):
+    pricing = ADP_DB.load_df(session=session, table_name='pricing-cp-series')
+    return pricing

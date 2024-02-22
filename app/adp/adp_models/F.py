@@ -1,9 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.f as pricing
-from app.db import ADP_DB
-
-session = next(ADP_DB.get_db())
+from app.db import ADP_DB, Session
 
 class F(ModelSeries):
     text_len = (13,)
@@ -18,9 +16,9 @@ class F(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
         '''
-    specs = ADP_DB.load_df(session=session, table_name='f_dims')
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
+        self.specs = ADP_DB.load_df(session=session, table_name='f_dims')
         self.min_qty = 4
         model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]
         self.width = model_specs['width'].item()
@@ -49,8 +47,7 @@ class F(ModelSeries):
         return f'Low Profile {orientation} Air Handlers - {motor}'
 
     def calc_zero_disc_price(self) -> int:
-        adders_ = pricing.adders
-        pricing_ = pricing.pricing
+        pricing_, adders_= pricing.load_pricing(session=self.session)
         pricing_ = pricing_.loc[
             (pricing_['slab'].apply(lambda regex: self.regex_match(regex, self.attributes['scode'])))
             & (pricing_['tonnage'] == int(self.attributes['ton'])),:]
