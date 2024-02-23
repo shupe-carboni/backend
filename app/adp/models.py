@@ -40,7 +40,7 @@ class CoilProgAttrs(BaseModel):
     net_price: int = Field(alias='net-price')
     effective_date: datetime = Field(alias='effective-date')
     last_file_gen: datetime = Field(alias='last-file-gen')
-    stage: int
+    stage: str
     # intentionally leaving out Ratings model regexes
     #   ratings-ac-txv
     #   ratings-hp-txv
@@ -81,3 +81,15 @@ CoilProgQuery: type[BaseModel] = create_model(
     **{f"fields_{field}":(Optional[str], None) for field in CoilProgRels.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in CoilProgAttrs.model_fields.keys()},
 )
+
+
+## New Models to a Program
+class NewModelNumber(BaseModel):
+    model_number: str = Field(alias="model-number")
+class NewCoilRObj(BaseModel):
+    type: str = 'adp-coil-programs'
+    attributes: NewModelNumber
+
+class NewAHRObj(BaseModel):
+    type: str = 'adp-ah-programs'
+    attributes: NewModelNumber
