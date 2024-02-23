@@ -14,6 +14,19 @@ import warnings; warnings.simplefilter('ignore')
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
 TODAY = str(datetime.today().date())
 
+def add_model_to_program(session: Session, adp_customer_id: int, model: str) -> int:
+    model_obj: ModelSeries = None
+    for m in MODELS:
+        if matched_model := Validator(session, model, m).is_model():
+            model_obj = matched_model
+    record = model_obj.record()
+    record['customer_id'] = adp_customer_id
+    record['stage'] = Stage.PROPOSED.name
+    record_series = pd.Series(record)
+    price_models_by_customer_discounts(session=session, model=record_series, adp_customer_id=adp_customer_id)
+    with session.begin():
+        return separate_by_product_type_and_commit_to_db(session=session, data=record_series)
+
 def extract_models_from_sheet(session: Session, sheet: Worksheet) -> list[ModelSeries]:
     """iterates over cell contents
         and uses Validator to see if the content appears to be
@@ -52,76 +65,58 @@ def extract_models_from_file(session: Session, file: str) -> set[ModelSeries]:
         models.extend(extract_models_from_sheet(session=session, sheet=sheet))
     return set(models)
 
-def price_models_by_customer_discounts(session: Session, program_data: pd.DataFrame):
-    mat_grp_discounts = ADP_DB.load_df(session=session, table_name='material_group_discounts')
-    snps = ADP_DB.load_df(session=session, table_name='snps').drop_duplicates()
+def price_models_by_customer_discounts(session: Session, model: pd.Series, adp_customer_id: int):
+    mat_grp_discounts = ADP_DB.load_df(session=session, table_name='material_group_discounts', customer_id=adp_customer_id)
+    snps = ADP_DB.load_df(session=session, table_name='snps', customer_id=adp_customer_id).drop_duplicates()
 
-    def calc_prices(data: pd.Series) -> pd.Series:
-        no_disc_price = int(data['zero discount price'])
-        adp_alias = data['adp_alias']
-        mat_group: str = data['mpg']
-        mat_group_disc: pd.Series = mat_grp_discounts.loc[
-            (mat_grp_discounts['adp_alias'] == adp_alias)
-            & (mat_grp_discounts['mat_grp'] == mat_group),
-            'discount'
-        ]
-        mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
-        model_num: str = data['model_number']
-        snp: pd.Series = snps.loc[
-            (snps['adp_alias'] == adp_alias)
-            & (snps['model'] == model_num),
-            'price'
-        ]
-        snp = snp.item() if not snp.empty else 0
-        snp_disc = f'{(1 - (snp / no_disc_price)) * 100:.1f}' if snp else 0
-        mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
-        mat_group_price = int(math.floor(mat_group_price + 0.5))
-        mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
-        result = {
-            Fields.MATERIAL_GROUP_DISCOUNT.value: mat_group_disc if mat_group_disc else None,
-            Fields.MATERIAL_GROUP_NET_PRICE.value: mat_group_price if mat_group_price else None,
-            Fields.SNP_DISCOUNT.value: snp_disc if snp_disc else None,
-            Fields.SNP_PRICE.value: snp if snp else None,
-            Fields.NET_PRICE.value: min([price for price in (snp, mat_group_price, no_disc_price) if price])
-        }
-        return pd.Series(result)
+    no_disc_price = int(model['zero_discount_price'])
+    mat_group: str = model['mpg']
+    mat_group_disc: pd.Series = mat_grp_discounts.loc[
+        (mat_grp_discounts[Fields.CUSTOMER_ID.value] == adp_customer_id)
+        & (mat_grp_discounts['mat_grp'] == mat_group),
+        'discount'
+    ]
+    mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
+    model_num: str = model[Fields.MODEL_NUMBER.value]
+    snp: pd.Series = snps.loc[
+        (snps[Fields.CUSTOMER_ID.value] == adp_customer_id)
+        & (snps['model'] == model_num),
+        'price'
+    ]
+    snp = snp.item() if not snp.empty else 0
+    snp_disc = f'{(1 - (snp / no_disc_price)) * 100:.1f}' if snp else 0
+    mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
+    mat_group_price = int(math.floor(mat_group_price + 0.5))
+    mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
+    result = {
+        Fields.MATERIAL_GROUP_DISCOUNT.value: mat_group_disc if mat_group_disc else None,
+        Fields.MATERIAL_GROUP_NET_PRICE.value: mat_group_price if mat_group_price else None,
+        Fields.SNP_DISCOUNT.value: snp_disc if snp_disc else None,
+        Fields.SNP_PRICE.value: snp if snp else None,
+        Fields.NET_PRICE.value: min([price for price in (snp, mat_group_price, no_disc_price) if price])
+    }
+    model.update(result)
+    return model
 
-    program_data[
-        [Fields.MATERIAL_GROUP_DISCOUNT.value,
-         Fields.MATERIAL_GROUP_NET_PRICE.value,
-         Fields.SNP_DISCOUNT.value,
-         Fields.SNP_PRICE.value,
-         Fields.NET_PRICE.value
-        ]] = program_data.apply(calc_prices, axis=1, result_type='expand')
-
-    return
-    
-def separate_product_types_and_commit_to_db(session: Session, data: pd.DataFrame):
-    ah_filter = data['motor'].isna()
-    coil_progs = data[ah_filter].dropna(axis=1, how='all')
-    ah_progs = data[~ah_filter].dropna(axis=1, how='all')
-    coil_progs['effective date'] = TODAY
-    ah_progs['effective date'] = TODAY
-    ADP_DB.upload_df(session=session, data=coil_progs, table_name='coil_programs', if_exists='append')
-    ADP_DB.upload_df(session=session, data=ah_progs, table_name='ah_programs', if_exists='append')
-
-def add_models_to_program(session: Session, adp_alias: str, models: list[str]) -> None:
-    aliases = ADP_DB.load_df(session=session, table_name='customers', customer_id=[adp_alias])[['customer', 'adp_alias']]
-    sca_customer_name = aliases.loc[aliases['adp_alias'] == adp_alias, 'customer'].drop_duplicates().item()
-    model_objs: set[ModelSeries] = set()
-    for model in models:
-        for m in MODELS:
-            if model_obj := Validator(session, model, m).is_model():
-                model_objs.add(model_obj)
-    records = [model.record() for model in model_objs]
-    df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
-    df['adp_alias'] = adp_alias
-    price_models_by_customer_discounts(session=session, program_data=df)
-    df['customer'] = sca_customer_name
-    df['stage'] = Stage.PROPOSED.name
-    with session.begin():
-        separate_product_types_and_commit_to_db(session=session, data=df)
-    return
+def separate_by_product_type_and_commit_to_db(session: Session, data: pd.Series) -> int:
+    if data['motor']:
+        ah_model = data.dropna()
+        ah_model['effective_date'] = TODAY
+        cols = ah_model.index.tolist()
+        vals = ah_model.values
+        sql = """INSERT INTO ah_programs (%(columns)s)
+                VALUES (%(values)s)
+                RETURNING id;"""
+    else:
+        coil_model = data.dropna()
+        coil_model['effective_date'] = TODAY
+        cols = coil_model.index.tolist()
+        vals = coil_model.values
+        sql = """INSERT INTO coil_programs (%(columns)s)
+                VALUES (%(values)s)
+                RETURNING id;"""
+    new_id = ADP_DB.execute(session=session, sql=sql, params=dict(columns=cols, values=vals)).fetchone()[0]
+    return new_id
 
 def reprice_programs(session: Session) -> None:
     aliases = ADP_DB.load_df(session=session, table_name='customers')[['customer', 'adp_alias']]
