@@ -6,8 +6,8 @@ from fastapi.routing import APIRouter
 
 from app import auth
 from app.db import Session, ADP_DB, Stage
-from app.adp.main import generate_program
-from app.adp.models import CoilProgQuery, CoilProgResp
+from app.adp.main import generate_program, add_model_to_program
+from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
 class XLSXFileResponse(StreamingResponse):
@@ -65,25 +65,37 @@ def customer_program(
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('{adp_customer_id}/program/coils')
+@adp.post('/{adp_customer_id}/program/coils')
 def add_to_coil_program(
         token: ADPPerm,
-        program_details: None,
+        adp_customer_id: int,
+        new_coil: NewCoilRObj,
         session: NewSession
         ):
     """add coil product for a customer"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        model_num = new_coil.attributes.model_number
+        new_id = add_model_to_program(session=session, model=model_num, adp_customer_id=adp_customer_id)
+        return {"new id": new_id}
+    else:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('{adp_customer_id}/program/air-handlers')
+@adp.post('/{adp_customer_id}/program/air-handlers')
 def add_to_ah_program(
         token: ADPPerm,
-        program_details: None,
+        adp_customer_id: int,
+        new_ah: NewAHRObj,
         session: NewSession
     ):
     """modify product listed on an existing program"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        model_num = new_ah.attributes.model_number
+        new_id = add_model_to_program(session=session, model=model_num, adp_customer_id=adp_customer_id)
+        return {"new id": new_id}
+    else:
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('{adp_customer_id}/program/ratings')
+@adp.post('/{adp_customer_id}/program/ratings')
 def add_to_ah_program(
         token: ADPPerm,
         ratings: None,
