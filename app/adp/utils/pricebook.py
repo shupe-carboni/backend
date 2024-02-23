@@ -15,6 +15,7 @@ from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from app.adp.programs import CustomerProgram
+from app.adp.adp_models.model_series import Fields
 
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
@@ -125,6 +126,7 @@ class PriceBook:
         self.template_wb = opxl.load_workbook(template)
         self._9_col_template = self.template_wb['9-col']
         self.parts_template = self.template_wb['parts-template']
+        self.parts_block: tuple[tuple[Cell]] = self.parts_template['A1:D4']
         self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
         self.save_path = os.path.join(save_path, self.program.new_file_name())
@@ -133,7 +135,7 @@ class PriceBook:
         self.cursor = Cursor()
         adp_logo = Logo(
             img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
-            price_pos=AnchorPosition("E2", offset_x=0, offset_y=0),
+            price_pos=AnchorPosition("C2", offset_x=0, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -200,13 +202,15 @@ class PriceBook:
             template: Worksheet,
             title: str,
             sheet_type: str,
+            include_logos: bool=True
         ) -> 'PriceBook':
         new_sheet = self.active_wb.copy_worksheet(template)
         new_sheet.title = title.strip()
         self.active = new_sheet
-        for logo in self.logos:
-            logo_img = logo.create_image(sheet_type=sheet_type)
-            self.active.add_image(logo_img, logo_img.anchor)
+        if include_logos:
+            for logo in self.logos:
+                logo_img = logo.create_image(sheet_type=sheet_type)
+                self.active.add_image(logo_img, logo_img.anchor)
         self.active.sheet_view.showGridLines = False
         self.cursor.move_to(1,1)
         return self
@@ -223,7 +227,7 @@ class PriceBook:
     def new_ratings_sheet(self, title: str="M1 Ratings") -> 'PriceBook':
         sheet_type = 'ratings'
         template = self.template_wb['ratings']
-        return self.new_sheet(template=template, title=title, sheet_type=sheet_type)
+        return self.new_sheet(template=template, title=title, sheet_type=sheet_type, include_logos=False)
     
     def new_parts_sheet(self) -> 'PriceBook':
         sheet_type = "parts"
@@ -273,6 +277,24 @@ class PriceBook:
             end_column=len(self.product_block[0])+self.cursor.col-1
         )
         return self
+    
+    def append_parts_block(self) -> 'PriceBook':
+        self.cursor.slam_left()
+        min_col, min_row, max_col, max_row = range_boundaries("A1:D4")
+        row_offset = self.cursor.row - min_row
+        for row in self.parts_block:
+            for cell in row:
+                new_row = cell.row + row_offset
+                new_col = cell.column
+                self.copy_cell(cell, new_row, new_col)
+        self.active.merge_cells(
+            start_row=self.cursor.row,
+            start_column=self.cursor.col,
+            end_row=self.cursor.row,
+            end_column=len(self.parts_block[0])+self.cursor.col-1
+        )
+        return self
+
     
     def find_min_coords_with_data(self, sheet: Worksheet=None) -> tuple[int|None, int|None]:
         if not sheet:
@@ -373,11 +395,11 @@ class PriceBook:
             self.cursor.slam_left()
             self.cursor.move_by(*offset)
         if headers:
-            if 'pallet_qty' in df.columns:
+            if Fields.PALLET_QTY.formatted() in df.columns:
                 self.cursor.move_by(cols=1)
                 disclaimer = self.active_cell('* Must order in pallet quantities')
                 disclaimer.font = Font(bold=True, italic=True)
-            elif 'min_qty' in df.columns:
+            elif Fields.MIN_QTY.formatted() in df.columns:
                 self.cursor.move_by(cols=1)
                 disclaimer = self.active_cell('* Must order at least the minimum quantity per-SKU')
                 disclaimer.font = Font(bold=True, italic=True)
@@ -395,9 +417,9 @@ class PriceBook:
                 category: program.category_data(category)
                 for category in program.product_categories
             }
-            data_by_category = {k: v for k,v in data_by_category.items() if not v.empty}
             for j, cat_data in enumerate(data_by_category.items()):
                 cat, df = cat_data
+                df.rename(columns={col: Fields(col).formatted() for col in df.columns}, inplace=True)
                 rows = df.shape[0]
                 if i > 0 or j > 0:
                     self.append_blank_product_block()
@@ -408,7 +430,7 @@ class PriceBook:
                     .movey(-1) # headers row
                     .insert_data(df)
                 )
-        return self.movex(-self.cursor.col+1).movey(2).add_footer()
+        return self.movex(-self.cursor.col+1).movey(2).attach_parts().movey(1)
     
     def adjust_number_of_formatted_rows(self, startin_row_num: int, target_row_num: int) -> 'PriceBook':
         diff = target_row_num - startin_row_num
@@ -425,11 +447,11 @@ class PriceBook:
             print("\tskipped parts due to empty table")
             return self
         num_rows = data.shape[0]
-        self.new_parts_sheet()\
-            .movex(1)\
-            .movey(13)\
+        self.append_parts_block()\
+            .movey(2)\
             .adjust_number_of_formatted_rows(2, num_rows)\
-            .insert_data(data, headers=False,offset=(0,1))
+            .insert_data(data, headers=False)\
+            .add_footer()
         return self
 
     def attach_ratings(self) -> 'PriceBook':
@@ -465,9 +487,24 @@ class PriceBook:
                 del ratings[series]
 
         for tab, table in ratings.items():
+            if table['FurnaceModel'].isna().all() and table['Furnace Model Number'].isna().all():
+                include_furnace_col = False
+            else:
+                include_furnace_col = True
+
+            if table['HSPF2'].isna().all() or (table['HSPF2'] == 0).all():
+                include_HSPF_col = False
+            else:
+                include_HSPF_col = True
+            
             rows = table.shape[0]
             self.new_ratings_sheet(title=tab)
-            self.cursor.move_to(row=14) # second row for data
+            if not include_HSPF_col:
+                self.active.delete_cols(9,1)
+            if not include_furnace_col:
+                self.active.delete_cols(5,1)
+                self.active.column_dimensions['E'].width = 10.5
+            self.cursor.move_to(row=3) # second row for data
             self.adjust_number_of_formatted_rows(3, rows)
             self.cursor.move_by(rows=-1) # back to first data row
 
@@ -485,10 +522,16 @@ class PriceBook:
                     row_view = row[['AHRINumber','OEMName','OutdoorModel',
                                     'IndoorModel','FurnaceModel','SEER2',
                                     'EER2','Capacity2','HSPF2']]
+                    if not include_furnace_col:
+                        row_view = row_view.drop(index=['FurnaceModel'])
                 else:
                     row_view = row[['AHRI Ref Number','OEM Name','Model Number',
                                     'Coil Model Number','Furnace Model Number','SEER2',
                                     'EER2','Capacity2','HSPF2']]
+                    if not include_furnace_col:
+                        row_view = row_view.drop(index=['Furnace Model Number'])
+                if not include_HSPF_col:
+                    row_view = row_view.drop(index=['HSPF2'])
                 for datum in row_view:
                     cell = self.active_cell(value=datum)
                     if not datum or datum == '0':

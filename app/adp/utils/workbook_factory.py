@@ -68,7 +68,7 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
         customer_parts[part_price_col] = customer_parts[part_price_col].fillna(customer_parts['standard'])
     else:
         part_price_col = 'standard'
-    customer_parts = customer_parts[['part_number', 'description', 'pkg_qty', part_price_col]]
+    customer_parts = customer_parts[['description', 'part_number', 'pkg_qty', part_price_col]]
     ## footer
     try:
         payment_terms = footer['terms'].item()
@@ -141,7 +141,6 @@ def generate_program(
                             .build_program()
                             .attach_nomenclature_tab()
                             .attach_ratings()
-                            .attach_parts()
                             .save_and_close())
         new_program_file = ProgramFile(
             file_data=price_book,
