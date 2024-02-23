@@ -373,11 +373,11 @@ class PriceBook:
             self.cursor.slam_left()
             self.cursor.move_by(*offset)
         if headers:
-            if 'Pallet Qty' in df.columns:
+            if 'pallet_qty' in df.columns:
                 self.cursor.move_by(cols=1)
                 disclaimer = self.active_cell('* Must order in pallet quantities')
                 disclaimer.font = Font(bold=True, italic=True)
-            elif 'Min Qty' in df.columns:
+            elif 'min_qty' in df.columns:
                 self.cursor.move_by(cols=1)
                 disclaimer = self.active_cell('* Must order at least the minimum quantity per-SKU')
                 disclaimer.font = Font(bold=True, italic=True)
@@ -395,6 +395,7 @@ class PriceBook:
                 category: program.category_data(category)
                 for category in program.product_categories
             }
+            data_by_category = {k: v for k,v in data_by_category.items() if not v.empty}
             for j, cat_data in enumerate(data_by_category.items()):
                 cat, df = cat_data
                 rows = df.shape[0]
