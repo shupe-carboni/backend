@@ -121,10 +121,10 @@ class ModelSeries:
         20: '20 kW',
     }
 
-    def __init__(self, db_session: Session, re_match: re.Match):
-        self.mat_grps = ADP_DB.load_df(session=db_session, table_name='material_groups')
+    def __init__(self, session: Session, re_match: re.Match):
+        self.mat_grps = ADP_DB.load_df(session=session, table_name='material_groups')
         self.attributes = re_match.groupdict()
-        self.session = db_session
+        self.session = session
     
     def __str__(self) -> str:
         return "".join(self.attributes.values())
