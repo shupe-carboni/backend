@@ -21,6 +21,6 @@ class Validator:
         model = re.compile(self.model_series.regex, re.VERBOSE)
         model_parsed = model.match(self.raw_text)
         if model_parsed:
-            return self.model_series(db_session=self.session, re_match=model_parsed)
+            return self.model_series(session=self.session, re_match=model_parsed)
         else:
             return False
