@@ -126,7 +126,7 @@ class CustomerProgram:
         self.customer_name = customer_name
         self.ratings = pd.DataFrame()
         self.progs: list[Program] = [coils, air_handlers]
-        self.progs = [prog for prog in self.progs if prog]
+        self.progs = [prog for prog in self.progs if not prog._data.empty]
         self.series_contained = set()
         for prog in self.progs:
             prog_ratings = prog.ratings
