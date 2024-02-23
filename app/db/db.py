@@ -3,7 +3,7 @@ import re
 import os
 from enum import StrEnum, auto
 from typing import Iterable, Any
-from sqlalchemy import create_engine, text, URL
+from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
 from pandas import DataFrame, read_sql
 
@@ -89,8 +89,8 @@ class Database:
             self,
             session: Session,
             sql: str,
-            params: Iterable[str|int|None]=None
-        ) -> Any:
+            params: Iterable[dict|str|int|None]=None
+        ) -> Result:
         ## add prefix to custom query table_name
         substitution = lambda match: match.group(0).replace(match.group(1), f'{self.PREFIX}{match.group(1)}')
         sql = re.sub(r'(?:FROM|UPDATE|INSERT INTO|TABLE)\s+([^\s,;]+)', substitution, sql, count=1)
