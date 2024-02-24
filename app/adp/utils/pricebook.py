@@ -1,4 +1,5 @@
 from dotenv import load_dotenv; load_dotenv()
+import re
 import os
 from copy import copy
 from io import BytesIO
@@ -16,6 +17,7 @@ from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from app.adp.programs import CustomerProgram
 from app.adp.adp_models.model_series import Fields
+from app.adp.adp_models import MODELS
 
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
@@ -314,11 +316,30 @@ class PriceBook:
 
     def insert_nomenclature_block(self, series: str) -> 'PriceBook':
         nomenclature_sheet: Worksheet = self.nomenclatures[series]
-        for row in nomenclature_sheet:
+        model_type, = tuple([e for e in MODELS if e.__name__ == series])
+        model_example = self.program.sample_from_program(series=series)
+        try:
+            model_nomenclature = re.match(model_type.regex, model_example, re.VERBOSE).groupdict()
+            ignore_custom_model_insertion = False
+        except:
+            ignore_custom_model_insertion = True
+        else:
+            if 'scode' in model_nomenclature and 'mat' in model_nomenclature:
+                model_nomenclature['scode'] = model_nomenclature['mat'] + model_nomenclature['scode']
+                model_nomenclature.pop('mat')
+        for i, row in enumerate(nomenclature_sheet):
+            row_num = i+1
             for cell in row:
                 new_row = cell.row + self.cursor.row - 1
-                new_col = cell.column + self.cursor.col -1
+                new_col = cell.column + self.cursor.col - 1
                 self.copy_cell(cell, new_row, new_col)
+            if row_num == 2 and not ignore_custom_model_insertion:
+                self.cursor.move_by(1,1)
+                for val in model_nomenclature.values():
+                    self.active_cell(value=val)
+                    self.cursor.move_by(cols=1)
+                self.cursor.slam_left()
+                self.cursor.move_by(-1)
         _, min_col = self.find_min_coords_with_data(nomenclature_sheet)
         self.active.merge_cells(
             start_row=self.cursor.row,
@@ -405,6 +426,24 @@ class PriceBook:
                 disclaimer.font = Font(bold=True, italic=True)
         return self
 
+    @staticmethod
+    def split_rated_from_unrated(category_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+        result = dict()
+        for category, df in category_data.items():
+            all_rated = df['rated'].all()
+            all_unrated = (~df['rated']).all()
+            new_category_rated = category + ' - Rated'
+            new_category_unrated = category + ' - Replacement'
+            if all_rated:
+                result[new_category_rated] = df
+            elif all_unrated:
+                result[new_category_unrated] = df
+            else:
+                result[new_category_rated] = df[df['rated']]
+                result[new_category_unrated] = df[~df['rated']]
+        return result
+
+
     def build_program(self) -> 'PriceBook':
         """
             One file per "program"
@@ -417,10 +456,14 @@ class PriceBook:
                 category: program.category_data(category)
                 for category in program.product_categories
             }
+            data_by_category = self.split_rated_from_unrated(data_by_category)
             for j, cat_data in enumerate(data_by_category.items()):
                 cat, df = cat_data
-                df.rename(columns={col: Fields(col).formatted() for col in df.columns}, inplace=True)
-                rows = df.shape[0]
+                df_copy = df.copy(deep=True)
+                df_copy.drop(columns=[Fields.RATED.value, Fields.SERIES.value], inplace=True)
+                df_copy.rename(columns={col: Fields(col).formatted() for col in df_copy.columns}, inplace=True)
+                cat = re.sub(r'(- Embossed )|( Painted)','', cat)
+                rows = df_copy.shape[0]
                 if i > 0 or j > 0:
                     self.append_blank_product_block()
                 self.active_cell(value=cat) # put in category 
@@ -428,7 +471,7 @@ class PriceBook:
                 self.movey(2) # the first data row
                     .adjust_number_of_formatted_rows(self.max_row-self.min_row-1, rows)
                     .movey(-1) # headers row
-                    .insert_data(df)
+                    .insert_data(df_copy)
                 )
         return self.movex(-self.cursor.col+1).movey(2).attach_parts().movey(1)
     
@@ -450,8 +493,7 @@ class PriceBook:
         self.append_parts_block()\
             .movey(2)\
             .adjust_number_of_formatted_rows(2, num_rows)\
-            .insert_data(data, headers=False)\
-            .add_footer()
+            .insert_data(data, headers=False)
         return self
 
     def attach_ratings(self) -> 'PriceBook':

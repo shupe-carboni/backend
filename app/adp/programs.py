@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 import pandas as pd
-from app.adp.adp_models import Fields
+from app.adp.adp_models import Fields, MODELS
 
 class Program:
     def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
@@ -18,9 +18,7 @@ class Program:
         return (
             data
                 .dropna(how='all', axis=1)
-                .drop(columns=[
-                    Fields.CATEGORY.value
-                    ])
+                .drop(columns=[Fields.CATEGORY.value])
         )
 
 class CoilProgram(Program):
@@ -43,7 +41,9 @@ class CoilProgram(Program):
             Fields.WEIGHT.value,
             Fields.CABINET.value,
             Fields.METERING.value,
-            Fields.NET_PRICE.value
+            Fields.NET_PRICE.value,
+            Fields.RATED.value,
+            Fields.SERIES.value
         ] 
 
     def category_data(self, category) -> pd.DataFrame:
@@ -83,7 +83,9 @@ class AirHandlerProgram(Program):
             Fields.WEIGHT.value,
             Fields.HEAT.value,
             Fields.METERING.value,
-            Fields.NET_PRICE.value
+            Fields.NET_PRICE.value,
+            Fields.RATED.value,
+            Fields.SERIES.value
         ]
 
     def category_data(self, category) -> pd.DataFrame:
@@ -133,6 +135,7 @@ class CustomerProgram:
             self.ratings = pd.concat([self.ratings, prog_ratings]).drop_duplicates()
             self.series_contained |= prog.product_series_contained
         self.filter_ratings()
+        self.tag_models_rated_unrated()
         self.terms = terms
         self.parts = parts
         self.logo_path = logo_path
@@ -170,3 +173,34 @@ class CustomerProgram:
             registered = registered[registered['in_prog'] == True]
             unregistered = unregistered[unregistered['in_prog'] == True]
             self.ratings = pd.concat([registered, unregistered]).drop(columns='in_prog')
+    
+    def tag_models_rated_unrated(self) -> None:
+        if not self.ratings.empty:
+            ratings_models: pd.Series = self.ratings.loc[:,['Coil Model Number', 'IndoorModel']].drop_duplicates().dropna().stack(future_stack=True)
+            def in_ratings(value: str) -> bool:
+                if not value:
+                    return False
+                if ratings_models.apply(lambda ref: re.match(value, ref) is not None).any():
+                    return True
+                return False
+            def check_model_row(row: pd.Series) -> bool:
+                ratings_regexes = row[row.index.str.contains('ratings')]
+                if ratings_regexes.isna().all():
+                    return False
+                if ratings_regexes.apply(in_ratings).any():
+                    return True
+                return False
+            for prog in self.progs:
+                prog._data['rated'] = prog._data.apply(check_model_row, axis=1)
+        else:
+            for prog in self.progs:
+                prog._data['rated'] = False
+
+    def sample_from_program(self, series: str) -> str:
+        for prog in self.progs:
+            try:
+                sample = prog._data.loc[prog._data[Fields.SERIES.value] == series, Fields.MODEL_NUMBER.value].sample(n=1)
+            except:
+                continue
+            else:
+                return sample.item()

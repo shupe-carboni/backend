@@ -38,6 +38,7 @@ class Fields(StrEnum):
     RATINGS_HP_TXV = auto()
     RATINGS_PISTON = auto()
     RATINGS_FIELD_TXV = auto()
+    RATED = auto()
 
     def formatted(self):
         if self.name == 'ADP_ALIAS':
@@ -67,7 +68,7 @@ class ModelSeries:
 
     paint_color_mapping = {
         'H': 'Embossed',
-        'V': 'Emboseed',
+        'V': 'Embossed',
         'A': 'Armstrong',
         'G': 'ICP',
         'J': 'Goodman/Amana',

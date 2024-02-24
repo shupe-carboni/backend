@@ -139,6 +139,7 @@ def generate_program(
             print(f'\t{prog}')
         price_book = (PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
                             .build_program()
+                            .add_footer()
                             .attach_nomenclature_tab()
                             .attach_ratings()
                             .save_and_close())
