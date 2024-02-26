@@ -392,6 +392,7 @@ class PriceBook:
         for name, value in self.program.terms.items():
             cell = self.active_cell(name)
             cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='right')
             self.movex(1)
             cell = self.active_cell(value['value'])
             for style_name, style_value in value['style'].items():
@@ -473,7 +474,7 @@ class PriceBook:
                     .movey(-1) # headers row
                     .insert_data(df_copy)
                 )
-        return self.movex(-self.cursor.col+1).movey(2).attach_parts().movey(1)
+        return self.movex(-self.cursor.col+1).movey(2).attach_parts()
     
     def adjust_number_of_formatted_rows(self, startin_row_num: int, target_row_num: int) -> 'PriceBook':
         diff = target_row_num - startin_row_num
@@ -494,7 +495,7 @@ class PriceBook:
             .movey(2)\
             .adjust_number_of_formatted_rows(2, num_rows)\
             .insert_data(data, headers=False)
-        return self
+        return self.movey(1)
 
     def attach_ratings(self) -> 'PriceBook':
         data = self.program.ratings
