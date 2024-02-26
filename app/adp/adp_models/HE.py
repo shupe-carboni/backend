@@ -76,10 +76,16 @@ class HE(ModelSeries):
             'mat_grp'].item()
         self.zero_disc_price = self.calc_zero_disc_price()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_piston = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"
-        self.ratings_field_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
-        self.ratings_hp_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
-        self.ratings_ac_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
+        if self.cabinet_config != Cabinet.PAINTED:
+            self.ratings_piston = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"
+            self.ratings_field_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
+            self.ratings_hp_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
+            self.ratings_ac_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
+        else:
+            self.ratings_piston = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"
+            self.ratings_field_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
+            self.ratings_hp_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
+            self.ratings_ac_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
 
     def category(self) -> str:
         material = self.material
