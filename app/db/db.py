@@ -57,7 +57,7 @@ class Database:
             data: DataFrame,
             table_name: str,
             primary_key: bool=True,
-            if_exists: str='replace'
+            if_exists: str='append'
         ) -> None:
         full_table_name = self.full_table_name(table_name)
         data.to_sql(full_table_name, con=session.get_bind(), if_exists=if_exists, index=False)
