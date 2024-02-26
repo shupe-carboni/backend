@@ -93,3 +93,20 @@ class NewCoilRObj(BaseModel):
 class NewAHRObj(BaseModel):
     type: str = 'adp-ah-programs'
     attributes: NewModelNumber
+
+
+## Ratings
+class Rating(BaseModel):
+    AHRINumber: Optional[int] = None
+    OutdoorModel: str
+    OEMName: str
+    IndoorModel: str
+    FurnaceModel: Optional[str] = None
+    SEER2: float
+    EER95F2: float
+    Capacity2: int
+    HSPF2: Optional[float] = None
+class Ratings(BaseModel):
+    ratings: list[Rating]
+    class Config:
+        extra = 'ignore'
