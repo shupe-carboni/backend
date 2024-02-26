@@ -1,5 +1,4 @@
 import re
-import os
 import pandas as pd
 import openpyxl as opxl
 from datetime import datetime
@@ -8,6 +7,7 @@ from sqlalchemy.engine.cursor import CursorResult
 from openpyxl.worksheet.worksheet import Worksheet
 import warnings; warnings.simplefilter('ignore')
 from app.db import ADP_DB, Session
+from app.adp.models import Ratings
 
 session = next(ADP_DB.get_db())
 TODAY = str(datetime.today().date())
@@ -125,6 +125,17 @@ def extract_ratings_from_sheet(sheet: Worksheet) -> list[Rating]:
     return ratings
 
 def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.DataFrame:
+    """
+    Notes:
+        IS NOT DISTINCT FROM used for furnaces in `enrich_ratings`
+        allows for 'NULL = NULL' to evaulate to True, instead of NULL.
+
+        source: https://www.postgresql.org/docs/current/functions-comparison.html
+        datatype IS NOT DISTINCT FROM datatype → boolean
+            Equal, treating null as a comparable value.
+            1 IS NOT DISTINCT FROM NULL → f (rather than NULL)
+            NULL IS NOT DISTINCT FROM NULL → t (rather than NULL)
+    """
     temp_table_name = 'temp_ratings'
     my_ratings = ratings
     try:
@@ -133,16 +144,7 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
     except AttributeError:
         pass
     my_ratings['AHRINumber'] = my_ratings['AHRINumber'].fillna(0).astype(int)
-    with session.begin():
-        ADP_DB.upload_df(session=session, data=my_ratings, table_name=temp_table_name, primary_key=False)
-    """
-    IS NOT DISTINCT FROM used for furnaces allows for 'NULL = NULL' to evaulate to True, instead of NULL.
-        source: https://www.postgresql.org/docs/current/functions-comparison.html
-        datatype IS NOT DISTINCT FROM datatype → boolean
-            Equal, treating null as a comparable value.
-            1 IS NOT DISTINCT FROM NULL → f (rather than NULL)
-            NULL IS NOT DISTINCT FROM NULL → t (rather than NULL)
-    """
+    ADP_DB.upload_df(session=session, data=my_ratings, table_name=temp_table_name, primary_key=False, if_exists='replace')
     enrich_ratings = f"""
             SELECT *
             FROM {temp_table_name} as mr
@@ -153,17 +155,17 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
                 AND mr."FurnaceModel" IS NOT DISTINCT FROM r."Furnace Model Number")
             OR (mr."AHRINumber" = r."AHRI Ref Number");
             """
-    enriched_ratings: CursorResult = ADP_DB.execute_and_commit(session=session, table_name=enrich_ratings)
+    enriched_ratings: CursorResult = ADP_DB.execute(session=session, sql=enrich_ratings)
     ratings_df = pd.DataFrame(enriched_ratings.mappings().fetchall())
     ratings_df['AHRI Ref Number'] = pd.to_numeric(ratings_df['AHRI Ref Number'], errors='coerce')
     ratings_df['AHRI Ref Number'] = ratings_df['AHRI Ref Number'].fillna(0).astype(int)
-    ratings_df['Effective Date'] = TODAY
+    ratings_df['effective_date'] = TODAY
     return ratings_df
 
 def find_ratings_in_reference_and_update_file(session: Session, ratings: pd.DataFrame) -> None:
     temp_table_name = 'temp_ratings'
-    ratings_df = find_ratings_in_reference(ratings=ratings)
     with session.begin():
+        ratings_df: pd.DataFrame = find_ratings_in_reference(session=session, ratings=ratings)
         ADP_DB.upload_df(session=session, data=ratings_df, table_name='program_ratings', primary_key=False, if_exists='append')
         ADP_DB.execute(session=session, sql=f"DROP TABLE {temp_table_name};")
     return
@@ -190,7 +192,7 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
                 continue
             if not isinstance(value, str) and value is not None:
                 update_sets += f""""{field}" = {value},"""
-            elif field == 'Effective Date':
+            elif field == 'effective_date':
                 update_sets += f""""{field}" = '{value}'::TIMESTAMP,"""
             elif value is None:
                 update_sets += f""""{field}" = NULL,"""
@@ -220,7 +222,7 @@ def update_ratings_reference(session: Session):
             ratings['AHRI Ref Number'] = ratings['AHRI Ref Number'].astype(int)
             print('Replacing Database table')
             with session.begin():
-                ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False)
+                ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False, if_exists='replace')
     except Exception as e:
         print('Update Failed')
         print(e)
@@ -228,9 +230,9 @@ def update_ratings_reference(session: Session):
         process_complete = True
         print("Update Complete")
 
-def add_rating_to_program(session: Session, adp_alias: str, rating: dict[str,str]) -> None:
-    CUSTOMERS = ADP_DB.load_df(session=session, table_name='customers')
-    sca_customer_name = CUSTOMERS.loc[CUSTOMERS['adp_alias'] == adp_alias, 'customer']
-    rating |= {'customer': sca_customer_name}
-    rating_df = pd.DataFrame(rating)
-    find_ratings_in_reference_and_update_file(session=session, ratings=rating_df)
+def add_ratings_to_program(session: Session, adp_customer_id: int, ratings: Ratings) -> None:
+    ratings_df = pd.DataFrame(ratings.model_dump()['ratings'])
+    ratings_df['customer_id'] = adp_customer_id
+    cols_to_rn = ('SEER2','EER95F2','Capacity2','HSPF2')
+    ratings_df.rename(columns={col: col.lower()+'_as_submitted' for col in cols_to_rn}, inplace=True)
+    find_ratings_in_reference_and_update_file(session=session, ratings=ratings_df)
