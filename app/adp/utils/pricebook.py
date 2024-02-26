@@ -325,7 +325,10 @@ class PriceBook:
             ignore_custom_model_insertion = True
         else:
             if 'scode' in model_nomenclature and 'mat' in model_nomenclature:
-                model_nomenclature['scode'] = model_nomenclature['mat'] + model_nomenclature['scode']
+                if series == 'CP':
+                    model_nomenclature['scode'] = model_nomenclature['scode'] + model_nomenclature['mat']
+                else:
+                    model_nomenclature['scode'] = model_nomenclature['mat'] + model_nomenclature['scode']
                 model_nomenclature.pop('mat')
         for i, row in enumerate(nomenclature_sheet):
             row_num = i+1
@@ -558,29 +561,33 @@ class PriceBook:
             #                 'SEER2','EER95F2',
             #                 'Capacity2','HSPF2')
             
-            table = table.sort_values(by=['OEM Series','ADP Series','Model Number','Coil Model Number'])
+            table = table.sort_values(by=[
+                'OEM Series','ADP Series','Model Number','Coil Model Number',
+                'OEMName', 'OutdoorModel', 'IndoorModel'
+                ])
 
             for label, row in table.iterrows():
                 if not row['AHRI Ref Number']:
                     row_view = row[['AHRINumber','OEMName','OutdoorModel',
-                                    'IndoorModel','FurnaceModel','SEER2',
-                                    'EER2','Capacity2','HSPF2']]
+                                    'IndoorModel','FurnaceModel','seer2_as_submitted',
+                                    'eer95f2_as_submitted','capacity2_as_submitted','hspf2_as_submitted']]
                     if not include_furnace_col:
                         row_view = row_view.drop(index=['FurnaceModel'])
+                    if not include_HSPF_col:
+                        row_view = row_view.drop(index=['hspf2_as_submitted'])
                 else:
                     row_view = row[['AHRI Ref Number','OEM Name','Model Number',
                                     'Coil Model Number','Furnace Model Number','SEER2',
                                     'EER2','Capacity2','HSPF2']]
                     if not include_furnace_col:
                         row_view = row_view.drop(index=['Furnace Model Number'])
-                if not include_HSPF_col:
-                    row_view = row_view.drop(index=['HSPF2'])
+                    if not include_HSPF_col:
+                        row_view = row_view.drop(index=['HSPF2'])
                 for datum in row_view:
                     cell = self.active_cell(value=datum)
                     if not datum or datum == '0':
-                        cell.value = None
+                        cell.value = '--'
                     self.cursor.move_by(cols=1)
                 self.cursor.slam_left()
                 self.cursor.move_by(rows=1)
-            
         return self
