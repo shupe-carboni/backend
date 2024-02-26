@@ -4,7 +4,7 @@ from app.adp.extraction.parts import add_parts_to_program
 from app.adp.extraction.models import  add_model_to_program
 from app.adp.extraction.ratings import (
     update_ratings_reference,
-    add_rating_to_program,
+    add_ratings_to_program,
     update_all_unregistered_program_ratings
 )
 
