@@ -100,21 +100,23 @@ def price_models_by_customer_discounts(session: Session, model: pd.Series, adp_c
 
 def separate_by_product_type_and_commit_to_db(session: Session, data: pd.Series) -> int:
     if data['motor']:
-        ah_model = data.dropna()
-        ah_model['effective_date'] = TODAY
-        cols = ah_model.index.tolist()
-        vals = ah_model.values
-        sql = """INSERT INTO ah_programs (%(columns)s)
-                VALUES (%(values)s)
-                RETURNING id;"""
+        table = 'ah_programs'
     else:
-        coil_model = data.dropna()
-        coil_model['effective_date'] = TODAY
-        cols = coil_model.index.tolist()
-        vals = coil_model.values
-        sql = """INSERT INTO coil_programs (%(columns)s)
-                VALUES (%(values)s)
-                RETURNING id;"""
+        table = 'coil_programs'
+
+    model = data.dropna()
+    model['effective_date'] = TODAY
+    cols = [f'"{col}"' for col in model.index.values.tolist()]
+    vals = []
+    for val in model.values.tolist():
+        match val:
+            case int() | float():
+                vals.append(str(val))
+            case str():
+                vals.append(f"'{val}'")
+    sql = f"""INSERT INTO {table} ({','.join(cols)})
+            VALUES ({','.join(vals)})
+            RETURNING id;"""
     new_id = ADP_DB.execute(session=session, sql=sql, params=dict(columns=cols, values=vals)).fetchone()[0]
     return new_id
 
