@@ -3,6 +3,7 @@ from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.f as pricing
 from app.db import ADP_DB, Session
 
+### ADD WEIGHTS
 class F(ModelSeries):
     text_len = (13,)
     regex = r'''
