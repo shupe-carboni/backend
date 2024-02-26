@@ -3,6 +3,8 @@ import re
 import pandas as pd
 from app.adp.adp_models import Fields, MODELS
 
+class EmptyProgram(Exception):
+    pass
 class Program:
     def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         self._data = program_data
@@ -129,6 +131,8 @@ class CustomerProgram:
         self.ratings = pd.DataFrame()
         self.progs: list[Program] = [coils, air_handlers]
         self.progs = [prog for prog in self.progs if not prog._data.empty]
+        if not self.progs:
+            raise EmptyProgram("No Program Data to return")
         self.series_contained = set()
         for prog in self.progs:
             prog_ratings = prog.ratings
@@ -152,7 +156,7 @@ class CustomerProgram:
         if "'" in customer_name:
             # title() capitalizes or leaves alone letters after an apostrophe
             customer_name = re.sub(r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name)
-        return f"{customer_name} 2024 Strategy {TODAY}".replace('/','_')
+        return f"{customer_name} 2024 ADP Product Strategy {TODAY}".replace('/','_')
 
     def filter_ratings(self) -> None:
         if not self.ratings.empty:
@@ -176,7 +180,8 @@ class CustomerProgram:
     
     def tag_models_rated_unrated(self) -> None:
         if not self.ratings.empty:
-            ratings_models: pd.Series = self.ratings.loc[:,['Coil Model Number', 'IndoorModel']].drop_duplicates().dropna().stack(future_stack=True)
+            ratings_models: pd.Series = self.ratings.loc[:,['Coil Model Number', 'IndoorModel']].drop_duplicates().fillna('no val').stack(future_stack=True)
+            ratings_models = ratings_models[ratings_models != 'no val']
             def in_ratings(value: str) -> bool:
                 if not value:
                     return False
