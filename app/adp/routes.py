@@ -9,7 +9,7 @@ from numpy import nan
 from app import auth
 from app.db import Session, ADP_DB, Stage
 from app.adp.main import generate_program, add_model_to_program, add_parts_to_program, add_ratings_to_program
-from app.adp.programs import EmptyProgram
+from app.adp.utils.programs import EmptyProgram
 from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj, Rating, Ratings
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
