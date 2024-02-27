@@ -3,7 +3,6 @@ from app.adp.adp_models.model_series import ModelSeries, Fields
 import app.adp.pricing.f as pricing
 from app.db import ADP_DB, Session
 
-### ADD WEIGHTS
 class F(ModelSeries):
     text_len = (13,)
     regex = r'''
@@ -25,6 +24,7 @@ class F(ModelSeries):
         self.width = model_specs['width'].item()
         self.depth = model_specs['depth'].item()
         self.height = model_specs['height'].item()
+        self.weight = model_specs['weight'].item()
         self.motor = self.motors[self.attributes['motor']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.heat = self.kw_heat[int(self.attributes['heat'])]
@@ -75,6 +75,7 @@ class F(ModelSeries):
             Fields.WIDTH.value: self.width,
             Fields.DEPTH.value: self.depth,
             Fields.HEIGHT.value: self.height,
+            Fields.WEIGHT.value: self.weight,
             Fields.MOTOR.value: self.motor,
             Fields.METERING.value: self.metering,
             Fields.HEAT.value: self.heat,
