@@ -15,7 +15,7 @@ from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
-from app.adp.programs import CustomerProgram
+from app.adp.utils.programs import CustomerProgram
 from app.adp.adp_models.model_series import Fields
 from app.adp.adp_models import MODELS
 
