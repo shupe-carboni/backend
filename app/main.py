@@ -44,10 +44,10 @@ async def home():
 
 @app.get('/test-db')
 async def test_db():
-    from app.db import Database
+    from app.db import ADP_DB
     try:
-        db = Database()
-        test = db.test()
+        session = next(ADP_DB.get_db())
+        test = ADP_DB.test(session=session)
         return {'db_version': test}
     except Exception:
         import traceback as tb
