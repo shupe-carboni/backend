@@ -145,7 +145,9 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
     except AttributeError:
         pass
     my_ratings['AHRINumber'] = my_ratings['AHRINumber'].fillna(0).astype(int)
+    logger.info('creating temp ratings table')
     ADP_DB.upload_df(session=session, data=my_ratings, table_name=temp_table_name, primary_key=False, if_exists='replace')
+    logger.info('table created')
     enrich_ratings = f"""
             SELECT *
             FROM {temp_table_name} as mr
@@ -156,7 +158,9 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
                 AND mr."FurnaceModel" IS NOT DISTINCT FROM r."Furnace Model Number")
             OR (mr."AHRINumber" = r."AHRI Ref Number");
             """
+    logger.info('executing query for search')
     enriched_ratings: CursorResult = ADP_DB.execute(session=session, sql=enrich_ratings)
+    logger.info('query done')
     ratings_df = pd.DataFrame(enriched_ratings.mappings().fetchall())
     ratings_df['AHRI Ref Number'] = pd.to_numeric(ratings_df['AHRI Ref Number'], errors='coerce')
     ratings_df['AHRI Ref Number'] = ratings_df['AHRI Ref Number'].fillna(0).astype(int)
@@ -174,19 +178,26 @@ def find_ratings_in_reference_and_update_file(session: Session, ratings: pd.Data
 def update_all_unregistered_program_ratings(session: Session) -> None:
     program_ratings = ADP_DB.load_df(session=session, table_name='program_ratings')
     program_ratings['AHRI Ref Number'] = program_ratings['AHRI Ref Number'].astype(int)
-    missing_ratings = program_ratings[program_ratings['AHRI Ref Number'] == 0].iloc[:,list(range(6))+[-1]]
-    result: pd.DataFrame = find_ratings_in_reference(ratings=missing_ratings)
+    missing_ratings = program_ratings.loc[
+        program_ratings['AHRI Ref Number'] == 0,
+        ['AHRINumber', 'OutdoorModel', 'OEMName', 'IndoorModel','FurnaceModel','id']
+    ]
+    logger.info('Searching for ratings to update')
+    result: pd.DataFrame = find_ratings_in_reference(session=session, ratings=missing_ratings)
     col_mask = ~result.columns.isin(missing_ratings.columns)
     selected_columns = result.columns[col_mask].tolist()
     selected_columns.extend(['id', 'AHRINumber'])
     result = result.loc[result['AHRI Ref Number'] > 0, selected_columns]
+    if result.empty:
+        logger.info('No ratings to update')
+        return
     result['AHRINumber'] = result['AHRI Ref Number']
     result = pd.DataFrame.infer_objects(result)
-    print("updating these ratings")
+    logger.info("Ratings found to update")
     tuple_names = ['Index']+result.columns.to_list()
     for record in result.itertuples():
         record: NamedTuple
-        print('\t',record)
+        logger.info(str(record))
         update_sets = "SET "
         for field, value in zip(tuple_names,record._asdict().values()):
             if field in ('Index', 'id'):
@@ -209,8 +220,6 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
         ADP_DB.execute(session=session, sql=sql, params={"record_id": record.id})
 
 def update_ratings_reference(session: Session):
-    global process_complete
-    process_complete = False
     link = 'https://www.adpinside.com/Compass/UserScreens/Monthly_spreadsheet_template.xlsm'
     try:
         logger.info('Downloading')
@@ -221,15 +230,20 @@ def update_ratings_reference(session: Session):
             ratings = pd.concat([ac, hp], ignore_index=True)
             ratings['Coil Model Number'] = ratings['Coil Model Number'].str.replace(r'\+TD$','', regex=True)
             ratings['AHRI Ref Number'] = ratings['AHRI Ref Number'].astype(int)
-            logger.info('Replacing Database table')
             with session.begin():
+                logger.info('Replacing Database table')
                 ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False, if_exists='replace')
+                for ind_col in ('Model Number', 'Coil Model Number', 'OEM Name', 'Furnace Model Number', 'AHRI Ref Number'):
+                    logger.info(f'Creating index for {ind_col}')
+                    ADP_DB.execute(session=session, sql=f"""CREATE INDEX ON adp_all_ratings("{ind_col}");""")
+
     except Exception as e:
         logger.info('Update Failed')
         logger.info(e)
-    finally:
-        process_complete = True
+    else:
         logger.info("Update Complete")
+    finally:
+        session.close()
 
 def add_ratings_to_program(session: Session, adp_customer_id: int, ratings: Ratings) -> None:
     ratings_df = pd.DataFrame(ratings.model_dump()['ratings'])
