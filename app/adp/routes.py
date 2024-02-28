@@ -1,18 +1,25 @@
 from typing import Literal, Optional, Mapping, Any, Annotated
-from fastapi import HTTPException, Depends, status, UploadFile
+from fastapi import HTTPException, Depends, status, UploadFile, BackgroundTasks, Response
 from starlette.background import BackgroundTask
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRouter
 from pandas import read_excel, read_csv
 from numpy import nan
+import logging
 
 from app import auth
 from app.db import Session, ADP_DB, Stage
-from app.adp.main import generate_program, add_model_to_program, add_parts_to_program, add_ratings_to_program
+from app.adp.main import (
+    generate_program, add_model_to_program,
+    add_parts_to_program, add_ratings_to_program,
+    update_ratings_reference,
+    update_all_unregistered_program_ratings
+)
 from app.adp.utils.programs import EmptyProgram
 from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj, Rating, Ratings
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
+logger = logging.getLogger('uvicorn.info')
 class XLSXFileResponse(StreamingResponse):
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     def __init__(self, 
@@ -37,6 +44,23 @@ def all_programs(
     ):
     """list out all programs"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@adp.get('/update-ratings-reference')
+def update_ratings_ref(
+        token: ADPPerm,
+        session: NewSession,
+        bg: BackgroundTasks
+    ):
+        """Update the rating reference table in the background
+            Due to the size of the table being downloaded, this
+            is a long-running task"""
+        if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+            logger.info('Update request received for ADP Ratings Reference Table. Sending to background')
+            bg.add_task(update_ratings_reference, session=session)
+            return Response(status_code=status.HTTP_202_ACCEPTED)
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
 
 @adp.get('/{adp_customer_id}/program')
 def customer_program(
