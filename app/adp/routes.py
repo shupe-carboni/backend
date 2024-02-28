@@ -51,15 +51,29 @@ def update_ratings_ref(
         session: NewSession,
         bg: BackgroundTasks
     ):
-        """Update the rating reference table in the background
-            Due to the size of the table being downloaded, this
-            is a long-running task"""
-        if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
-            logger.info('Update request received for ADP Ratings Reference Table. Sending to background')
-            bg.add_task(update_ratings_reference, session=session)
-            return Response(status_code=status.HTTP_202_ACCEPTED)
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    """Update the rating reference table in the background
+        Due to the size of the table being downloaded, this
+        is a long-running task"""
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        logger.info('Update request received for ADP Ratings Reference Table. Sending to background')
+        bg.add_task(update_ratings_reference, session=session)
+        return Response(status_code=status.HTTP_202_ACCEPTED)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+@adp.get('/update-unregistered-ratings')
+def update_unregistered_ratings(
+        token: ADPPerm,
+        session: NewSession,
+        bg: BackgroundTasks
+    ):
+    """Update all program ratings that haven't been found in the ratings reference"""
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        logger.info('Update Request Received for ADP Program Ratings. Sending to background')
+        bg.add_task(update_all_unregistered_program_ratings, session=session)
+        return Response(status_code=status.HTTP_202_ACCEPTED)
+    else:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
 @adp.get('/{adp_customer_id}/program')
