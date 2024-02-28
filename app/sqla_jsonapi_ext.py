@@ -39,7 +39,16 @@ class JSONAPI_(JSONAPI):
         and apply a default sorting pattern if a sort argument is not applied.
 
     _filter_deleted filters for null values in a hard-coded "deleted" column
+
+    __init__  copies the base.registry._class_registry
+        attribute under a new attribute named _decl_class_registry so that
+        the underlying constructor will work
     """
+
+    def __init__(self, base, prefix=''):
+        # BUG JSONAPI's constructor is broken for SQLAchelmy 1.4.x
+        setattr(base,"_decl_class_registry",base.registry._class_registry) 
+        super().__init__(base,prefix)
 
     @staticmethod
     def hyphenate_name(table_name: str) -> str:
