@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 import openpyxl as opxl
+import logging
 from datetime import datetime
 from typing import NamedTuple
 from sqlalchemy.engine.cursor import CursorResult
@@ -9,8 +10,8 @@ import warnings; warnings.simplefilter('ignore')
 from app.db import ADP_DB, Session
 from app.adp.models import Ratings
 
-session = next(ADP_DB.get_db())
 TODAY = str(datetime.today().date())
+logger = logging.getLogger('uvicorn.info')
 
 class NotEnoughData(Exception):
     def __init__(self, file: str, sheet: str, *args: object) -> None:
@@ -174,7 +175,7 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
     program_ratings = ADP_DB.load_df(session=session, table_name='program_ratings')
     program_ratings['AHRI Ref Number'] = program_ratings['AHRI Ref Number'].astype(int)
     missing_ratings = program_ratings[program_ratings['AHRI Ref Number'] == 0].iloc[:,list(range(6))+[-1]]
-    result = find_ratings_in_reference(ratings=missing_ratings)
+    result: pd.DataFrame = find_ratings_in_reference(ratings=missing_ratings)
     col_mask = ~result.columns.isin(missing_ratings.columns)
     selected_columns = result.columns[col_mask].tolist()
     selected_columns.extend(['id', 'AHRINumber'])
@@ -212,23 +213,23 @@ def update_ratings_reference(session: Session):
     process_complete = False
     link = 'https://www.adpinside.com/Compass/UserScreens/Monthly_spreadsheet_template.xlsm'
     try:
-        print('Downloading')
+        logger.info('Downloading')
         with pd.ExcelFile(link) as file:
-            print('Finished download')
+            logger.info('Finished download')
             ac = file.parse('ADP ARI Ratings AC', skiprows=5)
             hp = file.parse('ADP ARI Ratings HP', skiprows=5)
             ratings = pd.concat([ac, hp], ignore_index=True)
             ratings['Coil Model Number'] = ratings['Coil Model Number'].str.replace(r'\+TD$','', regex=True)
             ratings['AHRI Ref Number'] = ratings['AHRI Ref Number'].astype(int)
-            print('Replacing Database table')
+            logger.info('Replacing Database table')
             with session.begin():
                 ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False, if_exists='replace')
     except Exception as e:
-        print('Update Failed')
-        print(e)
+        logger.info('Update Failed')
+        logger.info(e)
     finally:
         process_complete = True
-        print("Update Complete")
+        logger.info("Update Complete")
 
 def add_ratings_to_program(session: Session, adp_customer_id: int, ratings: Ratings) -> None:
     ratings_df = pd.DataFrame(ratings.model_dump()['ratings'])
