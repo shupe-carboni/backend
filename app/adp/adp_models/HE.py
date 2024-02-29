@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-import app.adp.pricing.he as pricing
+from app.adp.pricing.he.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class HE(ModelSeries):
@@ -96,7 +96,7 @@ class HE(ModelSeries):
 
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = pricing.load_pricing(session=self.session)
+        pricing_, adders_ = load_pricing(session=self.session)
         core_configs = ADP_DB.load_df(session=self.session, table_name='he_core_configs')
 
         if self.depth == 'uncased':

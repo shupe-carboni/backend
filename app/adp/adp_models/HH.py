@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-import app.adp.pricing.hh as pricing
+from app.adp.pricing.hh.pricing import load_pricing
 from app.db import ADP_DB
 
 session = next(ADP_DB.get_db())
@@ -49,7 +49,7 @@ class HH(ModelSeries):
         return "Horizontal Slab Coils"
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = pricing.load_pricing(session=session)
+        pricing_, adders_ = load_pricing(session=session)
 
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(int(self.attributes['meter']), 0)

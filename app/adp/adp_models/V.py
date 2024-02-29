@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 import app.adp.pricing.v as pricing
+from app.adp.pricing.v.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class V(ModelSeries):
@@ -65,7 +66,7 @@ class V(ModelSeries):
         return f'Dedicated Horizontal "A" {material} Coils - {paint}'
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = pricing.load_pricing(session=self.session)
+        pricing_, adders_ = load_pricing(session=self.session)
         result = pricing_.loc[
             pricing_['slab'] == int(self.attributes['scode']),
             self.cabinet_config.name

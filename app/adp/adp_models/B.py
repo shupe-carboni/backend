@@ -1,5 +1,5 @@
 import re
-import app.adp.pricing.b as pricing
+from app.adp.pricing.b.pricing import load_pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import ADP_DB, Session
 
@@ -54,7 +54,7 @@ class B(ModelSeries):
         return f'Hydronic {orientation} Air Handlers - {motor}'
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = pricing.load_pricing(session=self.session)
+        pricing_, adders_ = load_pricing(session=self.session)
         pricing_ = pricing_.loc[
             (pricing_['tonnage'] == int(self.attributes['ton']))
             & (pricing_['slab'] == self.attributes['scode']), :]
