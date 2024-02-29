@@ -1,16 +1,18 @@
 from dotenv import load_dotenv; load_dotenv()
 import os
 import pandas as pd
+import logging
 from dataclasses import dataclass
 from typing import Iterable, Literal
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, numbers
 from app.adp.adp_models import Fields
-from app.adp.utils.programs import CoilProgram, AirHandlerProgram, CustomerProgram
+from app.adp.utils.programs import CoilProgram, AirHandlerProgram, CustomerProgram, EmptyProgram
 from app.adp.utils.pricebook import PriceBook
 from app.db import Session, ADP_DB
 
 
+logger = logging.getLogger('uvicorn.info')
 TODAY = str(datetime.today().date())
 SAVE_DIR = os.getenv('SAVE_DIR')
 TEMPLATES = os.getenv('TEMPLATES')
@@ -75,8 +77,8 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
         pre_paid_freight = footer['ppf'].item()
         effective_date = str(footer['effective_date'].item())
     except:
-        print("footer capture failed")
-        print(alias_name)
+        logger.info("footer capture failed")
+        logger.info(alias_name)
     terms = {
         'Payment Terms': {
             'value': payment_terms,
@@ -134,9 +136,9 @@ def generate_program(
             coil_prog=coil_prog,
             ah_prog=ah_prog
         )
-        print(f"generating {full_program}")
+        logger.info(f"generating {full_program}")
         for prog in full_program:
-            print(f'\t{prog}')
+            logger.info(f'\t{prog}')
         price_book = (PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
                             .build_program()
                             .add_footer()
@@ -147,10 +149,12 @@ def generate_program(
             file_data=price_book,
             file_name=full_program.new_file_name()
         )
+    except EmptyProgram:
+        raise EmptyProgram('No program data to return')
     except Exception:
         import traceback as tb
-        print("Error occurred while trying to generate programs")
-        print(tb.format_exc())
+        logger.info("Error occurred while trying to generate programs")
+        logger.info(tb.format_exc())
     else:
         tables.remove('program_ratings')
         update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
