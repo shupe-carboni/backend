@@ -123,7 +123,6 @@ class PriceBook:
     def __init__(self,
                  template: str,
                  program: CustomerProgram,
-                 save_path: str,
         ) -> None:
         self.template_wb = opxl.load_workbook(template)
         self._9_col_template = self.template_wb['9-col']
@@ -131,7 +130,6 @@ class PriceBook:
         self.parts_block: tuple[tuple[Cell]] = self.parts_template['A1:D4']
         self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
-        self.save_path = os.path.join(save_path, self.program.new_file_name())
         self.active_wb = self.template_wb
         self.active = self._9_col_template
         self.cursor = Cursor()
@@ -383,7 +381,7 @@ class PriceBook:
             self.active_wb.save(file_obj)
         except IndexError as e:
             import traceback as tb
-            print(f"file empty on save for {self.program.customer}")
+            print(f"file empty on save for {self.program.customer_name}")
             print(tb.format_exc())
             raise FileGenExecption
         finally:

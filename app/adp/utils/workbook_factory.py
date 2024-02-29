@@ -14,7 +14,6 @@ from app.db import Session, ADP_DB
 
 logger = logging.getLogger('uvicorn.info')
 TODAY = str(datetime.today().date())
-SAVE_DIR = os.getenv('SAVE_DIR')
 TEMPLATES = os.getenv('TEMPLATES')
 LOGOS_DIR = os.getenv('LOGOS_DIR')
 
@@ -139,7 +138,7 @@ def generate_program(
         logger.info(f"generating {full_program}")
         for prog in full_program:
             logger.info(f'\t{prog}')
-        price_book = (PriceBook(TEMPLATES, full_program, save_path=SAVE_DIR)
+        price_book = (PriceBook(TEMPLATES, full_program)
                             .build_program()
                             .add_footer()
                             .attach_nomenclature_tab()
