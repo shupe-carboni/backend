@@ -36,10 +36,10 @@ class F(ModelSeries):
         self.tonnage = int(self.attributes['ton'])
         s_code = self.attributes['scode']
         self.s_code_mat = s_code[0] if s_code[0] in ('E','G') else s_code[:2]
-        self.ratings_ac_txv = fr'F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}'
-        self.ratings_hp_txv = fr'F,P{self.attributes['motor']}\*{s_code}9{self.tonnage}'
-        self.ratings_piston = fr'F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}'
-        self.ratings_field_txv = fr'F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV'
+        self.ratings_ac_txv = fr"""F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}"""
+        self.ratings_hp_txv = fr"""F,P{self.attributes['motor']}\*{s_code}9{self.tonnage}"""
+        self.ratings_piston = fr"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}"""
+        self.ratings_field_txv = fr"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
 
 
     def category(self) -> str:

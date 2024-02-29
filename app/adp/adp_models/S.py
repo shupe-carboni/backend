@@ -34,10 +34,10 @@ class S(ModelSeries):
             & (self.mat_grps['mat'].str.contains(self.attributes['mat'])),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"S{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
-        self.ratings_hp_txv = fr"S{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
-        self.ratings_piston = fr'S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}'
-        self.ratings_field_txv = fr'S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV'
+        self.ratings_ac_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"""
+        self.ratings_hp_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"""
+        self.ratings_piston = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"""
+        self.ratings_field_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
     
     def category(self) -> str:
         motor = self.motor

@@ -49,15 +49,15 @@ class V(ModelSeries):
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
         if self.cabinet_config != Cabinet.PAINTED:
-            self.ratings_ac_txv = fr'V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)'
-            self.ratings_hp_txv = fr'V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9'
-            self.ratings_piston = fr'V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)'
-            self.ratings_field_txv = fr'V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV'
+            self.ratings_ac_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
+            self.ratings_hp_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
+            self.ratings_piston = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
+            self.ratings_field_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
         else:
-            self.ratings_ac_txv = fr'V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)'
-            self.ratings_hp_txv = fr'V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9'
-            self.ratings_piston = fr'V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)'
-            self.ratings_field_txv = fr'V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV'
+            self.ratings_ac_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
+            self.ratings_hp_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
+            self.ratings_piston = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
+            self.ratings_field_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
 
     def category(self) -> str:
         material = self.material

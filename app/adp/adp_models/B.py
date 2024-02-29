@@ -43,10 +43,10 @@ class B(ModelSeries):
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr'B{self.attributes['motor']}\*\*{self.attributes['scode']}\(6,9\){self.tonnage}'
-        self.ratings_hp_txv = fr'B{self.attributes['motor']}\*\*{self.attributes['scode']}9{self.tonnage}'
-        self.ratings_piston = fr'B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}'
-        self.ratings_field_txv = fr'B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV'
+        self.ratings_ac_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(6,9\){self.tonnage}"""
+        self.ratings_hp_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}9{self.tonnage}"""
+        self.ratings_piston = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}"""
+        self.ratings_field_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
 
     def category(self) -> str:
         orientation = 'Multiposition'
