@@ -5,7 +5,7 @@ from app import auth
 from app.vendors.models import RelatedVendorResponse, VendorRelationshipsResponse
 from app.customers.models import RelatedCustomerResponse, CustomerRelationshipsResponse
 from app.places.models import RelatedPlaceResponse, PlaceRelationshipsResponse
-from app.products.models import RelatedProductResponse, ProductRelationshipsResponse
+from app.quotes.products.models import RelatedProductResponse, ProductRelationshipsResponse
 
 quote_rel = APIRouter(tags=['quotes'])
 

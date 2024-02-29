@@ -27,14 +27,27 @@ class QuotePermPriority(IntEnum):
     customer_admin = 12
     sca_employee = 20
 
+class ADPPermPriority(IntEnum):
+    customer_std = 10
+    customer_manager = 11
+    customer_admin = 12
+    sca_employee = 20
+
 class VendorPermPriority(IntEnum):
     customer = 10
     sca_employee = 20
     sca_admin = 21
 
+class CustomersPermPriority(IntEnum):
+    customer = 0
+    sca_employee = 20
+    sca_admin = 21
+
 class Permissions(Enum):
+    adp = ADPPermPriority
     quotes = QuotePermPriority
     vendors = VendorPermPriority
+    customers = CustomersPermPriority
 
 class VerifiedToken(BaseModel):
     """
@@ -183,3 +196,30 @@ async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(t
         else:
             error = "No RSA key found in JWT Header"
     raise HTTPException(status_code=status_codes[401], detail=str(error)) 
+
+
+def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
+    perm_level = token.perm_level(category)
+    if not perm_level:
+        raise HTTPException(
+            status_code=status_codes[401],
+            detail=f'Permissions for accesss to {category.title()} have not been defined.'
+        )
+    elif perm_level < 0:
+        raise HTTPException(
+            status_code=status_codes[401],
+            detail=f'Accesss to {category.title()} are restricted.'
+        )
+    return token
+
+def adp_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'adp')
+
+def vendor_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'vendors')
+
+def quotes_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'quotes')
+
+def customers_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'customers')

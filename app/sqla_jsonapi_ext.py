@@ -1,16 +1,11 @@
 import functools
-import re
 import json
 import warnings
-from typing import Any, Callable
-from urllib.parse import unquote
 
-from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
-from fastapi import Request, Response, HTTPException
-from fastapi.routing import APIRoute
+from fastapi import Response, HTTPException
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
@@ -44,7 +39,16 @@ class JSONAPI_(JSONAPI):
         and apply a default sorting pattern if a sort argument is not applied.
 
     _filter_deleted filters for null values in a hard-coded "deleted" column
+
+    __init__  copies the base.registry._class_registry
+        attribute under a new attribute named _decl_class_registry so that
+        the underlying constructor will work
     """
+
+    def __init__(self, base, prefix=''):
+        # BUG JSONAPI's constructor is broken for SQLAchelmy 1.4.x
+        setattr(base,"_decl_class_registry",base.registry._class_registry) 
+        super().__init__(base,prefix)
 
     @staticmethod
     def hyphenate_name(table_name: str) -> str:
@@ -240,6 +244,7 @@ class JSONAPI_(JSONAPI):
         collection_count = self._filter_deleted(model, collection_count)
         try:
             collection = collection.filter(model.user_id == user_id)
+            collection_count = collection_count.filter(model.user_id == user_id)
         except AttributeError:
             pass
         query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection_count)

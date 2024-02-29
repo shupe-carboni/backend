@@ -10,7 +10,7 @@ from app.jsonapi import (
 )
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "customers"
+    type: str = "sca-customers"
 
 class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[CustomerResourceIdentifier]|CustomerResourceIdentifier
@@ -42,7 +42,7 @@ class RelatedCustomerResponse(CustomerResponse):
     included: dict = {}
     links: dict = Field(..., exclude=True)
 
-CustomerQuery = create_model(
+CustomerQuery: type[BaseModel] = create_model(
     'CustomerQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in CustomerRelationships.model_fields.keys()},

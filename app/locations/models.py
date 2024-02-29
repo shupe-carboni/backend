@@ -1,3 +1,6 @@
+"""Locations, in consistency with commissions data, designates a city, state
+    lat, long, and id (from GeoNames) to either a customer's branch OR the locale
+    of a quoted job"""
 
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -18,13 +21,17 @@ class LocationRelationshipsResponse(JSONAPIRelationshipsResponse):
 
 ## Location
 # Schema
+class LocationAttrs(BaseModel):
+    city: str
+    state: str
+    lat: float
+    long: float
 class LocationRelationships(BaseModel):
-    place: JSONAPIRelationships
-    customer: JSONAPIRelationships
-    customer_users: JSONAPIRelationships = Field(alias='customer-users')
+    branches: JSONAPIRelationships
+    quotes: JSONAPIRelationships
 
 class LocationResourceObject(LocationResourceIdentifier):
-    attributes: None = None
+    attributes: LocationAttrs
     relationships: LocationRelationships
 
 class LocationResponse(BaseModel):

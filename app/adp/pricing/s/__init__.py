@@ -1,0 +1,1 @@
+from app.adp.pricing.s.pricing import load_pricing

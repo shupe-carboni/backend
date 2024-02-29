@@ -68,7 +68,7 @@ class NewVendorInfoResourceObject(BaseModel):
 class ExistingVendorInfo(NewVendorInfoResourceObject):
     id: str|int
 
-VendorQuery = create_model(
+VendorQuery: type[BaseModel] = create_model(
     'VendorQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in VendorRelationships.model_fields.keys()},
