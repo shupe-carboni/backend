@@ -3,8 +3,7 @@ import re
 import pandas as pd
 from app.adp.adp_models import Fields, MODELS
 
-class EmptyProgram(Exception):
-    pass
+class EmptyProgram(Exception): ...
 class Program:
     def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         self._data = program_data
@@ -132,7 +131,7 @@ class CustomerProgram:
         self.progs: list[Program] = [coils, air_handlers]
         self.progs = [prog for prog in self.progs if not prog._data.empty]
         if not self.progs:
-            raise EmptyProgram("No Program Data to return")
+            raise EmptyProgram
         self.series_contained = set()
         for prog in self.progs:
             prog_ratings = prog.ratings
