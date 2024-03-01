@@ -110,3 +110,6 @@ class Ratings(BaseModel):
     ratings: list[Rating]
     class Config:
         extra = 'ignore'
+
+class Parts(BaseModel):
+    parts: list[str]

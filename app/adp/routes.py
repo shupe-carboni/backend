@@ -21,7 +21,7 @@ from app.adp.main import (
     update_all_unregistered_program_ratings
 )
 from app.adp.utils.programs import EmptyProgram
-from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj, Rating, Ratings
+from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj, Rating, Ratings, Parts
 
 class NonExistant(Exception):...
 class Expired(Exception):...
@@ -73,8 +73,6 @@ class DownloadIDs:
                 else:
                     raise CustomerIDNotMatch
         raise NonExistant
-            
-
 
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
@@ -98,8 +96,8 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 @adp.get('/programs', tags=['jsonapi', 'programs'])
 def all_programs(
         token: ADPPerm,
-        query: CoilProgQuery,   # type: ignore
-        session: NewSession
+        session: NewSession,
+        query: CoilProgQuery=Depends(),   # type: ignore
     ):
     """list out all programs"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
@@ -251,9 +249,9 @@ async def add_program_ratings(
 @adp.post('/{adp_customer_id}/program/parts', tags=['parts'])
 async def add_program_parts(
         token: ADPPerm,
-        parts: list[str],
         adp_customer_id: int,
-        session: NewSession
+        session: NewSession,
+        parts: Parts=Depends(),
     ):
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         try:
