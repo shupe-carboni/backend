@@ -1,7 +1,6 @@
 from dotenv import load_dotenv; load_dotenv()
 import os
 import logging
-from inspect import signature
 from random import randint
 from asyncio import sleep
 from fastapi import FastAPI, Request, status, Response
@@ -11,12 +10,10 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match
 ## Routers ##
 from app import relationships
-from app.quotes import quotes, quote_rel, product_rel
 from app.vendors import vendors
 from app.customers import customers, customer_rel
-from app.locations import location_rel
-# from app.places import places, place_rel
-from app.adp import adp
+from app.places import places, place_rel
+from app.adp import adp, adp_quotes, adp_quote_rel 
 
 logger = logging.getLogger('uvicorn.info')
 
@@ -58,14 +55,12 @@ app.add_middleware(
 
 ## order matters
 app.include_router(vendors)
-quotes.include_router(quote_rel)
-app.include_router(quotes)
 customers.include_router(customer_rel)
 app.include_router(customers)
-app.include_router(location_rel)
-# places.include_router(place_rel)
-# app.include_router(places)
-app.include_router(product_rel)
+places.include_router(place_rel)
+app.include_router(places)
+adp_quotes.include_router(adp_quote_rel)
+adp.include_router(adp_quotes)
 app.include_router(adp)
 app.include_router(relationships)
 
