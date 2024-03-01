@@ -1,12 +1,14 @@
 from dotenv import load_dotenv; load_dotenv()
 import os
 import logging
+from inspect import signature
 from random import randint
 from asyncio import sleep
 from fastapi import FastAPI, Request, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
+from starlette.routing import Match
 ## Routers ##
 from app import relationships
 from app.quotes import quotes, quote_rel, product_rel
@@ -24,14 +26,29 @@ class BotTarpit(BaseHTTPMiddleware):
         self.substrings = trigger_strings
     
     async def dispatch(self, request: Request, call_next):
-        triggers = [substring for substring in self.substrings if substring in request.url.path]
-        if triggers:
-            delay = randint(10,100)
-            logger.info(f'Honeypot triggered by {request.client.host} using {triggers} in the url. Delaying for {delay}s')
-            logger.info(f'Delaying response for {delay}s')
-            await sleep(delay)
-            return Response(status_code=status.HTTP_301_MOVED_PERMANENTLY)
-        return await call_next(request)
+        path = request.url.path
+        for route in app.routes:
+            match_, scope = route.matches(request)
+            if match_ == Match.FULL:
+                if not (route.path == '/' and any(request.query_params._dict.keys())):
+                    return await call_next(request)
+        host = request.client.host
+        await self.trigger_delay(host, path)
+        return Response(status_code=status.HTTP_301_MOVED_PERMANENTLY,content="Sorry, this resource has moved.")
+
+    @staticmethod
+    async def trigger_delay(host: str, path: str):
+        delay = randint(10,100)
+        logger.info(f'Honeypot triggered by {host} on {path}. Delaying for {delay}s')
+        await sleep(delay)
+    
+    @staticmethod
+    def get_valid_query_params(path: str) -> list[str]:
+        for route in app.routes:
+            if route.path == path:
+                sig = signature(route.endpoint)
+                return [param.name for param in sig.parameters.values() if param.default is not param.empty]
+
 
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')
