@@ -21,17 +21,17 @@ from app.adp import adp
 logger = logging.getLogger('uvicorn.info')
 
 class BotTarpit(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, trigger_strings: list=None):
+    def __init__(self, app: FastAPI):
         super().__init__(app)
-        self.substrings = trigger_strings
     
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         for route in app.routes:
             match_, scope = route.matches(request)
-            if match_ == Match.FULL:
-                if not (route.path == '/' and any(request.query_params._dict.keys())):
-                    return await call_next(request)
+            if match_ == Match.FULL or path == '/favicon.ico':
+                if (route.path == '/' and any(request.query_params._dict.keys())):
+                    logging.info('Allowed passthrough of request on the root endpoint')
+                return await call_next(request)
         host = request.client.host
         await self.trigger_delay(host, path)
         return Response(status_code=status.HTTP_301_MOVED_PERMANENTLY,content="Sorry, this resource has moved.")
@@ -42,19 +42,11 @@ class BotTarpit(BaseHTTPMiddleware):
         logger.info(f'Honeypot triggered by {host} on {path}. Delaying for {delay}s')
         await sleep(delay)
     
-    @staticmethod
-    def get_valid_query_params(path: str) -> list[str]:
-        for route in app.routes:
-            if route.path == path:
-                sig = signature(route.endpoint)
-                return [param.name for param in sig.parameters.values() if param.default is not param.empty]
-
-
 app = FastAPI()
 ORIGINS = os.getenv('ORIGINS')
 ORIGINS_REGEX = os.getenv('ORIGINS_REGEX')
 
-app.add_middleware(BotTarpit, trigger_strings=['/.env', 'wp-admin', '/.zsh', '/.flask', '/env.', '/.git', '/.jnv', '/druid', '/.well-known'])
+app.add_middleware(BotTarpit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
