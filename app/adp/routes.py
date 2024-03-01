@@ -21,7 +21,18 @@ from app.adp.main import (
     update_all_unregistered_program_ratings
 )
 from app.adp.utils.programs import EmptyProgram
-from app.adp.models import CoilProgQuery, CoilProgResp, NewCoilRObj, NewAHRObj, Rating, Ratings, Parts
+from app.adp.models import (
+    CoilProgQuery,
+    CoilProgResp,
+    NewCoilRObj,
+    NewAHRObj,
+    Rating,
+    Ratings,
+    RatingsResp,
+    RatingsQuery,
+    Parts,
+    DownloadLink
+)
 
 class NonExistant(Exception):...
 class Expired(Exception):...
@@ -74,7 +85,6 @@ class DownloadIDs:
                     raise CustomerIDNotMatch
         raise NonExistant
 
-
 adp = APIRouter(prefix='/adp', tags=['adp'])
 logger = logging.getLogger('uvicorn.info')
 class XLSXFileResponse(StreamingResponse):
@@ -92,15 +102,6 @@ class XLSXFileResponse(StreamingResponse):
 
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-
-@adp.get('/programs', tags=['jsonapi', 'programs'])
-def all_programs(
-        token: ADPPerm,
-        session: NewSession,
-        query: CoilProgQuery=Depends(),   # type: ignore
-    ):
-    """list out all programs"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.get('/update-ratings-reference', tags=['private'])
 def update_ratings_ref(
@@ -132,15 +133,23 @@ def update_unregistered_ratings(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+@adp.get('/programs', tags=['jsonapi', 'programs'])
+def all_programs(
+        token: ADPPerm,
+        session: NewSession,
+        query: CoilProgQuery=Depends(),   # type: ignore
+    ) -> CoilProgResp:
+    """list out all programs"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.get('/{adp_customer_id}/program', tags=['jsonapi', 'programs'])
-def customer_program(
+def customer_program_jsonapi(
         session: NewSession,
         token: ADPPerm,
         adp_customer_id: int,
         stage: Stage='active',
     ) -> CoilProgResp:
-    """Generate a program excel file and return for download or just the data in json format"""
+    """get only a specific customer's program"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         print("allowed")
     else:
@@ -149,22 +158,22 @@ def customer_program(
 
 
 @adp.get('/{adp_customer_id}/program/get-download', tags=['programs'])
-def customer_program(
+def customer_program_get_dl(
         token: ADPPerm,
         adp_customer_id: int,
         stage: Stage,
-    ):
+    ) -> DownloadLink:
     """Generate one-time-use hash value for download"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         download_id = DownloadIDs.generate_id(customer_id=adp_customer_id, stage=Stage(stage))
-        return {'downloadLink': f'/adp/{adp_customer_id}/program/download?download_id={download_id}'}
+        return DownloadLink(f'/adp/{adp_customer_id}/program/download?download_id={download_id}')
 
     else:
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.get('/{adp_customer_id}/program/download', tags=['programs'])
-def customer_program(
+@adp.get('/{adp_customer_id}/program/download', tags=['programs'], response_class=XLSXFileResponse)
+def customer_program_dl_file(
         session: NewSession,
         adp_customer_id: int,
         download_id: str,
@@ -182,6 +191,15 @@ def customer_program(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Customer ID does not match the id registered with this link')
     except Exception as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@adp.get('/{adp_customer_id}/program/ratings', tags=['jsonapi','ratings'])
+async def get_program_ratings(
+        token: ADPPerm,
+        adp_customer_id: int,
+        session: NewSession,
+        query: RatingsQuery=Depends()   #type: ignore
+    ) -> RatingsResp:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @adp.post('/{adp_customer_id}/program/coils', tags=['jsonapi', 'programs'])
 def add_to_coil_program(
@@ -213,21 +231,13 @@ def add_to_ah_program(
     else:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.get('/{adp_customer_id}/program/ratings', tags=['jsonapi','ratings'])
-async def get_program_ratings(
-        token: ADPPerm,
-        adp_customer_id: int,
-        session: NewSession
-    ):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
-
 @adp.post('/{adp_customer_id}/program/ratings', tags=['ratings'])
 async def add_program_ratings(
         token: ADPPerm,
         ratings_file: UploadFile,
         adp_customer_id: int,
         session: NewSession
-    ):
+    ) -> None:
     """add ratings to a customer's program"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         ratings_data = await ratings_file.read()
