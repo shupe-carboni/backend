@@ -15,3 +15,11 @@ async def customer_collection(
         query: CustomerQuery=Depends(), # type: ignore
     ) -> CustomerResponse:
     raise HTTPException(status_code=501)
+
+@customers.get('/{customer_id}')
+async def customer(
+        token: CustomersPerm,
+        customer_id: int,
+        query: CustomerQuery=Depends(), # type: ignore
+    ) -> CustomerResponse:
+    raise HTTPException(status_code=501)
