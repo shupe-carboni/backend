@@ -4,7 +4,7 @@ from datetime import datetime
 from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query, JSONAPIRelationshipsResponse
 
 class QuoteResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "quotes"
+    type: str = "adp-quotes"
 
 class QuoteRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[QuoteResourceIdentifier]|QuoteResourceIdentifier
@@ -14,19 +14,20 @@ class QuoteAttributes(BaseModel):
     status: str
     quote_num: str = Field(alias='quote-num')
     job_name: str = Field(alias="job-name")
-    job_type: str = Field(alias="job-type")
+    date_entered: datetime = Field(alias='date-entered')
     expires: datetime
-    document: str|None
+    quote_document: Optional[str] = Field(None, alias='quote-document')
+    plans: Optional[str] = None
 
     class Config:
         # allows an unpack of the python-dict in snake_case
         populate_by_name = True
 
 class QuoteRelationships(BaseModel):
-    vendor: JSONAPIRelationships
-    place: JSONAPIRelationships
-    customer: JSONAPIRelationships
-    products: JSONAPIRelationships
+    sca_place: JSONAPIRelationships
+    sca_branch: JSONAPIRelationships
+    adp_customer: JSONAPIRelationships 
+    adp_quote_products: JSONAPIRelationships
 
 class QuoteResourceObject(JSONAPIResourceIdentifier):
     attributes: QuoteAttributes

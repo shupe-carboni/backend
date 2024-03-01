@@ -1,1 +1,0 @@
-from app.locations.relationships import location_rel

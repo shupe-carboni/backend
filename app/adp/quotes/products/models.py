@@ -18,17 +18,16 @@ class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class ProductAttributes(BaseModel):
     request_brand: Optional[str] = Field(alias='request-brand')
-    request_tag_or_model: str = Field(alias="product-tag-or-model")
+    product_tag_or_model: str = Field(alias="product-tag-or-model")
     product_model_quoted: Optional[str] = Field(alias="product-model-quoted")
     qty: int
-    price: Optional[float]
-
+    price: Optional[float] = None
     class Config:
         populate_by_name = True
 
 # Schema
 class ProductRelationships(BaseModel):
-    quote: JSONAPIRelationships
+    adp_quote: JSONAPIRelationships
 
 class ProductResourceObject(ProductResourceIdentifier):
     attributes: ProductAttributes

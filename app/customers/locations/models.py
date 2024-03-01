@@ -1,7 +1,3 @@
-"""Locations, in consistency with commissions data, designates a city, state
-    lat, long, and id (from GeoNames) to either a customer's branch OR the locale
-    of a quoted job"""
-
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.jsonapi import (
@@ -13,22 +9,20 @@ from app.jsonapi import (
 )
 
 class LocationResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "locations"
+    type: str = "sca-customer-locations"
 
 class LocationRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[LocationResourceIdentifier]|LocationResourceIdentifier
 
-
 ## Location
 # Schema
 class LocationAttrs(BaseModel):
-    city: str
-    state: str
-    lat: float
-    long: float
+    hq: bool
+    dc: bool
 class LocationRelationships(BaseModel):
-    branches: JSONAPIRelationships
-    quotes: JSONAPIRelationships
+    sca_customer: JSONAPIRelationships = Field(alias='sca-customer')
+    sca_place: JSONAPIRelationships = Field(alias='sca-place')
+    adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
 
 class LocationResourceObject(LocationResourceIdentifier):
     attributes: LocationAttrs
