@@ -203,12 +203,12 @@ def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
     if not perm_level:
         raise HTTPException(
             status_code=status_codes[401],
-            detail=f'Permissions for accesss to {category.title()} have not been defined.'
+            detail=f'Permissions for access to {category.title()} have not been defined.'
         )
     elif perm_level < 0:
         raise HTTPException(
             status_code=status_codes[401],
-            detail=f'Accesss to {category.title()} are restricted.'
+            detail=f'Access to {category.title()} is restricted.'
         )
     return token
 
