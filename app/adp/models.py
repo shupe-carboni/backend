@@ -64,6 +64,8 @@ class CoilProgAttrs(BaseModel):
 
 class CoilProgRels(BaseModel):
     adp_alias: JSONAPIRelationships = Field(alias='adp-alias')
+    class Config:
+        populate_by_name = True
 
 class CoilProgRObj(CoilProgRID):
     attributes: CoilProgAttrs
@@ -86,6 +88,8 @@ CoilProgQuery: type[BaseModel] = create_model(
 ## New Models to a Program
 class NewModelNumber(BaseModel):
     model_number: str = Field(alias="model-number")
+    class Config:
+        populate_by_name = True
 class NewCoilRObj(BaseModel):
     type: str = 'adp-coil-programs'
     attributes: NewModelNumber
@@ -111,5 +115,70 @@ class Ratings(BaseModel):
     class Config:
         extra = 'ignore'
 
+class RatingsRID(JSONAPIResourceIdentifier):
+    type: str = "adp-program-ratings"
+
+class RatingsRelResp(JSONAPIRelationshipsResponse):
+    data: list[RatingsRID] | RatingsRID
+
+class RatingsRels(BaseModel):
+    adp_customer: JSONAPIRelationships = Field(alias='adp-customer')
+    class Config:
+        populate_by_name = True
+
+class RatingsRObj(RatingsRID):
+    attributes: Rating
+    relationships: RatingsRels
+
+class RatingsResp(BaseModel):
+    meta: Optional[dict] = {}
+    data: Optional[list[RatingsRObj]]
+    included: Optional[list[JSONAPIResourceObject]]
+    links: Optional[Pagination]
+
+RatingsQuery: type[BaseModel] = create_model(
+    'RatingsQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f"fields_{field}":(Optional[str], None) for field in RatingsRels.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
+)
+
+## Parts
 class Parts(BaseModel):
     parts: list[str]
+    
+## Downloads
+class DownloadLink(BaseModel):
+    downloadLink: str
+
+## ADP Customers
+class CustomersRID(JSONAPIResourceIdentifier):
+    type: str = "adp-customers"
+
+class CustomersRelResp(JSONAPIRelationshipsResponse):
+    data: list[CustomersRID] | CustomersRID
+
+class CustomersAttrs(BaseModel):
+    adp_alias: str = Field(alias='adp-alias')
+    preferred_parts: bool = Field(alias='preferred-parts')
+    class Config:
+        populate_by_name = True
+
+class CustomersRels(BaseModel):
+    sca_customer: JSONAPIRelationships = Field(alias='sca-customer')
+    adp_alias_to_sca_customer_locations: JSONAPIRelationships = Field(alias='adp-alias-to-sca-customer-locations')
+    adp_material_group_discounts: JSONAPIRelationships = Field(alias='adp-material-group-discounts')
+    adp_snps: JSONAPIRelationships = Field(alias='adp-snps')
+    adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
+    class Config:
+        populate_by_name = True
+
+class CustomersRObj(CustomersRID):
+    attributes: CustomersAttrs
+    relationships: CustomersRels
+
+class CustomersResp(BaseModel):
+    meta: Optional[dict] = {}
+    data: Optional[list[CustomersRObj]]
+    included: Optional[list[JSONAPIResourceObject]]
+    links: Optional[Pagination]
