@@ -11,7 +11,7 @@ from app.jsonapi import (
 )
 
 class PlaceResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "places"
+    type: str = "sca-places"
 
 class PlaceRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[PlaceResourceIdentifier]|PlaceResourceIdentifier
@@ -26,8 +26,10 @@ class PlaceAttributes(BaseModel):
 
 # Schema
 class PlaceRelationships(BaseModel):
-    locations: JSONAPIRelationships
-    quotes: JSONAPIRelationships
+    sca_customer_locations: JSONAPIRelationships = Field(alias='sca-customer-locations')
+    adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
+    class Config:
+        populate_by_name = True
 
 class PlaceResourceObject(PlaceResourceIdentifier):
     attributes: PlaceAttributes
