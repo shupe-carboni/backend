@@ -1,2 +1,11 @@
-# backend
-Python - FastAPI backend powering all SCA "portal" functionality &amp; more
+## Purpose
+<>
+
+## Administrative Capabilities
+<>
+
+## General Information
+<>
+
+## ADP Resources
+<>
