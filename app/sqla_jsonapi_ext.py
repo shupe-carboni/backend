@@ -46,7 +46,7 @@ class JSONAPI_(JSONAPI):
     """
 
     def __init__(self, base, prefix=''):
-        # BUG JSONAPI's constructor is broken for SQLAchelmy 1.4.x
+        # JSONAPI's constructor is broken for SQLAchelmy 1.4.x
         setattr(base,"_decl_class_registry",base.registry._class_registry) 
         super().__init__(base,prefix)
 
@@ -243,8 +243,9 @@ class JSONAPI_(JSONAPI):
         collection_count = self._apply_filter(model,collection_count, query_params=query)
         collection_count = self._filter_deleted(model, collection_count)
         try:
-            collection = collection.filter(model.user_id == user_id)
-            collection_count = collection_count.filter(model.user_id == user_id)
+            pass
+            # collection = collection.filter(model.user_id == user_id)
+            # collection_count = collection_count.filter(model.user_id == user_id)
         except AttributeError:
             pass
         query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection_count)
