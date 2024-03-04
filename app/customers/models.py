@@ -20,9 +20,9 @@ class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class CustomerAttributes(BaseModel):
     name: str
-    domains: list[str]
-    logo: str
-    buying_group: str = Field(alias='buying-group')
+    domains: Optional[list[str]] = []
+    logo: Optional[str] = None
+    buying_group: str = Field(default=None, alias='buying-group')
     class Config:
         populate_by_name = True
 
@@ -30,7 +30,9 @@ class CustomerAttributes(BaseModel):
 class CustomerRelationships(BaseModel):
     sca_customer_locations: JSONAPIRelationships = Field(alias='sca-customer-locations')
     adp_customers: JSONAPIRelationships = Field(alias='adp-customers')
-    adp_customer_terms: JSONAPIRelationships =Field(alias='adp-customer-terms') 
+    adp_customer_terms: JSONAPIRelationships = Field(alias='adp-customer-terms') 
+    class Config:
+        populate_by_name = True
 
 class CustomerResourceObject(CustomerResourceIdentifier):
     attributes: CustomerAttributes
