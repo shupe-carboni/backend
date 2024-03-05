@@ -20,7 +20,7 @@ class VendorRelationships(BaseModel):
     info: JSONAPIRelationships
 
 class VendorResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "sca_vendors"
+    type: str = "vendors"
 
 class VendorResourceObject(VendorResourceIdentifier):
     attributes: VendorAttributes
