@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Optional
-from app.jsonapi import (
+from app.jsonapi.core_models import (
+    JSONAPIVersion,
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
@@ -10,7 +11,7 @@ from app.jsonapi import (
 )
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "sca-customers"
+    type: str = "customers"
 
 class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[CustomerResourceIdentifier]|CustomerResourceIdentifier
@@ -20,15 +21,15 @@ class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class CustomerAttributes(BaseModel):
     name: str
-    domains: Optional[list[str]] = []
+    domains: Optional[list[str]] = None
     logo: Optional[str] = None
-    buying_group: str = Field(default=None, alias='buying-group')
+    buying_group: Optional[str] = Field(default=None, alias='buying-group')
     class Config:
         populate_by_name = True
 
 # Schema
 class CustomerRelationships(BaseModel):
-    sca_customer_locations: JSONAPIRelationships = Field(alias='sca-customer-locations')
+    customer_locations: JSONAPIRelationships = Field(alias='customer-locations')
     adp_customers: JSONAPIRelationships = Field(alias='adp-customers')
     adp_customer_terms: JSONAPIRelationships = Field(alias='adp-customer-terms') 
     class Config:
@@ -39,10 +40,11 @@ class CustomerResourceObject(CustomerResourceIdentifier):
     relationships: CustomerRelationships
 
 class CustomerResponse(BaseModel):
+    jsonapi: JSONAPIVersion
     meta: Optional[dict] = {}
-    data: Optional[list[CustomerResourceObject]]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    data: Optional[list[CustomerResourceObject]|CustomerResourceObject]
+    included: Optional[list[JSONAPIResourceObject]] = None
+    links: Optional[Pagination] = None
 
 class RelatedCustomerResponse(CustomerResponse):
     """When pulling as a related object, included is always empty
