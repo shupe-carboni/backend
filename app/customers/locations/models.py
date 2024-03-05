@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.jsonapi import (
+from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
@@ -20,8 +20,8 @@ class LocationAttrs(BaseModel):
     hq: bool
     dc: bool
 class LocationRelationships(BaseModel):
-    sca_customer: JSONAPIRelationships = Field(alias='sca-customer')
-    sca_place: JSONAPIRelationships = Field(alias='sca-place')
+    customer: JSONAPIRelationships = Field(alias='customer')
+    place: JSONAPIRelationships = Field(alias='place')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
 
 class LocationResourceObject(LocationResourceIdentifier):
@@ -38,4 +38,4 @@ class RelatedLocationResponse(LocationResponse):
     """When pulling as a related object, included is always empty
         and links are not in the object"""
     included: dict = {}
-    links: dict = Field(..., exclude=True)
+    links: Optional[dict] = Field(default=None, exclude=True)
