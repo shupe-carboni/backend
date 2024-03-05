@@ -1,6 +1,6 @@
 from pydantic import BaseModel, create_model, Field
 from typing import Optional
-from app.jsonapi import (
+from app.jsonapi.core_models import (
     JSONAPIRelationships,
     JSONAPIResourceObject,
     Pagination,
