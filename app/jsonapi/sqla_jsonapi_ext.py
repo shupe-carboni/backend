@@ -1,7 +1,7 @@
 import functools
 import json
 import warnings
-
+from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
@@ -15,6 +15,22 @@ from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_pe
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
 MAX_RECORDS: int = 15000
+
+def convert_query(model: BaseModel) -> dict[str,str|int]:
+    """custom conversion from explicitly definied snake case parameters
+        to the JSON:API syntax, including compound documents"""
+    jsonapi_query = {}
+    bracketed_params = {'fields','page'}
+    for param, val in model.model_dump(exclude_none=True).items():
+        param: str
+        val: str
+        if b_param := set(param.split('_')) & bracketed_params:
+            b_param_val = b_param.pop()
+            new_key = f"{b_param_val}[{param.removeprefix(b_param_val+'_').replace('_','-')}]"
+            jsonapi_query.update({new_key: val})
+        else:
+            jsonapi_query.update({param: val})
+    return jsonapi_query
 
 def format_error(error: BaseError, tb: str) -> dict:
     """format the error for raises an HTTPException so FastAPI can handle it properly"""
@@ -97,7 +113,6 @@ class JSONAPI_(JSONAPI):
             return sqla_query_obj.filter(model_attr == None)
         else:
             return sqla_query_obj
-
 
 
     def _add_pagination(self, query: dict, db: Session, resource_name: str, sa_query: sqlQuery) -> tuple[dict, dict]:
@@ -211,7 +226,8 @@ class JSONAPI_(JSONAPI):
         }
         return query, result_addition
 
-    def get_collection(self, session: Session, query: QueryParams|dict, model_obj, user_id: int):
+
+    def get_collection(self, session: Session, query: BaseModel, api_type: str, user_id: int):
         """
         Fetch a collection of resources of a specified type.
 
@@ -222,25 +238,28 @@ class JSONAPI_(JSONAPI):
         Override of JSONAPI get_collection - adding filter parameter handling
         after instantation of session.query on the 'model'
         """
-
-        query = self._coerce_dict(query)
-        model = self._fetch_model(self.hyphenate_name(model_obj.__tablename__))
-        include = self._parse_include(query.get('include', '').split(','))
-        fields = self._parse_fields(query)
+        # match query:
+        #     case QueryParams():
+        #         query = self._coerce_dict(query)
+        #     case BaseModel() | dict():
+        jsonapi_query = convert_query(query)
+        model = self._fetch_model(api_type=api_type)
+        include = self._parse_include(jsonapi_query.get('include', '').split(','))
+        fields = self._parse_fields(jsonapi_query)
         included = {}
-        sorts = query.get('sort', '').split(',')
+        sorts = jsonapi_query.get('sort', '').split(',')
         order_by = []
 
         if sorts == ['']:
             sorts = [DEFAULT_SORT]
 
         collection: sqlQuery = session.query(model)
-        collection = self._apply_filter(model,collection,query)
+        collection = self._apply_filter(model,collection,jsonapi_query)
         collection = self._filter_deleted(model, collection)
 
         # for pagination, use count query instead of pulling in all of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
-        collection_count = self._apply_filter(model,collection_count, query_params=query)
+        collection_count = self._apply_filter(model,collection_count, query_params=jsonapi_query)
         collection_count = self._filter_deleted(model, collection_count)
         try:
             pass
@@ -248,7 +267,7 @@ class JSONAPI_(JSONAPI):
             # collection_count = collection_count.filter(model.user_id == user_id)
         except AttributeError:
             pass
-        query, pagination_meta_and_links = self._add_pagination(query,session,model_obj.__jsonapi_type__, collection_count)
+        query, pagination_meta_and_links = self._add_pagination(jsonapi_query,session,api_type,collection_count)
 
         for attr in sorts:
             if attr == '':
@@ -276,7 +295,7 @@ class JSONAPI_(JSONAPI):
             collection = collection.order_by(*order_by)
 
         pos = -1
-        start, end = self._parse_page(query)
+        start, end = self._parse_page(jsonapi_query)
         if end:
             # instead of letting the query pull the entire dataset, use
             # query-level offset and limit if pagination is occuring
@@ -310,10 +329,11 @@ class JSONAPI_(JSONAPI):
         return response.data
 
     def get_resource(self, session, query, api_type, obj_id, obj_only:bool=False):
+        jsonapi_query = convert_query(query)
         if obj_only:
-            return super().get_resource(session, query, api_type, obj_id).data
+            return super().get_resource(session, jsonapi_query, api_type, obj_id).data
         else:
-            return super().get_resource(session, query, api_type, obj_id)
+            return super().get_resource(session, jsonapi_query, api_type, obj_id)
 
     def get_relationship(self, session, query, api_type, obj_id, rel_key):
         return super().get_relationship(session, query, api_type, obj_id, rel_key).data

@@ -5,12 +5,13 @@ from datetime import datetime
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric, ARRAY, BigInteger
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import UUID
-from app.sqla_jsonapi_ext import JSONAPI_
+from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
 
 Base = declarative_base()
 STAGE_ENUM = Enum('PROPOSED', 'ACTIVE', 'REJECTED', 'REMOVED', name='stage')
 class ADPAHProgram(Base):
     __tablename__ = 'adp_ah_programs'
+    __jsonapi_type_override__ = 'adp_ah_programs'
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -43,10 +44,11 @@ class ADPAHProgram(Base):
     stage = Column(STAGE_ENUM)
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
-    adp_customer = relationship("ADPCustomer", back_populates="customer_air_handlers")
+    adp_customer = relationship("ADPCustomer", back_populates="adp_ah_program")
 
 class ADPCoilProgram(Base):
     __tablename__ = 'adp_coil_programs'
+    __jsonapi_type_override__ = 'adp_coil_programs'
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -78,7 +80,7 @@ class ADPCoilProgram(Base):
     stage = Column(STAGE_ENUM)
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
-    adp_customer = relationship("ADPCustomer", back_populates="customer_coils")
+    adp_customer = relationship("ADPCustomer", back_populates="adp_coil_program")
 
 class ADPAliasToSCACustomerLocation(Base):
     __tablename__ = 'adp_alias_to_sca_customer_locations'
@@ -87,11 +89,12 @@ class ADPAliasToSCACustomerLocation(Base):
     adp_customer_id = Column(Integer, ForeignKey('adp_customers.id'), unique=True)
     sca_customer_location_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
     ## relationships
-    adp_customer = relationship('ADPCustomer', back_populates='customer_locations_by_alias')
+    adp_customer = relationship('ADPCustomer', back_populates='locations_by_alias')
     customer_locations = relationship('SCACustomerLocation', back_populates='adp_aliases')
 
 class ADPCustomer(Base):
     __tablename__ = 'adp_customers'
+    __jsonapi_type_override__ = 'adp_customers'
     ## fields
     adp_alias = Column(TEXT, unique=True)
     customer = Column(TEXT)
@@ -99,18 +102,19 @@ class ADPCustomer(Base):
     id = Column(Integer, primary_key=True)
     preferred_parts = Column(Boolean)
     ## relationships
-    parent_customer = relationship('SCACustomer', back_populates='adp_customers')
-    customer_coils = relationship('ADPCoilProgram',back_populates='adp_customer')
-    customer_air_handlers = relationship('ADPAHProgram',back_populates='adp_customer')
-    customer_ratings = relationship('ADPProgramRating', back_populates='adp_customer')
-    customer_locations_by_alias = relationship('ADPAliasToSCACustomerLocation', back_populates='adp_customer')
-    customer_material_group_discounts = relationship('ADPMaterialGroupDiscount', back_populates='adp_customer')
-    customer_snps = relationship('ADPSNP', back_populates='adp_customer')
-    customer_parts = relationship('ADPProgramPart', back_populates='adp_customer')
-    customer_quotes = relationship('ADPQuote', back_populates='adp_customer')
+    customer = relationship('SCACustomer', back_populates='adp_customers')
+    adp_coil_program = relationship('ADPCoilProgram',back_populates='adp_customer')
+    adp_ah_program = relationship('ADPAHProgram',back_populates='adp_customer')
+    adp_ratings = relationship('ADPProgramRating', back_populates='adp_customer')
+    locations_by_alias = relationship('ADPAliasToSCACustomerLocation', back_populates='adp_customer')
+    material_group_discounts = relationship('ADPMaterialGroupDiscount', back_populates='adp_customer')
+    snps = relationship('ADPSNP', back_populates='adp_customer')
+    program_parts = relationship('ADPProgramPart', back_populates='adp_customer')
+    adp_quotes = relationship('ADPQuote', back_populates='adp_customer')
 
 class ADPCustomerTerms(Base):
     __tablename__ = 'adp_customer_terms'
+    __jsonapi_type_override__ = 'adp_customer_terms'
     ## fields
     sca_id = Column(Integer, ForeignKey('sca_customers.id'))
     terms = Column(TEXT)
@@ -118,10 +122,11 @@ class ADPCustomerTerms(Base):
     effective_date = Column(DateTime)
     id = Column(Integer, primary_key=True)
     ## relationships
-    sca_customer = relationship('SCACustomer', back_populates='adp_customer_terms')
+    customer = relationship('SCACustomer', back_populates='adp_customer_terms')
 
 class SCACustomer(Base):
     __tablename__ = 'sca_customers'
+    __jsonapi_type_override__ = 'customers'
     ## fields
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -129,9 +134,9 @@ class SCACustomer(Base):
     domains = Column(ARRAY(String))
     buying_group = Column(String)
     ## relationships
-    adp_customer_terms = relationship('ADPCustomerTerms', back_populates='sca_customer')
-    adp_customers = relationship('ADPCustomer', back_populates='parent_customer')
-    customer_locations = relationship('SCACustomerLocation', back_populates='sca_customer')
+    adp_customer_terms = relationship('ADPCustomerTerms', back_populates='customer')
+    adp_customers = relationship('ADPCustomer', back_populates='customer')
+    customer_locations = relationship('SCACustomerLocation', back_populates='customer')
 
 class ADPMaterialGroupDiscount(Base):
     __tablename__ = 'adp_material_group_discounts'
@@ -143,7 +148,7 @@ class ADPMaterialGroupDiscount(Base):
     effective_date = Column(DateTime)
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
-    adp_customer = relationship('ADPCustomer', back_populates='customer_material_group_discounts')
+    adp_customer = relationship('ADPCustomer', back_populates='material_group_discounts')
 
 class ADPProgramRating(Base):
     __tablename__ = 'adp_program_ratings'
@@ -182,7 +187,7 @@ class ADPProgramRating(Base):
     hspf2_as_submitted = Column(Float)
     id = Column(Integer, primary_key=True)
     ## relationships
-    adp_customer = relationship('ADPCustomer', back_populates='customer_ratings')
+    adp_customer = relationship('ADPCustomer', back_populates='adp_ratings')
 
 class ADPPricingPart(Base):
     __tablename__ = 'adp_pricing_parts'
@@ -203,7 +208,7 @@ class ADPProgramPart(Base):
     part_number = Column(String, ForeignKey('adp_pricing_parts.part_number'))
     ## relationships
     part_price = relationship('ADPPricingPart', back_populates='program_parts')
-    adp_customer = relationship('ADPCustomer', back_populates='customer_parts')
+    adp_customer = relationship('ADPCustomer', back_populates='program_parts')
 
 class ADPQuote(Base):
     __tablename__ = 'adp_quotes'
@@ -220,13 +225,14 @@ class ADPQuote(Base):
     plans_doc = Column(TEXT)
     customer_location_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
     ## relationships
-    sca_place = relationship('SCAPlace', back_populates='adp_quotes')
-    adp_customer = relationship('ADPCustomer', back_populates='customer_quotes')
-    sca_customer_location = relationship('SCACustomerLocation', back_populates='adp_quotes')
+    place = relationship('SCAPlace', back_populates='adp_quotes')
+    adp_customer = relationship('ADPCustomer', back_populates='adp_quotes')
+    customer_location = relationship('SCACustomerLocation', back_populates='adp_quotes')
     quote_products = relationship('ADPQuoteProduct', back_populates='adp_quote')
 
 class SCACustomerLocation(Base):
     __tablename__ = 'sca_customer_locations'
+    __jsonapi_type_override__ = 'customer-locations'
     ## fields
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('sca_customers.id'))
@@ -237,11 +243,11 @@ class SCACustomerLocation(Base):
     ## relationships
     serviced_by = relationship('SCACustomerLocation')
     adp_aliases = relationship('ADPAliasToSCACustomerLocation', back_populates='customer_locations')
-    adp_quotes = relationship('ADPQuote', back_populates='sca_customer_location')
-    sca_customer = relationship('SCACustomer', back_populates='customer_locations')
-    sca_place = relationship('SCAPlace', back_populates='sca_customer_locations')
-    manager = relationship('SCAManagerMap', back_populates='sca_customer_location')
-    users = relationship('SCAUser', back_populates='sca_customer_location')
+    adp_quotes = relationship('ADPQuote', back_populates='customer_location')
+    customer = relationship('SCACustomer', back_populates='customer_locations')
+    place = relationship('SCAPlace', back_populates='customer_locations')
+    manager = relationship('SCAManagerMap', back_populates='customer_location')
+    users = relationship('SCAUser', back_populates='customer_location')
 
 class ADPSNP(Base):
     __tablename__ = 'adp_snps'
@@ -253,7 +259,7 @@ class ADPSNP(Base):
     effective_date = Column(DateTime)
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
-    adp_customer = relationship('ADPCustomer', back_populates='customer_snps')
+    adp_customer = relationship('ADPCustomer', back_populates='snps')
 
 class ADPQuoteProduct(Base):
     __tablename__ = 'adp_quote_products'
@@ -267,7 +273,6 @@ class ADPQuoteProduct(Base):
     ## relationships
     adp_quote = relationship('ADPQuote', back_populates='quote_products')
 
-
 class SCAPlace(Base):
     __tablename__ = 'sca_places'
     ## fields
@@ -277,8 +282,8 @@ class SCAPlace(Base):
     lat = Column(Float)
     long = Column(Float)
     ## relationships
-    adp_quotes = relationship('ADPQuote', back_populates='sca_place')
-    sca_customer_locations = relationship('SCACustomerLocation', back_populates='sca_place')
+    adp_quotes = relationship('ADPQuote', back_populates='place')
+    customer_locations = relationship('SCACustomerLocation', back_populates='place')
 
 class SCAManagerMap(Base):
     __tablename__ = 'sca_manager_map'
@@ -287,8 +292,8 @@ class SCAManagerMap(Base):
     user_id = Column(Integer, ForeignKey('sca_users.id'))
     customer_location_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
     ## Relationships
-    sca_customer_location = relationship('SCACustomerLocation', back_populates='manager')
-    sca_user = relationship('SCAUser', back_populates='managers')
+    customer_location = relationship('SCACustomerLocation', back_populates='manager')
+    user = relationship('SCAUser', back_populates='managers')
 
 class SCAUser(Base):
     __tablename__ = 'sca_users'
@@ -298,7 +303,7 @@ class SCAUser(Base):
     email = Column(String)
     customer_location_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
     ## relationships
-    sca_customer_location = relationship('SCACustomerLocation', back_populates='users')
-    managers = relationship('SCAManagerMap', back_populates='sca_user')
+    customer_location = relationship('SCACustomerLocation', back_populates='users')
+    managers = relationship('SCAManagerMap', back_populates='user')
 
 serializer = JSONAPI_(Base)

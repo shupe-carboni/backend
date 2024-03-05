@@ -8,6 +8,9 @@ from typing import Optional, Annotated
 
 StringToNum = Annotated[int, BeforeValidator(lambda num: int(num))]
 
+class JSONAPIVersion(BaseModel):
+    version: str
+
 class JSONAPIResourceObject(BaseModel):
     id: str
     type: str
@@ -44,19 +47,19 @@ class JSONAPIRelationshipLinks(BaseModel):
 
 class JSONAPIRelationships(BaseModel):
     links: Optional[JSONAPIRelationshipLinks]
-    data: Optional[JSONAPIResourceIdentifier|list[JSONAPIResourceIdentifier]]
+    data: Optional[JSONAPIResourceIdentifier|list[JSONAPIResourceIdentifier]] = None
 
 class JSONAPIRequestData(BaseModel):
     data: JSONAPIResourceObject
 
 class JSONAPIRequest(BaseModel):
     data: JSONAPIRequestData
-    included: Optional[list[JSONAPIResourceObject]] = []
+    included: Optional[list[JSONAPIResourceObject]] = None
 
 class Pagination(BaseModel):
-    self: str
+    # self: str
     first: str
-    prev: str
+    # prev: str
     next: str
     last: str
 
