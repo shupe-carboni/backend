@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field, create_model, model_validator
 from typing import Optional
 from datetime import datetime
-from app.jsonapi import (
+from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Optional
 from datetime import datetime
-from app.jsonapi import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query, JSONAPIRelationshipsResponse
+from app.jsonapi.core_models import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query, JSONAPIRelationshipsResponse
 
 class QuoteResourceIdentifier(JSONAPIResourceIdentifier):
     type: str = "adp-quotes"
