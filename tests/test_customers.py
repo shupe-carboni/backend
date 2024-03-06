@@ -1,147 +1,214 @@
 from fastapi.testclient import TestClient
-from functools import partial
 from app.main import app
 from app.customers.models import CustomerResponse
 from app.customers.locations.models import RelatedLocationResponse, LocationRelationshipsResponse
-from app.auth import (
-    customers_perms_present,
-    adp_perms_present,
-    perm_category_present,
-    CustomersPermPriority,
-    ADPPermPriority,
-    Permissions
-)
+from app.adp.models import RelatedCustomerResponse, CustomersRelResp
+from app.auth import customers_perms_present, adp_perms_present
+from tests import auth_overrides
+
+# BUG should I really be using just ADP permissions for the adp relationships?
 
 test_client = TestClient(app)
+CUSTOMER_ID = 13 # NOTE should or can I randomize this?
 
-class AdminToken:
-    def perm_level(category):
-        return Permissions[category].value.sca_admin.value
-
-class SCAEmployeeToken:
-    def perm_level(category):
-        return Permissions[category].value.sca_employee.value
-
-class CustomerToken:
-    def perm_level(category):
-        return Permissions[category].value.customer_admin.value
-
-def client_authenticated_as_sca_admin(perm_category):
-    return partial(perm_category_present, AdminToken, perm_category)
-
-def client_authenticated_as_sca_employee(perm_category):
-    return partial(perm_category_present, SCAEmployeeToken, perm_category)
-
-def client_authenticated_as_customer(perm_category):
-    return partial(perm_category_present, CustomerToken, perm_category)
-
-
+## SCA ADMIN
 def test_customer_collection_as_sca_admin():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_admin('customers')
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_admin('customers')
     response = test_client.get('/customers')
     assert response.status_code == 200
     assert CustomerResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 def test_customer_resource_as_sca_admin():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_admin('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}')
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}')
     assert response.status_code == 200
     assert CustomerResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 def test_related_customer_locations_as_sca_admin():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_admin('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/customer-locations')
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/customer-locations')
     assert response.status_code == 200
     assert RelatedLocationResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 def test_relationship_customer_locations_as_sca_admin():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_admin('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/relationships/customer-locations')
-    assert response.status_code == 501
-    # assert LocationRelationshipsResponse(**response.json())
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/customer-locations')
+    assert response.status_code == 200
+    assert LocationRelationshipsResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
-
 def test_related_adp_customers_as_sca_admin():
-    app.dependency_overrides[adp_perms_present] = client_authenticated_as_sca_admin('adp')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/adp-customers')
-    assert response.status_code == 501
-    # assert RelatedLocationResponse(**response.json())
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/adp-customers')
+    assert response.status_code == 200
+    assert RelatedCustomerResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 def test_relationship_adp_customers_as_sca_admin():
-    app.dependency_overrides[adp_perms_present] = client_authenticated_as_sca_admin('adp')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/relationships/adp-customers')
-    assert response.status_code == 501
-    # assert LocationRelationshipsResponse(**response.json())
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/adp-customers')
+    assert response.status_code == 200
+    assert CustomersRelResp(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 """SCA Employees don't have any distingished abilities compared to admin, meaning these tests are
     currently repeats of the admin tests, just with different permissions"""
-def test_customer_collection_as_sca_emploee():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_employee('customers')
+def test_customer_collection_as_sca_employee():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_employee('customers')
     response = test_client.get('/customers')
     assert response.status_code == 200
     assert CustomerResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
 def test_customer_resource_as_sca_employee():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_employee('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}')
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_employee('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}')
     assert response.status_code == 200
     assert CustomerResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
-def test_related_customer_locations_as_sca_emploee():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_employee('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/customer-locations')
+def test_related_customer_locations_as_sca_employee():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_employee('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/customer-locations')
     assert response.status_code == 200
     assert RelatedLocationResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
-def test_relationship_customer_locations_as_sca_emploee():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_sca_employee('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/relationships/customer-locations')
-    assert response.status_code == 501
-    # assert LocationRelationshipsResponse(**response.json())
+def test_relationship_customer_locations_as_sca_employee():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_employee('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/customer-locations')
+    assert response.status_code == 200
+    assert LocationRelationshipsResponse(**response.json())
     app.dependency_overrides[customers_perms_present] = {}
 
-"""Customers should always get a 401 on these endpoints"""
-def test_customer_collection_as_customer():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_customer('customers')
+def test_related_adp_customers_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/adp-customers')
+    assert response.status_code == 200
+    assert RelatedCustomerResponse(**response.json())
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_adp_customers_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/adp-customers')
+    assert response.status_code == 200
+    assert CustomersRelResp(**response.json())
+    app.dependency_overrides[customers_perms_present] = {}
+
+"""Customer admins should be able to see info about themselves, but manager and standard customer permissions
+    seem a little more tricky .. so I'm leaving those restrictewd for now"""
+    ## ADMIN
+def test_customer_collection_as_customer_admin():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_admin('customers')
     response = test_client.get('/customers')
     assert response.status_code == 401
     app.dependency_overrides[customers_perms_present] = {}
 
-def test_customer_resource_as_customer():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_customer('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}')
+def test_customer_resource_as_customer_admin():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}')
     assert response.status_code == 401
     app.dependency_overrides[customers_perms_present] = {}
 
-def test_related_customer_locations_as_customer():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_customer('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/customer-locations')
+def test_related_customer_locations_as_customer_admin():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/customer-locations')
     assert response.status_code == 401
     app.dependency_overrides[customers_perms_present] = {}
 
-def test_relationship_customer_locations_as_customer():
-    app.dependency_overrides[customers_perms_present] = client_authenticated_as_customer('customers')
-    customer_id = 13 # NOTE should or can I randomize this?
-    response = test_client.get(f'/customers/{customer_id}/relationships/customer-locations')
+def test_relationship_customer_locations_as_customer_admin():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_admin('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/customer-locations')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_related_adp_customers_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/adp-customers')
+    assert response.status_code == 200
+    assert RelatedCustomerResponse(**response.json())
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_adp_customers_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/adp-customers')
+    assert response.status_code == 200
+    assert CustomersRelResp(**response.json())
+    app.dependency_overrides[customers_perms_present] = {}
+
+    ## MANAGER
+def test_customer_collection_as_customer_manager():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_manager('customers')
+    response = test_client.get('/customers')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_customer_resource_as_customer_manager():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_manager('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_related_customer_locations_as_customer_manager():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_manager('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/customer-locations')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_customer_locations_as_customer_manager():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_manager('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/customer-locations')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_related_adp_customers_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/adp-customers')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_adp_customers_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/adp-customers')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+    ## STANDARD
+def test_customer_collection_as_customer_std():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_std('customers')
+    response = test_client.get('/customers')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_customer_resource_as_customer_std():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_std('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_related_customer_locations_as_customer_std():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_std('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/customer-locations')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_customer_locations_as_customer_std():
+    app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_customer_std('customers')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/customer-locations')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_related_adp_customers_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/adp-customers')
+    assert response.status_code == 401
+    app.dependency_overrides[customers_perms_present] = {}
+
+def test_relationship_adp_customers_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    response = test_client.get(f'/customers/{CUSTOMER_ID}/relationships/adp-customers')
     assert response.status_code == 401
     app.dependency_overrides[customers_perms_present] = {}
