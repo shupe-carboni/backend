@@ -48,7 +48,7 @@ class RelatedCustomerResponse(CustomerResponse):
     """When pulling as a related object, included is always empty
         and links are not in the object"""
     included: dict = {}
-    links: dict = Field(..., exclude=True)
+    links: Optional[dict] = Field(default=None, exclude=True)
 
 CustomerQuery: type[BaseModel] = create_model(
     'CustomerQuery',
