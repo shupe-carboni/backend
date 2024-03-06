@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
 from app.jsonapi.core_models import (
     JSONAPIVersion,
@@ -20,20 +20,18 @@ class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
 ## Customer
 # Schema
 class CustomerAttributes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     name: str
     domains: Optional[list[str]] = None
     logo: Optional[str] = None
     buying_group: Optional[str] = Field(default=None, alias='buying-group')
-    class Config:
-        populate_by_name = True
 
 # Schema
 class CustomerRelationships(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     customer_locations: JSONAPIRelationships = Field(alias='customer-locations')
     adp_customers: JSONAPIRelationships = Field(alias='adp-customers')
     adp_customer_terms: JSONAPIRelationships = Field(alias='adp-customer-terms') 
-    class Config:
-        populate_by_name = True
 
 class CustomerResourceObject(CustomerResourceIdentifier):
     attributes: CustomerAttributes

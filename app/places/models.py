@@ -1,5 +1,4 @@
-# NOTE DELETE THIS WHOLE FILE??
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
 from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
@@ -26,10 +25,9 @@ class PlaceAttributes(BaseModel):
 
 # Schema
 class PlaceRelationships(BaseModel):
-    sca_customer_locations: JSONAPIRelationships = Field(alias='customer-locations')
+    model_config = ConfigDict(populate_by_name=True)
+    customer_locations: JSONAPIRelationships = Field(alias='customer-locations')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
-    class Config:
-        populate_by_name = True
 
 class PlaceResourceObject(PlaceResourceIdentifier):
     attributes: PlaceAttributes

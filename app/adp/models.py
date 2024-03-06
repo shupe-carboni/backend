@@ -1,5 +1,5 @@
 
-from pydantic import BaseModel, Field, create_model, model_validator
+from pydantic import BaseModel, Field, create_model, model_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.jsonapi.core_models import (
@@ -19,6 +19,7 @@ class CoilProgRelResp(JSONAPIRelationshipsResponse):
     data: list[CoilProgRID] | CoilProgRID
 
 class CoilProgAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     category: str
     model_number: str = Field(alias="model-number")
     private_label: str = Field(alias="private-label")
@@ -47,10 +48,6 @@ class CoilProgAttrs(BaseModel):
     #   ratings-hp-txv
     #   ratings-piston
     #   ratings-field-txv
-
-    class Config:
-        # allows an unpack of the python-dict in snake_case
-        populate_by_name = True
     
     @model_validator(mode='after')
     def depth_or_length(self) -> 'CoilProgAttrs':
@@ -64,9 +61,8 @@ class CoilProgAttrs(BaseModel):
 
 
 class CoilProgRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     adp_alias: JSONAPIRelationships = Field(alias='adp-alias')
-    class Config:
-        populate_by_name = True
 
 class CoilProgRObj(CoilProgRID):
     attributes: CoilProgAttrs
@@ -88,9 +84,8 @@ CoilProgQuery: type[BaseModel] = create_model(
 
 ## New Models to a Program
 class NewModelNumber(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     model_number: str = Field(alias="model-number")
-    class Config:
-        populate_by_name = True
 class NewCoilRObj(BaseModel):
     type: str = 'adp-coil-programs'
     attributes: NewModelNumber
@@ -112,9 +107,8 @@ class Rating(BaseModel):
     Capacity2: int
     HSPF2: Optional[float] = None
 class Ratings(BaseModel):
+    model_config = ConfigDict(extra=True)
     ratings: list[Rating]
-    class Config:
-        extra = 'ignore'
 
 class RatingsRID(JSONAPIResourceIdentifier):
     type: str = "adp-program-ratings"
@@ -123,9 +117,8 @@ class RatingsRelResp(JSONAPIRelationshipsResponse):
     data: list[RatingsRID] | RatingsRID
 
 class RatingsRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     adp_customer: JSONAPIRelationships = Field(alias='adp-customer')
-    class Config:
-        populate_by_name = True
 
 class RatingsRObj(RatingsRID):
     attributes: Rating
@@ -160,12 +153,11 @@ class CustomersRelResp(JSONAPIRelationshipsResponse):
     data: list[CustomersRID] | CustomersRID
 
 class CustomersAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     adp_alias: str = Field(alias='adp-alias')
     preferred_parts: bool = Field(alias='preferred-parts')
-    class Config:
-        populate_by_name = True
-
 class CustomersRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     customer: JSONAPIRelationships = Field(alias='customer')
     adp_coil_program: JSONAPIRelationships = Field(alias='adp-coil-program')
     adp_ah_program: JSONAPIRelationships = Field(alias='adp-ah-program')
@@ -175,9 +167,6 @@ class CustomersRels(BaseModel):
     snps: JSONAPIRelationships = Field(alias='snps')
     program_parts: JSONAPIRelationships = Field(alias='program-parts')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
-    class Config:
-        populate_by_name = True
-
 class CustomersRObj(CustomersRID):
     attributes: CustomersAttrs
     relationships: CustomersRels

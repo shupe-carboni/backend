@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
 from datetime import datetime
 from app.jsonapi.core_models import JSONAPIRelationships, JSONAPIResourceObject, Pagination, JSONAPIResourceIdentifier, Query, JSONAPIRelationshipsResponse
@@ -11,6 +11,7 @@ class QuoteRelationshipsResponse(JSONAPIRelationshipsResponse):
 
 ## Unique Quote Information
 class QuoteAttributes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     status: str
     quote_num: str = Field(alias='quote-num')
     job_name: str = Field(alias="job-name")
@@ -18,10 +19,6 @@ class QuoteAttributes(BaseModel):
     expires: datetime
     quote_document: Optional[str] = Field(None, alias='quote-document')
     plans: Optional[str] = None
-
-    class Config:
-        # allows an unpack of the python-dict in snake_case
-        populate_by_name = True
 
 class QuoteRelationships(BaseModel):
     sca_place: JSONAPIRelationships

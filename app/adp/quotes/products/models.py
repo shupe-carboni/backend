@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
@@ -9,7 +9,7 @@ from app.jsonapi.core_models import (
 )
 
 class ProductResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "quote_products"
+    type: str = "quote-products"
 
 class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[ProductResourceIdentifier]|ProductResourceIdentifier
@@ -17,13 +17,12 @@ class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
 ## Products & quantities associated with quotes
 # Schema
 class ProductAttributes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     request_brand: Optional[str] = Field(alias='request-brand')
     product_tag_or_model: str = Field(alias="product-tag-or-model")
     product_model_quoted: Optional[str] = Field(alias="product-model-quoted")
     qty: int
     price: Optional[float] = None
-    class Config:
-        populate_by_name = True
 
 # Schema
 class ProductRelationships(BaseModel):
