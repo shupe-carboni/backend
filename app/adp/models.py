@@ -106,6 +106,7 @@ class Rating(BaseModel):
     EER95F2: float
     Capacity2: int
     HSPF2: Optional[float] = None
+
 class Ratings(BaseModel):
     model_config = ConfigDict(extra='ignore')
     ratings: list[Rating]
@@ -178,5 +179,37 @@ class CustomersResp(BaseModel):
     links: Optional[Pagination]
 
 class RelatedCustomerResponse(CustomersResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+## ADP Customer Terms
+class ADPCustomerTermsRID(JSONAPIResourceIdentifier):
+    type: str = 'adp-customer-terms'
+
+class ADPCustomerTermsRelationshipsResp(JSONAPIRelationshipsResponse):
+    data: list[ADPCustomerTermsRID] | ADPCustomerTermsRID
+
+class ADPCustomerTerms(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    terms: str
+    ppf: int
+    effective_date: datetime = Field(alias='effective-date')
+
+class ADPCustomerTermsRels(BaseModel):
+    customer: JSONAPIRelationships
+
+class ADPCustomerTermsRObj(ADPCustomerTermsRID):
+    attributes: ADPCustomerTerms
+    relationships: ADPCustomerTermsRels
+
+class ADPCustomerTermsResp(BaseModel):
+    jsonapi: Optional[JSONAPIVersion] = None
+    meta: Optional[dict] = {}
+    data: Optional[list[ADPCustomerTermsRObj] | ADPCustomerTermsRObj]
+    included: Optional[list[JSONAPIResourceObject]] = None
+    links: Optional[Pagination] = None
+
+class RelatedADPCustomerTermsResp(ADPCustomerTermsResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
