@@ -7,6 +7,7 @@ from app.jsonapi.core_models import (
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
     JSONAPIResourceObject,
+    JSONAPIVersion,
     Pagination,
     Query
 )
@@ -165,10 +166,14 @@ class CustomersAttrs(BaseModel):
         populate_by_name = True
 
 class CustomersRels(BaseModel):
-    sca_customer: JSONAPIRelationships = Field(alias='sca-customer')
-    adp_alias_to_sca_customer_locations: JSONAPIRelationships = Field(alias='adp-alias-to-sca-customer-locations')
-    adp_material_group_discounts: JSONAPIRelationships = Field(alias='adp-material-group-discounts')
-    adp_snps: JSONAPIRelationships = Field(alias='adp-snps')
+    customer: JSONAPIRelationships = Field(alias='customer')
+    adp_coil_program: JSONAPIRelationships = Field(alias='adp-coil-program')
+    adp_ah_program: JSONAPIRelationships = Field(alias='adp-ah-program')
+    adp_ratings: JSONAPIRelationships = Field(alias='adp-ratings')
+    locations_by_alias: JSONAPIRelationships = Field(alias='locations-by-alias')
+    material_group_discounts: JSONAPIRelationships = Field(alias='material-group-discounts')
+    snps: JSONAPIRelationships = Field(alias='snps')
+    program_parts: JSONAPIRelationships = Field(alias='program-parts')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
     class Config:
         populate_by_name = True
@@ -182,3 +187,7 @@ class CustomersResp(BaseModel):
     data: Optional[list[CustomersRObj]]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
+
+class RelatedCustomerResponse(CustomersResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
