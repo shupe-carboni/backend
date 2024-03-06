@@ -21,10 +21,11 @@ class QuoteAttributes(BaseModel):
     plans: Optional[str] = None
 
 class QuoteRelationships(BaseModel):
-    sca_place: JSONAPIRelationships
-    sca_branch: JSONAPIRelationships
-    adp_customer: JSONAPIRelationships 
-    adp_quote_products: JSONAPIRelationships
+    model_config = ConfigDict(populate_by_name=True)
+    place: JSONAPIRelationships
+    customer_location: JSONAPIRelationships = Field(alias='customer-location')
+    adp_customer: JSONAPIRelationships  = Field(alias='adp-customer')
+    adp_quote_products: JSONAPIRelationships = Field(alias='adp-quote-products')
 
 class QuoteResourceObject(JSONAPIResourceIdentifier):
     attributes: QuoteAttributes
