@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import HTTPException, Depends
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 
