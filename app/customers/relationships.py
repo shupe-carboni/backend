@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 from app import auth
 from app.db import SCA_DB
 from app.customers.locations.models import RelatedLocationResponse, LocationRelationshipsResponse
-from app.adp.models import RelatedCustomerResponse, CustomersRelResp
+from app.adp.models import (
+    RelatedCustomerResponse,
+    CustomersRelResp,
+    RelatedADPCustomerTermsResp,
+    ADPCustomerTermsRelationshipsResp
+)
 from app.auth import ADPPermPriority
 from app.jsonapi.sqla_models import serializer
 
@@ -55,18 +60,24 @@ async def adp_customer_relationships(
     else:
         raise HTTPException(status_code=401)
 
-@customer_rel.get('/{customer_id}/adp-customer-terms')
+@customer_rel.get('/{customer_id}/adp-customer-terms', response_model=RelatedADPCustomerTermsResp, response_model_exclude_none=True)
 async def related_adp_customer_terms(
         session: NewSession,
         customer_id: int,
         token: ADPPerm,
-    ) -> None:
-    raise HTTPException(status_code=501)
+    ) -> RelatedADPCustomerTermsResp:
+    if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
+        return serializer.get_related(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customer-terms')
+    else:
+        raise HTTPException(status_code=401)
 
-@customer_rel.get('/{customer_id}/relationships/adp-customer-terms')
+@customer_rel.get('/{customer_id}/relationships/adp-customer-terms', response_model=ADPCustomerTermsRelationshipsResp, response_model_exclude_none=True)
 async def adp_customer_terms_relationships(
         session: NewSession,
         customer_id: int,
         token: ADPPerm,
-    ) -> None:
-    raise HTTPException(status_code=501)
+    ) -> ADPCustomerTermsRelationshipsResp:
+    if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
+        return serializer.get_relationship(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customer-terms')
+    else:
+        raise HTTPException(status_code=401)
