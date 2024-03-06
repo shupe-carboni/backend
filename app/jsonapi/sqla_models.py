@@ -11,7 +11,7 @@ Base = declarative_base()
 STAGE_ENUM = Enum('PROPOSED', 'ACTIVE', 'REJECTED', 'REMOVED', name='stage')
 class ADPAHProgram(Base):
     __tablename__ = 'adp_ah_programs'
-    __jsonapi_type_override__ = 'adp_ah_programs'
+    __jsonapi_type_override__ = 'adp-ah-programs'
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -48,7 +48,7 @@ class ADPAHProgram(Base):
 
 class ADPCoilProgram(Base):
     __tablename__ = 'adp_coil_programs'
-    __jsonapi_type_override__ = 'adp_coil_programs'
+    __jsonapi_type_override__ = 'adp-coil-programs'
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -94,7 +94,7 @@ class ADPAliasToSCACustomerLocation(Base):
 
 class ADPCustomer(Base):
     __tablename__ = 'adp_customers'
-    __jsonapi_type_override__ = 'adp_customers'
+    __jsonapi_type_override__ = 'adp-customers'
     ## fields
     adp_alias = Column(TEXT, unique=True)
     customer = Column(TEXT)
@@ -114,7 +114,7 @@ class ADPCustomer(Base):
 
 class ADPCustomerTerms(Base):
     __tablename__ = 'adp_customer_terms'
-    __jsonapi_type_override__ = 'adp_customer_terms'
+    __jsonapi_type_override__ = 'adp-customer-terms'
     ## fields
     sca_id = Column(Integer, ForeignKey('sca_customers.id'))
     terms = Column(TEXT)
