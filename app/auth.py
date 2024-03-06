@@ -26,20 +26,26 @@ class QuotePermPriority(IntEnum):
     customer_manager = 11
     customer_admin = 12
     sca_employee = 20
+    sca_admin = 21
 
 class ADPPermPriority(IntEnum):
     customer_std = 10
     customer_manager = 11
     customer_admin = 12
     sca_employee = 20
+    sca_admin = 21
 
 class VendorPermPriority(IntEnum):
-    customer = 10
+    customer_std = 10
+    customer_manager = 11
+    customer_admin = 12
     sca_employee = 20
     sca_admin = 21
 
 class CustomersPermPriority(IntEnum):
-    customer = 0
+    customer_std = 0
+    customer_manager = 0
+    customer_admin = 0
     sca_employee = 20
     sca_admin = 21
 
@@ -205,7 +211,7 @@ def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
             status_code=status_codes[401],
             detail=f'Permissions for access to {category.title()} have not been defined.'
         )
-    elif perm_level < 0:
+    elif perm_level <= 0:
         raise HTTPException(
             status_code=status_codes[401],
             detail=f'Access to {category.title()} is restricted.'
