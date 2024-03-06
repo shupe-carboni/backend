@@ -107,7 +107,7 @@ class Rating(BaseModel):
     Capacity2: int
     HSPF2: Optional[float] = None
 class Ratings(BaseModel):
-    model_config = ConfigDict(extra=True)
+    model_config = ConfigDict(extra='ignore')
     ratings: list[Rating]
 
 class RatingsRID(JSONAPIResourceIdentifier):
