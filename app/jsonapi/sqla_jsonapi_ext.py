@@ -1,3 +1,5 @@
+from os import getenv
+from dotenv import load_dotenv; load_dotenv()
 import functools
 import json
 import warnings
@@ -15,6 +17,7 @@ from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_pe
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
 MAX_RECORDS: int = 15000
+CONTACT_EMAIL: str = getenv('ADMIN_EMAIL')
 
 def convert_query(model: BaseModel) -> dict[str,str|int]:
     """custom conversion from explicitly definied snake case parameters
@@ -362,7 +365,7 @@ def jsonapi_error_handling(route_function):
             raise http_e
         except Exception as err:
             import traceback
-            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":"An error occurred. Contact joe@carbonitech.com with the id number"}]}
+            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":f"An error occurred. Contact {CONTACT_EMAIL} with the id number"}]}
             raise HTTPException(status_code=400,detail=detail_obj)
     return error_handling
 
