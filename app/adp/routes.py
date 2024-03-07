@@ -33,6 +33,7 @@ from app.adp.models import (
     Parts,
     DownloadLink
 )
+from app.jsonapi.sqla_models import serializer
 
 class NonExistant(Exception):...
 class Expired(Exception):...
@@ -133,25 +134,40 @@ def update_unregistered_ratings(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/programs', tags=['jsonapi', 'programs'])
-def all_programs(
+@adp.get('/adp-coil-programs', response_model=CoilProgResp, response_model_exclude_none=True, tags=['jsonapi', 'programs', 'coils'])
+def all_coil_programs(
         token: ADPPerm,
         session: NewSession,
         query: CoilProgQuery=Depends(),   # type: ignore
     ) -> CoilProgResp:
-    """list out all programs"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    """list out all coil programs"""
+    if not token.email_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    adp_perm = token.permissions.get('adp')
+    if adp_perm >= auth.ADPPermPriority.sca_employee:
+        return serializer.get_collection(session,query,'adp-coil-programs')
+    elif adp_perm >= auth.ADPPermPriority.customer_std:
+        ids = ADP_DB.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=adp_perm.name,
+        )
+        return serializer.get_collection(session,query,'adp-coil-programs',ids)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/{adp_customer_id}/program', tags=['jsonapi', 'programs'])
-def customer_program_jsonapi(
+@adp.get('/adp-coil-programs/{adp_customer_id}', tags=['jsonapi', 'programs', 'coils'])
+def customer_coil_program(
         session: NewSession,
         token: ADPPerm,
         adp_customer_id: int,
         stage: Stage='active',
     ) -> CoilProgResp:
     """get only a specific customer's program"""
-    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
-        print("allowed")
+    if not token.email_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    adp_perm = token.permissions.get('adp')
+    if adp_perm >= auth.ADPPermPriority.sca_employee:
+        return serializer.get_resource(session,{},'adp-coil-programs',adp_customer_id,obj_only=False)
     else:
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
