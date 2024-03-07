@@ -230,7 +230,7 @@ class JSONAPI_(JSONAPI):
         return query, result_addition
 
 
-    def get_collection(self, session: Session, query: BaseModel, api_type: str, user_id: int):
+    def get_collection(self, session: Session, query: BaseModel, api_type: str, permitted_ids: list[int]=None):
         """
         Fetch a collection of resources of a specified type.
 
@@ -264,12 +264,11 @@ class JSONAPI_(JSONAPI):
         collection_count: sqlQuery = session.query(func.count(model.id))
         collection_count = self._apply_filter(model,collection_count, query_params=jsonapi_query)
         collection_count = self._filter_deleted(model, collection_count)
-        try:
-            pass
-            # collection = collection.filter(model.user_id == user_id)
-            # collection_count = collection_count.filter(model.user_id == user_id)
-        except AttributeError:
-            pass
+        
+        # apply customer-location based filtering
+        if permitted_ids:
+            collection = model.apply_customer_location_filtering(collection, permitted_ids)
+            collection_count = model.apply_customer_location_filtering(collection_count, permitted_ids)
         query, pagination_meta_and_links = self._add_pagination(jsonapi_query,session,api_type,collection_count)
 
         for attr in sorts:
@@ -328,7 +327,6 @@ class JSONAPI_(JSONAPI):
         response.data['included'] = list(included.values())
         if pagination_meta_and_links:
             response.data.update(pagination_meta_and_links)
-            
         return response.data
 
     def get_resource(self, session, query, api_type, obj_id, obj_only:bool=False):
