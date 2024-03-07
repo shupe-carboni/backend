@@ -2,12 +2,11 @@ from dotenv import load_dotenv; load_dotenv()
 import re
 import os
 from enum import StrEnum, auto
-from typing import Iterable, Any
+from typing import Iterable, Literal
 from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
 from pandas import DataFrame, read_sql
 
-# NOTE `load_df` is too specific to the "adp" databse
 
 class Stage(StrEnum):
     """used for separating product and pricing status by line item while
@@ -99,6 +98,64 @@ class Database:
     def test(self, session: Session) -> str:
         with session.begin():
             return session.execute(text('SELECT version();')).fetchone()[0]
+    
+    def get_permitted_customer_location_ids(
+            self,
+            session: Session,
+            email_address: str,
+            select_type: Literal['customer_std','customer_manager','customer_admin']
+        ) -> list[int]:
+        """Using select statements, get the customer location ids that will be permitted for view
+            select_type:
+                * user - get only the customer location associated with the user. which ought to be 1 id
+                * manager - get customer locations associated with all mapped branches in the sca_manager_map table
+                * admin - get all customer locations associated with the customer id associated with the location associated to the user.:W
+        """
+        sql_user_only = """
+            SELECT cl.id
+            FROM sca_customer_locations cl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                WHERE u.email = :user_email
+                AND u.customer_location_id = cl.id
+            );
+        """
+        sql_manager = """
+            SELECT cl.id
+            FROM sca_customer_locations cl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                WHERE u.email = :user_email
+                AND mm.customer_location_id = cl.id
+            );
+        """
+        sql_admin = """
+            SELECT scl.id
+            FROM sca_customer_locations scl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations customer_loc ON u.customer_location_id = customer_loc.id
+                WHERE u.email = :user_email
+                AND customer_loc.customer_id = scl.customer_id
+            );
+        """
+        match select_type:
+            case 'customer_std':
+                sql = sql_user_only
+            case 'customer_manager':
+                sql = sql_manager
+            case 'customer_admin':
+                sql = sql_admin
+            case _:
+                raise Exception('invalid select_type')
+
+        return session.scalars(text(sql), params={'user_email': email_address}).all()
+
 
 
 ADP_DB = Database('adp')
