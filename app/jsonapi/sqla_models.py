@@ -86,7 +86,7 @@ class ADPAliasToSCACustomerLocation(Base):
     __tablename__ = 'adp_alias_to_sca_customer_locations'
     ## fields
     id = Column(Integer, primary_key=True)
-    adp_customer_id = Column(Integer, ForeignKey('adp_customers.id'), unique=True)
+    adp_customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     sca_customer_location_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
     ## relationships
     adp_customer = relationship('ADPCustomer', back_populates='locations_by_alias')
