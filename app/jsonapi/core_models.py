@@ -12,7 +12,7 @@ class JSONAPIVersion(BaseModel):
     version: str
 
 class JSONAPIResourceObject(BaseModel):
-    id: str
+    id: str|int
     type: str
     attributes: Optional[dict] = {}
     relationships: Optional[dict] = {}
@@ -60,7 +60,7 @@ class Pagination(BaseModel):
     # self: str
     first: str
     # prev: str
-    next: str
+    next: Optional[str] = None
     last: str
 
 class Query(BaseModel):
