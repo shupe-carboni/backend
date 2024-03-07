@@ -20,29 +20,29 @@ class CoilProgRelResp(JSONAPIRelationshipsResponse):
 
 class CoilProgAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    category: str
-    model_number: str = Field(alias="model-number")
-    private_label: str = Field(alias="private-label")
-    mpg: str
-    series: str
-    tonnage: int
-    pallent_qty: int = Field(alias='pallet-qty')
-    width: float
-    depth: float | None
-    height: float
-    length: float | None
-    weight: int | None
-    metering: str
-    cabinet: str
-    zero_discount_price: int = Field(alias='zero-discount-price')
-    matieral_group_discount: int = Field(alias='matieral-group-discount')
-    material_group_net_price: int = Field(alias='material-group-net-price')
-    snp_discount: int = Field(alias='snp-discount')
-    snp_price: int = Field(alias='snp-price')
-    net_price: int = Field(alias='net-price')
-    effective_date: datetime = Field(alias='effective-date')
-    last_file_gen: datetime = Field(alias='last-file-gen')
-    stage: str
+    category: Optional[str] = None
+    model_number: Optional[str] = Field(default=None, alias="model-number")
+    private_label: Optional[str] = Field(default=None, alias="private-label")
+    mpg: Optional[str] = None
+    series: Optional[str] = None
+    tonnage: Optional[int] = None
+    pallet_qty: Optional[int] = Field(default=None, alias='pallet-qty')
+    width: Optional[float] = None
+    depth: Optional[float] = None
+    height: Optional[float] = None
+    length: Optional[float] = None
+    weight: Optional[int] = None
+    metering: Optional[str] = None
+    cabinet: Optional[str] = None
+    zero_discount_price: Optional[int] = Field(default=None, alias='zero-discount-price')
+    material_group_discount: Optional[float] = Field(default=None, alias='material-group-discount')
+    material_group_net_price: Optional[int] = Field(default=None, alias='material-group-net-price')
+    snp_discount: Optional[float] = Field(default=None, alias='snp-discount')
+    snp_price: Optional[int] = Field(default=None, alias='snp-price')
+    net_price: Optional[int] = Field(default=None, alias='net-price')
+    effective_date: Optional[datetime] = Field(default=None, alias='effective-date')
+    last_file_gen: Optional[datetime] = Field(default=None, alias='last-file-gen')
+    stage: Optional[str] = None
     # intentionally leaving out Ratings model regexes
     #   ratings-ac-txv
     #   ratings-hp-txv
@@ -53,8 +53,6 @@ class CoilProgAttrs(BaseModel):
     def depth_or_length(self) -> 'CoilProgAttrs':
         depth, length = self.depth, self.length
         match depth, length:
-            case (None, None):
-                raise ValueError('Either depth or length is required')
             case (float(), float()):
                 raise ValueError('Cannot have both depth and length.')
         return self
@@ -62,7 +60,7 @@ class CoilProgAttrs(BaseModel):
 
 class CoilProgRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    adp_alias: JSONAPIRelationships = Field(alias='adp-alias')
+    adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customers')
 
 class CoilProgRObj(CoilProgRID):
     attributes: CoilProgAttrs
@@ -72,15 +70,16 @@ class CoilProgResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[CoilProgRObj]]
     included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    links: Optional[Pagination] = None
 
 CoilProgQuery: type[BaseModel] = create_model(
     'CoilProgQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in CoilProgRels.model_fields.keys()},
+    **{f'fields_{CoilProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"filter_{field}":(Optional[str], None) for field in CoilProgAttrs.model_fields.keys()},
+    
 )
-
 
 ## New Models to a Program
 class NewModelNumber(BaseModel):
