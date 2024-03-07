@@ -20,7 +20,7 @@ async def customer_collection(
         token: CustomersPerm,
         query: CustomerQuery=Depends(), # type: ignore
     ) -> CustomerResponse:
-    return serializer.get_collection(session=session, query=query, api_type=api_type,user_id=0)
+    return serializer.get_collection(session=session, query=query, api_type=api_type)
 
 @customers.get('/{customer_id}', response_model=CustomerResponse, response_model_exclude_none=True)
 async def customer(
