@@ -106,7 +106,7 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
         }
     }
     ## logo_path
-    logo_filename = parent_accounts.loc[parent_accounts['id'] == alias_mapping['id'].item(), 'logo'].item()
+    logo_filename = parent_accounts.loc[parent_accounts['id'] == alias_mapping['sca_id'].item(), 'logo'].item()
     full_logo_path = os.path.join(LOGOS_DIR, logo_filename)
     return CustomerProgram(
             customer_id=customer_id,

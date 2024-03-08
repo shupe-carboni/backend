@@ -218,7 +218,7 @@ def customer_program_get_dl(
     """Generate one-time-use hash value for download"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         download_id = DownloadIDs.generate_id(customer_id=adp_customer_id, stage=Stage(stage))
-        return DownloadLink(f'/adp/{adp_customer_id}/program/download?download_id={download_id}')
+        return DownloadLink(downloadLink=f'/adp/{adp_customer_id}/program/download?download_id={download_id}')
 
     else:
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
