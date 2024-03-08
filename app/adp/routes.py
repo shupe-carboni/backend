@@ -11,6 +11,7 @@ from pandas import read_excel, read_csv
 from numpy import nan
 import logging
 from uuid import uuid4, UUID  # uuid4 is for random generation
+from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 
 from app import auth
 from app.db import Session, ADP_DB, Stage
@@ -134,15 +135,23 @@ def update_unregistered_ratings(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/adp-coil-programs', response_model=CoilProgResp, response_model_exclude_none=True, tags=['jsonapi', 'programs', 'coils'])
+@adp.get(
+        '/adp-coil-programs',
+         response_model=CoilProgResp,
+         response_model_exclude_none=True,
+         tags=['jsonapi', 'programs', 'coils']
+)
 def all_coil_programs(
         token: ADPPerm,
         session: NewSession,
         query: CoilProgQuery=Depends(),   # type: ignore
     ) -> CoilProgResp:
-    """list out all coil programs"""
+    """List out all coil programs.
+        An SCA admin or employee will see all programs that exist.
+        A customer will see only their own programs"""
     if not token.email_verified:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
     adp_perm = token.permissions.get('adp')
     if adp_perm >= auth.ADPPermPriority.sca_employee:
         return serializer.get_collection(session,query,'adp-coil-programs')
@@ -155,25 +164,52 @@ def all_coil_programs(
         return serializer.get_collection(session,query,'adp-coil-programs',ids)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/adp-coil-programs/{adp_customer_id}', tags=['jsonapi', 'programs', 'coils'])
+@adp.get(
+        '/adp-coil-programs/{program_product_id}',
+        response_model=CoilProgResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi', 'programs', 'coils']
+)
 def customer_coil_program(
         session: NewSession,
         token: ADPPerm,
-        adp_customer_id: int,
-        stage: Stage='active',
+        program_product_id: int,
+        query: CoilProgQuery=Depends(),   # type: ignore
     ) -> CoilProgResp:
-    """get only a specific customer's program"""
+    """get a specific product from the coil programs"""
     if not token.email_verified:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
     adp_perm = token.permissions.get('adp')
     if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_resource(session,{},'adp-coil-programs',adp_customer_id,obj_only=False)
-    else:
-        print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+        return serializer.get_resource(
+            session=session,
+            query=query,
+            api_type='adp-coil-programs',
+            obj_id=program_product_id,
+            obj_only=True
+        )
+    elif adp_perm >= auth.ADPPermPriority.customer_std:
+        ids = ADP_DB.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=adp_perm.name
+        )
+        try:
+            return serializer.get_resource(
+                session=session,
+                query=query,
+                api_type='adp-coil-programs',
+                obj_id=program_product_id,
+                obj_only=True,
+                permitted_ids=ids
+            )
+        except ResourceNotFoundError:
+            raise HTTPException(status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 
-@adp.get('/{adp_customer_id}/program/get-download', tags=['programs'])
+@adp.get('/{adp_customer_id}/program/get-download', tags=['programs', 'file-download'])
 def customer_program_get_dl(
         token: ADPPerm,
         adp_customer_id: int,
@@ -188,7 +224,7 @@ def customer_program_get_dl(
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.get('/{adp_customer_id}/program/download', tags=['programs'], response_class=XLSXFileResponse)
+@adp.get('/{adp_customer_id}/program/download', tags=['programs', 'file-download'], response_class=XLSXFileResponse)
 def customer_program_dl_file(
         session: NewSession,
         adp_customer_id: int,
