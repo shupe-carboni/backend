@@ -1,3 +1,4 @@
+from copy import copy
 from os import getenv
 from dotenv import load_dotenv; load_dotenv()
 import functools
@@ -8,9 +9,15 @@ from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
 from fastapi import Response, HTTPException
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, inspect
 from sqlalchemy.orm import Session, Query as sqlQuery
-from sqlalchemy_jsonapi.errors import NotSortableError, PermissionDeniedError,BaseError
+from sqlalchemy_jsonapi.errors import (
+    NotSortableError,
+    PermissionDeniedError,
+    BaseError,
+    ResourceTypeNotFoundError,
+    ResourceNotFoundError
+)
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 
 
@@ -241,10 +248,6 @@ class JSONAPI_(JSONAPI):
         Override of JSONAPI get_collection - adding filter parameter handling
         after instantation of session.query on the 'model'
         """
-        # match query:
-        #     case QueryParams():
-        #         query = self._coerce_dict(query)
-        #     case BaseModel() | dict():
         jsonapi_query = convert_query(query)
         model = self._fetch_model(api_type=api_type)
         include = self._parse_include(jsonapi_query.get('include', '').split(','))
@@ -329,12 +332,79 @@ class JSONAPI_(JSONAPI):
             response.data.update(pagination_meta_and_links)
         return response.data
 
-    def get_resource(self, session, query, api_type, obj_id, obj_only:bool=False):
+    def get_resource(
+            self,
+            session: Session,
+            query: BaseModel,
+            api_type: str,
+            obj_id: int,
+            obj_only: bool,
+            permitted_ids: list[int]=None
+        ) -> JSONAPIResponse | dict:
+        """
+        Fetch a resource.
+
+        This customized version addes a parameter for filtering results
+        and pre-treats the query object to transform parameters into
+        expected JSON:API format
+
+        :param session: SQLAlchemy session
+        :param query: Dict of query args
+        :param api_type: Type of the resource
+        :param obj_id: ID of the resource
+        """
         jsonapi_query = convert_query(query)
+        resource = self._fetch_resource(session, api_type, obj_id,
+                                        Permissions.VIEW, permitted_ids)
+        include = self._parse_include(jsonapi_query.get('include', '').split(','))
+        fields = self._parse_fields(jsonapi_query)
+
+        response = JSONAPIResponse()
+
+        built = self._render_full_resource(resource, include, fields)
+
+        response.data['included'] = list(built.pop('included').values())
+        response.data['data'] = built
         if obj_only:
-            return super().get_resource(session, jsonapi_query, api_type, obj_id).data
+            return response.data
         else:
-            return super().get_resource(session, jsonapi_query, api_type, obj_id)
+            return response
+
+
+    def _fetch_resource(self, session: Session, api_type: str, obj_id: int, permission, permitted_ids:list[int]=None):
+        """
+        Fetch a resource by type and id, also doing a permission check.
+
+        Custom override in order to apply customer location
+        based filtering before fetching the resource, so that
+        a customer user cannot possibly fetch a resource
+        that they are not allowed to access.
+
+        :param session: SQLAlchemy session
+        :param api_type: The type
+        :param obj_id: ID for the resource
+        :param permission: Permission to check
+        """
+        if api_type not in self.models.keys():
+            raise ResourceTypeNotFoundError(api_type)
+        model = self.models[api_type]
+        resource = session.query(model)
+        if permitted_ids:
+            preflight = copy(resource)
+            preflight: sqlQuery = model.apply_customer_location_filtering(preflight, permitted_ids)
+            pk = inspect(model).primary_key[0].name
+            permitted_object_ids = set([getattr(result, pk) for result in preflight])
+            if obj_id in permitted_object_ids:
+                obj = resource.get(obj_id)
+            else:
+                obj = None
+        else:
+            obj = resource.get(obj_id)
+
+        if obj is None:
+            raise ResourceNotFoundError(self.models[api_type], obj_id)
+        check_permission(obj, None, permission)
+        return obj
 
     def get_relationship(self, session, query, api_type, obj_id, rel_key):
         return super().get_relationship(session, query, api_type, obj_id, rel_key).data
