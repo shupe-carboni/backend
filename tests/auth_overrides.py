@@ -18,12 +18,14 @@ class SCAEmployeeToken:
 class CustomerAdminToken:
     permissions = {perm.name: perm.value.customer_admin for perm in Permissions}
     email_verified = True
+    email = getenv('ADMIN_EMAIL')
     def perm_level(category):
         return Permissions[category].value.customer_admin.value
 
 class CustomerManagerToken:
     permissions = {perm.name: perm.value.customer_manager for perm in Permissions}
     email_verified = True
+    email = getenv('ADMIN_EMAIL')
     def perm_level(category):
         return Permissions[category].value.customer_manager.value
 
