@@ -68,7 +68,7 @@ class CoilProgRObj(CoilProgRID):
 
 class CoilProgResp(BaseModel):
     meta: Optional[dict] = {}
-    data: Optional[list[CoilProgRObj]]
+    data: Optional[list[CoilProgRObj] | CoilProgRObj]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination] = None
 
@@ -97,13 +97,13 @@ class NewAHRObj(BaseModel):
 ## Ratings
 class Rating(BaseModel):
     AHRINumber: Optional[int] = None
-    OutdoorModel: str
-    OEMName: str
-    IndoorModel: str
+    OutdoorModel: Optional[str] = None
+    OEMName: Optional[str] = None
+    IndoorModel: Optional[str] = None
     FurnaceModel: Optional[str] = None
-    SEER2: float
-    EER95F2: float
-    Capacity2: int
+    SEER2: Optional[float] = None
+    EER95F2: Optional[float] = None
+    Capacity2: Optional[int] = None
     HSPF2: Optional[float] = None
 
 class Ratings(BaseModel):
@@ -118,7 +118,7 @@ class RatingsRelResp(JSONAPIRelationshipsResponse):
 
 class RatingsRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    adp_customer: JSONAPIRelationships = Field(alias='adp-customer')
+    adp_customer: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customer')
 
 class RatingsRObj(RatingsRID):
     attributes: Rating
@@ -133,6 +133,7 @@ class RatingsResp(BaseModel):
 RatingsQuery: type[BaseModel] = create_model(
     'RatingsQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f'fields_{RatingsRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"fields_{field}":(Optional[str], None) for field in RatingsRels.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
 )
