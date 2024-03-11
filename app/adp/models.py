@@ -15,10 +15,15 @@ from app.jsonapi.core_models import (
 class CoilProgRID(JSONAPIResourceIdentifier):
     type: str = "adp-coil-programs"
 
+class AirHandlerProgRID(JSONAPIResourceIdentifier):
+    type: str = "adp-ah-programs"
+
 class CoilProgRelResp(JSONAPIRelationshipsResponse):
     data: list[CoilProgRID] | CoilProgRID
+class AirHandlerProgRelResp(JSONAPIRelationshipsResponse):
+    data: list[AirHandlerProgRID] | AirHandlerProgRID
 
-class CoilProgAttrs(BaseModel):
+class ProgAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     category: Optional[str] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
@@ -50,7 +55,7 @@ class CoilProgAttrs(BaseModel):
     #   ratings-field-txv
     
     @model_validator(mode='after')
-    def depth_or_length(self) -> 'CoilProgAttrs':
+    def depth_or_length(self) -> 'ProgAttrs':
         depth, length = self.depth, self.length
         match depth, length:
             case (float(), float()):
@@ -58,27 +63,41 @@ class CoilProgAttrs(BaseModel):
         return self
 
 
-class CoilProgRels(BaseModel):
+class ProgRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customers')
 
 class CoilProgRObj(CoilProgRID):
-    attributes: CoilProgAttrs
-    relationships: CoilProgRels
+    attributes: ProgAttrs
+    relationships: ProgRels
+class AirHandlerProgRObj(AirHandlerProgRID):
+    attributes: ProgAttrs
+    relationships: ProgRels
 
 class CoilProgResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[CoilProgRObj] | CoilProgRObj]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination] = None
+class AirHandlerProgResp(BaseModel):
+    meta: Optional[dict] = {}
+    data: Optional[list[AirHandlerProgRObj] | AirHandlerProgRObj]
+    included: Optional[list[JSONAPIResourceObject]]
+    links: Optional[Pagination] = None
 
 CoilProgQuery: type[BaseModel] = create_model(
     'CoilProgQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
-    **{f"fields_{field}":(Optional[str], None) for field in CoilProgRels.model_fields.keys()},
+    **{f"fields_{field}":(Optional[str], None) for field in ProgRels.model_fields.keys()},
     **{f'fields_{CoilProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
-    **{f"filter_{field}":(Optional[str], None) for field in CoilProgAttrs.model_fields.keys()},
-    
+    **{f"filter_{field}":(Optional[str], None) for field in ProgAttrs.model_fields.keys()},
+)
+AirHandlerProgQuery: type[BaseModel] = create_model(
+    'AirHandlerProgQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f"fields_{field}":(Optional[str], None) for field in ProgRels.model_fields.keys()},
+    **{f'fields_{AirHandlerProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
+    **{f"filter_{field}":(Optional[str], None) for field in ProgAttrs.model_fields.keys()},
 )
 
 ## New Models to a Program
