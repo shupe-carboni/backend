@@ -20,6 +20,12 @@ from sqlalchemy_jsonapi.errors import (
 )
 from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
 
+class SQLAlchemyModel:
+    """This class is for typing, so that the linter recognizes my custom methods on 
+        SQLAlchemy Base models"""
+    def apply_customer_location_filtering(q: sqlQuery, ids: list[int]=None) -> sqlQuery:
+        ...
+
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
@@ -88,7 +94,7 @@ class JSONAPI_(JSONAPI):
             return query_params
 
     @staticmethod
-    def _apply_filter(model, sqla_query_obj: sqlQuery, query_params: dict):
+    def _apply_filter(model: SQLAlchemyModel, sqla_query_obj: sqlQuery, query_params: dict):
         """
         handler for filter parameters in the query string
         for any value or list of values, this filter is permissive,
@@ -112,7 +118,7 @@ class JSONAPI_(JSONAPI):
 
 
     @staticmethod
-    def _filter_deleted(model, sqla_query_obj: sqlQuery):
+    def _filter_deleted(model: SQLAlchemyModel, sqla_query_obj: sqlQuery):
         """
         The 'deleted' column signals a soft delete.
         While soft deleting preserves reference integrity,
@@ -249,7 +255,7 @@ class JSONAPI_(JSONAPI):
         after instantation of session.query on the 'model'
         """
         jsonapi_query = convert_query(query)
-        model = self._fetch_model(api_type=api_type)
+        model: SQLAlchemyModel = self._fetch_model(api_type=api_type)
         include = self._parse_include(jsonapi_query.get('include', '').split(','))
         fields = self._parse_fields(jsonapi_query)
         included = {}
@@ -387,22 +393,21 @@ class JSONAPI_(JSONAPI):
         """
         if api_type not in self.models.keys():
             raise ResourceTypeNotFoundError(api_type)
-        model = self.models[api_type]
-        resource = session.query(model)
-        if permitted_ids:
-            preflight = copy(resource)
+        model: SQLAlchemyModel = self.models[api_type]
+        if permitted_ids is not None:
+            preflight = session.query(model)
             preflight: sqlQuery = model.apply_customer_location_filtering(preflight, permitted_ids)
             pk = inspect(model).primary_key[0].name
             permitted_object_ids = set([getattr(result, pk) for result in preflight])
             if obj_id in permitted_object_ids:
-                obj = resource.get(obj_id)
+                obj = session.get(model, obj_id)
             else:
                 obj = None
         else:
-            obj = resource.get(obj_id)
+            obj = session.get(model, obj_id)
 
         if obj is None:
-            raise ResourceNotFoundError(self.models[api_type], obj_id)
+            raise ResourceNotFoundError(model, obj_id)
         check_permission(obj, None, permission)
         return obj
 
