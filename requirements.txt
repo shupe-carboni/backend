@@ -19,6 +19,7 @@ httptools==0.6.0
 httpx==0.25.0
 idna==3.4
 inflection==0.5.1
+iniconfig==2.0.0
 itsdangerous==2.1.2
 Jinja2==3.1.2
 lazy-object-proxy==1.9.0
@@ -29,13 +30,16 @@ orjson==3.9.9
 packaging==23.2
 pandas==2.2.0
 pillow==10.2.0
+pluggy==1.4.0
 psycopg2-binary==2.9.9
+pyarrow==15.0.1
 pyasn1==0.5.0
 pycparser==2.21
 pydantic==2.4.2
 pydantic-extra-types==2.1.0
 pydantic-settings==2.0.3
 pydantic_core==2.10.1
+pytest==8.0.2
 python-dateutil==2.8.2
 python-dotenv==1.0.0
 python-jose==3.3.0
