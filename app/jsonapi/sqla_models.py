@@ -46,9 +46,8 @@ class ADPAHProgram(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        coil_progs = aliased(ADPAHProgram)
         exists_subquery = exists().where(
-            adptoloc.adp_customer_id == coil_progs.customer_id,
+            adptoloc.adp_customer_id == ADPAHProgram.customer_id,
             adptoloc.sca_customer_location_id.in_(ids)
         )
         return q.where(exists_subquery)
