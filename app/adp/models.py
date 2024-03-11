@@ -11,12 +11,14 @@ from app.jsonapi.core_models import (
     Pagination,
     Query
 )
+from app.db import Stage
+from app.jsonapi.sqla_models import ADPAHProgram, ADPCoilProgram, ADPCustomerTerms, ADPCustomer, ADPProgramRating
 
 class CoilProgRID(JSONAPIResourceIdentifier):
-    type: str = "adp-coil-programs"
+    type: str = ADPCoilProgram.__jsonapi_type_override__
 
 class AirHandlerProgRID(JSONAPIResourceIdentifier):
-    type: str = "adp-ah-programs"
+    type: str = ADPAHProgram.__jsonapi_type_override__
 
 class CoilProgRelResp(JSONAPIRelationshipsResponse):
     data: list[CoilProgRID] | CoilProgRID
@@ -105,13 +107,26 @@ class NewModelNumber(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     model_number: str = Field(alias="model-number")
 class NewCoilRObj(BaseModel):
-    type: str = 'adp-coil-programs'
+    type: str = ADPCoilProgram.__jsonapi_type_override__
     attributes: NewModelNumber
 
 class NewAHRObj(BaseModel):
-    type: str = 'adp-ah-programs'
+    type: str = ADPAHProgram.__jsonapi_type_override__
     attributes: NewModelNumber
 
+## Modifications to products in a Program
+class NewStage(BaseModel):
+    stage: Stage
+
+class ModStageCoil(BaseModel):
+    id: int
+    type: str = ADPCoilProgram.__jsonapi_type_override__
+    attributes: NewStage
+
+class ModStageAH(BaseModel):
+    id: int
+    type: str = ADPAHProgram.__jsonapi_type_override__
+    attributes: NewStage
 
 ## Ratings
 class Rating(BaseModel):
@@ -130,7 +145,7 @@ class Ratings(BaseModel):
     ratings: list[Rating]
 
 class RatingsRID(JSONAPIResourceIdentifier):
-    type: str = "adp-program-ratings"
+    type: str = ADPProgramRating.__jsonapi_type_override__
 
 class RatingsRelResp(JSONAPIRelationshipsResponse):
     data: list[RatingsRID] | RatingsRID
@@ -167,7 +182,7 @@ class DownloadLink(BaseModel):
 
 ## ADP Customers
 class CustomersRID(JSONAPIResourceIdentifier):
-    type: str = "adp-customers"
+    type: str = ADPCustomer.__jsonapi_type_override__
 
 class CustomersRelResp(JSONAPIRelationshipsResponse):
     data: list[CustomersRID] | CustomersRID
@@ -204,7 +219,7 @@ class RelatedCustomerResponse(CustomersResp):
 
 ## ADP Customer Terms
 class ADPCustomerTermsRID(JSONAPIResourceIdentifier):
-    type: str = 'adp-customer-terms'
+    type: str = ADPCustomerTerms.__jsonapi_type_override__
 
 class ADPCustomerTermsRelationshipsResp(JSONAPIRelationshipsResponse):
     data: list[ADPCustomerTermsRID] | ADPCustomerTermsRID
