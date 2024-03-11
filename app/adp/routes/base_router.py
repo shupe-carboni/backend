@@ -30,7 +30,7 @@ class XLSXFileResponse(StreamingResponse):
         self.raw_headers.append((b"Content-Disposition",f"attachment; filename=\"{filename}.xlsx\"".encode('latin-1')))
 
 
-@adp.get('/programs/{adp_customer_id}/get-download', tags=['programs', 'file-download'])
+@adp.post('/programs/{adp_customer_id}/get-download', tags=['programs', 'file-download'])
 def customer_program_get_dl(
         token: ADPPerm,
         adp_customer_id: int,
