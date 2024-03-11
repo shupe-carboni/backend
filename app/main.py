@@ -57,7 +57,7 @@ app.add_middleware(
     allow_headers=['*']
 )
 
-## order matters
+## NOTE: order really, really matters
 # customers
 customers.include_router(customer_rel)
 # places
@@ -70,11 +70,11 @@ adp.include_router(ah_progs)
 adp.include_router(prog_parts)
 adp.include_router(prog_ratings)
 # combine
-app.include_router(relationships)
 app.include_router(vendors)
 app.include_router(customers)
 app.include_router(places)
 app.include_router(adp)
+app.include_router(relationships)
 
 @app.get('/')
 async def home():
