@@ -25,6 +25,8 @@ from app.adp.utils.programs import EmptyProgram
 from app.adp.models import (
     CoilProgQuery,
     CoilProgResp,
+    AirHandlerProgQuery,
+    AirHandlerProgResp,
     NewCoilRObj,
     NewAHRObj,
     Rating,
@@ -34,7 +36,13 @@ from app.adp.models import (
     Parts,
     DownloadLink
 )
-from app.jsonapi.sqla_models import serializer
+from app.jsonapi.sqla_models import (
+    serializer, ADPAHProgram, ADPCoilProgram,
+    ADPProgramPart, ADPProgramRating,
+)
+
+ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
+ADP_AIR_HANDLERS_RESOURCE = ADPAHProgram.__jsonapi_type_override__
 
 class NonExistant(Exception):...
 class Expired(Exception):...
@@ -154,14 +162,14 @@ def all_coil_programs(
 
     adp_perm = token.permissions.get('adp')
     if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_collection(session,query,'adp-coil-programs')
+        return serializer.get_collection(session, query, ADP_COILS_RESOURCE)
     elif adp_perm >= auth.ADPPermPriority.customer_std:
         ids = ADP_DB.get_permitted_customer_location_ids(
             session=session,
             email_address=token.email,
             select_type=adp_perm.name,
         )
-        return serializer.get_collection(session,query,'adp-coil-programs',ids)
+        return serializer.get_collection(session, query, ADP_COILS_RESOURCE, ids)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 @adp.get(
@@ -170,7 +178,7 @@ def all_coil_programs(
         response_model_exclude_none=True,
         tags=['jsonapi', 'programs', 'coils']
 )
-def customer_coil_program(
+def coil_program_product(
         session: NewSession,
         token: ADPPerm,
         program_product_id: int,
@@ -185,7 +193,7 @@ def customer_coil_program(
         return serializer.get_resource(
             session=session,
             query=query,
-            api_type='adp-coil-programs',
+            api_type=ADP_COILS_RESOURCE,
             obj_id=program_product_id,
             obj_only=True
         )
@@ -199,7 +207,7 @@ def customer_coil_program(
             return serializer.get_resource(
                 session=session,
                 query=query,
-                api_type='adp-coil-programs',
+                api_type=ADP_COILS_RESOURCE,
                 obj_id=program_product_id,
                 obj_only=True,
                 permitted_ids=ids
@@ -208,8 +216,81 @@ def customer_coil_program(
             raise HTTPException(status.HTTP_204_NO_CONTENT)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
+@adp.get(
+        '/adp-ah-programs',
+         response_model=AirHandlerProgResp,
+         response_model_exclude_none=True,
+         tags=['jsonapi', 'programs', 'ahs']
+)
+def all_ah_programs(
+        token: ADPPerm,
+        session: NewSession,
+        query: AirHandlerProgQuery=Depends(),   # type: ignore
+    ) -> AirHandlerProgResp:
+    """List out all ah programs.
+        An SCA admin or employee will see all programs that exist.
+        A customer will see only their own programs"""
+    if not token.email_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/{adp_customer_id}/program/get-download', tags=['programs', 'file-download'])
+    adp_perm = token.permissions.get('adp')
+    if adp_perm >= auth.ADPPermPriority.sca_employee:
+        return serializer.get_collection(session, query, ADP_AIR_HANDLERS_RESOURCE)
+    elif adp_perm >= auth.ADPPermPriority.customer_std:
+        ids = ADP_DB.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=adp_perm.name,
+        )
+        print(ids)
+        return serializer.get_collection(session, query, ADP_AIR_HANDLERS_RESOURCE, ids)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+@adp.get(
+        '/adp-ah-programs/{program_product_id}',
+        response_model=AirHandlerProgResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi', 'programs', 'ahs']
+)
+def ah_program_product(
+        session: NewSession,
+        token: ADPPerm,
+        program_product_id: int,
+        query: AirHandlerProgQuery=Depends(),   # type: ignore
+    ) -> AirHandlerProgResp:
+    """get a specific product from the ah programs"""
+    if not token.email_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+    adp_perm = token.permissions.get('adp')
+    if adp_perm >= auth.ADPPermPriority.sca_employee:
+        return serializer.get_resource(
+            session=session,
+            query=query,
+            api_type=ADP_AIR_HANDLERS_RESOURCE,
+            obj_id=program_product_id,
+            obj_only=True
+        )
+    elif adp_perm >= auth.ADPPermPriority.customer_std:
+        ids = ADP_DB.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=adp_perm.name
+        )
+        try:
+            return serializer.get_resource(
+                session=session,
+                query=query,
+                api_type=ADP_AIR_HANDLERS_RESOURCE,
+                obj_id=program_product_id,
+                obj_only=True,
+                permitted_ids=ids
+            )
+        except ResourceNotFoundError:
+            raise HTTPException(status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+@adp.get('/programs/{adp_customer_id}/get-download', tags=['programs', 'file-download'])
 def customer_program_get_dl(
         token: ADPPerm,
         adp_customer_id: int,
@@ -218,13 +299,13 @@ def customer_program_get_dl(
     """Generate one-time-use hash value for download"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         download_id = DownloadIDs.generate_id(customer_id=adp_customer_id, stage=Stage(stage))
-        return DownloadLink(downloadLink=f'/adp/{adp_customer_id}/program/download?download_id={download_id}')
+        return DownloadLink(downloadLink=f'/adp/programs/{adp_customer_id}/download?download_id={download_id}')
 
     else:
         print("Enforce that the customer is allowed to have the program associated with the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.get('/{adp_customer_id}/program/download', tags=['programs', 'file-download'], response_class=XLSXFileResponse)
+@adp.get('/programs/{adp_customer_id}/download', tags=['programs', 'file-download'], response_class=XLSXFileResponse)
 def customer_program_dl_file(
         session: NewSession,
         adp_customer_id: int,
@@ -244,7 +325,7 @@ def customer_program_dl_file(
     except Exception as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@adp.get('/{adp_customer_id}/program/ratings', tags=['jsonapi','ratings'])
+@adp.get('/adp-program-ratings/{adp_customer_id}', tags=['jsonapi','ratings'])
 async def get_program_ratings(
         token: ADPPerm,
         adp_customer_id: int,
@@ -253,7 +334,7 @@ async def get_program_ratings(
     ) -> RatingsResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('/{adp_customer_id}/program/coils', tags=['jsonapi', 'programs'])
+@adp.post('/adp-coil-programs/{adp_customer_id}', tags=['jsonapi', 'programs'])
 def add_to_coil_program(
         token: ADPPerm,
         session: NewSession,
@@ -268,7 +349,7 @@ def add_to_coil_program(
     else:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('/{adp_customer_id}/program/air-handlers', tags=['jsonapi', 'programs'])
+@adp.post('/adp-ah-programs/{adp_customer_id}', tags=['jsonapi', 'programs'])
 def add_to_ah_program(
         token: ADPPerm,
         session: NewSession,
@@ -283,7 +364,7 @@ def add_to_ah_program(
     else:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('/{adp_customer_id}/program/ratings', tags=['ratings'])
+@adp.post('/adp-program-ratings/{adp_customer_id}', tags=['programs', 'ratings', 'file-upload'])
 async def add_program_ratings(
         token: ADPPerm,
         ratings_file: UploadFile,
@@ -308,7 +389,7 @@ async def add_program_ratings(
         print("Enforce that the customer is allowed to add ratings to the adp_customer_id selected")
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-@adp.post('/{adp_customer_id}/program/parts', tags=['parts'])
+@adp.post('/adp-program-parts/{adp_customer_id}', tags=['programs','parts'])
 async def add_program_parts(
         token: ADPPerm,
         adp_customer_id: int,
