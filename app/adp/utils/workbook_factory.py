@@ -138,7 +138,7 @@ def generate_program(
         )
         logger.info(f"generating {full_program}")
         for prog in full_program:
-            logger.info(f'\t{prog}')
+            logger.info(f'{prog} program included')
         price_book = (PriceBook(TEMPLATES, full_program)
                             .build_program()
                             .add_footer()
