@@ -192,6 +192,8 @@ class ADPMaterialGroupDiscount(Base):
 
 class ADPProgramRating(Base):
     __tablename__ = 'adp_program_ratings'
+    __jsonapi_type_override__ = 'adp-program-ratings'
+
     ## fields
     ahrinumber = Column("AHRINumber",TEXT)
     outdoor_model = Column("OutdoorModel",TEXT)
@@ -252,6 +254,7 @@ class ADPPricingPart(Base):
 
 class ADPProgramPart(Base):
     __tablename__ = 'adp_program_parts'
+    __jsonapi_type_override__ = 'adp-program-parts'
     ## fields
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
