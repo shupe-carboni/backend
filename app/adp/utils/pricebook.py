@@ -6,6 +6,7 @@ from io import BytesIO
 import pandas as pd
 import openpyxl as opxl
 from typing import Literal
+from logging import getLogger
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.drawing.image import Image
@@ -22,6 +23,7 @@ from app.adp.adp_models import MODELS
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
 STATIC_DIR = os.getenv('STATIC_DIR')
+logger = getLogger('uvicorn.info')
 
 class FileGenExecption(Exception): ...
 
@@ -489,7 +491,7 @@ class PriceBook:
         """unlike the model numbers tab, headers have been provided"""
         data = self.program.parts
         if data.empty:
-            print("\tskipped parts due to empty table")
+            logger.info("skipped parts due to empty table")
             return self
         num_rows = data.shape[0]
         self.append_parts_block()\
