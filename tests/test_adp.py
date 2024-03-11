@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from app.adp.models import (
-    CoilProgResp
+    CoilProgResp,
+    AirHandlerProgResp
 )
 from app.auth import adp_perms_present
 from tests import auth_overrides
@@ -10,12 +11,16 @@ from tests import auth_overrides
 
 test_client = TestClient(app)
 # NOTE should or can I randomize this?
-# this customer id is not explitly used. The filtering process behind the
+# customer ids are not explitly used. The filtering process behind the
 # get_collection and get_resource implementations already selects for the 
 # proper adp_customer_id values based on a mapping table
-ADP_CUSTOMER_ID = 11
-VALID_PRODUCT_ID = 84
-INVALID_PRODUCT_ID = 1 # invalid for the customer but not SCA
+# coil customer id = 23
+# ah customer id = 23
+VALID_COIL_PRODUCT_ID = 159
+INVALID_COIL_PRODUCT_ID = 1 # invalid for the customer but not SCA
+VALID_AH_PRODUCT_ID = 50
+INVALID_AH_PRODUCT_ID = 1 # invalid for the customer but not SCA
+
 
 def test_customer_coil_program_collection_filtering():
     """this is dependent on the data - in that we expect more than one customer to have data to return"""
@@ -41,12 +46,29 @@ def test_customer_coil_program_collection_as_sca_admin():
 
 def test_customer_coil_program_resource_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
-    response = test_client.get(f'/adp/adp-coil-programs/{VALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
-    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_collection_as_sca_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    response = test_client.get('/adp/adp-ah-programs')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_resource_as_sca_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    response = test_client.get(f'/adp/adp-ah-programs/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    response = test_client.get(f'/adp/adp-ah-programs/{INVALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
 ## SCA EMPLOYEE
@@ -59,12 +81,29 @@ def test_customer_coil_program_collection_as_sca_employee():
 
 def test_customer_coil_program_resource_as_sca_employee():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
-    response = test_client.get(f'/adp/adp-coil-programs/{VALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
-    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_collection_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.get('/adp/adp-ah-programs')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_resource_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.get(f'/adp/adp-ah-programs/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    response = test_client.get(f'/adp/adp-ah-programs/{INVALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
 ## CUSTOMER ADMIN
@@ -77,10 +116,27 @@ def test_customer_coil_program_collection_as_customer_admin():
 
 def test_customer_coil_program_resource_as_customer_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
-    response = test_client.get(f'/adp/adp-coil-programs/{VALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
-    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_COIL_PRODUCT_ID}')
+    assert response.status_code == 204
+    assert response.content == str('').encode()
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_collection_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    response = test_client.get('/adp/adp-ah-programs')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_resource_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    response = test_client.get(f'/adp/adp-ah-programs/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    response = test_client.get(f'/adp/adp-ah-programs/{INVALID_AH_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
@@ -95,10 +151,27 @@ def test_customer_coil_program_collection_as_customer_manager():
 
 def test_customer_coil_program_resource_as_customer_manager():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
-    response = test_client.get(f'/adp/adp-coil-programs/{VALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
-    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_COIL_PRODUCT_ID}')
+    assert response.status_code == 204
+    assert response.content == str('').encode()
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_collection_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    response = test_client.get('/adp/adp-ah-programs')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_resource_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    response = test_client.get(f'/adp/adp-ah-programs/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    response = test_client.get(f'/adp/adp-ah-programs/{INVALID_AH_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
@@ -113,10 +186,27 @@ def test_customer_coil_program_collection_as_customer_std():
 
 def test_customer_coil_program_resource_as_customer_std():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
-    response = test_client.get(f'/adp/adp-coil-programs/{VALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
-    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_PRODUCT_ID}')
+    response = test_client.get(f'/adp/adp-coil-programs/{INVALID_COIL_PRODUCT_ID}')
+    assert response.status_code == 204
+    assert response.content == str('').encode()
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_collection_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    response = test_client.get('/adp/adp-ah-programs')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_resource_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    response = test_client.get(f'/adp/adp-ah-programs/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 200
+    assert AirHandlerProgResp(**response.json())
+    response = test_client.get(f'/adp/adp-ah-programs/{INVALID_AH_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
