@@ -103,6 +103,13 @@ def add_to_ah_program(
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         model_num = new_ah.attributes.model_number
         new_id = add_model_to_program(session=session, model=model_num, adp_customer_id=adp_customer_id)
-        return {"new id": new_id}
+        return serializer.get_resource(
+            session=session,
+            query=AirHandlerProgQuery(),
+            api_type=ADP_AIR_HANDLERS_RESOURCE,
+            obj_id=new_id,
+            obj_only=True,
+            permitted_ids=None
+        )
     else:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
