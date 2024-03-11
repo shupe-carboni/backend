@@ -144,18 +144,23 @@ class Database:
                 AND customer_loc.customer_id = scl.customer_id
             );
         """
+        query_set = {sql_admin, sql_manager, sql_user_only}
         match select_type:
             case 'customer_std':
-                sql = sql_user_only
+                query_set.remove(sql_admin)
+                query_set.remove(sql_manager)
             case 'customer_manager':
-                sql = sql_manager
+                query_set.remove(sql_admin)
             case 'customer_admin':
-                sql = sql_admin
+                pass
             case _:
                 raise Exception('invalid select_type')
-
-        return session.scalars(text(sql), params={'user_email': email_address}).all()
-
+        
+        for sql in query_set:
+            result = session.scalars(text(sql), params={'user_email': email_address}).all() 
+            if result:
+                return result
+        return []
 
 
 ADP_DB = Database('adp')
