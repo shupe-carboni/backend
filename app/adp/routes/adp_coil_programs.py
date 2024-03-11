@@ -4,12 +4,13 @@ from fastapi.routing import APIRouter
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 
 from app import auth
-from app.db import Session, ADP_DB
+from app.db import Session, ADP_DB, Stage
 from app.adp.main import add_model_to_program
 from app.adp.models import (
     CoilProgQuery,
     CoilProgResp,
-    NewCoilRObj
+    NewCoilRObj,
+    ModStageCoil
 )
 from app.jsonapi.sqla_models import serializer, ADPCoilProgram
 
@@ -92,13 +93,18 @@ def coil_program_product(
             raise HTTPException(status.HTTP_204_NO_CONTENT)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@coil_progs.post('/{adp_customer_id}', tags=['jsonapi'])
+@coil_progs.post(
+        '/{adp_customer_id}',
+        response_model=CoilProgResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi']
+)
 def add_to_coil_program(
         token: ADPPerm,
         session: NewSession,
         adp_customer_id: int,
         new_coil: NewCoilRObj,
-        ):
+    ) -> CoilProgResp:
     """add coil product for a customer"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         model_num = new_coil.attributes.model_number
@@ -113,3 +119,42 @@ def add_to_coil_program(
         )
     else:
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@coil_progs.patch(
+        '/{program_product_id}',
+        response_model=CoilProgResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi']
+)
+def change_product_status(
+        session: NewSession,
+        token: ADPPerm,
+        program_product_id: int,
+        query: ModStageCoil
+    ) -> CoilProgResp:
+    """change the stage of a program coil
+        Stage: ACITVE, PROPOSED, REJECTED, REMOVED
+        examples:
+            PROPOSED -> ACTIVE
+            ACTIVE -> REMOVED
+    """
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@coil_progs.delete('/{program_product_id}')
+def permanently_delete_record(
+        session: NewSession,
+        token: ADPPerm,
+        program_product_id: int,
+    ) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+@coil_progs.get(
+        '/{program_product_id}/adp-customers'
+)
+def get_related_customer(
+        session: NewSession,
+        token: ADPPerm,
+        program_product_id: int,
+        query: ModStageCoil
+    ):
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
