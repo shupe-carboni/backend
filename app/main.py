@@ -13,7 +13,11 @@ from app import relationships
 from app.vendors import vendors
 from app.customers import customers, customer_rel
 from app.places import places, place_rel
-from app.adp import adp, adp_quotes, adp_quote_rel 
+from app.adp import (
+    adp, adp_quotes, adp_quote_rel,
+    coil_progs, ah_progs, prog_parts,
+    prog_ratings
+)
 
 logger = logging.getLogger('uvicorn.info')
 
@@ -54,15 +58,23 @@ app.add_middleware(
 )
 
 ## order matters
-app.include_router(vendors)
+# customers
 customers.include_router(customer_rel)
-app.include_router(customers)
+# places
 places.include_router(place_rel)
-app.include_router(places)
+# adp
 adp_quotes.include_router(adp_quote_rel)
 adp.include_router(adp_quotes)
-app.include_router(adp)
+adp.include_router(coil_progs)
+adp.include_router(ah_progs)
+adp.include_router(prog_parts)
+adp.include_router(prog_ratings)
+# combine
 app.include_router(relationships)
+app.include_router(vendors)
+app.include_router(customers)
+app.include_router(places)
+app.include_router(adp)
 
 @app.get('/')
 async def home():
