@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from app.adp.models import CoilProgResp, AirHandlerProgResp
+from app.adp.models import CoilProgResp, AirHandlerProgResp, CoilProgRObj, AirHandlerProgRObj
 from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
 from app.auth import adp_perms_present
 from tests import auth_overrides
@@ -39,7 +39,7 @@ def test_customer_coil_program_collection_filtering():
 def test_customer_coil_program_collection_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     assert CoilProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
@@ -48,6 +48,7 @@ def test_customer_coil_program_resource_as_sca_admin():
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
@@ -65,6 +66,7 @@ def test_customer_ah_program_resource_as_sca_admin():
     response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}')
     assert response.status_code == 200
     assert AirHandlerProgResp(**response.json())
+    assert isinstance(AirHandlerProgResp(**response.json()).data, AirHandlerProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}/{INVALID_AH_PRODUCT_ID}')
     assert response.status_code == 200
     assert AirHandlerProgResp(**response.json())
@@ -83,6 +85,7 @@ def test_customer_coil_program_resource_as_sca_employee():
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
@@ -118,6 +121,7 @@ def test_customer_coil_program_resource_as_customer_admin():
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
@@ -153,6 +157,7 @@ def test_customer_coil_program_resource_as_customer_manager():
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
@@ -188,6 +193,7 @@ def test_customer_coil_program_resource_as_customer_std():
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert response.status_code == 200
     assert CoilProgResp(**response.json())
+    assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}')
     assert response.status_code == 204
     assert response.content == str('').encode()
