@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app import auth
 from app.customers.models import CustomerQuery, CustomerResponse
 from app.db.db import SCA_DB
-from app.jsonapi.sqla_models import serializer
+from app.jsonapi.sqla_models import serializer, SCACustomer
 
-api_type = 'customers'
+api_type = SCACustomer.__jsonapi_type_override__
 customers = APIRouter(prefix=f'/{api_type}', tags=['customers'])
 
 CustomersPerm = Annotated[auth.VerifiedToken, Depends(auth.customers_perms_present)]
@@ -20,7 +20,14 @@ async def customer_collection(
         token: CustomersPerm,
         query: CustomerQuery=Depends(), # type: ignore
     ) -> CustomerResponse:
-    return serializer.get_collection(session=session, query=query, api_type=api_type)
+    return auth.secured_get_query(
+        db=SCA_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['customers'],
+        resource=api_type,
+        query=query
+    )
 
 @customers.get('/{customer_id}', response_model=CustomerResponse, response_model_exclude_none=True)
 async def customer(
@@ -29,4 +36,12 @@ async def customer(
         customer_id: int,
         query: CustomerQuery=Depends(), # type: ignore
     ) -> CustomerResponse:
-    return serializer.get_resource(session=session, query=query, api_type=api_type, obj_id=customer_id, obj_only=True)
+    return auth.secured_get_query(
+        db=SCA_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['customers'],
+        resource=api_type,
+        query=query,
+        obj_id=customer_id
+    )
