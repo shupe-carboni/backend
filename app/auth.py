@@ -11,6 +11,12 @@ from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
 
+from typing import Optional
+from functools import partial
+from sqlalchemy_jsonapi.errors import ResourceNotFoundError
+from app.db.db import Session, Database
+from app.jsonapi.sqla_models import serializer
+
 token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
 ALGORITHMS = os.getenv('ALGORITHMS')
@@ -67,7 +73,7 @@ class VerifiedToken(BaseModel):
     """
     token: bytes
     exp: int
-    permissions: dict[str,Enum]
+    permissions: dict[str,IntEnum]
     nickname: str
     name: str
     email: str
@@ -122,7 +128,6 @@ def get_user_info(access_token: str) -> dict:
         user_info = user_info.json()
     else:
         return {"nickname": '', "name": '', "email": '', "email_verified": False}
-        raise HTTPException(status_code=user_info.status_code, detail=str(user_info.text))
     match user_info:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
             return {"nickname": a, "name": b, "email": c, "email_verified": d}
@@ -234,3 +239,59 @@ def adp_quotes_perms(token: VerifiedToken = Depends(authenticate_auth0_token)) -
     perm_category_present(token, 'adp')
     perm_category_present(token, 'qutoes')
     return token
+
+class UnverifiedEmail(Exception): ...
+
+def standard_error_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except UnverifiedEmail:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Email not verified")
+        except ResourceNotFoundError:
+            raise HTTPException(status.HTTP_204_NO_CONTENT)
+        except:
+            import traceback as tb
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc())
+    return wrapper
+
+@standard_error_handler
+def secured_get_query(
+        db: Database,
+        session: Session,
+        token: VerifiedToken,
+        auth_scheme: Permissions,
+        resource: str,
+        query: BaseModel,
+        obj_id: Optional[int] = None
+    ):
+    if not token.email_verified:
+        raise UnverifiedEmail
+    perm_lookup_name: str = auth_scheme.name
+    the_perm: IntEnum = token.permissions.get(perm_lookup_name)
+    if not obj_id:
+        query = partial(
+            serializer.get_collection,
+            session=session,
+            query=query,
+            api_type=resource,
+            )
+    else:
+        query = partial(
+            serializer.get_resource,
+            session=session,
+            query=query,
+            api_type=resource,
+            obj_id=obj_id,
+            obj_only=True
+        )
+    if the_perm >= auth_scheme.value.sca_employee:
+        result = query()
+    elif the_perm >= auth_scheme.value.customer_std:
+        ids = db.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=the_perm.name
+        )
+        result = query(permitted_ids=ids)
+    return result
