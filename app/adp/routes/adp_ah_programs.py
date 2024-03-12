@@ -1,7 +1,6 @@
 from typing import Annotated
 from fastapi import HTTPException, Depends, status
 from fastapi.routing import APIRouter
-from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 
 from app import auth
 from app.db import Session, ADP_DB
@@ -33,20 +32,14 @@ def all_ah_programs(
     """List out all ah programs.
         An SCA admin or employee will see all programs that exist.
         A customer will see only their own programs"""
-    if not token.email_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-
-    adp_perm = token.permissions.get('adp')
-    if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_collection(session, query, ADP_AIR_HANDLERS_RESOURCE)
-    elif adp_perm >= auth.ADPPermPriority.customer_std:
-        ids = ADP_DB.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=adp_perm.name,
-        )
-        return serializer.get_collection(session, query, ADP_AIR_HANDLERS_RESOURCE, ids)
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_AIR_HANDLERS_RESOURCE,
+        query=query
+    )
 
 @ah_progs.get(
         '/{program_product_id}',
@@ -61,36 +54,15 @@ def ah_program_product(
         query: AirHandlerProgQuery=Depends(),   # type: ignore
     ) -> AirHandlerProgResp:
     """get a specific product from the ah programs"""
-    if not token.email_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-
-    adp_perm = token.permissions.get('adp')
-    if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_resource(
-            session=session,
-            query=query,
-            api_type=ADP_AIR_HANDLERS_RESOURCE,
-            obj_id=program_product_id,
-            obj_only=True
-        )
-    elif adp_perm >= auth.ADPPermPriority.customer_std:
-        ids = ADP_DB.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=adp_perm.name
-        )
-        try:
-            return serializer.get_resource(
-                session=session,
-                query=query,
-                api_type=ADP_AIR_HANDLERS_RESOURCE,
-                obj_id=program_product_id,
-                obj_only=True,
-                permitted_ids=ids
-            )
-        except ResourceNotFoundError:
-            raise HTTPException(status.HTTP_204_NO_CONTENT)
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_AIR_HANDLERS_RESOURCE,
+        query=query,
+        obj_id=program_product_id
+    )
 
 @ah_progs.post('/{adp_customer_id}', tags=['jsonapi'])
 def add_to_ah_program(
@@ -98,7 +70,7 @@ def add_to_ah_program(
         session: NewSession,
         adp_customer_id: int,
         new_ah: NewAHRObj,
-    ):
+    ) -> AirHandlerProgResp:
     """create a new product in an existing program"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         model_num = new_ah.attributes.model_number
