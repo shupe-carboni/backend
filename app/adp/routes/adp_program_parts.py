@@ -6,7 +6,8 @@ from app import auth
 from app.db import Session, ADP_DB
 from app.adp.models import (
     NewPartRObj,
-    RatingsQuery # NOTE: REPLACE THIS WITH A PARTS VERSION
+    PartsQuery,
+    PartsResp
 )
 from app.jsonapi.sqla_models import serializer, ADPProgramPart
 
@@ -15,6 +16,26 @@ ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 prog_parts = APIRouter(prefix=f'/{ADP_PARTS_RESOURCE}', tags=['parts','programs'])
+
+@prog_parts.get(
+        '',
+        response_model=PartsResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi']
+)
+def all_parts(
+        token: ADPPerm,
+        session: NewSession,
+        query: PartsQuery=Depends(), #type: ignore
+    ) -> PartsResp:
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_PARTS_RESOURCE,
+        query=query
+    )
 
 async def add_parts_to_program(session: Session, adp_customer_id: int, part_num: str) -> int:
     sql = """
@@ -43,7 +64,7 @@ async def add_program_parts(
             return serializer.get_resource(
                 session=session,
                 api_type=ADP_PARTS_RESOURCE,
-                query=RatingsQuery(),
+                query=PartsQuery(),
                 obj_id=new_id,
                 obj_only=True,
                 permitted_ids=None
