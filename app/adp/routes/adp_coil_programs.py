@@ -1,10 +1,9 @@
 from typing import Annotated
 from fastapi import HTTPException, Depends, status
 from fastapi.routing import APIRouter
-from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 
 from app import auth
-from app.db import Session, ADP_DB, Stage
+from app.db import Session, ADP_DB 
 from app.adp.main import add_model_to_program
 from app.adp.models import (
     CoilProgQuery,
@@ -34,20 +33,15 @@ def all_coil_programs(
     """List out all coil programs.
         An SCA admin or employee will see all programs that exist.
         A customer will see only their own programs"""
-    if not token.email_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_COILS_RESOURCE,
+        query=query
+    )
 
-    adp_perm = token.permissions.get('adp')
-    if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_collection(session, query, ADP_COILS_RESOURCE)
-    elif adp_perm >= auth.ADPPermPriority.customer_std:
-        ids = ADP_DB.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=adp_perm.name,
-        )
-        return serializer.get_collection(session, query, ADP_COILS_RESOURCE, ids)
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 @coil_progs.get(
         '/{program_product_id}',
@@ -62,36 +56,15 @@ def coil_program_product(
         query: CoilProgQuery=Depends(),   # type: ignore
     ) -> CoilProgResp:
     """get a specific product from the coil programs"""
-    if not token.email_verified:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-
-    adp_perm = token.permissions.get('adp')
-    if adp_perm >= auth.ADPPermPriority.sca_employee:
-        return serializer.get_resource(
-            session=session,
-            query=query,
-            api_type=ADP_COILS_RESOURCE,
-            obj_id=program_product_id,
-            obj_only=True
-        )
-    elif adp_perm >= auth.ADPPermPriority.customer_std:
-        ids = ADP_DB.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=adp_perm.name
-        )
-        try:
-            return serializer.get_resource(
-                session=session,
-                query=query,
-                api_type=ADP_COILS_RESOURCE,
-                obj_id=program_product_id,
-                obj_only=True,
-                permitted_ids=ids
-            )
-        except ResourceNotFoundError:
-            raise HTTPException(status.HTTP_204_NO_CONTENT)
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_COILS_RESOURCE,
+        query=query,
+        obj_id=program_product_id
+    )
 
 @coil_progs.post(
         '/{adp_customer_id}',
