@@ -20,8 +20,8 @@ class LocationAttrs(BaseModel):
     hq: bool
     dc: bool
 class LocationRelationships(BaseModel):
-    customer: JSONAPIRelationships = Field(alias='customer')
-    place: JSONAPIRelationships = Field(alias='place')
+    customers: JSONAPIRelationships = Field(alias='customers')
+    places: JSONAPIRelationships = Field(alias='places')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
 
 class LocationResourceObject(LocationResourceIdentifier):
