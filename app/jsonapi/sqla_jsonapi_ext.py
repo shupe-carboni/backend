@@ -1,4 +1,3 @@
-from copy import copy
 from os import getenv
 from dotenv import load_dotenv; load_dotenv()
 import functools
@@ -23,6 +22,8 @@ from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_pe
 class SQLAlchemyModel:
     """This class is for typing, so that the linter recognizes my custom methods on 
         SQLAlchemy Base models"""
+    __tablename__: str
+    __jsonapi_type_override__: str
     def apply_customer_location_filtering(q: sqlQuery, ids: list[int]=None) -> sqlQuery:
         ...
 
