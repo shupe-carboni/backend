@@ -12,7 +12,12 @@ from app.jsonapi.core_models import (
     Query
 )
 from app.db import Stage
-from app.jsonapi.sqla_models import ADPAHProgram, ADPCoilProgram, ADPCustomerTerms, ADPCustomer, ADPProgramRating
+from app.jsonapi.sqla_models import (
+    ADPAHProgram, ADPCoilProgram,
+    ADPCustomerTerms, ADPCustomer,
+    ADPProgramRating, ADPProgramPart,
+    ADPPricingPart,
+)
 
 class CoilProgRID(JSONAPIResourceIdentifier):
     type: str = ADPCoilProgram.__jsonapi_type_override__
@@ -106,6 +111,10 @@ AirHandlerProgQuery: type[BaseModel] = create_model(
 class NewModelNumber(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     model_number: str = Field(alias="model-number")
+
+class NewPartNumber(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    part_number: str = Field(alias="part-number")
 class NewCoilRObj(BaseModel):
     type: str = ADPCoilProgram.__jsonapi_type_override__
     attributes: NewModelNumber
@@ -113,6 +122,10 @@ class NewCoilRObj(BaseModel):
 class NewAHRObj(BaseModel):
     type: str = ADPAHProgram.__jsonapi_type_override__
     attributes: NewModelNumber
+
+class NewPartRObj(BaseModel):
+    type: str = ADPProgramPart.__jsonapi_type_override__
+    attributes: NewPartNumber
 
 ## Modifications to products in a Program
 class NewStage(BaseModel):
@@ -160,7 +173,7 @@ class RatingsRObj(RatingsRID):
 
 class RatingsResp(BaseModel):
     meta: Optional[dict] = {}
-    data: Optional[list[RatingsRObj]]
+    data: Optional[list[RatingsRObj] | RatingsRObj]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
 
@@ -174,7 +187,34 @@ RatingsQuery: type[BaseModel] = create_model(
 
 ## Parts
 class Parts(BaseModel):
-    parts: list[str]
+    ...
+class PartsRID(JSONAPIResourceIdentifier):
+    type: str = ADPProgramPart.__jsonapi_type_override__
+
+class PartsRelResp(JSONAPIRelationshipsResponse):
+    data: list[PartsRID] | PartsRID
+
+class PartsRels(BaseModel):
+    adp_pricing_parts: Optional[JSONAPIRelationships] = Field(default=None, alias=ADPPricingPart.__jsonapi_type_override__)
+    adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias=ADPProgramPart.__jsonapi_type_override__)
+
+class PartsRObj(PartsRID):
+    attributes: Parts
+    relationships: PartsRels
+
+class PartsResp(BaseModel):
+    meta: Optional[dict] = {}
+    data: Optional[list[PartsRObj] | PartsRObj]
+    included: Optional[list[JSONAPIResourceObject]]
+    links: Optional[Pagination]
+
+PartsQuery: type[BaseModel] = create_model(
+    'PartsQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f'fields_{PartsRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
+    **{f"fields_{field}":(Optional[str], None) for field in PartsRels.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
+)
     
 ## Downloads
 class DownloadLink(BaseModel):
@@ -193,14 +233,14 @@ class CustomersAttrs(BaseModel):
     preferred_parts: bool = Field(alias='preferred-parts')
 class CustomersRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    customer: JSONAPIRelationships = Field(alias='customer')
-    adp_coil_program: JSONAPIRelationships = Field(alias='adp-coil-program')
-    adp_ah_program: JSONAPIRelationships = Field(alias='adp-ah-program')
-    adp_ratings: JSONAPIRelationships = Field(alias='adp-ratings')
-    locations_by_alias: JSONAPIRelationships = Field(alias='locations-by-alias')
-    material_group_discounts: JSONAPIRelationships = Field(alias='material-group-discounts')
-    snps: JSONAPIRelationships = Field(alias='snps')
-    program_parts: JSONAPIRelationships = Field(alias='program-parts')
+    customers: JSONAPIRelationships = Field(alias='customers')
+    adp_coil_programs: JSONAPIRelationships = Field(alias='adp-coil-programs')
+    adp_ah_programs: JSONAPIRelationships = Field(alias='adp-ah-programs')
+    adp_program_ratings: JSONAPIRelationships = Field(alias='adp-program-ratings')
+    adp_alias_to_sca_customer_locations: JSONAPIRelationships = Field(alias='adp-alias-to-sca-customer-locations')
+    adp_material_group_discounts: JSONAPIRelationships = Field(alias='adp-material-group-discounts')
+    adp_snps: JSONAPIRelationships = Field(alias='adp-snps')
+    adp_program_parts: JSONAPIRelationships = Field(alias='adp-program-parts')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
 class CustomersRObj(CustomersRID):
     attributes: CustomersAttrs
@@ -231,7 +271,7 @@ class ADPCustomerTerms(BaseModel):
     effective_date: datetime = Field(alias='effective-date')
 
 class ADPCustomerTermsRels(BaseModel):
-    customer: JSONAPIRelationships
+    customers: JSONAPIRelationships
 
 class ADPCustomerTermsRObj(ADPCustomerTermsRID):
     attributes: ADPCustomerTerms
