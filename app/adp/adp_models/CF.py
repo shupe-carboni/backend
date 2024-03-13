@@ -27,21 +27,21 @@ class CF(ModelSeries):
             actual_model = str()
         match self.attributes['application']:
             case 'C':
-                from adp_models.F import F
+                from app.adp.adp_models.F import F
                 self.model_obj = Validator(
                     raw_text=actual_model,
                     model_series=F,
                 ).is_model()
                 self._record = self.model_obj.record()
             case 'P':
-                from adp_models.B import B
+                from app.adp.adp_models.B import B
                 self.model_obj = Validator(
                     raw_text=actual_model,
                     model_series=B,
                 ).is_model()
                 self._record = self.model_obj.record()
             case 'W':
-                from adp_models.S import S
+                from app.adp.adp_models.S import S
                 self.model_obj = Validator(
                     raw_text=actual_model,
                     model_series=S,

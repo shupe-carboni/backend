@@ -36,32 +36,32 @@ class CE(ModelSeries):
         self.tonnage = int(self.attributes['ton'])
         match self.attributes['config']:
             case 'H':
-                from adp_models.V import V
+                from app.adp.adp_models.V import V
                 self.length = model_specs['length'].item()
                 self.height = None
                 real_model_obj = V
             case 'M':
-                from adp_models.MH import MH
+                from app.adp.adp_models.MH import MH
                 self.length = None
                 self.height = model_specs['height'].item()
                 real_model_obj = MH
             case 'P':
-                from adp_models.HE import HE
+                from app.adp.adp_models.HE import HE
                 self.length = None
                 self.height = model_specs['height'].item()
                 real_model_obj = HE
             case 'V':
-                from adp_models.HE import HE
+                from app.adp.adp_models.HE import HE
                 self.length = None
                 self.height = model_specs['height'].item()
                 real_model_obj = HE
             case 'S':
-                from adp_models.HH import HH
+                from app.adp.adp_models.HH import HH
                 self.length = None
                 self.height = model_specs['height'].item()
                 real_model_obj = HH
 
-        self.real_model_obj = Validator(self.real_model, real_model_obj).is_model()
+        self.real_model_obj = Validator(session, self.real_model, real_model_obj).is_model()
         self.zero_disc_price = self.real_model_obj.calc_zero_disc_price()
         self.ratings_ac_txv = None
         self.ratings_hp_txv = None
