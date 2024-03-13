@@ -128,6 +128,5 @@ def get_related_customer(
         session: NewSession,
         token: ADPPerm,
         program_product_id: int,
-        query: ModStageCoil
     ):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
