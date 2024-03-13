@@ -29,6 +29,7 @@ class CF(ModelSeries):
             case 'C':
                 from app.adp.adp_models.F import F
                 self.model_obj = Validator(
+                    db_session=session,
                     raw_text=actual_model,
                     model_series=F,
                 ).is_model()
@@ -36,6 +37,7 @@ class CF(ModelSeries):
             case 'P':
                 from app.adp.adp_models.B import B
                 self.model_obj = Validator(
+                    db_session=session,
                     raw_text=actual_model,
                     model_series=B,
                 ).is_model()
@@ -43,6 +45,7 @@ class CF(ModelSeries):
             case 'W':
                 from app.adp.adp_models.S import S
                 self.model_obj = Validator(
+                    db_session=session,
                     raw_text=actual_model,
                     model_series=S,
                 ).is_model()
