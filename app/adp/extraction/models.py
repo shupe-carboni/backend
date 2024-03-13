@@ -1,6 +1,4 @@
-import re
 import math
-import os
 import copy
 import pandas as pd
 import openpyxl as opxl
@@ -77,10 +75,15 @@ def price_models_by_customer_discounts(session: Session, model: pd.Series, adp_c
         'discount'
     ]
     mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
-    model_num: str = model[Fields.MODEL_NUMBER.value]
+    if not isinstance(model[Fields.PRIVATE_LABEL.value],str):
+        model_num: str = model[Fields.MODEL_NUMBER.value]
+    else:
+        model_num: str = model[Fields.PRIVATE_LABEL.value]
+
     snp: pd.Series = snps.loc[
         (snps[Fields.CUSTOMER_ID.value] == adp_customer_id)
-        & (snps['model'] == model_num),
+        & (snps['model'] == model_num)
+        & (snps['stage'].isin([Stage.ACTIVE.name, Stage.PROPOSED.name])),
         'price'
     ]
     snp = snp.item() if not snp.empty else 0
