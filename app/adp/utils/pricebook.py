@@ -568,7 +568,6 @@ class PriceBook:
                 ])
 
             for label, row in table.iterrows():
-                print(not row['AHRI Ref Number'], row['AHRI Ref Number'])
                 if not row['AHRI Ref Number']:
                     row_view = row[['AHRINumber','OEMName','OutdoorModel',
                                     'IndoorModel','FurnaceModel','seer2_as_submitted',
