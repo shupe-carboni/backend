@@ -18,8 +18,8 @@ class S(ModelSeries):
         'L': 'weight_cu',
         'M': 'weight_al'
     }
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session,re_match)
         self.specs = ADP_DB.load_df(session=self.session, table_name='s_dims')
         self.min_qty = 4
         model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]

@@ -1,7 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.pricing.hh.pricing import load_pricing
-from app.db import ADP_DB
+from app.db import ADP_DB, Session
 
 session = next(ADP_DB.get_db())
 
@@ -22,8 +22,8 @@ class HH(ModelSeries):
         (?P<AP>AP)
     '''
 
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match)
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)
         self.specs = ADP_DB.load_df(session=session, table_name='hh_weights_pallet')
         self.cabinet_config = Cabinet.EMBOSSED
         width = int(self.attributes['width'])
