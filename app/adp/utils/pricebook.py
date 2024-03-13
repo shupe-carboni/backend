@@ -515,6 +515,7 @@ class PriceBook:
             return oemseries[start:end]
 
         data['OEM Series'] = data['OEM Series'].fillna(data['OutdoorModel']).apply(set_series_name)
+        data['OEM Name'] = data['OEM Name'].fillna(data['OEMName'])
         ratings: dict[str, pd.DataFrame] = {
             oem_series: data[data['OEM Series'] == oem_series]
             for oem_series in data['OEM Series'].unique()
@@ -567,6 +568,7 @@ class PriceBook:
                 ])
 
             for label, row in table.iterrows():
+                print(not row['AHRI Ref Number'], row['AHRI Ref Number'])
                 if not row['AHRI Ref Number']:
                     row_view = row[['AHRINumber','OEMName','OutdoorModel',
                                     'IndoorModel','FurnaceModel','seer2_as_submitted',
