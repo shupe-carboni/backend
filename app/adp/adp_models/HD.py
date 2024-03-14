@@ -44,6 +44,9 @@ class HD(ModelSeries):
         self.ratings_hp_txv = None
         self.ratings_piston = None
         self.ratings_field_txv = None
+    
+    def calc_zero_disc_price(self) -> int:
+        return super().calc_zero_disc_price()
 
     def record(self) -> dict:
         model_record = super().record()

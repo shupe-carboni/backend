@@ -50,8 +50,8 @@ class S(ModelSeries):
             :]
         heat: str = self.attributes['heat']
         result = pricing_[heat].item()
-        result += adders_.get(int(self.attributes['meter']),0)
-        result += adders_.get(int(self.attributes['ton']),0)
+        result += adders_.get(self.attributes['meter'],0)
+        result += adders_.get(self.attributes['ton'],0)
         return result
 
     def set_heat(self):

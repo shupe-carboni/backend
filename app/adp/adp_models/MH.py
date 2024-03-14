@@ -41,7 +41,7 @@ class MH(ModelSeries):
         pricing_, adders_ = load_pricing(session=self.session)
 
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
-        result += adders_.get(int(self.attributes['meter']), 0)
+        result += adders_.get(self.attributes['meter'], 0)
         return result
 
     def record(self) -> dict:

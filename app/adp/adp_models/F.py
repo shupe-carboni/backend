@@ -57,10 +57,10 @@ class F(ModelSeries):
             result = pricing_[heat].item()
         else:
             result = pricing_['base'].item()
-        result += adders_.get(int(self.attributes['voltage']),0)
+        result += adders_.get(self.attributes['voltage'],0)
         result += adders_.get(self.attributes['line_conn'],0) if heat == '05' else 0
-        result += adders_.get(int(self.attributes['ton']),0) if self.attributes['motor'] == 'E' else 0
-        result += adders_.get(int(self.attributes['meter']),0)        
+        result += adders_.get(self.attributes['ton'],0) if self.attributes['motor'] == 'E' else 0
+        result += adders_.get(self.attributes['meter'],0)        
         return result
 
     def record(self) -> dict:

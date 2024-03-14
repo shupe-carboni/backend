@@ -62,8 +62,8 @@ class B(ModelSeries):
             return -1
         heat: str = self.attributes['heat']
         result = pricing_[heat[0]].item() if heat != '00' else pricing_['base'].item()
-        result += adders_.get(int(self.attributes['meter']),0)
-        result += adders_.get(int(self.attributes['voltage']),0)
+        result += adders_.get(self.attributes['meter'],0)
+        result += adders_.get(self.attributes['voltage'],0)
         result += adders_.get(self.attributes['heat'][-1],0)
         result += adders_.get(self.attributes['motor'],0)
         return result
