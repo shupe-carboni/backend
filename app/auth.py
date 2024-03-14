@@ -114,9 +114,7 @@ class LocalTokenStore:
     def contains(cls, token: str) -> VerifiedToken|None:
         for verified_token in cls.tokens:
             if verified_token.is_same_token(token):
-                if verified_token.is_expired():
-                    cls.tokens.remove(verified_token)
-                else:
+                if not verified_token.is_expired():
                     return verified_token
         return
 
