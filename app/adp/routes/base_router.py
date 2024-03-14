@@ -7,9 +7,9 @@ from fastapi.routing import APIRouter
 
 from app import auth, downloads
 from app.db import Session, ADP_DB, Stage
-from app.adp.main import generate_program
+from app.adp.main import generate_program, parse_model_string
 from app.adp.utils.programs import EmptyProgram
-from app.adp.models import DownloadLink
+from app.adp.models import DownloadLink, ProgAttrs
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
 logger = logging.getLogger('uvicorn.info')
@@ -64,4 +64,19 @@ def customer_program_dl_file(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail='Customer ID does not match the id registered with this link')
     except Exception as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@adp.get('/model-lookup/{adp_customer_id}')
+def parse_model_and_customer_pricing_without_committing(
+        session: NewSession,
+        token: ADPPerm,
+        adp_customer_id: int,
+        model_num: str
+    ) -> ProgAttrs:
+    adp_perm = token.permissions.get('adp')
+    if adp_perm >= auth.ADPPermPriority.customer_manager:
+        return parse_model_string(session, adp_customer_id, model_num, attrs_only=False)
+    elif adp_perm >= auth.ADPPermPriority.customer_std:
+        return parse_model_string(session, adp_customer_id, model_num, attrs_only=True)
+    return HTTPException(status.HTTP_401_UNAUTHORIZED)
+
 
