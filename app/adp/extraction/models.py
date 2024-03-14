@@ -13,6 +13,11 @@ import warnings; warnings.simplefilter('ignore')
 TODAY = str(datetime.today().date())
 
 def add_model_to_program(session: Session, adp_customer_id: int, model: str) -> int:
+    record_series = parse_model_string(session, adp_customer_id, model)
+    with session.begin():
+        return separate_by_product_type_and_commit_to_db(session=session, data=record_series)
+    
+def parse_model_string(session: Session, adp_customer_id: int, model: str, attrs_only: bool=False) -> pd.Series:
     model_obj: ModelSeries = None
     for m in MODELS:
         if matched_model := Validator(session, model, m).is_model():
@@ -21,9 +26,10 @@ def add_model_to_program(session: Session, adp_customer_id: int, model: str) -> 
     record['customer_id'] = adp_customer_id
     record['stage'] = Stage.PROPOSED.name
     record_series = pd.Series(record)
-    price_models_by_customer_discounts(session=session, model=record_series, adp_customer_id=adp_customer_id)
-    with session.begin():
-        return separate_by_product_type_and_commit_to_db(session=session, data=record_series)
+    if not attrs_only:
+        price_models_by_customer_discounts(session=session, model=record_series, adp_customer_id=adp_customer_id)
+    return record_series
+
 
 def extract_models_from_sheet(session: Session, sheet: Worksheet) -> list[ModelSeries]:
     """iterates over cell contents
@@ -63,7 +69,7 @@ def extract_models_from_file(session: Session, file: str) -> set[ModelSeries]:
         models.extend(extract_models_from_sheet(session=session, sheet=sheet))
     return set(models)
 
-def price_models_by_customer_discounts(session: Session, model: pd.Series, adp_customer_id: int):
+def price_models_by_customer_discounts(session: Session, model: pd.Series, adp_customer_id: int) -> pd.Series:
     mat_grp_discounts = ADP_DB.load_df(session=session, table_name='material_group_discounts', customer_id=adp_customer_id)
     snps = ADP_DB.load_df(session=session, table_name='snps', customer_id=adp_customer_id).drop_duplicates()
 
