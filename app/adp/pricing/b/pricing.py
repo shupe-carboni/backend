@@ -8,6 +8,4 @@ def load_pricing(session: Session) -> tuple[DataFrame, dict[str, int]]:
     adders = dict()
     for row in __adders_df.itertuples():
         adders[row.key] = row.price
-
-    adders["4"] = adders["3"] + adders["stat"]
     return pricing, adders
