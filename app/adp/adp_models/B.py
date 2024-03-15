@@ -1,4 +1,5 @@
 import re
+from numpy import isnan
 from app.adp.pricing.b.pricing import load_pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import ADP_DB, Session
@@ -17,6 +18,7 @@ class B(ModelSeries):
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
         '''
+    class InvalidHeatOption: ...
     hydronic_heat = {
         '00': 'no heat',
         '2P': '2 row hot water coil with pump assembly',
@@ -59,9 +61,12 @@ class B(ModelSeries):
             (pricing_['tonnage'] == int(self.attributes['ton']))
             & (pricing_['slab'] == self.attributes['scode']), :]
         if pricing_.empty:
-            return -1
+            raise self.NoBasePrice
         heat: str = self.attributes['heat']
-        result = pricing_[heat[0]].item() if heat != '00' else pricing_['base'].item()
+        result =  pricing_['base'].item()
+        heat_option = pricing_[heat[0]].item() if heat != '00' else 0
+        if isnan(heat_option): raise self.InvalidHeatOption
+        result += heat_option
         result += adders_.get(self.attributes['meter'],0)
         result += adders_.get(self.attributes['voltage'],0)
         result += adders_.get(self.attributes['heat'][-1],0)
