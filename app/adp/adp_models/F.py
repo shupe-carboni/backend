@@ -54,11 +54,15 @@ class F(ModelSeries):
             & (pricing_['tonnage'] == int(self.attributes['ton'])),:]
         heat: str = self.attributes['heat']
         if heat != '00':
-            result = pricing_[heat].item()
+            try:
+                result = pricing_[heat].item()
+            except:
+                raise self.NoBasePrice
         else:
             result = pricing_['base'].item()
         result += adders_.get(self.attributes['voltage'],0)
-        result += adders_.get(self.attributes['line_conn'],0) if heat == '05' else 0
+        if heat == '05' and self.attributes['line_conn'] == 'B':
+            result += adders_.get(self.attributes['line_conn'],0)
         result += adders_.get(self.attributes['ton'],0) if self.attributes['motor'] == 'E' else 0
         result += adders_.get(self.attributes['meter'],0)        
         return result
