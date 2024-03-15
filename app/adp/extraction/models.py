@@ -2,6 +2,7 @@ import math
 import copy
 import pandas as pd
 import openpyxl as opxl
+from enum import Enum, auto
 from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
@@ -12,23 +13,37 @@ import warnings; warnings.simplefilter('ignore')
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
 TODAY = str(datetime.today().date())
 
+class ParsingModes(Enum):
+    ATTRS_ONLY = auto()
+    BASE_PRICE = auto()
+    CUSTOMER_PRICING = auto()
+
+class InvalidParsingMode(Exception): ...
+
 def add_model_to_program(session: Session, adp_customer_id: int, model: str) -> int:
-    record_series = parse_model_string(session, adp_customer_id, model)
+    record_series = parse_model_string(session, adp_customer_id, model, ParsingModes.CUSTOMER_PRICING)
+    record_series['stage'] = Stage.PROPOSED.name
     with session.begin():
         return separate_by_product_type_and_commit_to_db(session=session, data=record_series)
     
-def parse_model_string(session: Session, adp_customer_id: int, model: str, attrs_only: bool=False) -> pd.Series:
+def parse_model_string(session: Session, adp_customer_id: int, model: str, mode: ParsingModes) -> pd.Series:
     model_obj: ModelSeries = None
     for m in MODELS:
         if matched_model := Validator(session, model, m).is_model():
             model_obj = matched_model
     record = model_obj.record()
-    record['customer_id'] = adp_customer_id
-    record['stage'] = Stage.PROPOSED.name
     record_series = pd.Series(record)
-    if not attrs_only:
-        price_models_by_customer_discounts(session=session, model=record_series, adp_customer_id=adp_customer_id)
-    return record_series
+    match mode:
+        case ParsingModes.CUSTOMER_PRICING:
+            record_series['customer_id'] = adp_customer_id
+            return price_models_by_customer_discounts(session=session, model=record_series, adp_customer_id=adp_customer_id)
+        case ParsingModes.BASE_PRICE:
+            return record_series
+        case ParsingModes.ATTRS_ONLY:
+            record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value)
+            return record_series
+        case _:
+            raise InvalidParsingMode
 
 
 def extract_models_from_sheet(session: Session, sheet: Worksheet) -> list[ModelSeries]:
