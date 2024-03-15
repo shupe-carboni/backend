@@ -7,7 +7,7 @@ from fastapi.routing import APIRouter
 
 from app import auth, downloads
 from app.db import Session, ADP_DB, Stage
-from app.adp.main import generate_program, parse_model_string
+from app.adp.main import generate_program, parse_model_string, ParsingModes
 from app.adp.utils.programs import EmptyProgram
 from app.adp.models import DownloadLink, ProgAttrs
 
@@ -65,7 +65,11 @@ def customer_program_dl_file(
     except Exception as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@adp.get('/model-lookup/{adp_customer_id}')
+@adp.get(
+    '/model-lookup/{adp_customer_id}',
+    response_model=ProgAttrs,
+    response_model_exclude_none=True
+)
 def parse_model_and_customer_pricing_without_committing(
         session: NewSession,
         token: ADPPerm,
@@ -73,10 +77,17 @@ def parse_model_and_customer_pricing_without_committing(
         model_num: str
     ) -> ProgAttrs:
     adp_perm = token.permissions.get('adp')
-    if adp_perm >= auth.ADPPermPriority.customer_manager:
-        return parse_model_string(session, adp_customer_id, model_num, attrs_only=False)
+    
+    if adp_perm >= auth.ADPPermPriority.sca_employee:
+        if not adp_customer_id:
+            # NOTE: THE ID IS PASSED BUT ISN'T USED UNLESS PARSING MODE IS SET TO 'CUSTOMER_PRICING'
+            return parse_model_string(session, adp_customer_id, model_num, ParsingModes.BASE_PRICE)
+        else:
+            return parse_model_string(session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING)
+    elif adp_perm >= auth.ADPPermPriority.customer_manager:
+        # TODO: NEED A CHECK HERE THAT ID IN THE PATH IS ASSOCIATED WITH THE USER
+        return parse_model_string(session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING)
     elif adp_perm >= auth.ADPPermPriority.customer_std:
-        return parse_model_string(session, adp_customer_id, model_num, attrs_only=True)
+        # NOTE: the customer_id is ignored in this case, essentially public info, so no validation required
+        return parse_model_string(session, adp_customer_id, model_num, ParsingModes.ATTRS_ONLY)
     return HTTPException(status.HTTP_401_UNAUTHORIZED)
-
-
