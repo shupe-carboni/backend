@@ -1,9 +1,11 @@
+from pytest import mark
 from fastapi.testclient import TestClient
 from app.main import app
 from app.adp.models import CoilProgResp, AirHandlerProgResp, CoilProgRObj, AirHandlerProgRObj
 from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
 from app.auth import adp_perms_present
 from tests import auth_overrides
+import pandas as pd
 
 test_client = TestClient(app)
 # NOTE should or can I randomize this?
@@ -20,6 +22,7 @@ INVALID_AH_PRODUCT_ID = 1 # invalid for the customer but not SCA
 PATH_PREFIX = '/adp'
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
+PRICED_MODELS = pd.read_csv('./tests/model_pricing_examples.csv')
 
 def test_customer_coil_program_collection_filtering():
     """this is dependent on the data - in that we expect more than one customer to have data to return"""
@@ -34,6 +37,17 @@ def test_customer_coil_program_collection_filtering():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     response = test_client.get(trimmed_data_req)
     assert len(set(map(lambda x: x['id'], response.json()['included']))) > 1
+
+@mark.parametrize("model,price", list(zip(PRICED_MODELS.model_number.to_list(), PRICED_MODELS.price.to_list())))
+def test_model_zero_discount_pricing(model, price):
+    """make sure all reference models are priced correctly by the parsers on zero_discount_price"""
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    # id zero with sca employee perms or above triggers zero discount price-only, ignores the id for customer pricing
+    url = '/adp/model-lookup/0?model_num='
+    resp = test_client.get(url+str(model))
+    assert resp.status_code == 200
+    assert resp.json()['zero-discount-price'] == price
+
 
 ## SCA ADMIN
 def test_customer_coil_program_collection_as_sca_admin():
