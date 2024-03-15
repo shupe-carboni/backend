@@ -7,13 +7,13 @@ class HE(ModelSeries):
     text_len = (18,)
     regex = r'''
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
-        (?P<mat>[E|G])
+        (?P<mat>[A|E|G])
         (?P<scode>\d{2}|\d\D)
         (?P<meter>\d)
         (?P<ton>\d{2})
         (?P<depth>[A|C|D|E])
         (?P<width>\d{3})
-        (?P<notch>B)
+        (?P<notch>[A|B])
         (?P<height>\d{2})
         (?P<config>\d{2})
         (?P<AP>AP)
@@ -32,6 +32,10 @@ class HE(ModelSeries):
             '20': 'AL_MP',
             '22': 'AL_MP',
         },
+        'A': {
+            '00': 'CU_UNC',
+            '04': 'CU_UNC',
+        }
     }
     orientations = {
         '00': ('Right Hand', 'Uncased'),
@@ -57,7 +61,7 @@ class HE(ModelSeries):
         else:
             self.width = width/10
         self.depth = self.coil_depth_mapping[self.attributes['depth']]
-        self.height = height + 0.5 if self.depth != 'uncased' else height
+        self.height = height + 0.5 if self.depth != 19.5 else height
         self.material = self.material_mapping[self.attributes['mat']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.color = self.paint_color_mapping[self.attributes['paint']]
@@ -71,7 +75,7 @@ class HE(ModelSeries):
                  material_orientation_col_mask].item()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__())
-            & (self.mat_grps['mat'] == self.attributes['mat'])
+            & (self.mat_grps['mat'].str.contains(self.attributes['mat']))
             & (self.mat_grps['config'].str.contains(self.attributes['config'])),
             'mat_grp'].item()
         self.zero_disc_price = self.calc_zero_disc_price()
@@ -109,7 +113,7 @@ class HE(ModelSeries):
                 case '20'|'22':
                     col += '_MP'
                 case _:
-                    return -1
+                    col = 'uncased'
         pricing_ = pricing_.loc[pricing_['slab'] == self.attributes['scode'],col]
         result = pricing_.item()
 
@@ -127,6 +131,8 @@ class HE(ModelSeries):
         core_hands_list = [e.strip() for e in core_hands.split(',')]
         hand = {
             '01': 'R',
+            '00': 'R',
+            '04': 'L',
             '05': 'L',
             '20': 'R',
             '22': 'L',
