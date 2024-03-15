@@ -59,8 +59,10 @@ class ModelSeries:
     text_len: int
     regex: str
 
+    class NoBasePrice(Exception):...
+
     coil_depth_mapping = {
-        'A': 'uncased',
+        'A': 19.5,
         'C': 20.5,
         'D': 21.0,
         'E': 21.5,
