@@ -21,9 +21,9 @@ coil_progs = APIRouter(prefix=f'/{ADP_COILS_RESOURCE}', tags=['coils','programs'
 
 @coil_progs.get(
         '',
-         response_model=CoilProgResp,
-         response_model_exclude_none=True,
-         tags=['jsonapi']
+        response_model=CoilProgResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi']
 )
 def all_coil_programs(
         token: ADPPerm,
@@ -50,8 +50,8 @@ def all_coil_programs(
         tags=['jsonapi']
 )
 def coil_program_product(
-        session: NewSession,
         token: ADPPerm,
+        session: NewSession,
         program_product_id: int,
         query: CoilProgQuery=Depends(),   # type: ignore
     ) -> CoilProgResp:
@@ -76,7 +76,7 @@ def add_to_coil_program(
         token: ADPPerm,
         session: NewSession,
         adp_customer_id: int,
-        new_coil: NewCoilRObj,
+        new_coil: NewCoilRObj
     ) -> CoilProgResp:
     """add coil product for a customer"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
@@ -100,8 +100,8 @@ def add_to_coil_program(
         tags=['jsonapi']
 )
 def change_product_status(
-        session: NewSession,
         token: ADPPerm,
+        session: NewSession,
         program_product_id: int,
         query: ModStageCoil
     ) -> CoilProgResp:
@@ -115,8 +115,8 @@ def change_product_status(
 
 @coil_progs.delete('/{program_product_id}')
 def permanently_delete_record(
-        session: NewSession,
         token: ADPPerm,
+        session: NewSession,
         program_product_id: int,
     ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
@@ -125,8 +125,8 @@ def permanently_delete_record(
         '/{program_product_id}/adp-customers'
 )
 def get_related_customer(
-        session: NewSession,
         token: ADPPerm,
+        session: NewSession,
         program_product_id: int,
     ):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
