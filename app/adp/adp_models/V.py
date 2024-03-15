@@ -71,7 +71,7 @@ class V(ModelSeries):
             pricing_['slab'] == int(self.attributes['scode']),
             self.cabinet_config.name
             ].item()
-        result += adders_.get(int(self.attributes['meter']),0)
+        result += adders_.get(self.attributes['meter'],0)
         return result
 
     def record(self) -> dict:
