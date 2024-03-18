@@ -56,8 +56,8 @@ class Logo:
         self.nomen_short_pos = nomen_short_pos
     
     def create_image(self, sheet_type: str) -> Image:
-        """Images must be created fresh in every addition
-            using the same Image instance can cause a file write issue
+        """Images must be created fresh in every addition.
+            Using the same Image instance can cause a file write issue
             and the custom anchoring hides another issue that's more tricky,
             which is that ALL images in all tabs will anchor to the last
             anchor setting used -- unless a new image object is provided"""
@@ -164,7 +164,7 @@ class PriceBook:
         )
         self.logos = Logos(adp_logo, sca_logo, customer_logo)
     
-    def copy_cell_style(self, src_cell, new_cell):
+    def copy_cell_style(self, src_cell: Cell, new_cell: Cell):
         # Copy font, fill, border, and alignment
         new_cell.font = copy(src_cell.font)
         new_cell.fill = copy(src_cell.fill)
