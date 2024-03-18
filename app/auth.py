@@ -268,14 +268,14 @@ def secured_get_query(
     perm_lookup_name: str = auth_scheme.name
     the_perm: IntEnum = token.permissions.get(perm_lookup_name)
     if not obj_id:
-        query = partial(
+        result_query = partial(
             serializer.get_collection,
             session=session,
             query=query,
             api_type=resource,
             )
     else:
-        query = partial(
+        result_query = partial(
             serializer.get_resource,
             session=session,
             query=query,
@@ -284,12 +284,12 @@ def secured_get_query(
             obj_only=True
         )
     if the_perm >= auth_scheme.value.sca_employee:
-        result = query()
+        result = result_query()
     elif the_perm >= auth_scheme.value.customer_std:
         ids = db.get_permitted_customer_location_ids(
             session=session,
             email_address=token.email,
             select_type=the_perm.name
         )
-        result = query(permitted_ids=ids)
+        result = result_query(permitted_ids=ids)
     return result
