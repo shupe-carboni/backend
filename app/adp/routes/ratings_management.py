@@ -7,12 +7,12 @@ from app import auth
 from app.db import Session, ADP_DB
 from app.adp.main import update_ratings_reference, update_all_unregistered_program_ratings
 
-adp = APIRouter(prefix='/admin', tags=['adp', 'admin', 'ratings'])
+ratings_admin = APIRouter(prefix='/admin', tags=['adp', 'admin', 'ratings'])
 logger = logging.getLogger('uvicorn.info')
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
-@adp.get('/update-ratings-reference')
+@ratings_admin.get('/update-ratings-reference')
 def update_ratings_ref(
         token: ADPPerm,
         session: NewSession,
@@ -28,7 +28,7 @@ def update_ratings_ref(
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
-@adp.get('/update-unregistered-ratings')
+@ratings_admin.get('/update-unregistered-ratings')
 def update_unregistered_ratings(
         token: ADPPerm,
         session: NewSession,
