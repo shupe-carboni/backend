@@ -7,7 +7,8 @@ from app.jsonapi.core_models import (
     JSONAPIRelationships,
     JSONAPIResourceObject,
     Pagination,
-    Query
+    Query,
+    StringToNum
 )
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
@@ -40,6 +41,7 @@ class CustomerRelationships(BaseModel):
     adp_customer_terms: JSONAPIRelationships = Field(alias='adp-customer-terms') 
 
 class CustomerRelationshipsFieldsSelectors(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     fields_customer_locations: str = Field(default=None, alias='fields[customer-locations]')
     fields_adp_customers: str = Field(default=None, alias='fields[adp-customers]')
     fields_adp_customer_terms: str = Field(default=None, alias='fields[adp-customer-terms]')
@@ -68,5 +70,9 @@ _CustomerQuery: type[BaseModel] = create_model(
     **{f"fields_{field}":(Optional[str], None) for field in CustomerRelationships.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in CustomerAttributes.model_fields.keys()},
 )
-class CustomerQuery(_CustomerQuery):
+class CustomerQuery(_CustomerQuery, BaseModel):
     ...
+
+class CustomerQueryJSONAPI(CustomerFilterSelector, CustomerRelationshipsFieldsSelectors, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
