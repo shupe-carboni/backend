@@ -1,6 +1,7 @@
 from os import getenv
 from dotenv import load_dotenv; load_dotenv()
 import functools
+import re
 import json
 import warnings
 from pydantic import BaseModel
@@ -37,7 +38,7 @@ def convert_query(model: BaseModel) -> dict[str,str|int]:
     """custom conversion from explicitly definied snake case parameters
         to the JSON:API syntax, including compound documents"""
     jsonapi_query = {}
-    bracketed_params = {'fields','page'}
+    bracketed_params = {'fields','page','filter'}
     for param, val in model.model_dump(exclude_none=True).items():
         param: str
         val: str
@@ -100,22 +101,20 @@ class JSONAPI_(JSONAPI):
         handler for filter parameters in the query string
         for any value or list of values, this filter is permissive,
         looking for a substring anywhere in the field value that matches the arguement(s)
-        Roughly quivalent to SELECT field FROM table WHERE field LIKE '%value_1% OR LIKE '%value_2%'
+        Roughly equivalent to SELECT field FROM table WHERE field LIKE '%value_1% OR LIKE '%value_2%'
         """
-        if (filter_args_str := query_params.get('filter')):
-            filter_args: dict[str,str] = json.loads(filter_args_str) # BUG an apostrophe in the value causes a parsing error, single quote is converted to double quote upstream
-            filter_args = {k:[sub_v.upper().strip() for sub_v in v.split(',')] for k,v in filter_args.items() if v is not None}
-            filter_query_args = []
-            for field, values in filter_args.items():
-                if model_attr := getattr(model, field, None):
-                    filter_query_args.append(
-                        or_(*[model_attr.like('%'+value+'%') for value in values])
-                        )
-                else:
-                    warnings.warn(f"Warning: filter field {field} with value {values} was ignored.")
-                
-            return sqla_query_obj.filter(*filter_query_args)
-        return sqla_query_obj
+        filter_param = re.compile(r'^filter\[([^\[\]]+)\]$')
+        filters: list[tuple[str,str]] = [(filter_param.match(key).group(1), query_params[key]) for key in query_params.keys() if filter_param.match(key)]
+        filter_query_args = []
+        for field, value in filters:
+            field_py = model.__jsonapi_map_to_py__[field]
+            if model_attr := getattr(model, field_py, None):
+                filter_query_args.append(
+                    or_(model_attr.like('%'+value+'%'))
+                    )
+            else:
+                warnings.warn(f"Warning: filter field {field} with value {value} was ignored.")
+        return sqla_query_obj.filter(*filter_query_args) if filter_query_args else sqla_query_obj
 
 
     @staticmethod
@@ -137,34 +136,43 @@ class JSONAPI_(JSONAPI):
         offset = 0
 
         class NoPagination:
-            def __init__(self, query: dict):
-                self.query = {k:v for k,v in query.items() if not k.startswith("page")}
-                self.metadata = {"meta":{}}
+            def __init__(self, query: dict, row_count: int):
+                pag_keys = [k for k in query.keys() if k.startswith("page")]
+                [query.pop(k) for k in pag_keys]
+                self.metadata = {"meta":{
+                    "numRecords": row_count
+                }}
 
-            def return_disabled_pagination(self, row_count: int):
+            def return_disabled_pagination(self):
                 if row_count > MAX_RECORDS:
                     raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
-                return self.query, self.metadata
+                return self.metadata
             
             def return_one_page(self):
-                self.metadata = {"meta":{"totalPages": 1, "currentPage": 1}}
-                return self.query, self.metadata
+                self.metadata['meta'] |= {
+                    "totalPages": 1,
+                    "currentPage": 1,
+                }
+                return self.metadata
             
             def return_zero_page(self):
-                self.metadata = {"meta":{"totalPages": 0, "currentPage": 0}}
-                return self.query, self.metadata
+                self.metadata['meta'] |= {
+                    "totalPages": 0,
+                    "currentPage": 0,
+                }
+                return self.metadata
 
 
         row_count: int = db.execute(sa_query.statement).fetchone()[0]
-        if row_count == 0:      # remove any pagination if no results in the query
-            return NoPagination(query).return_zero_page()
-        passed_args = {k[5:-1]: v for k, v in query.items() if k.startswith('page[')}
+        if row_count == 0:
+            return NoPagination(query, row_count).return_zero_page()
+        passed_args = {k[5:-1]: str(v) for k, v in query.items() if k.startswith('page[')}
         link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
         if passed_args:
             if {'number', 'size'} == set(passed_args.keys()):
                 number = int(passed_args['number'])
                 if number == 0:
-                    return NoPagination(query).return_disabled_pagination(row_count=row_count) 
+                    return NoPagination(query, row_count).return_disabled_pagination() 
                 size = min(int(passed_args['size']), MAX_PAGE_SIZE)
                 offset = (number-1) * size
             elif {'limit', 'offset'} == set(passed_args.keys()):
@@ -175,7 +183,7 @@ class JSONAPI_(JSONAPI):
             elif {'number'} == set(passed_args.keys()): 
                 number = int(passed_args['number'])
                 if number == 0:
-                    return NoPagination(query).return_disabled_pagination(row_count=row_count) 
+                    return NoPagination(query, row_count).return_disabled_pagination() 
                 size = MAX_PAGE_SIZE
                 offset = (number-1) * size
             elif {'size'} == set(passed_args.keys()):
@@ -184,8 +192,8 @@ class JSONAPI_(JSONAPI):
                 offset = (number-1) * size      # == 0
 
         total_pages = -(row_count // -size) # ceiling division
-        if total_pages == 1:        # remove pagination if there is only one page to show
-            return NoPagination(query=query).return_one_page()
+        if total_pages == 1:
+            return NoPagination(query=query, row_count=row_count).return_one_page()
         else:
             current_page = (offset // size) + 1
             first_page = 1
@@ -212,7 +220,7 @@ class JSONAPI_(JSONAPI):
                     if page_val is not None
                 }
                 query.update({
-                    "page[number]": str(current_page-1),
+                    "page[number]": str(current_page-1), # NOTE: This fix feels really wrong .. but it's working. Results start on 2nd item without it.
                     "page[size]": str(size)
                 })
             else:
@@ -238,10 +246,13 @@ class JSONAPI_(JSONAPI):
 
 
         result_addition = {
-            "meta":{"totalPages": total_pages, "currentPage": current_page},
-            "links": links
+            "meta":{
+                "totalPages": total_pages,
+                "currentPage": current_page,
+            },
+            "links": links,
         }
-        return query, result_addition
+        return result_addition
 
 
     def get_collection(self, session: Session, query: BaseModel, api_type: str, permitted_ids: list[int]=None):
@@ -267,19 +278,19 @@ class JSONAPI_(JSONAPI):
             sorts = [DEFAULT_SORT]
 
         collection: sqlQuery = session.query(model)
-        collection = self._apply_filter(model,collection,jsonapi_query)
+        collection = self._apply_filter(model, collection, jsonapi_query)
         collection = self._filter_deleted(model, collection)
 
         # for pagination, use count query instead of pulling in all of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
-        collection_count = self._apply_filter(model,collection_count, query_params=jsonapi_query)
+        collection_count = self._apply_filter(model, collection_count, query_params=jsonapi_query)
         collection_count = self._filter_deleted(model, collection_count)
         
         # apply customer-location based filtering
         if permitted_ids:
             collection = model.apply_customer_location_filtering(collection, permitted_ids)
             collection_count = model.apply_customer_location_filtering(collection_count, permitted_ids)
-        query, pagination_meta_and_links = self._add_pagination(jsonapi_query,session,api_type,collection_count)
+        pagination_meta_and_links = self._add_pagination(jsonapi_query, session, api_type, collection_count)
 
         for attr in sorts:
             if attr == '':
@@ -319,6 +330,7 @@ class JSONAPI_(JSONAPI):
 
         response = JSONAPIResponse()
         response.data['data'] = []
+        num_records = 0
 
         for instance in collection:
             try:
@@ -333,9 +345,11 @@ class JSONAPI_(JSONAPI):
             built = self._render_full_resource(instance, include, fields)
             included.update(built.pop('included'))
             response.data['data'].append(built)
+            num_records += 1
 
         response.data['included'] = list(included.values())
         if pagination_meta_and_links:
+            pagination_meta_and_links['meta'] |= {'numRecords': num_records}
             response.data.update(pagination_meta_and_links)
         return response.data
 
