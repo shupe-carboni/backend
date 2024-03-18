@@ -28,7 +28,7 @@ coil_progs = APIRouter(prefix=f'/{ADP_COILS_RESOURCE}', tags=['coils','programs'
 def all_coil_programs(
         token: ADPPerm,
         session: NewSession,
-        query: CoilProgQuery=Depends(),   # type: ignore
+        query: CoilProgQuery=Depends()
     ) -> CoilProgResp:
     """List out all coil programs.
         An SCA admin or employee will see all programs that exist.
@@ -53,7 +53,7 @@ def coil_program_product(
         token: ADPPerm,
         session: NewSession,
         program_product_id: int,
-        query: CoilProgQuery=Depends(),   # type: ignore
+        query: CoilProgQuery=Depends()
     ) -> CoilProgResp:
     """get a specific product from the coil programs"""
     return auth.secured_get_query(

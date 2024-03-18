@@ -26,7 +26,7 @@ prog_parts = APIRouter(prefix=f'/{ADP_PARTS_RESOURCE}', tags=['parts','programs'
 def all_parts(
         token: ADPPerm,
         session: NewSession,
-        query: PartsQuery=Depends(), #type: ignore
+        query: PartsQuery=Depends()
     ) -> PartsResp:
     return auth.secured_get_query(
         db=ADP_DB,

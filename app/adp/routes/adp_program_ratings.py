@@ -25,7 +25,7 @@ prog_ratings = APIRouter(prefix=f'/{ADP_RATINGS_RESOURCE}', tags=['ratings','pro
 async def get_all_ratings_on_programs(
         token: ADPPerm,
         session: NewSession,
-        query: RatingsQuery=Depends()   #type: ignore
+        query: RatingsQuery=Depends()
     ) -> RatingsResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
@@ -34,7 +34,7 @@ async def get_a_specific_rating(
         token: ADPPerm,
         adp_customer_id: int,
         session: NewSession,
-        query: RatingsQuery=Depends()   #type: ignore
+        query: RatingsQuery=Depends()
     ) -> RatingsResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 

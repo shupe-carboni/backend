@@ -92,20 +92,22 @@ class AirHandlerProgResp(BaseModel):
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination] = None
 
-CoilProgQuery: type[BaseModel] = create_model(
+_CoilProgQuery: type[BaseModel] = create_model(
     'CoilProgQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in ProgRels.model_fields.keys()},
     **{f'fields_{CoilProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"filter_{field}":(Optional[str], None) for field in ProgAttrs.model_fields.keys()},
 )
-AirHandlerProgQuery: type[BaseModel] = create_model(
+_AirHandlerProgQuery: type[BaseModel] = create_model(
     'AirHandlerProgQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f"fields_{field}":(Optional[str], None) for field in ProgRels.model_fields.keys()},
     **{f'fields_{AirHandlerProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"filter_{field}":(Optional[str], None) for field in ProgAttrs.model_fields.keys()},
 )
+class AirHandlerProgQuery(_AirHandlerProgQuery): ...
+class CoilProgQuery(_CoilProgQuery): ...
 
 ## New Models to a Program
 class NewModelNumber(BaseModel):
@@ -177,13 +179,15 @@ class RatingsResp(BaseModel):
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
 
-RatingsQuery: type[BaseModel] = create_model(
+_RatingsQuery: type[BaseModel] = create_model(
     'RatingsQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f'fields_{RatingsRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"fields_{field}":(Optional[str], None) for field in RatingsRels.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
 )
+
+class RatingsQuery(_RatingsQuery): ...
 
 ## Parts
 class Parts(BaseModel):
@@ -208,13 +212,14 @@ class PartsResp(BaseModel):
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination]
 
-PartsQuery: type[BaseModel] = create_model(
+_PartsQuery: type[BaseModel] = create_model(
     'PartsQuery',
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f'fields_{PartsRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"fields_{field}":(Optional[str], None) for field in PartsRels.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
 )
+class PartsQuery(_PartsQuery): ...
     
 ## Downloads
 class DownloadLink(BaseModel):

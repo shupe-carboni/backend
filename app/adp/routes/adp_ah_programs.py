@@ -27,7 +27,7 @@ ah_progs = APIRouter(prefix=f'/{ADP_AIR_HANDLERS_RESOURCE}', tags=['air handlers
 def all_ah_programs(
         token: ADPPerm,
         session: NewSession,
-        query: AirHandlerProgQuery=Depends(),   # type: ignore
+        query: AirHandlerProgQuery=Depends()
     ) -> AirHandlerProgResp:
     """List out all ah programs.
         An SCA admin or employee will see all programs that exist.
@@ -51,7 +51,7 @@ def ah_program_product(
         session: NewSession,
         token: ADPPerm,
         program_product_id: int,
-        query: AirHandlerProgQuery=Depends(),   # type: ignore
+        query: AirHandlerProgQuery=Depends()
     ) -> AirHandlerProgResp:
     """get a specific product from the ah programs"""
     return auth.secured_get_query(

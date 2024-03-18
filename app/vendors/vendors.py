@@ -17,7 +17,7 @@ VendorsPerm = Annotated[auth.VerifiedToken, Depends(auth.vendor_perms_present)]
 @vendors.get('', response_model=VendorResponse)
 async def vendor_collection(
         token: VendorsPerm,
-        query: VendorQuery=Depends(), # type: ignore
+        query: VendorQuery=Depends()
     ) -> VendorResponse:
     raise HTTPException(status_code=501)
 
