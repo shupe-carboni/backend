@@ -8,15 +8,15 @@ from tests import auth_overrides
 import pandas as pd
 
 test_client = TestClient(app)
-# NOTE should or can I randomize this?
 # customer ids are not explitly used. The filtering process behind the
 # get_collection and get_resource implementations already selects for the 
 # proper adp_customer_id values based on a mapping table
-# coil customer id = 23
-# ah customer id = 23
-VALID_COIL_PRODUCT_ID = 159
+# Customer ID is associated with TEST CUSTOMER
+# coil customer id = 59
+# ah customer id = 59
+VALID_COIL_PRODUCT_ID = 483
 INVALID_COIL_PRODUCT_ID = 1 # invalid for the customer but not SCA
-VALID_AH_PRODUCT_ID = 50
+VALID_AH_PRODUCT_ID = 247
 INVALID_AH_PRODUCT_ID = 1 # invalid for the customer but not SCA
 
 PATH_PREFIX = '/adp'
