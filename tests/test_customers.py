@@ -14,7 +14,7 @@ from tests import auth_overrides
 # BUG should I really be using just ADP permissions for the adp relationships?
 
 test_client = TestClient(app)
-CUSTOMER_ID = 13 # NOTE should or can I randomize this?
+CUSTOMER_ID = 999999 # NOTE associated with TEST CUSTOMER
 
 ## SCA ADMIN
 def test_customer_collection_as_sca_admin():
@@ -75,6 +75,7 @@ def test_relationship_adp_customer_terms_as_sca_admin():
 
 """SCA Employees don't have any distingished abilities compared to admin, meaning these tests are
     currently repeats of the admin tests, just with different permissions"""
+# SCA Customer
 def test_customer_collection_as_sca_employee():
     app.dependency_overrides[customers_perms_present] = auth_overrides.auth_as_sca_employee('customers')
     response = test_client.get('/customers')
