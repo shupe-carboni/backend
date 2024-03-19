@@ -2,18 +2,17 @@ from pytest import mark
 from fastapi.testclient import TestClient
 from app.main import app
 from app.adp.models import CoilProgResp, AirHandlerProgResp, CoilProgRObj, AirHandlerProgRObj
+from app.db import Stage
 from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
 from app.auth import adp_perms_present
 from tests import auth_overrides
 import pandas as pd
 
 test_client = TestClient(app)
-# customer ids are not explitly used. The filtering process behind the
 # get_collection and get_resource implementations already selects for the 
 # proper adp_customer_id values based on a mapping table
 # Customer ID is associated with TEST CUSTOMER
-# coil customer id = 59
-# ah customer id = 59
+ADP_CUSTOMER_ID = 59 # TEST CUSTOMER
 VALID_COIL_PRODUCT_ID = 483
 INVALID_COIL_PRODUCT_ID = 1 # invalid for the customer but not SCA
 VALID_AH_PRODUCT_ID = 247
@@ -68,6 +67,37 @@ def test_customer_coil_program_resource_as_sca_admin():
     assert CoilProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
+def test_customer_coil_program_modification_as_sca_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    pre_mod_response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
+    assert pre_mod_response.json()['data']['attributes']['stage'] == Stage.ACTIVE
+    body = {
+        'data': {
+            "id": VALID_COIL_PRODUCT_ID,
+            "type": COIL_PROGS,
+            'attributes':{
+                'stage': Stage.REMOVED
+            }
+        }
+    }
+    try:
+        response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        assert response.status_code == 200
+        assert CoilProgResp(**response.json())
+        assert response.json()['data']['attributes']['stage'] == Stage.REMOVED
+    finally:
+        body = {
+            'data': {
+                "id": VALID_COIL_PRODUCT_ID,
+                "type": COIL_PROGS,
+                'attributes':{
+                    'stage': Stage.ACTIVE
+                }
+            }
+        }
+        test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        app.dependency_overrides[adp_perms_present] = {}
+
 def test_customer_ah_program_collection_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}')
@@ -85,6 +115,37 @@ def test_customer_ah_program_resource_as_sca_admin():
     assert response.status_code == 200
     assert AirHandlerProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_modification_as_sca_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
+    pre_mod_response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}')
+    assert pre_mod_response.json()['data']['attributes']['stage'] == Stage.REMOVED
+    body = {
+        'data': {
+            "id": VALID_AH_PRODUCT_ID,
+            "type": AH_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    try:
+        response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        assert response.status_code == 200
+        assert AirHandlerProgResp(**response.json())
+        assert response.json()['data']['attributes']['stage'] == Stage.ACTIVE
+    finally:
+        body = {
+            'data': {
+                "id": VALID_AH_PRODUCT_ID,
+                "type": AH_PROGS,
+                'attributes':{
+                    'stage': Stage.REMOVED
+                }
+            }
+        }
+        test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        app.dependency_overrides[adp_perms_present] = {}
 
 ## SCA EMPLOYEE
 def test_customer_coil_program_collection_as_sca_employee():
