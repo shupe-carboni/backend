@@ -137,7 +137,7 @@ class PriceBook:
         self.cursor = Cursor()
         adp_logo = Logo(
             img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
-            price_pos=AnchorPosition("C2", offset_x=0, offset_y=0),
+            price_pos=AnchorPosition("C2", offset_x=40, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -562,10 +562,13 @@ class PriceBook:
             #                 'SEER2','EER95F2',
             #                 'Capacity2','HSPF2')
             
+            table['Model Number'].fillna(table['OutdoorModel'], inplace=True)
+            table['Coil Model Number'].fillna(table['IndoorModel'], inplace=True)
+            table['ADP Series'].ffill(inplace=True)
             table = table.sort_values(by=[
-                'OEM Series','ADP Series','Model Number','Coil Model Number',
-                'OEMName', 'OutdoorModel', 'IndoorModel'
-                ])
+                'ADP Series','Model Number','Coil Model Number',
+                'OEMName'
+                ], ascending=True)
 
             for label, row in table.iterrows():
                 if not row['AHRI Ref Number']:
@@ -587,7 +590,8 @@ class PriceBook:
                 for datum in row_view:
                     cell = self.active_cell(value=datum)
                     if not datum or datum == '0':
-                        cell.value = '--'
+                        cell.value = 'pending'
+                        cell.font = Font(italic=True)
                     self.cursor.move_by(cols=1)
                 self.cursor.slam_left()
                 self.cursor.move_by(rows=1)
