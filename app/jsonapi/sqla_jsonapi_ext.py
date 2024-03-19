@@ -255,7 +255,7 @@ class JSONAPI_(JSONAPI):
         return result_addition
 
 
-    def get_collection(self, session: Session, query: BaseModel, api_type: str, permitted_ids: list[int]=None):
+    def get_collection(self, session: Session, query: dict[str, str], api_type: str, permitted_ids: list[int]=None):
         """
         Fetch a collection of resources of a specified type.
 
@@ -266,31 +266,31 @@ class JSONAPI_(JSONAPI):
         Override of JSONAPI get_collection - adding filter parameter handling
         after instantation of session.query on the 'model'
         """
-        jsonapi_query = convert_query(query)
+        # query = convert_query(query)
         model: SQLAlchemyModel = self._fetch_model(api_type=api_type)
-        include = self._parse_include(jsonapi_query.get('include', '').split(','))
-        fields = self._parse_fields(jsonapi_query)
+        include = self._parse_include(query.get('include', '').split(','))
+        fields = self._parse_fields(query)
         included = {}
-        sorts = jsonapi_query.get('sort', '').split(',')
+        sorts = query.get('sort', '').split(',')
         order_by = []
 
         if sorts == ['']:
             sorts = [DEFAULT_SORT]
 
         collection: sqlQuery = session.query(model)
-        collection = self._apply_filter(model, collection, jsonapi_query)
+        collection = self._apply_filter(model, collection, query)
         collection = self._filter_deleted(model, collection)
 
         # for pagination, use count query instead of pulling in all of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
-        collection_count = self._apply_filter(model, collection_count, query_params=jsonapi_query)
+        collection_count = self._apply_filter(model, collection_count, query_params=query)
         collection_count = self._filter_deleted(model, collection_count)
         
         # apply customer-location based filtering
         if permitted_ids:
             collection = model.apply_customer_location_filtering(collection, permitted_ids)
             collection_count = model.apply_customer_location_filtering(collection_count, permitted_ids)
-        pagination_meta_and_links = self._add_pagination(jsonapi_query, session, api_type, collection_count)
+        pagination_meta_and_links = self._add_pagination(query, session, api_type, collection_count)
 
         for attr in sorts:
             if attr == '':
@@ -318,7 +318,7 @@ class JSONAPI_(JSONAPI):
             collection = collection.order_by(*order_by)
 
         pos = -1
-        start, end = self._parse_page(jsonapi_query)
+        start, end = self._parse_page(query)
         if end:
             # instead of letting the query pull the entire dataset, use
             # query-level offset and limit if pagination is occuring
@@ -356,10 +356,10 @@ class JSONAPI_(JSONAPI):
     def get_resource(
             self,
             session: Session,
-            query: BaseModel,
+            query: dict[str, str],
             api_type: str,
             obj_id: int,
-            obj_only: bool,
+            obj_only: bool=False,
             permitted_ids: list[int]=None
         ) -> JSONAPIResponse | dict:
         """
@@ -374,11 +374,11 @@ class JSONAPI_(JSONAPI):
         :param api_type: Type of the resource
         :param obj_id: ID of the resource
         """
-        jsonapi_query = convert_query(query)
+        # jsonapi_query = convert_query(query)
         resource = self._fetch_resource(session, api_type, obj_id,
                                         Permissions.VIEW, permitted_ids)
-        include = self._parse_include(jsonapi_query.get('include', '').split(','))
-        fields = self._parse_fields(jsonapi_query)
+        include = self._parse_include(query.get('include', '').split(','))
+        fields = self._parse_fields(query)
 
         response = JSONAPIResponse()
 
@@ -390,7 +390,6 @@ class JSONAPI_(JSONAPI):
             return response.data
         else:
             return response
-
 
     def _fetch_resource(self, session: Session, api_type: str, obj_id: int, permission, permitted_ids:list[int]=None):
         """
