@@ -11,8 +11,22 @@ class Program:
         self.ratings = ratings
         if program_data[Fields.PRIVATE_LABEL.value].isna().all():
             self.product_series_contained = set(program_data[Fields.SERIES.value].unique().tolist())
+        elif program_data[Fields.PRIVATE_LABEL.value].isna().any():
+            temp = program_data[[Fields.SERIES.value, Fields.PRIVATE_LABEL.value]]
+            temp[Fields.PRIVATE_LABEL.value] = temp[Fields.PRIVATE_LABEL.value].str.slice(0,2)
+            temp = temp.drop_duplicates()
+            pl_series = temp.loc[
+                ~pd.isna(temp[Fields.PRIVATE_LABEL.value]),
+                Fields.PRIVATE_LABEL.value 
+            ].drop_duplicates().dropna().to_list()
+            non_pl_series = temp.loc[
+                pd.isna(temp[Fields.PRIVATE_LABEL.value])
+                & ~pd.isna(temp[Fields.SERIES.value]),
+                Fields.SERIES.value 
+            ].drop_duplicates().dropna().to_list()
+            self.product_series_contained = set(pl_series + non_pl_series)
         else:
-            self.product_series_contained = {'CE'} | set(program_data[Fields.SERIES.value].unique().tolist()).intersection({'CP'})
+            self.product_series_contained = {'CE','CF'}
 
     def category_data(self, category) -> pd.DataFrame:
         data = self._data.loc[self._data[Fields.CATEGORY.value] == category,:]
