@@ -23,7 +23,6 @@ async def customer_collection(
         token: CustomersPerm,
         query: CustomerQuery=Depends()
     ) -> CustomerResponse:
-    print(convert_query(query))
 
     return auth.secured_get_query(
         db=SCA_DB,
@@ -31,7 +30,7 @@ async def customer_collection(
         token=token,
         auth_scheme=auth.Permissions['customers'],
         resource=API_TYPE,
-        query=query
+        query=convert_query(query)
     )
 
 @customers.get('/{customer_id}', response_model=CustomerResponse, response_model_exclude_none=True)
@@ -47,6 +46,6 @@ async def customer(
         token=token,
         auth_scheme=auth.Permissions['customers'],
         resource=API_TYPE,
-        query=query,
+        query=convert_query(query),
         obj_id=customer_id
     )

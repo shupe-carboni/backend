@@ -69,10 +69,45 @@ class ProgAttrs(BaseModel):
                 raise ValueError('Cannot have both depth and length.')
         return self
 
+class ProgFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_category: str = Field(default=None, alias='filter[category]')
+    filter_model_number: str = Field(default=None, alias='filter[model-number]')
+    filter_private_label: str = Field(default=None, alias='filter[private-label]')
+    filter_mpg: str = Field(default=None, alias='filter[mpg]')
+    filter_series: str = Field(default=None, alias='filter[series]')
+    filter_tonnage: str = Field(default=None, alias='filter[tonnage]')
+    filter_pallet_qty: str = Field(default=None, alias='filter[pallet-qty]')
+    filter_width: str = Field(default=None, alias='filter[width]')
+    filter_depth: str = Field(default=None, alias='filter[depth]')
+    filter_height: str = Field(default=None, alias='filter[height]')
+    filter_length: str = Field(default=None, alias='filter[length]')
+    filter_weight: str = Field(default=None, alias='filter[weight]')
+    filter_metering: str = Field(default=None, alias='filter[metering]')
+    filter_cabinet: str = Field(default=None, alias='filter[cabinet]')
+    filter_zero_discount_price: str = Field(default=None, alias='filter[zero-discount-price]')
+    filter_material_group_discount: str = Field(default=None, alias='filter[material-group-discount]')
+    filter_material_group_net_price: str = Field(default=None, alias='filter[material-group-net-price]')
+    filter_snp_discount: str = Field(default=None, alias='filter[snp-discount]')
+    filter_snp_price: str = Field(default=None, alias='filter[snp-price]')
+    filter_net_price: str = Field(default=None, alias='filter[net-price]')
+    filter_effective_date: str = Field(default=None, alias='filter[effective-date]')
+    filter_last_file_gen: str = Field(default=None, alias='filter[last-file-gen]')
+    filter_stage: str = Field(default=None, alias='filter[stage]')
+
 
 class ProgRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customers')
+
+class ProgFields(BaseModel):
+    fields_adp_customers: str = Field(default=None, alias='fields[adp-customer]')
+
+class CoilProgFields(ProgFields):
+    fields_adp_coil_programs: str = Field(default=None, alias='fields[adp-coil-programs]')
+
+class AHProgFields(ProgFields):
+    fields_adp_ah_programs: str = Field(default=None, alias='fields[adp-ah-programs]')
 
 class CoilProgRObj(CoilProgRID):
     attributes: ProgAttrs
@@ -106,8 +141,16 @@ _AirHandlerProgQuery: type[BaseModel] = create_model(
     **{f'fields_{AirHandlerProgRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"filter_{field}":(Optional[str], None) for field in ProgAttrs.model_fields.keys()},
 )
-class AirHandlerProgQuery(_AirHandlerProgQuery): ...
-class CoilProgQuery(_CoilProgQuery): ...
+class AirHandlerProgQuery(_AirHandlerProgQuery, BaseModel): ...
+class CoilProgQuery(_CoilProgQuery, BaseModel): ...
+
+class CoilProgQueryJSONAPI(CoilProgFields, ProgFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+class AHProgQueryJSONAPI(AHProgFields, ProgFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 ## New Models to a Program
 class NewModelNumber(BaseModel):
@@ -142,6 +185,12 @@ class ModStageAH(BaseModel):
     id: int
     type: str = ADPAHProgram.__jsonapi_type_override__
     attributes: NewStage
+
+class ModStageAHReq(BaseModel):
+    data: ModStageAH
+
+class ModStageCoilReq(BaseModel):
+    data: ModStageCoil
 
 ## Ratings
 class Rating(BaseModel):
