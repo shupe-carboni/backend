@@ -7,12 +7,16 @@ from app.vendors.models import (
     VendorInfoResponse,
     VendorQuery,
     NewVendorInfoResourceObject,
-    ExistingVendorInfo
+    ExistingVendorInfo,
+    VendorQueryJSONAPI
 )
 
 vendors = APIRouter(prefix='/vendors', tags=['vendors'])
 
 VendorsPerm = Annotated[auth.VerifiedToken, Depends(auth.vendor_perms_present)]
+
+def convert_query(query: VendorQuery) -> VendorQueryJSONAPI:
+    return VendorQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
 
 @vendors.get('', response_model=VendorResponse)
 async def vendor_collection(

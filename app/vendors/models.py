@@ -16,8 +16,17 @@ class VendorAttributes(BaseModel):
     description: str
     phone: int
 
+class VendorFilters(BaseModel):
+    filter_name: str = Field(default=None, alias='filter[name]')
+    filter_headquarters: str = Field(default=None, alias='filter[headquarters]')
+    filter_content: str = Field(default=None, alias='filter[content]')
+    filter_phone: str = Field(default=None, alias='filter[phone]')
+
 class VendorRelationships(BaseModel):
     info: JSONAPIRelationships
+
+class VendorFields(BaseModel):
+    fields_info: str = Field(default=None, alias='fields[info]')
 
 class VendorResourceIdentifier(JSONAPIResourceIdentifier):
     type: str = "vendors"
@@ -45,7 +54,6 @@ class RelatedVendorResponse(VendorResponse):
 class VendorInfoAttributes(BaseModel):
     category: str
     content: str
-
 class VendorInfoRelationships(BaseModel):
     vendor: JSONAPIRelationships
 
@@ -75,4 +83,8 @@ _VendorQuery: type[BaseModel] = create_model(
     **{f"filter_{field}":(Optional[str], None) for field in VendorAttributes.model_fields.keys()},
 )
 
-class VendorQuery(_VendorQuery): ...
+class VendorQuery(_VendorQuery, BaseModel): ...
+
+class VendorQueryJSONAPI(VendorFilters, VendorFields, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
