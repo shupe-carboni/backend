@@ -1,9 +1,10 @@
 """Database Table Models / Data Transfer Objects"""
 
 from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric, ARRAY, BigInteger, exists
-from sqlalchemy.orm import declarative_base, relationship, Query, aliased
+from sqlalchemy.orm import declarative_base, relationship, Query, aliased, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
+from app.db import Stage
 
 Base = declarative_base()
 STAGE_ENUM = Enum('PROPOSED', 'ACTIVE', 'REJECTED', 'REMOVED', name='stage')
@@ -39,7 +40,8 @@ class ADPAHProgram(Base):
     effective_date = Column(DateTime)
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
-    stage = Column(STAGE_ENUM)
+    # stage = Column(STAGE_ENUM)
+    stage: Mapped[Stage] = mapped_column()
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
@@ -83,7 +85,8 @@ class ADPCoilProgram(Base):
     effective_date = Column(DateTime)
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
-    stage = Column(STAGE_ENUM)
+    # stage = Column(STAGE_ENUM)
+    stage: Mapped[Stage] = mapped_column()
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
