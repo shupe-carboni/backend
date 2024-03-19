@@ -73,8 +73,13 @@ class Database:
             table_name: str,
             customer_id: int=None,
             is_null: str=None,
+            id_only: bool=False
         ) -> DataFrame:
-        sql = f"""SELECT * FROM {self.full_table_name(table_name)}"""
+        if id_only:
+            select = 'id'
+        else:
+            select = '*'
+        sql = f"""SELECT {select} FROM {self.full_table_name(table_name)}"""
         params = None
         if customer_id:
             sql += """ WHERE customer_id IN %(customer_id)s"""
