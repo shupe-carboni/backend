@@ -216,10 +216,11 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
             {update_sets}
             WHERE id = :record_id
         """
-        # commit happens up-stack
-        ADP_DB.execute(session=session, sql=sql, params={"record_id": record.id})
+        with session:
+            ADP_DB.execute(session=session, sql=sql, params={"record_id": record.id})
+            session.commit()
 
-def update_ratings_reference(session: Session):
+def download_and_process_ratings_data():
     link = 'https://www.adpinside.com/Compass/UserScreens/Monthly_spreadsheet_template.xlsm'
     try:
         logger.info('Downloading')
@@ -230,13 +231,21 @@ def update_ratings_reference(session: Session):
             ratings = pd.concat([ac, hp], ignore_index=True)
             ratings['Coil Model Number'] = ratings['Coil Model Number'].str.replace(r'\+TD$','', regex=True)
             ratings['AHRI Ref Number'] = ratings['AHRI Ref Number'].astype(int)
-            with session.begin():
-                logger.info('Replacing Database table')
-                ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False, if_exists='replace')
-                for ind_col in ('Model Number', 'Coil Model Number', 'OEM Name', 'Furnace Model Number', 'AHRI Ref Number'):
-                    logger.info(f'Creating index for {ind_col}')
-                    ADP_DB.execute(session=session, sql=f"""CREATE INDEX ON adp_all_ratings("{ind_col}");""")
-
+    except Exception as e:
+        logger.info('Update Failed')
+        logger.info(e)
+    else:
+        logger.info('Data Formatted')
+        return ratings
+    
+def upload_ratings_data(session: Session, ratings: pd.DataFrame):
+    try:
+        with session.begin():
+            logger.info('Replacing Database table')
+            ADP_DB.upload_df(session=session, data=ratings, table_name='all_ratings', primary_key=False, if_exists='replace')
+            for ind_col in ('Model Number', 'Coil Model Number', 'OEM Name', 'Furnace Model Number', 'AHRI Ref Number'):
+                logger.info(f'Creating index for {ind_col}')
+                ADP_DB.execute(session=session, sql=f"""CREATE INDEX ON adp_all_ratings("{ind_col}");""")
     except Exception as e:
         logger.info('Update Failed')
         logger.info(e)
@@ -244,6 +253,10 @@ def update_ratings_reference(session: Session):
         logger.info("Update Complete")
     finally:
         session.close()
+
+def update_ratings_reference(session: Session) -> None:
+        ratings = download_and_process_ratings_data()
+        upload_ratings_data(session, ratings)
 
 def add_ratings_to_program(session: Session, adp_customer_id: int, ratings: Ratings) -> None:
     ratings_df = pd.DataFrame(ratings.model_dump()['ratings'])
