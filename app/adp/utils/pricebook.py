@@ -534,6 +534,8 @@ class PriceBook:
                 del ratings[series]
 
         for tab, table in ratings.items():
+            if len(tab) > 31:
+                tab = tab[:31].strip()
             if table['FurnaceModel'].isna().all() and table['Furnace Model Number'].isna().all():
                 include_furnace_col = False
             else:
@@ -589,9 +591,11 @@ class PriceBook:
                         row_view = row_view.drop(index=['HSPF2'])
                 for datum in row_view:
                     cell = self.active_cell(value=datum)
-                    if not datum or datum == '0':
+                    if datum == '0':
                         cell.value = 'pending'
                         cell.font = Font(italic=True)
+                    elif not datum:
+                        cell.value = ''
                     self.cursor.move_by(cols=1)
                 self.cursor.slam_left()
                 self.cursor.move_by(rows=1)
