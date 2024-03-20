@@ -260,7 +260,7 @@ def secured_get_query(
         token: VerifiedToken,
         auth_scheme: Permissions,
         resource: str,
-        query: BaseModel,
+        query: dict,
         obj_id: Optional[int] = None
     ):
     if not token.email_verified:
