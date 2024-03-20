@@ -20,7 +20,7 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 ah_progs = APIRouter(prefix=f'/{ADP_AIR_HANDLERS_RESOURCE}', tags=['air handlers','programs'])
 
-def convert_query(query: AirHandlerProgQuery) -> AHProgQueryJSONAPI:
+def convert_query(query: AirHandlerProgQuery) -> dict[str,str]:
     return AHProgQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
 
 @ah_progs.get(
@@ -110,13 +110,32 @@ def change_product_status(
     ) -> AirHandlerProgResp:
     """All attributes are derived from the model number itself (and customer identity) with the exceptino of the proposal stage"""
     associated_ids = ADP_DB.load_df(session, 'ah_programs', adp_customer_id, id_only=True).id.to_list()
-    if new_stage.data.id not in associated_ids:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Customer ID {adp_customer_id} is not associated with product id {new_stage.id}")
+    if new_stage.data.id not in associated_ids or not associated_ids:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Customer ID {adp_customer_id} is not associated with product id {new_stage.data.id}")
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         result = serializer.patch_resource(session=session, json_data=new_stage.model_dump(), api_type=ADP_AIR_HANDLERS_RESOURCE, obj_id=new_stage.data.id)
         return result.data
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@ah_progs.delete('/{adp_customer_id}', tags=['jsonapi'])
-def delete_ah_program_product():
+@ah_progs.delete('/{program_product_id}', tags=['jsonapi'])
+def delete_ah_program_product(
+        token: ADPPerm,
+        session: NewSession,
+        program_product_id: int,
+    ):
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_admin:
+        return serializer.delete_resource(session,{},ADP_AIR_HANDLERS_RESOURCE,program_product_id)
+    else:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+
+
+@ah_progs.get(
+        '/{program_product_id}/adp-customers'
+)
+def get_related_customer(
+        token: ADPPerm,
+        session: NewSession,
+        program_product_id: int,
+    ):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
