@@ -137,8 +137,13 @@ class ADPCustomer(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPCustomer.id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class ADPCustomerTerms(Base):
     __tablename__ = 'adp_customer_terms'
