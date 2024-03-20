@@ -10,6 +10,7 @@ from app.db import Session, ADP_DB, Stage
 from app.adp.main import generate_program, parse_model_string, ParsingModes
 from app.adp.utils.programs import EmptyProgram
 from app.adp.models import DownloadLink, ProgAttrs
+from app.jsonapi.sqla_models import ADPCustomer
 
 adp = APIRouter(prefix='/adp', tags=['adp'])
 logger = logging.getLogger('uvicorn.info')
@@ -70,24 +71,47 @@ def customer_program_dl_file(
     response_model=ProgAttrs,
     response_model_exclude_none=True
 )
-def parse_model_and_customer_pricing_without_committing(
+def parse_model_and_pricing(
         session: NewSession,
         token: ADPPerm,
         adp_customer_id: int,
         model_num: str
     ) -> ProgAttrs:
+    """Used for feature extraction parsed from the model number and price check based on the permissions
+
+        if adp_customer_id is 0 AND permitted as an sca employee or above, base price is calculated and shown,
+        alternatively if an id is given, that customer's pricing is calculated
+
+        if the requester is permitted under a customer type, a check is done to see if the customer is
+        associated with the adp_customer_id provided in the request.
+
+    """
     adp_perm = token.permissions.get('adp')
     
     if adp_perm >= auth.ADPPermPriority.sca_employee:
         if not adp_customer_id:
-            # NOTE: THE ID IS PASSED BUT ISN'T USED UNLESS PARSING MODE IS SET TO 'CUSTOMER_PRICING'
             return parse_model_string(session, adp_customer_id, model_num, ParsingModes.BASE_PRICE)
         else:
             return parse_model_string(session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING)
-    elif adp_perm >= auth.ADPPermPriority.customer_manager:
-        # TODO: NEED A CHECK HERE THAT ID IN THE PATH IS ASSOCIATED WITH THE USER
-        return parse_model_string(session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING)
-    elif adp_perm >= auth.ADPPermPriority.customer_std:
-        # NOTE: the customer_id is ignored in this case, essentially public info, so no validation required
-        return parse_model_string(session, adp_customer_id, model_num, ParsingModes.ATTRS_ONLY)
-    return HTTPException(status.HTTP_401_UNAUTHORIZED)
+    if adp_customer_id:
+        try:
+            auth.secured_get_query(
+                ADP_DB,
+                session,
+                token,
+                auth.Permissions['adp'],
+                ADPCustomer.__jsonapi_type_override__,
+                {},
+                adp_customer_id
+            )
+        except HTTPException as e:
+            if e.status_code < 500:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Requested Customer pricing is not associated with the user")
+            else:
+                raise e
+        else:
+            if adp_perm >= auth.ADPPermPriority.customer_manager:
+                return parse_model_string(session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING)
+            elif adp_perm >= auth.ADPPermPriority.customer_std:
+                return parse_model_string(session, adp_customer_id, model_num, ParsingModes.ATTRS_ONLY)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
