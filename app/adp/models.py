@@ -39,6 +39,7 @@ class ProgAttrs(BaseModel):
     series: Optional[str] = None
     tonnage: Optional[int] = None
     pallet_qty: Optional[int] = Field(default=None, alias='pallet-qty')
+    min_qty: Optional[int] = Field(default=None, alias='min-qty')
     width: Optional[float] = None
     depth: Optional[float] = None
     height: Optional[float] = None
@@ -46,6 +47,8 @@ class ProgAttrs(BaseModel):
     weight: Optional[int] = None
     metering: Optional[str] = None
     cabinet: Optional[str] = None
+    motor: Optional[str] = None
+    heat: Optional[str] = None
     zero_discount_price: Optional[int] = Field(default=None, alias='zero-discount-price')
     material_group_discount: Optional[float] = Field(default=None, alias='material-group-discount')
     material_group_net_price: Optional[int] = Field(default=None, alias='material-group-net-price')
@@ -78,6 +81,7 @@ class ProgFilters(BaseModel):
     filter_series: str = Field(default=None, alias='filter[series]')
     filter_tonnage: str = Field(default=None, alias='filter[tonnage]')
     filter_pallet_qty: str = Field(default=None, alias='filter[pallet-qty]')
+    filter_min_qty: str = Field(default=None, alias='filter[min-qty]')
     filter_width: str = Field(default=None, alias='filter[width]')
     filter_depth: str = Field(default=None, alias='filter[depth]')
     filter_height: str = Field(default=None, alias='filter[height]')
@@ -85,6 +89,8 @@ class ProgFilters(BaseModel):
     filter_weight: str = Field(default=None, alias='filter[weight]')
     filter_metering: str = Field(default=None, alias='filter[metering]')
     filter_cabinet: str = Field(default=None, alias='filter[cabinet]')
+    filter_motor: str = Field(default=None, alias='filter[motor]')
+    filter_heat: str = Field(default=None, alias='filter[heat]')
     filter_zero_discount_price: str = Field(default=None, alias='filter[zero-discount-price]')
     filter_material_group_discount: str = Field(default=None, alias='filter[material-group-discount]')
     filter_material_group_net_price: str = Field(default=None, alias='filter[material-group-net-price]')
