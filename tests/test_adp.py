@@ -22,6 +22,7 @@ PATH_PREFIX = '/adp'
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv('./tests/model_pricing_examples.csv')
+TEST_MODEL = 'HE32924D175B1605AP'
 
 def test_customer_coil_program_collection_filtering():
     """this is dependent on the data - in that we expect more than one customer to have data to return"""
@@ -49,6 +50,7 @@ def test_model_zero_discount_pricing(model, price):
 
 
 ## SCA ADMIN
+
 def test_customer_coil_program_collection_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
@@ -71,20 +73,33 @@ def test_customer_coil_program_modification_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     pre_mod_response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
     assert pre_mod_response.json()['data']['attributes']['stage'] == Stage.ACTIVE
-    body = {
-        'data': {
-            "id": VALID_COIL_PRODUCT_ID,
-            "type": COIL_PROGS,
-            'attributes':{
-                'stage': Stage.REMOVED
+    try:
+        # good request
+        body = {
+            'data': {
+                "id": VALID_COIL_PRODUCT_ID,
+                "type": COIL_PROGS,
+                'attributes':{
+                    'stage': Stage.REMOVED
+                }
             }
         }
-    }
-    try:
         response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
         assert response.status_code == 200
         assert CoilProgResp(**response.json())
         assert response.json()['data']['attributes']['stage'] == Stage.REMOVED
+        # bad request
+        body = {
+            'data': {
+                "id": INVALID_COIL_PRODUCT_ID,
+                "type": COIL_PROGS,
+                'attributes':{
+                    'stage': Stage.REMOVED
+                }
+            }
+        }
+        response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        assert response.status_code == 404
     finally:
         body = {
             'data': {
@@ -120,20 +135,33 @@ def test_customer_ah_program_modification_as_sca_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_admin('adp')
     pre_mod_response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}')
     assert pre_mod_response.json()['data']['attributes']['stage'] == Stage.REMOVED
-    body = {
-        'data': {
-            "id": VALID_AH_PRODUCT_ID,
-            "type": AH_PROGS,
-            'attributes':{
-                'stage': Stage.ACTIVE
+    try:
+        # good request
+        body = {
+            'data': {
+                "id": VALID_AH_PRODUCT_ID,
+                "type": AH_PROGS,
+                'attributes':{
+                    'stage': Stage.ACTIVE
+                }
             }
         }
-    }
-    try:
         response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
         assert response.status_code == 200
         assert AirHandlerProgResp(**response.json())
         assert response.json()['data']['attributes']['stage'] == Stage.ACTIVE
+        # bad request
+        body = {
+            'data': {
+                "id": INVALID_AH_PRODUCT_ID,
+                "type": AH_PROGS,
+                'attributes':{
+                    'stage': Stage.ACTIVE
+                }
+            }
+        }
+        response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+        assert response.status_code == 404
     finally:
         body = {
             'data': {
@@ -148,6 +176,21 @@ def test_customer_ah_program_modification_as_sca_admin():
         app.dependency_overrides[adp_perms_present] = {}
 
 ## SCA EMPLOYEE
+def test_model_lookup_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    base_url = f'{PATH_PREFIX}/model-lookup/'
+    zero_id = base_url + '0'
+    real_id = base_url + f'{ADP_CUSTOMER_ID}'
+    response = test_client.get(zero_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 200
+    assert 'zero-discount-price' in response.json().keys()
+    assert 'net-price' not in response.json().keys()
+    response = test_client.get(real_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 200
+    assert 'zero-discount-price' in response.json().keys()
+    assert 'net-price' in response.json().keys()
+    app.dependency_overrides[adp_perms_present] = {}
+
 def test_customer_coil_program_collection_as_sca_employee():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
@@ -166,6 +209,11 @@ def test_customer_coil_program_resource_as_sca_employee():
     assert CoilProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
+def test_customer_coil_program_resource_delete_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.delete(f'{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}')
+    assert response.status_code == 401
+
 def test_customer_ah_program_collection_as_sca_employee():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
     response = test_client.get(f'{PATH_PREFIX}/{AH_PROGS}')
@@ -183,7 +231,30 @@ def test_customer_ah_program_resource_as_sca_employee():
     assert AirHandlerProgResp(**response.json())
     app.dependency_overrides[adp_perms_present] = {}
 
+def test_customer_ah_program_resource_delete_as_sca_employee():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_sca_employee('adp')
+    response = test_client.delete(f'{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}')
+    assert response.status_code == 401
+    # assert AirHandlerProgResp(**response.json())
+
 ## CUSTOMER ADMIN
+
+def test_model_lookup_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    base_url = f'{PATH_PREFIX}/model-lookup/'
+    zero_id = base_url + '0'
+    real_id = base_url + f'{ADP_CUSTOMER_ID}'
+    invalid_id = base_url + f'{ADP_CUSTOMER_ID+1}'
+    response = test_client.get(zero_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 401
+    response = test_client.get(real_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 200
+    assert 'zero-discount-price' in response.json().keys()
+    assert 'net-price' in response.json().keys()
+    response = test_client.get(invalid_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 422
+    app.dependency_overrides[adp_perms_present] = {}
+
 def test_customer_coil_program_collection_as_customer_admin():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
@@ -219,7 +290,54 @@ def test_customer_ah_program_resource_as_customer_admin():
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
 
+def test_customer_ah_program_modification_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_AH_PRODUCT_ID,
+            "type": AH_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
+
+def test_customer_coil_program_modification_as_customer_admin():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_admin('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_COIL_PRODUCT_ID,
+            "type": COIL_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
+
 ## CUSTOMER MANAGER
+
+def test_model_lookup_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    base_url = f'{PATH_PREFIX}/model-lookup/'
+    zero_id = base_url + '0'
+    real_id = base_url + f'{ADP_CUSTOMER_ID}'
+    invalid_id = base_url + f'{ADP_CUSTOMER_ID+1}'
+    response = test_client.get(zero_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 401
+    response = test_client.get(real_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 200
+    assert 'zero-discount-price' in response.json().keys()
+    assert 'net-price' in response.json().keys()
+    response = test_client.get(invalid_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 422
+    app.dependency_overrides[adp_perms_present] = {}
+
 def test_customer_coil_program_collection_as_customer_manager():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
@@ -255,7 +373,54 @@ def test_customer_ah_program_resource_as_customer_manager():
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
 
+def test_customer_ah_program_modification_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_AH_PRODUCT_ID,
+            "type": AH_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
+
+def test_customer_coil_program_modification_as_customer_manager():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_manager('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_COIL_PRODUCT_ID,
+            "type": COIL_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
+
 ## CUSTOMER STANDARD
+
+def test_model_lookup_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    base_url = f'{PATH_PREFIX}/model-lookup/'
+    zero_id = base_url + '0'
+    real_id = base_url + f'{ADP_CUSTOMER_ID}'
+    invalid_id = base_url + f'{ADP_CUSTOMER_ID+1}'
+    response = test_client.get(zero_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 401
+    response = test_client.get(real_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 200
+    assert 'zero-discount-price' not in response.json().keys()
+    assert 'net-price' not in response.json().keys()
+    response = test_client.get(invalid_id+f'?model_num={TEST_MODEL}')
+    assert response.status_code == 422
+    app.dependency_overrides[adp_perms_present] = {}
+
 def test_customer_coil_program_collection_as_customer_std():
     app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
     response = test_client.get(f'{PATH_PREFIX}/{COIL_PROGS}')
@@ -290,3 +455,33 @@ def test_customer_ah_program_resource_as_customer_std():
     assert response.status_code == 204
     assert response.content == str('').encode()
     app.dependency_overrides[adp_perms_present] = {}
+
+def test_customer_ah_program_modification_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_AH_PRODUCT_ID,
+            "type": AH_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{AH_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
+
+def test_customer_coil_program_modification_as_customer_std():
+    app.dependency_overrides[adp_perms_present] = auth_overrides.auth_as_customer_std('adp')
+    # valid request
+    body = {
+        'data': {
+            "id": VALID_COIL_PRODUCT_ID,
+            "type": COIL_PROGS,
+            'attributes':{
+                'stage': Stage.ACTIVE
+            }
+        }
+    }
+    response = test_client.patch(f'{PATH_PREFIX}/{COIL_PROGS}/{ADP_CUSTOMER_ID}', json=body)
+    assert response.status_code == 401
