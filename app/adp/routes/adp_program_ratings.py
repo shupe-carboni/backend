@@ -59,6 +59,4 @@ async def add_program_ratings(
         ratings = Ratings(ratings=[Rating(**row._asdict()) for row in ratings_df.itertuples()])
         add_ratings_to_program(session=session, adp_customer_id=adp_customer_id, ratings=ratings)
 
-    else:
-        print("Enforce that the customer is allowed to add ratings to the adp_customer_id selected")
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
