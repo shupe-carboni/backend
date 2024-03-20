@@ -20,7 +20,7 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 coil_progs = APIRouter(prefix=f'/{ADP_COILS_RESOURCE}', tags=['coils','programs'])
 
-def convert_query(query: CoilProgQuery) -> CoilProgQueryJSONAPI:
+def convert_query(query: CoilProgQuery) -> dict[str,str]:
     return CoilProgQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
 
 @coil_progs.get(
@@ -117,11 +117,11 @@ def change_product_status(
     """
     associated_ids = ADP_DB.load_df(session, 'coil_programs', adp_customer_id, id_only=True).id.to_list()
     if new_stage.data.id not in associated_ids or not associated_ids:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Customer ID {adp_customer_id} is not associated with product id {new_stage.id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Customer ID {adp_customer_id} is not associated with product id {new_stage.data.id}")
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         result = serializer.patch_resource(session=session, json_data=new_stage.model_dump(), api_type=ADP_COILS_RESOURCE, obj_id=new_stage.data.id)
         return result.data
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 @coil_progs.delete('/{program_product_id}')
 def permanently_delete_record(
@@ -129,7 +129,12 @@ def permanently_delete_record(
         session: NewSession,
         program_product_id: int,
     ) -> None:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_admin:
+        return serializer.delete_resource(session, data={}, api_type=ADP_COILS_RESOURCE,obj_id=program_product_id)
+    else:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+
 
 @coil_progs.get(
         '/{program_product_id}/adp-customers'
