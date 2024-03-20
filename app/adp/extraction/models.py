@@ -40,7 +40,7 @@ def parse_model_string(session: Session, adp_customer_id: int, model: str, mode:
         case ParsingModes.BASE_PRICE:
             return record_series
         case ParsingModes.ATTRS_ONLY:
-            record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value)
+            record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value, inplace=True)
             return record_series
         case _:
             raise InvalidParsingMode
