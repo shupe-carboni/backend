@@ -71,3 +71,5 @@ async def add_program_parts(
             )
         except Exception as e:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    
