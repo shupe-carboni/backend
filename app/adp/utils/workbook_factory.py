@@ -9,7 +9,7 @@ from openpyxl.styles import Font, Alignment, numbers
 from app.adp.adp_models import Fields
 from app.adp.utils.programs import CoilProgram, AirHandlerProgram, CustomerProgram, EmptyProgram
 from app.adp.utils.pricebook import PriceBook
-from app.db import Session, ADP_DB, SCA_DB
+from app.db import Session, ADP_DB, SCA_DB, Stage
 
 
 logger = logging.getLogger('uvicorn.info')
@@ -121,12 +121,26 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
 def generate_program(
         session: Session,
         customer_id: int,
-        stage: Literal['ACTIVE', 'PROPOSED', 'REJECTED', 'REMOVED']='ACTIVE'
+        stage: Stage
     ) -> ProgramFile:
     tables = ["coil_programs", "ah_programs", "program_ratings"]
     coil_prog_table, ah_prog_table, ratings = [ADP_DB.load_df(session=session, table_name=table, customer_id=customer_id) for table in tables]
-    coil_prog_table = coil_prog_table[coil_prog_table['stage'] == stage.upper()]
-    ah_prog_table = ah_prog_table[ah_prog_table['stage'] == stage.upper()]
+    match stage:
+        case Stage.ACTIVE:
+            active_coils = coil_prog_table['stage'] == stage.name
+            active_ahs = ah_prog_table['stage'] == stage.name
+            coil_prog_table = coil_prog_table[active_coils]
+            ah_prog_table = ah_prog_table[active_ahs]
+        case Stage.PROPOSED:
+            active_coils = coil_prog_table['stage'] == Stage.ACTIVE.name
+            active_ahs = ah_prog_table['stage'] == Stage.ACTIVE.name
+            proposed_coils = coil_prog_table['stage'] == stage.name
+            proposed_ahs = ah_prog_table['stage'] == stage.name
+            coil_prog_table = coil_prog_table[(active_coils) | (proposed_coils)]
+            ah_prog_table = ah_prog_table[(active_ahs) | (proposed_ahs)]
+        case _:
+            raise EmptyProgram
+
     try:
         coil_prog = build_coil_program(coil_prog_table, ratings)
         ah_prog = build_ah_program(ah_prog_table, ratings)
