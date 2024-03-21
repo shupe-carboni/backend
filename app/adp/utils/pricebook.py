@@ -19,6 +19,7 @@ from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from app.adp.utils.programs import CustomerProgram
 from app.adp.adp_models.model_series import Fields
 from app.adp.adp_models import MODELS
+from app.db import Stage
 
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
@@ -405,8 +406,11 @@ class PriceBook:
 
     def insert_data(self, df: pd.DataFrame, headers: bool=True, offset: tuple=(0,0)) -> 'PriceBook':
         if headers:
-            for col in df.columns:
-                self.active_cell(value=str(col))
+            for col in df:
+                if col == Fields.STAGE.formatted():
+                    pass
+                else:
+                    self.active_cell(value=str(col))
                 self.cursor.move_by(cols=1)
             self.cursor.slam_left()
             self.cursor.move_by(rows=1)
@@ -414,7 +418,13 @@ class PriceBook:
 
         for label, data in df.iterrows():
             for datum in data:
-                self.active_cell(value=datum)
+                if datum == Stage.PROPOSED.name:
+                    cell = self.active_cell(value=datum.lower())
+                    cell.font = Font(italic=True, size=8.0, color="808080")
+                elif datum == Stage.ACTIVE.name:
+                    self.active_cell(value=None)
+                else:
+                    self.active_cell(value=datum)
                 self.cursor.move_by(cols=1)
             self.cursor.move_by(rows=1)
             self.cursor.slam_left()
