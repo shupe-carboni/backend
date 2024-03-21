@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import HTTPException, Depends, status, UploadFile
+from fastapi import HTTPException, Depends, status, UploadFile, Response
 from fastapi.routing import APIRouter
 from pandas import read_csv, read_excel
 from numpy import nan
@@ -57,6 +57,10 @@ async def add_program_ratings(
                 raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
         
         ratings = Ratings(ratings=[Rating(**row._asdict()) for row in ratings_df.itertuples()])
-        add_ratings_to_program(session=session, adp_customer_id=adp_customer_id, ratings=ratings)
-
+        try:
+            add_ratings_to_program(session=session, adp_customer_id=adp_customer_id, ratings=ratings)
+        except:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(status_code=status.HTTP_202_ACCEPTED)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
