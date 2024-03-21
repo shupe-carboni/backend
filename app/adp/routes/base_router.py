@@ -55,7 +55,7 @@ def customer_program_dl_file(
     """Generate a program excel file and return for download"""
     try:
         dl_obj = downloads.DownloadIDs.use_download(customer_id=adp_customer_id, id_value=download_id)
-        file = generate_program(session=session, customer_id=adp_customer_id, stage=dl_obj.stage.name)
+        file = generate_program(session=session, customer_id=adp_customer_id, stage=dl_obj.stage)
         return XLSXFileResponse(content=file.file_data, filename=file.file_name)
     except EmptyProgram:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="The file requested does not contain any data")
