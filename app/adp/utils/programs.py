@@ -58,7 +58,8 @@ class CoilProgram(Program):
             Fields.METERING.value,
             Fields.NET_PRICE.value,
             Fields.RATED.value,
-            Fields.SERIES.value
+            Fields.SERIES.value,
+            Fields.STAGE.value
         ] 
 
     def category_data(self, category) -> pd.DataFrame:
@@ -100,7 +101,8 @@ class AirHandlerProgram(Program):
             Fields.METERING.value,
             Fields.NET_PRICE.value,
             Fields.RATED.value,
-            Fields.SERIES.value
+            Fields.SERIES.value,
+            Fields.STAGE.value
         ]
 
     def category_data(self, category) -> pd.DataFrame:
