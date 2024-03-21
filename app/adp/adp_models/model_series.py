@@ -39,6 +39,7 @@ class Fields(StrEnum):
     RATINGS_PISTON = auto()
     RATINGS_FIELD_TXV = auto()
     RATED = auto()
+    STAGE = auto()
 
     def formatted(self):
         if self.name == 'ADP_ALIAS':
