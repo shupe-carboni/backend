@@ -21,6 +21,7 @@ token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
 ALGORITHMS = os.getenv('ALGORITHMS')
 AUDIENCE = os.getenv('AUDIENCE')
+SCA_CLOUD_TUI = os.getenv('SCA_CLOUD_TUI_CLIENT_ID')
 
 status_codes = {
     400: status.HTTP_400_BAD_REQUEST,
@@ -125,7 +126,7 @@ def get_user_info(access_token: str) -> dict:
     if 299 >= user_info.status_code >= 200:
         user_info = user_info.json()
     else:
-        return {"nickname": '', "name": '', "email": '', "email_verified": False}
+        raise HTTPException(status_code=status_codes[401], detail="user could not be verified")
     match user_info:
         case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
             return {"nickname": a, "name": b, "email": c, "email_verified": d}
@@ -194,12 +195,23 @@ async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(t
                 error = err
             else:
                 permissions = set_permissions(payload['permissions'])
-                verified_token = VerifiedToken(
-                    token=token.credentials,
-                    exp=payload['exp'],
-                    permissions=permissions,
-                    **get_user_info(token.credentials)
-                )
+                if payload['azp'] == SCA_CLOUD_TUI:
+                    verified_token = VerifiedToken(
+                        token=token.credentials,
+                        exp=payload['exp'],
+                        permissions=permissions,
+                        nickname='SCA Cloud TUI',
+                        name='SCA Cloud TUI',
+                        email='',
+                        email_verified=True,
+                    )
+                else:
+                    verified_token = VerifiedToken(
+                        token=token.credentials,
+                        exp=payload['exp'],
+                        permissions=permissions,
+                        **get_user_info(token.credentials)
+                    )
                 LocalTokenStore.add_token(new_token=verified_token)
                 return verified_token
         else:
