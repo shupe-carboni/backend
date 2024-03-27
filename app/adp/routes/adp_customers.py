@@ -7,7 +7,11 @@ from app.db import Session, ADP_DB
 from app.adp.models import (
     CustomersResp,
     CustomersQuery,
-    CustomersQueryJSONAPI 
+    CustomersQueryJSONAPI,
+    RelatedCoilProgResp,
+    CoilProgRelResp,
+    RelatedAirHandlerProgResp,
+    AirHandlerProgRelResp,
 )
 from app.jsonapi.sqla_models import serializer, ADPCustomer
 
@@ -50,10 +54,10 @@ def all_adp_customers(
         response_model_exclude_none=True,
         tags=['jsonapi']
 )
-def coil_program_product(
+def adp_customer(
         token: ADPPerm,
         session: NewSession,
-        program_product_id: int,
+        customer_id: int,
         query: CustomersQuery=Depends()
     ) -> CustomersResp:
     """get a specific product from the coil programs"""
@@ -64,5 +68,37 @@ def coil_program_product(
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_CUSTOMERS,
         query=convert_query(query),
-        obj_id=program_product_id
+        obj_id=customer_id
     )
+
+@adp_customers.get('/{customer_id}/adp-coil-programs', response_model=RelatedCoilProgResp, response_model_exclude_none=True)
+async def related_location(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> RelatedCoilProgResp:
+    return serializer.get_related(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-coil-programs')
+
+@adp_customers.get('/{customer_id}/relationships/adp-coil-programs', response_model=CoilProgRelResp, response_model_exclude_none=True)
+async def customer_location_relationships(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> CoilProgRelResp:
+    return serializer.get_relationship(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-coil-programs')
+
+@adp_customers.get('/{customer_id}/adp-ah-programs', response_model=RelatedAirHandlerProgResp, response_model_exclude_none=True)
+async def related_location(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> RelatedAirHandlerProgResp:
+    return serializer.get_related(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-ah-programs')
+
+@adp_customers.get('/{customer_id}/relationships/adp-ah-programs', response_model=AirHandlerProgRelResp, response_model_exclude_none=True)
+async def customer_location_relationships(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> AirHandlerProgRelResp:
+    return serializer.get_relationship(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-ah-programs')

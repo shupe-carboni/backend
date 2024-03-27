@@ -127,11 +127,20 @@ class CoilProgResp(BaseModel):
     data: Optional[list[CoilProgRObj] | CoilProgRObj]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination] = None
+
 class AirHandlerProgResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[AirHandlerProgRObj] | AirHandlerProgRObj]
     included: Optional[list[JSONAPIResourceObject]]
     links: Optional[Pagination] = None
+
+class RelatedCoilProgResp(CoilProgResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+class RelatedAirHandlerProgResp(AirHandlerProgResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
 
 _CoilProgQuery: type[BaseModel] = create_model(
     'CoilProgQuery',
@@ -327,9 +336,9 @@ class CustomersRObj(CustomersRID):
 
 class CustomersResp(BaseModel):
     meta: Optional[dict] = {}
-    data: Optional[list[CustomersRObj]]
+    data: Optional[list[CustomersRObj] | CustomersRObj]
     included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    links: Optional[Pagination] = {}
 
 class RelatedCustomerResponse(CustomersResp):
     included: dict = {}
