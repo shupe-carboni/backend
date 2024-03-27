@@ -16,7 +16,8 @@ from app.places import places, place_rel
 from app.adp import (
     adp, adp_quotes, adp_quote_rel,
     coil_progs, ah_progs, prog_parts,
-    prog_ratings, ratings_admin
+    prog_ratings, ratings_admin,
+    adp_customers
 )
 
 logger = logging.getLogger('uvicorn.info')
@@ -65,6 +66,7 @@ places.include_router(place_rel)
 # adp
 adp_quotes.include_router(adp_quote_rel)
 adp.include_router(adp_quotes)
+adp.include_router(adp_customers)
 adp.include_router(coil_progs)
 adp.include_router(ah_progs)
 adp.include_router(prog_parts)

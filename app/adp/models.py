@@ -242,7 +242,7 @@ _RatingsQuery: type[BaseModel] = create_model(
     **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
 )
 
-class RatingsQuery(_RatingsQuery): ...
+class RatingsQuery(_RatingsQuery, BaseModel): ...
 
 ## Parts
 class Parts(BaseModel):
@@ -272,9 +272,9 @@ _PartsQuery: type[BaseModel] = create_model(
     **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
     **{f'fields_{PartsRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
     **{f"fields_{field}":(Optional[str], None) for field in PartsRels.model_fields.keys()},
-    **{f"filter_{field}":(Optional[str], None) for field in Rating.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None) for field in Parts.model_fields.keys()},
 )
-class PartsQuery(_PartsQuery): ...
+class PartsQuery(_PartsQuery, BaseModel): ...
     
 ## Downloads
 class DownloadLink(BaseModel):
@@ -291,6 +291,11 @@ class CustomersAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_alias: str = Field(alias='adp-alias')
     preferred_parts: bool = Field(alias='preferred-parts')
+
+class CustomerFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_adp_alias: str = Field(default=None, alias='filter[adp-alias]')
+    filter_preferred_parts: bool = Field(default=None, alias='filter[preferred-parts]')
 class CustomersRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     customers: JSONAPIRelationships = Field(alias='customers')
@@ -302,6 +307,19 @@ class CustomersRels(BaseModel):
     adp_snps: JSONAPIRelationships = Field(alias='adp-snps')
     adp_program_parts: JSONAPIRelationships = Field(alias='adp-program-parts')
     adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
+
+class CustomerFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_customers: str = Field(default=None, alias='fields[customers]')
+    fields_adp_coil_programs: str = Field(default=None, alias='fields[adp-coil-programs]')
+    fields_adp_ah_programs: str = Field(default=None, alias='fields[adp-ah-programs]')
+    fields_adp_program_ratings: str = Field(default=None, alias='fields[adp-program-ratings]')
+    fields_adp_alias_to_sca_customer_locations: str = Field(default=None, alias='fields[adp-alias-to-sca-customer-locations]')
+    fields_adp_material_group_discounts: str = Field(default=None, alias='fields[adp-material-group-discounts]')
+    fields_adp_snps: str = Field(default=None, alias='fields[adp-snps]')
+    fields_adp_program_parts: str = Field(default=None, alias='fields[adp-program-parts]')
+    fields_adp_quotes: str = Field(default=None, alias='fields[adp-quotes]')
+
 class CustomersRObj(CustomersRID):
     attributes: CustomersAttrs
     relationships: CustomersRels
@@ -316,6 +334,18 @@ class RelatedCustomerResponse(CustomersResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
+_CustomersQuery: type[BaseModel] = create_model(
+    'CustomersQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f'fields_{CustomersRID.model_fields["type"].default.replace("-","_")}': (Optional[str], None)},
+    **{f"fields_{field}":(Optional[str], None) for field in CustomersRels.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None) for field in CustomersAttrs.model_fields.keys()},
+)
+class CustomersQuery(_CustomersQuery, BaseModel): ...
+
+class CustomersQueryJSONAPI(CustomerFields, CustomerFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 ## ADP Customer Terms
 class ADPCustomerTermsRID(JSONAPIResourceIdentifier):
