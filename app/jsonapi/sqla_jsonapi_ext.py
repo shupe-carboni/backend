@@ -139,35 +139,46 @@ class JSONAPI_(JSONAPI):
             def __init__(self, query: dict, row_count: int):
                 pag_keys = [k for k in query.keys() if k.startswith("page")]
                 [query.pop(k) for k in pag_keys]
-                self.metadata = {"meta":{
-                    "numRecords": row_count
-                }}
+                self.result = {
+                    "meta": {
+                        "numRecords": row_count
+                    },
+                    "links": {
+                        "first": '',
+                        "last": '',
+
+                    }
+                }
 
             def return_disabled_pagination(self):
                 if row_count > MAX_RECORDS:
                     raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
-                return self.metadata
+                return self.result
             
-            def return_one_page(self):
-                self.metadata['meta'] |= {
+            def return_one_page(self, link):
+                self.result['meta'] |= {
                     "totalPages": 1,
                     "currentPage": 1,
                 }
-                return self.metadata
+                self.result['links'] = {
+                    'first': link,
+                    'last': link
+                }
+                return self.result
             
             def return_zero_page(self):
-                self.metadata['meta'] |= {
+                self.result['meta'] |= {
                     "totalPages": 0,
                     "currentPage": 0,
                 }
-                return self.metadata
+                return self.result
 
 
         row_count: int = db.execute(sa_query.statement).fetchone()[0]
         if row_count == 0:
             return NoPagination(query, row_count).return_zero_page()
         passed_args = {k[5:-1]: str(v) for k, v in query.items() if k.startswith('page[')}
-        link_template = "/{resource_name}?page[number]={page_num}&page[size]={page_size}" # defaulting to number-size
+        link_template = "/{resource_name}?page_number={page_num}&page_size={page_size}" # defaulting to number-size
         if passed_args:
             if {'number', 'size'} == set(passed_args.keys()):
                 number = int(passed_args['number'])
@@ -179,7 +190,7 @@ class JSONAPI_(JSONAPI):
                 offset = int(passed_args['offset'])
                 limit = int(passed_args['limit'])
                 size = min(limit, MAX_PAGE_SIZE)
-                link_template = "/{resource_name}?page[offset]={offset}&page[limit]={limit}"
+                link_template = "/{resource_name}?page_offset={offset}&page_limit={limit}"
             elif {'number'} == set(passed_args.keys()): 
                 number = int(passed_args['number'])
                 if number == 0:
@@ -193,7 +204,12 @@ class JSONAPI_(JSONAPI):
 
         total_pages = -(row_count // -size) # ceiling division
         if total_pages == 1:
-            return NoPagination(query=query, row_count=row_count).return_one_page()
+            link_args = {
+                'resource_name': resource_name,
+                'page_num': 1,
+                'page_size': size,
+            }
+            return NoPagination(query=query, row_count=row_count).return_one_page(link=link_template.format(**link_args))
         else:
             current_page = (offset // size) + 1
             first_page = 1
