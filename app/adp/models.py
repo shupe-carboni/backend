@@ -289,8 +289,8 @@ class CustomersRelResp(JSONAPIRelationshipsResponse):
 
 class CustomersAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    adp_alias: str = Field(alias='adp-alias')
-    preferred_parts: bool = Field(alias='preferred-parts')
+    adp_alias: Optional[str] = Field(default=None, alias='adp-alias')
+    preferred_parts: Optional[bool] = Field(default=None, alias='preferred-parts')
 
 class CustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -298,18 +298,19 @@ class CustomerFilters(BaseModel):
     filter_preferred_parts: bool = Field(default=None, alias='filter[preferred-parts]')
 class CustomersRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    customers: JSONAPIRelationships = Field(alias='customers')
-    adp_coil_programs: JSONAPIRelationships = Field(alias='adp-coil-programs')
-    adp_ah_programs: JSONAPIRelationships = Field(alias='adp-ah-programs')
-    adp_program_ratings: JSONAPIRelationships = Field(alias='adp-program-ratings')
-    adp_alias_to_sca_customer_locations: JSONAPIRelationships = Field(alias='adp-alias-to-sca-customer-locations')
-    adp_material_group_discounts: JSONAPIRelationships = Field(alias='adp-material-group-discounts')
-    adp_snps: JSONAPIRelationships = Field(alias='adp-snps')
-    adp_program_parts: JSONAPIRelationships = Field(alias='adp-program-parts')
-    adp_quotes: JSONAPIRelationships = Field(alias='adp-quotes')
+    customers: Optional[JSONAPIRelationships] = Field(default=None, alias='customers')
+    adp_coil_programs: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-coil-programs')
+    adp_ah_programs: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-ah-programs')
+    adp_program_ratings: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-program-ratings')
+    adp_alias_to_sca_customer_locations: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-alias-to-sca-customer-locations')
+    adp_material_group_discounts: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-material-group-discounts')
+    adp_snps: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-snps')
+    adp_program_parts: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-program-parts')
+    adp_quotes: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-quotes')
 
 class CustomerFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    fields_adp_customers: str = Field(default=None, alias='fields[adp-customers]')
     fields_customers: str = Field(default=None, alias='fields[customers]')
     fields_adp_coil_programs: str = Field(default=None, alias='fields[adp-coil-programs]')
     fields_adp_ah_programs: str = Field(default=None, alias='fields[adp-ah-programs]')
@@ -321,8 +322,8 @@ class CustomerFields(BaseModel):
     fields_adp_quotes: str = Field(default=None, alias='fields[adp-quotes]')
 
 class CustomersRObj(CustomersRID):
-    attributes: CustomersAttrs
-    relationships: CustomersRels
+    attributes: Optional[CustomersAttrs] = {}
+    relationships: Optional[CustomersRels] = {}
 
 class CustomersResp(BaseModel):
     meta: Optional[dict] = {}
