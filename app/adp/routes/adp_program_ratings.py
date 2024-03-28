@@ -64,3 +64,14 @@ async def add_program_ratings(
         else:
             return Response(status_code=status.HTTP_202_ACCEPTED)
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+@prog_ratings.delete('/{rating_id}')
+async def remove_rating(
+    token: ADPPerm,
+    rating_id: int,
+    session: NewSession
+    ) -> None:
+    if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
+        serializer.delete_resource(session=session,data={}, api_type=ADP_RATINGS_RESOURCE, obj_id=rating_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
