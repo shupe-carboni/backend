@@ -134,11 +134,7 @@ def permanently_delete_record(
     else:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-
-
-@coil_progs.get(
-        '/{program_product_id}/adp-customers'
-)
+@coil_progs.get('/{program_product_id}/adp-customers')
 def get_related_customer(
         token: ADPPerm,
         session: NewSession,
