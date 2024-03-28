@@ -219,9 +219,48 @@ class Rating(BaseModel):
     Capacity2: Optional[int] = None
     HSPF2: Optional[float] = None
 
+class RatingExpanded(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    AHRINumber: Optional[str] = Field(default=None, alias='ahrinumber')
+    OutdoorModel: Optional[str] = Field(default=None, alias='outdoor-model')
+    IndoorModel: Optional[str] = Field(default=None, alias='indoor-model')
+    FurnaceModel: Optional[str] = Field(default=None, alias='furnace-model')
+    OEMName: Optional[str] = Field(default=None, alias='oem-name')
+    oem_name_2: Optional[str] = Field(default=None, alias='oem-name-1')
+    m1: Optional[str] = None
+    status: Optional[str] = None
+    oem_series: Optional[str] = Field(default=None, alias='OEM Series')
+    adp_series: Optional[str] = Field(default=None, alias='ADP Series')
+    model_number: Optional[str] = Field(default=None, alias='Model Number')
+    coil_model_number: Optional[str] = Field(default=None, alias='Coil Model Number')
+    furnace_model_number: Optional[str] = Field(default=None, alias='Furnace Model Number')
+    seer: Optional[float] = None
+    eer: Optional[float] = None
+    capacity: Optional[float] = None
+    four_seven_o: Optional[float] = Field(default=None, alias='-47o', serialization_alias='47o')
+    one_seven_o: Optional[float] = Field(default=None, alias='-17o', serialization_alias='17o')
+    hspf: Optional[float] = None
+    seer2: Optional[float] = None
+    eer2: Optional[float] = None
+    capacity2: Optional[float] = None
+    four_seven_o2: Optional[float] = Field(default=None, alias='-47o2', serialization_alias='47o2')
+    one_seven_o2: Optional[float] = Field(default=None, alias='-17o2', serialization_alias='17o2')
+    hspf2: Optional[float] = None
+    ahri_ref_number: Optional[int] = Field(default=None, alias='AHRI Ref Number')
+    region: Optional[str] = None
+    effective_date: str = Field(alias='effective-date')
+    seer2_as_submitted: Optional[float] = Field(alias='seer2-as-submitted')
+    eer95f2_as_submitted: Optional[float] = Field(alias='eer95f2-as-submitted')
+    capacity2_as_submitted: Optional[float] = Field(alias='capacity2-as-submitted')
+    hspf2_as_submitted: Optional[float] = Field(alias='hspf2-as-submitted')
+
+
 class Ratings(BaseModel):
     model_config = ConfigDict(extra='ignore')
     ratings: list[Rating]
+
+class RatingsExpanded(BaseModel):
+    ratings: list[RatingExpanded]
 
 class RatingsRID(JSONAPIResourceIdentifier):
     type: str = ADPProgramRating.__jsonapi_type_override__
@@ -231,17 +270,26 @@ class RatingsRelResp(JSONAPIRelationshipsResponse):
 
 class RatingsRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    adp_customer: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customer')
+    adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias='adp-customers')
 
 class RatingsRObj(RatingsRID):
     attributes: Rating
+    relationships: RatingsRels
+
+class RatingsExpandedRObj(RatingsRID):
+    attributes: RatingExpanded
     relationships: RatingsRels
 
 class RatingsResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[RatingsRObj] | RatingsRObj]
     included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    links: Optional[Pagination] = {}
+
+class RelatedRatingsResponse(RatingsResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+    data: Optional[list[RatingsExpandedRObj] | RatingsExpandedRObj]
 
 _RatingsQuery: type[BaseModel] = create_model(
     'RatingsQuery',
@@ -305,6 +353,7 @@ class CustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     filter_adp_alias: str = Field(default=None, alias='filter[adp-alias]')
     filter_preferred_parts: bool = Field(default=None, alias='filter[preferred-parts]')
+
 class CustomersRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     customers: Optional[JSONAPIRelationships] = Field(default=None, alias='customers')
