@@ -312,7 +312,11 @@ class PartsRelResp(JSONAPIRelationshipsResponse):
 
 class PartsRels(BaseModel):
     adp_pricing_parts: Optional[JSONAPIRelationships] = Field(default=None, alias=ADPPricingPart.__jsonapi_type_override__)
-    adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias=ADPProgramPart.__jsonapi_type_override__)
+    adp_customers: Optional[JSONAPIRelationships] = Field(default=None, alias=ADPCustomer.__jsonapi_type_override__)
+
+class PartsFields(BaseModel):
+    fields_adp_pricing_parts: str = Field(default=None, alias=f'fields[{ADPPricingPart.__jsonapi_type_override__}]')
+    fields_adp_customers: str = Field(default=None, alias=f'fields[{ADPCustomer.__jsonapi_type_override__}]')
 
 class PartsRObj(PartsRID):
     attributes: Parts
@@ -322,7 +326,7 @@ class PartsResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[PartsRObj] | PartsRObj]
     included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    links: Optional[Pagination] = {}
 
 _PartsQuery: type[BaseModel] = create_model(
     'PartsQuery',
@@ -332,6 +336,15 @@ _PartsQuery: type[BaseModel] = create_model(
     **{f"filter_{field}":(Optional[str], None) for field in Parts.model_fields.keys()},
 )
 class PartsQuery(_PartsQuery, BaseModel): ...
+
+class PartsQueryJSONAPI(PartsFields, Query):
+    page_number: str = Field(default=None, alias='page[number]')
+    page_size: str = Field(default=None, alias='page[size]')
+
+class RelatedPartsResponse(PartsResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
     
 ## Downloads
 class DownloadLink(BaseModel):
