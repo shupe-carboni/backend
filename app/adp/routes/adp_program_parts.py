@@ -7,7 +7,8 @@ from app.db import Session, ADP_DB
 from app.adp.models import (
     NewPartRObj,
     PartsQuery,
-    PartsResp
+    PartsResp,
+    PartsQueryJSONAPI
 )
 from app.jsonapi.sqla_models import serializer, ADPProgramPart
 
@@ -16,6 +17,9 @@ ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 prog_parts = APIRouter(prefix=f'/{ADP_PARTS_RESOURCE}', tags=['parts','programs'])
+
+def convert_query(query: PartsQuery) -> dict[str,str]:
+    return PartsQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
 
 @prog_parts.get(
         '',
@@ -34,7 +38,29 @@ def all_parts(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_PARTS_RESOURCE,
-        query=query
+        query=convert_query(query)
+    )
+
+@prog_parts.get(
+        '/{part_id}',
+        response_model=PartsResp,
+        response_model_exclude_none=True,
+        tags=['jsonapi']
+)
+def a_part(
+        token: ADPPerm,
+        part_id: int,
+        session: NewSession,
+        query: PartsQuery=Depends()
+    ) -> PartsResp:
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_PARTS_RESOURCE,
+        query=convert_query(query),
+        obj_id=part_id
     )
 
 async def add_parts_to_program(session: Session, adp_customer_id: int, part_num: str) -> int:
