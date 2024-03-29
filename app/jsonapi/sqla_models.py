@@ -248,6 +248,7 @@ class ADPPricingPart(Base):
     __tablename__ = 'adp_pricing_parts'
     __jsonapi_type_override__ = 'adp-pricing-parts'
     ## fields
+    id = Column(Integer)
     part_number = Column(String, nullable=False, primary_key=True)
     description = Column(TEXT)
     pkg_qty = Column(Integer)
