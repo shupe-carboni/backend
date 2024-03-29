@@ -14,6 +14,8 @@ from app.adp.models import (
     AirHandlerProgRelResp,
     RatingsRelResp,
     RelatedRatingsResponse,
+    PartsRelResp,
+    RelatedPartsResponse
 )
 from app.jsonapi.sqla_models import serializer, ADPCustomer
 
@@ -125,3 +127,23 @@ async def ratings_relationships(
         token: ADPPerm,
     ) -> RatingsRelResp:
     return serializer.get_relationship(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-program-ratings')
+
+@adp_customers.get(
+        '/{customer_id}/adp-program-parts',
+        response_model=RelatedPartsResponse,
+        response_model_exclude_none=True
+)
+async def related_ratings(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> RelatedPartsResponse:
+    return serializer.get_related(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-program-parts')
+
+@adp_customers.get('/{customer_id}/relationships/adp-program-parts', response_model=PartsRelResp, response_model_exclude_none=True)
+async def ratings_relationships(
+        session: NewSession,
+        customer_id: int,
+        token: ADPPerm,
+    ) -> PartsRelResp:
+    return serializer.get_relationship(session=session, query={}, api_type=ADP_CUSTOMERS, obj_id=customer_id, rel_key='adp-program-parts')
