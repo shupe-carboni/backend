@@ -1,4 +1,3 @@
-
 from typing import Annotated
 from fastapi import HTTPException, Depends
 from fastapi.routing import APIRouter
@@ -8,15 +7,13 @@ from app import auth
 from app.db import SCA_DB
 from app.customers.locations.models import RelatedLocationResponse, LocationRelationshipsResponse
 from app.adp.models import (
-    RelatedCustomerResponse,
-    CustomersRelResp,
-    RelatedADPCustomerTermsResp,
-    ADPCustomerTermsRelationshipsResp
+    RelatedCustomerResponse, CustomersRelResp,
+    RelatedADPCustomerTermsResp, ADPCustomerTermsRelationshipsResp
 )
 from app.auth import ADPPermPriority
-from app.jsonapi.sqla_models import serializer
+from app.jsonapi.sqla_models import SCACustomer
 
-API_TYPE = 'customers'
+API_TYPE = SCACustomer.__jsonapi_type_override__
 customer_rel = APIRouter(tags=[API_TYPE])
 CustomersPerm = Annotated[auth.VerifiedToken, Depends(auth.customers_perms_present)]
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
@@ -28,7 +25,17 @@ async def related_location(
         customer_id: int,
         token: CustomersPerm,
     ) -> RelatedLocationResponse:
-    return serializer.get_related(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='customer-locations')
+    return auth.secured_get_query(
+        db=SCA_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=API_TYPE,
+        query={},
+        obj_id=customer_id,
+        relationship=False,
+        related_resource='customer-locations'
+    ).data
 
 @customer_rel.get('/{customer_id}/relationships/customer-locations', response_model=LocationRelationshipsResponse, response_model_exclude_none=True)
 async def customer_location_relationships(
@@ -36,7 +43,17 @@ async def customer_location_relationships(
         customer_id: int,
         token: CustomersPerm,
     ) -> LocationRelationshipsResponse:
-    return serializer.get_relationship(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='customer-locations')
+    return auth.secured_get_query(
+        db=SCA_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=API_TYPE,
+        query={},
+        obj_id=customer_id,
+        relationship=True,
+        related_resource='customer-locations'
+    ).data
 
 @customer_rel.get('/{customer_id}/adp-customers', response_model=RelatedCustomerResponse, response_model_exclude_none=True)
 async def related_adp_customers(
@@ -45,7 +62,17 @@ async def related_adp_customers(
         token: ADPPerm,
     ) -> RelatedCustomerResponse:
     if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
-        return serializer.get_related(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customers')
+        return auth.secured_get_query(
+            db=SCA_DB,
+            session=session,
+            token=token,
+            auth_scheme=auth.Permissions['adp'],
+            resource=API_TYPE,
+            query={},
+            obj_id=customer_id,
+            relationship=False,
+            related_resource='adp-customers'
+        ).data
     else:
         raise HTTPException(status_code=401)
 
@@ -56,7 +83,17 @@ async def adp_customer_relationships(
         token: ADPPerm,
     ) -> CustomersRelResp:
     if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
-        return serializer.get_relationship(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customers')
+        return auth.secured_get_query(
+            db=SCA_DB,
+            session=session,
+            token=token,
+            auth_scheme=auth.Permissions['adp'],
+            resource=API_TYPE,
+            query={},
+            obj_id=customer_id,
+            relationship=True,
+            related_resource='adp-customers'
+        ).data
     else:
         raise HTTPException(status_code=401)
 
@@ -67,7 +104,17 @@ async def related_adp_customer_terms(
         token: ADPPerm,
     ) -> RelatedADPCustomerTermsResp:
     if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
-        return serializer.get_related(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customer-terms')
+        return auth.secured_get_query(
+            db=SCA_DB,
+            session=session,
+            token=token,
+            auth_scheme=auth.Permissions['adp'],
+            resource=API_TYPE,
+            query={},
+            obj_id=customer_id,
+            relationship=False,
+            related_resource='adp-customer-terms'
+        ).data
     else:
         raise HTTPException(status_code=401)
 
@@ -78,6 +125,16 @@ async def adp_customer_terms_relationships(
         token: ADPPerm,
     ) -> ADPCustomerTermsRelationshipsResp:
     if token.permissions.get('adp') >= ADPPermPriority.customer_admin:
-        return serializer.get_relationship(session=session, query={}, api_type=API_TYPE, obj_id=customer_id, rel_key='adp-customer-terms')
+        return auth.secured_get_query(
+            db=SCA_DB,
+            session=session,
+            token=token,
+            auth_scheme=auth.Permissions['adp'],
+            resource=API_TYPE,
+            query={},
+            obj_id=customer_id,
+            relationship=True,
+            related_resource='adp-customer-terms'
+        ).data
     else:
         raise HTTPException(status_code=401)

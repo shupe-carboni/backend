@@ -129,7 +129,6 @@ def delete_ah_program_product(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 
-
 @ah_progs.get(
         '/{program_product_id}/adp-customers'
 )
@@ -138,4 +137,34 @@ def get_related_customer(
         session: NewSession,
         program_product_id: int,
     ):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_AIR_HANDLERS_RESOURCE,
+        query={},
+        obj_id=program_product_id,
+        relationship=False,
+        related_resource='adp-customers'
+    ).data
+
+@ah_progs.get(
+        '/{program_product_id}/relationships/adp-customers'
+)
+def get_customer_relationship(
+        token: ADPPerm,
+        session: NewSession,
+        program_product_id: int,
+    ):
+    return auth.secured_get_query(
+        db=ADP_DB,
+        session=session,
+        token=token,
+        auth_scheme=auth.Permissions['adp'],
+        resource=ADP_AIR_HANDLERS_RESOURCE,
+        query={},
+        obj_id=program_product_id,
+        relationship=True,
+        related_resource='adp-customers'
+    ).data

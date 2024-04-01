@@ -96,13 +96,13 @@ def parse_model_and_pricing(
     if adp_customer_id:
         try:
             auth.secured_get_query(
-                ADP_DB,
-                session,
-                token,
-                auth.Permissions['adp'],
-                ADPCustomer.__jsonapi_type_override__,
-                {},
-                adp_customer_id
+                db=ADP_DB,
+                session=session,
+                token=token,
+                auth_scheme=auth.Permissions['adp'],
+                resource=ADPCustomer.__jsonapi_type_override__,
+                query={},
+                obj_id=adp_customer_id
             )
         except HTTPException as e:
             if e.status_code < 500:
