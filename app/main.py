@@ -40,7 +40,7 @@ class BotTarpit(BaseHTTPMiddleware):
 
     @staticmethod
     async def trigger_delay(host: str, path: str):
-        delay = randint(10,100)
+        delay = randint(10,30)
         logger.info(f'Honeypot triggered by {host} on {path}. Delaying for {delay}s')
         await sleep(delay)
     
