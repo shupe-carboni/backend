@@ -3,11 +3,8 @@ from fastapi import HTTPException, Depends
 from fastapi.routing import APIRouter
 from app import auth
 from app.vendors.models import (
-    VendorResponse,
-    VendorInfoResponse,
-    VendorQuery,
-    NewVendorInfoResourceObject,
-    ExistingVendorInfo,
+    VendorResponse, VendorInfoResponse, VendorQuery,
+    NewVendorInfoResourceObject, ExistingVendorInfo,
     VendorQueryJSONAPI
 )
 
