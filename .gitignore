@@ -1,5 +1,10 @@
+# My own ignores
 *.zip
 /tests/*.csv
+.ebextensions/*
+.platform/*
+make_zip.sh
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
