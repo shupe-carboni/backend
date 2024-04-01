@@ -16,15 +16,20 @@ from sqlalchemy_jsonapi.errors import (
     PermissionDeniedError,
     BaseError,
     ResourceTypeNotFoundError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
+    RelationshipNotFoundError
 )
-from sqlalchemy_jsonapi.serializer import Permissions, JSONAPIResponse, check_permission
-
+from sqlalchemy_jsonapi.serializer import (
+    Permissions, JSONAPIResponse,
+    check_permission, get_rel_desc,
+    RelationshipActions, MANYTOONE
+)
 class SQLAlchemyModel:
     """This class is for typing, so that the linter recognizes my custom methods on 
         SQLAlchemy Base models"""
     __tablename__: str
     __jsonapi_type_override__: str
+    __jsonapi_map_to_py__: dict[str,str]
     def apply_customer_location_filtering(q: sqlQuery, ids: list[int]=None) -> sqlQuery:
         ...
 
@@ -381,16 +386,14 @@ class JSONAPI_(JSONAPI):
         """
         Fetch a resource.
 
-        This customized version addes a parameter for filtering results
-        and pre-treats the query object to transform parameters into
-        expected JSON:API format
+        This customized version adds a parameter for filtering results
+        to pass to _fetch_resource()
 
         :param session: SQLAlchemy session
         :param query: Dict of query args
         :param api_type: Type of the resource
         :param obj_id: ID of the resource
         """
-        # jsonapi_query = convert_query(query)
         resource = self._fetch_resource(session, api_type, obj_id,
                                         Permissions.VIEW, permitted_ids)
         include = self._parse_include(query.get('include', '').split(','))
@@ -406,6 +409,107 @@ class JSONAPI_(JSONAPI):
             return response.data
         else:
             return response
+    
+    def get_related(
+            self,
+            session: Session,
+            query: dict,
+            api_type: str,
+            obj_id: int,
+            rel_key: str,
+            permitted_ids: list[int]=None
+        ) -> JSONAPIResponse:
+        """
+        Fetch a collection of related resources.
+
+        Customization to allow passing of permitted id numbers to _fetch_resource()
+
+        :param session: SQLAlchemy session
+        :param query: Dict of query args
+        :param api_type: Type of the resource
+        :param obj_id: ID of the resource
+        :param rel_key: Key of the relationship to fetch
+        """
+        resource: SQLAlchemyModel = self._fetch_resource(session, api_type, obj_id,
+                                        Permissions.VIEW, permitted_ids)
+        if rel_key not in resource.__jsonapi_map_to_py__.keys():
+            raise RelationshipNotFoundError(resource, resource, rel_key)
+        py_key = resource.__jsonapi_map_to_py__[rel_key]
+        relationship = self._get_relationship(resource, py_key, Permissions.VIEW)
+        response = JSONAPIResponse()
+        related = get_rel_desc(resource, relationship.key, RelationshipActions.GET)(resource)
+        if relationship.direction == MANYTOONE:
+            try:
+                if related is None:
+                    response.data['data'] = None
+                else:
+                    response.data['data'] = self._render_full_resource(related, {}, {})
+            except PermissionDeniedError:
+                response.data['data'] = None
+        else:
+            response.data['data'] = []
+            for item in related:
+                try:
+                    response.data['data'].append(
+                        self._render_full_resource(item, {}, {}))
+                except PermissionDeniedError:
+                    continue
+        return response
+
+
+    def get_relationship(
+            self,
+            session: Session,
+            query: dict,
+            api_type: str,
+            obj_id: int,
+            rel_key: str,
+            permitted_ids: list[int]=None
+        ):
+        """
+        Fetch a collection of related resource types and ids.
+
+        This customized version adds a parameter for filtering results
+        to pass to _fetch_resource()
+
+        :param session: SQLAlchemy session
+        :param query: Dict of query args
+        :param api_type: Type of the resource
+        :param obj_id: ID of the resource
+        :param rel_key: Key of the relationship to fetch
+        """
+        resource = self._fetch_resource(session, api_type, obj_id,
+                                        Permissions.VIEW, permitted_ids)
+        if rel_key not in resource.__jsonapi_map_to_py__.keys():
+            raise RelationshipNotFoundError(resource, resource, rel_key)
+        py_key = resource.__jsonapi_map_to_py__[rel_key]
+        relationship = self._get_relationship(resource, py_key,
+                                              Permissions.VIEW)
+        response = JSONAPIResponse()
+
+        related = get_rel_desc(resource, relationship.key,
+                               RelationshipActions.GET)(resource)
+
+        if relationship.direction == MANYTOONE:
+            if related is None:
+                response.data['data'] = None
+            else:
+                try:
+                    response.data['data'] = self._render_short_instance(
+                        related)
+                except PermissionDeniedError:
+                    response.data['data'] = None
+        else:
+            response.data['data'] = []
+            for item in related:
+                try:
+                    response.data['data'].append(
+                        self._render_short_instance(item))
+                except PermissionDeniedError:
+                    continue
+
+        return response
+
 
     def _fetch_resource(self, session: Session, api_type: str, obj_id: int, permission, permitted_ids:list[int]=None):
         """
@@ -430,7 +534,7 @@ class JSONAPI_(JSONAPI):
             pk = inspect(model).primary_key[0].name
             permitted_object_ids = set([getattr(result, pk) for result in preflight])
             if obj_id in permitted_object_ids:
-                obj = session.get(model, obj_id)
+                obj: SQLAlchemyModel = session.get(model, obj_id)
             else:
                 obj = None
         else:
@@ -440,12 +544,6 @@ class JSONAPI_(JSONAPI):
             raise ResourceNotFoundError(model, obj_id)
         check_permission(obj, None, permission)
         return obj
-
-    def get_relationship(self, session, query, api_type, obj_id, rel_key):
-        return super().get_relationship(session, query, api_type, obj_id, rel_key).data
-
-    def get_related(self, session, query, api_type, obj_id, rel_key):
-        return super().get_related(session, query, api_type, obj_id, rel_key).data
 
     def post_collection(self, session, data, api_type, user_id):
         # in all cases, an attributes object should be instantiated and set to an empty dict if it isn't populated
