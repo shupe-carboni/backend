@@ -273,28 +273,52 @@ def secured_get_query(
         auth_scheme: Permissions,
         resource: str,
         query: dict,
-        obj_id: Optional[int] = None
+        obj_id: Optional[int] = None,
+        relationship: bool = False,
+        related_resource: str = None
     ):
     if not token.email_verified:
         raise UnverifiedEmail
     perm_lookup_name: str = auth_scheme.name
     the_perm: IntEnum = token.permissions.get(perm_lookup_name)
-    if not obj_id:
-        result_query = partial(
-            serializer.get_collection,
-            session=session,
-            query=query,
-            api_type=resource,
+    arguments = (obj_id, relationship, related_resource)
+    match arguments:
+        case None, False, None:
+            result_query = partial(
+                serializer.get_collection,
+                session=session,
+                query=query,
+                api_type=resource,
+                )
+        case int(), False, None:
+            result_query = partial(
+                serializer.get_resource,
+                session=session,
+                query=query,
+                api_type=resource,
+                obj_id=obj_id,
+                obj_only=True
             )
-    else:
-        result_query = partial(
-            serializer.get_resource,
-            session=session,
-            query=query,
-            api_type=resource,
-            obj_id=obj_id,
-            obj_only=True
-        )
+        case int(), False, str():
+            result_query = partial(
+                serializer.get_related,
+                session=session,
+                query=query,
+                api_type=resource,
+                obj_id=obj_id,
+                rel_key=related_resource
+            )
+        case int(), True, str():
+            result_query = partial(
+                serializer.get_relationship,
+                session=session,
+                query=query,
+                api_type=resource,
+                obj_id=obj_id,
+                rel_key=related_resource
+            )
+        case _:
+            raise Exception('Invalid argument set supplied to auth.secured_get_query')
     if the_perm >= auth_scheme.value.sca_employee:
         result = result_query()
     elif the_perm >= auth_scheme.value.customer_std:
