@@ -58,7 +58,7 @@ def extract_models_from_sheet(session: Session, sheet: Worksheet) -> list[ModelS
         """
     models = list()
     for row in sheet:
-        for col in range(8):
+        for col in range(sheet.max_column):
             try:
                 val = row[col].value
             except IndexError:
