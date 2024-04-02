@@ -99,7 +99,6 @@ class ADPCoilProgram(Base):
         )
         return q.where(exists_subquery)
 
-
 class ADPAliasToSCACustomerLocation(Base):
     __tablename__ = 'adp_alias_to_sca_customer_locations'
     ## fields
@@ -411,6 +410,38 @@ class SCAUser(Base):
     customer_locations = relationship('SCACustomerLocation', back_populates=__jsonapi_type_override__)
     manager_map = relationship('SCAManagerMap', back_populates=__jsonapi_type_override__)
     ## filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
+        if not ids:
+            ids = list()
+        return q
+
+class SCAVendor(Base):
+    __tablename__ = 'sca_vendors'
+    __jsonapi_type_override__ = 'vendors'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    headquarters = Column(String)
+    description = Column(TEXT)
+    phone = Column(BigInteger)
+    logo_path = Column(String)
+    # relationships
+    info = relationship('SCAVendorInfo', back_populates=__jsonapi_type_override__)
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
+        if not ids:
+            ids = list()
+        return q
+
+class SCAVendorInfo(Base):
+    __tablename__ = 'sca_vendors_info'
+    __jsonapi_type_override__ = 'info'
+    id = Column(Integer, primary_key=True)
+    vendor_id = Column(Integer, ForeignKey('sca_vendors.id'))
+    category = Column(TEXT)
+    content = Column(TEXT)
+    # relationships
+    vendors = relationship('SCAVendor', back_populates=__jsonapi_type_override__)
+    # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
             ids = list()
