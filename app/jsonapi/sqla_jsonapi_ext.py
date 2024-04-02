@@ -545,14 +545,6 @@ class JSONAPI_(JSONAPI):
         check_permission(obj, None, permission)
         return obj
 
-    def post_collection(self, session, data, api_type, user_id):
-        # in all cases, an attributes object should be instantiated and set to an empty dict if it isn't populated
-        data['data'].setdefault('attributes',{})
-        if data['data']['attributes'] is None: 
-            data['data']['attributes'] = {}
-        data["data"]["attributes"]["user-id"] = user_id
-        return super().post_collection(session, data, api_type)
-
 
 def jsonapi_error_handling(route_function):
     @functools.wraps(route_function)
