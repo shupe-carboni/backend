@@ -77,6 +77,7 @@ class HD(ModelSeries):
         model_record = super().record()
         values = {
             Fields.MODEL_NUMBER.value: str(self),
+            Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),
             Fields.MPG.value: self.mat_grp,
             Fields.TONNAGE.value: self.tonnage,
