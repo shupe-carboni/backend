@@ -2,10 +2,10 @@ import re
 from app.db import ADP_DB, Session
 from enum import Enum, StrEnum, auto
 
-class Cabinet(Enum):
-    UNCASED = 0
-    EMBOSSED = 1
-    PAINTED = 2
+class Cabinet(StrEnum):
+    UNCASED = auto()
+    EMBOSSED = auto()
+    PAINTED = auto()
 
 class Fields(StrEnum):
     CUSTOMER_ID = auto()
