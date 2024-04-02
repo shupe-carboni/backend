@@ -41,7 +41,6 @@ class HD(ModelSeries):
         self.color = self.paint_color_mapping[self.attributes['paint']]
         model_specs = self.specs.loc[self.specs['SC_1'] == int(self.attributes['scode'])]
         self.pallet_qty = model_specs['pallet_qty'].item()
-        # self.weight = model_specs['weight'].item()
         self.weight = model_specs[self.material_weight[self.attributes['mat']]].item()
         self.zero_disc_price = self.calc_zero_disc_price()
         self.tonnage = int(self.attributes['ton'])
@@ -55,6 +54,10 @@ class HD(ModelSeries):
             self.ratings_field_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
             self.ratings_hp_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
             self.ratings_ac_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
+        self.mat_grp = self.mat_grps.loc[
+            (self.mat_grps['series'] == self.__series_name__())
+            & (self.mat_grps['mat'].str.contains(self.attributes['mat'])),
+            'mat_grp'].item()
     
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
@@ -75,6 +78,7 @@ class HD(ModelSeries):
         values = {
             Fields.MODEL_NUMBER.value: str(self),
             Fields.SERIES.value: self.__series_name__(),
+            Fields.MPG.value: self.mat_grp,
             Fields.TONNAGE.value: self.tonnage,
             Fields.PALLET_QTY.value: self.pallet_qty,
             Fields.WIDTH.value: self.width,
