@@ -13,12 +13,12 @@ def add_new_vendor_info(session: Session, payload: NewVendorInfo) -> VendorRespo
         api_type=SCAVendorInfo.__jsonapi_type_override__
     )
 
-def modify_existing_vendor_info(session: Session, payload: VendorInfoModification) -> VendorInfoResponse:
+def modify_existing_vendor_info(session: Session, payload: VendorInfoModification, obj_id: int) -> VendorInfoResponse:
     return serializer.patch_resource(
         session=session,
         json_data=payload.model_dump(),
         api_type=SCAVendorInfo.__jsonapi_type_override__,
-        obj_id=int(payload.data.id)
+        obj_id=obj_id
     )
 
 def add_new_vendor(session: Session, payload: NewVendor) -> VendorResponse:
@@ -28,10 +28,24 @@ def add_new_vendor(session: Session, payload: NewVendor) -> VendorResponse:
         api_type=SCAVendor.__jsonapi_type_override__
     )
 
-def modify_existing_vendor(session: Session, payload: VendorModification) -> VendorResponse:
+def modify_existing_vendor(session: Session, payload: VendorModification, obj_id: int) -> VendorResponse:
     return serializer.patch_resource(
         session=session,
         json_data=payload.model_dump(),
         api_type=SCAVendor.__jsonapi_type_override__,
-        obj_id=int(payload.data.id)
+        obj_id=obj_id
+    )
+
+def delete_vendor_info(session: Session, obj_id: int):
+    return serializer.delete_resource(
+        session=session,
+        api_type=SCAVendorInfo.__jsonapi_type_override__,
+        obj_id=obj_id
+    )
+
+def delete_vendor(session: Session, obj_id: int):
+    return serializer.delete_resource(
+        session=session,
+        api_type=SCAVendor.__jsonapi_type_override__,
+        obj_id=obj_id
     )
