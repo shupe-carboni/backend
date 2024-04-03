@@ -46,7 +46,7 @@ class JSONAPIRelationshipLinks(BaseModel):
     related: str
 
 class JSONAPIRelationships(BaseModel):
-    links: Optional[JSONAPIRelationshipLinks]
+    links: Optional[JSONAPIRelationshipLinks] = None
     data: Optional[JSONAPIResourceIdentifier|list[JSONAPIResourceIdentifier]] = None
 
 class JSONAPIRequestData(BaseModel):
