@@ -2,7 +2,7 @@ from pydantic import BaseModel, create_model, Field
 from typing import Optional
 from app.jsonapi.sqla_models import SCAVendor, SCAVendorInfo
 from app.jsonapi.core_models import (
-    JSONAPIRelationships,
+    JSONAPIRelationships,JSONAPIVersion,
     JSONAPIResourceObject,
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
@@ -67,8 +67,8 @@ class NewVendor(BaseModel):
 
 ## Vendor Info
 class VendorInfoAttributes(BaseModel):
-    category: str
-    content: str
+    category: Optional[str] = None
+    content: Optional[str] = None
 
 class VendorInfoFilters(BaseModel):
     filter_content: str = Field(default=None, alias='filter[content]')
@@ -80,14 +80,21 @@ class VendorInfoFields(BaseModel):
     fields_vendors: str = Field(default=None, alias='fields[vendors]')
 
 class VendorInfoResourceObject(JSONAPIResourceIdentifier):
-    attributes: VendorInfoAttributes 
-    relationships: VendorInfoRelationships
+    attributes: Optional[VendorInfoAttributes] = None 
+    relationships: Optional[VendorInfoRelationships] = None
 
 class VendorInfoResponse(BaseModel):
+    jsonapi: JSONAPIVersion
     meta: Optional[dict] = {}
     data: Optional[list[VendorInfoResourceObject] | VendorInfoResourceObject]
-    included: Optional[list[JSONAPIResourceObject]]
+    included: Optional[list[JSONAPIResourceObject]] = None
     links: Optional[Pagination] = None
+
+class RelatedVendorInfoResponse(VendorInfoResponse):
+    """When pulling as a related object, included is always empty
+        and links are not in the object"""
+    included: dict = {}
+    links: dict = Field(default=None, exclude=True)
 
 class NewVendorInfoResourceObject(BaseModel):
     type: str = TYPE_INFO
