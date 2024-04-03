@@ -60,7 +60,7 @@ class RelatedVendorResponse(VendorResponse):
 class NewVendorResouce(BaseModel):
     type: str = TYPE
     attributes: VendorAttributes
-    relationships: Optional[VendorRelationships] = None
+    relationships: Optional[VendorRelationships] = {}
 
 class NewVendor(BaseModel):
     data: NewVendorResouce
