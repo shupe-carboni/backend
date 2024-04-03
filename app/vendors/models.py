@@ -69,8 +69,15 @@ class NewVendor(BaseModel):
 class VendorInfoAttributes(BaseModel):
     category: str
     content: str
+
+class VendorInfoFilters(BaseModel):
+    filter_content: str = Field(default=None, alias='filter[content]')
+    filter_category: str = Field(default=None, alias='filter[category]')
 class VendorInfoRelationships(BaseModel):
-    vendor: JSONAPIRelationships
+    vendors: JSONAPIRelationships
+
+class VendorInfoFields(BaseModel):
+    fields_vendors: str = Field(default=None, alias='fields[vendors]')
 
 class VendorInfoResourceObject(JSONAPIResourceIdentifier):
     attributes: VendorInfoAttributes 
@@ -107,9 +114,21 @@ _VendorQuery: type[BaseModel] = create_model(
     **{f"fields_{field}":(Optional[str], None) for field in VendorRelationships.model_fields.keys()},
     **{f"filter_{field}":(Optional[str], None) for field in VendorAttributes.model_fields.keys()},
 )
+## vendor info query
+_VendorInfoQuery: type[BaseModel] = create_model(
+    'VendorInfoQuery',
+    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{f"fields_{field}":(Optional[str], None) for field in VendorInfoRelationships.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None) for field in VendorInfoAttributes.model_fields.keys()},
+)
 
 class VendorQuery(_VendorQuery, BaseModel): ...
+class VendorInfoQuery(_VendorInfoQuery, BaseModel): ...
 
 class VendorQueryJSONAPI(VendorFilters, VendorFields, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+class VendorInfoQueryJSONAPI(VendorInfoFilters, VendorInfoFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
