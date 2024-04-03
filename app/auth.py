@@ -29,6 +29,7 @@ status_codes = {
 }
 
 class QuotePermPriority(IntEnum):
+    view_only = 1
     customer_std = 10
     customer_manager = 11
     customer_admin = 12
@@ -36,6 +37,7 @@ class QuotePermPriority(IntEnum):
     sca_admin = 21
 
 class ADPPermPriority(IntEnum):
+    view_only = 1
     customer_std = 10
     customer_manager = 11
     customer_admin = 12
@@ -43,6 +45,7 @@ class ADPPermPriority(IntEnum):
     sca_admin = 21
 
 class VendorPermPriority(IntEnum):
+    view_only = 1
     customer_std = 10
     customer_manager = 11
     customer_admin = 12
@@ -50,6 +53,7 @@ class VendorPermPriority(IntEnum):
     sca_admin = 21
 
 class CustomersPermPriority(IntEnum):
+    view_only = 1
     customer_std = 0
     customer_manager = 0
     customer_admin = 0
