@@ -10,7 +10,7 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match
 ## Routers ##
 from app import relationships
-from app.vendors import vendors
+from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel
 from app.places import places, place_rel
 from app.adp import (
@@ -74,6 +74,7 @@ adp.include_router(prog_ratings)
 adp.include_router(ratings_admin)
 # combine
 app.include_router(vendors)
+app.include_router(vendors_info)
 app.include_router(customers)
 app.include_router(places)
 app.include_router(adp)
