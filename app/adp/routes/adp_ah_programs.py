@@ -146,7 +146,7 @@ def get_related_customer(
         obj_id=program_product_id,
         relationship=False,
         related_resource='adp-customers'
-    ).data
+    )
 
 @ah_progs.get(
         '/{program_product_id}/relationships/adp-customers'
@@ -166,4 +166,4 @@ def get_customer_relationship(
         obj_id=program_product_id,
         relationship=True,
         related_resource='adp-customers'
-    ).data
+    )

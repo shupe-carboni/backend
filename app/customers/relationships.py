@@ -35,7 +35,7 @@ async def related_location(
         obj_id=customer_id,
         relationship=False,
         related_resource='customer-locations'
-    ).data
+    )
 
 @customer_rel.get('/{customer_id}/relationships/customer-locations', response_model=LocationRelationshipsResponse, response_model_exclude_none=True)
 async def customer_location_relationships(
@@ -53,7 +53,7 @@ async def customer_location_relationships(
         obj_id=customer_id,
         relationship=True,
         related_resource='customer-locations'
-    ).data
+    )
 
 @customer_rel.get('/{customer_id}/adp-customers', response_model=RelatedCustomerResponse, response_model_exclude_none=True)
 async def related_adp_customers(
@@ -72,7 +72,7 @@ async def related_adp_customers(
             obj_id=customer_id,
             relationship=False,
             related_resource='adp-customers'
-        ).data
+        )
     else:
         raise HTTPException(status_code=401)
 
@@ -93,7 +93,7 @@ async def adp_customer_relationships(
             obj_id=customer_id,
             relationship=True,
             related_resource='adp-customers'
-        ).data
+        )
     else:
         raise HTTPException(status_code=401)
 
@@ -114,7 +114,7 @@ async def related_adp_customer_terms(
             obj_id=customer_id,
             relationship=False,
             related_resource='adp-customer-terms'
-        ).data
+        )
     else:
         raise HTTPException(status_code=401)
 
@@ -135,6 +135,6 @@ async def adp_customer_terms_relationships(
             obj_id=customer_id,
             relationship=True,
             related_resource='adp-customer-terms'
-        ).data
+        )
     else:
         raise HTTPException(status_code=401)

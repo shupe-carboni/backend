@@ -93,7 +93,7 @@ async def related_coil_programs(
         obj_id=customer_id,
         relationship=False,
         related_resource='adp-coil-programs'
-    ).data
+    )
 
 @adp_customers.get(
         '/{customer_id}/relationships/adp-coil-programs',
@@ -115,7 +115,7 @@ async def coil_programs_relationships(
         obj_id=customer_id,
         relationship=True,
         related_resource='adp-coil-programs'
-    ).data
+    )
 
 @adp_customers.get('/{customer_id}/adp-ah-programs', response_model=RelatedAirHandlerProgResp, response_model_exclude_none=True)
 async def related_ah_programs(
@@ -133,7 +133,7 @@ async def related_ah_programs(
         obj_id=customer_id,
         relationship=False,
         related_resource='adp-ah-programs'
-    ).data
+    )
 
 @adp_customers.get(
         '/{customer_id}/relationships/adp-ah-programs',
@@ -155,7 +155,7 @@ async def ah_programs_relationships(
         obj_id=customer_id,
         relationship=True,
         related_resource='adp-ah-programs'
-    ).data
+    )
 
 
 @adp_customers.get(
@@ -178,7 +178,7 @@ async def related_ratings(
         obj_id=customer_id,
         relationship=False,
         related_resource='adp-program-ratings'
-    ).data
+    )
 
 @adp_customers.get(
         '/{customer_id}/relationships/adp-program-ratings',
@@ -200,7 +200,7 @@ async def ratings_relationships(
         obj_id=customer_id,
         relationship=True,
         related_resource='adp-program-ratings'
-    ).data
+    )
 
 @adp_customers.get(
         '/{customer_id}/adp-program-parts',
@@ -222,7 +222,7 @@ async def related_ratings(
         obj_id=customer_id,
         relationship=False,
         related_resource='adp-program-parts'
-    ).data
+    )
 
 @adp_customers.get(
         '/{customer_id}/relationships/adp-program-parts',
@@ -244,4 +244,4 @@ async def ratings_relationships(
         obj_id=customer_id,
         relationship=True,
         related_resource='adp-program-parts'
-    ).data
+    )
