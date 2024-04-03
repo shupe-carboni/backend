@@ -8,7 +8,7 @@ from app.jsonapi.sqla_models import SCAVendor
 from app.jsonapi.core_models import convert_query
 from app.vendors.models import (
     VendorResponse, VendorQuery,
-    VendorQueryJSONAPI, RelatedVendorResponse,
+    VendorQueryJSONAPI, RelatedVendorInfoResponse,
     VendorRelationshipsResponse, NewVendor,
     VendorModification
 )
@@ -63,7 +63,7 @@ async def vendor(
 
 @vendors.get(
         '/{vendor_id}/info',
-        response_model=RelatedVendorResponse,
+        response_model=RelatedVendorInfoResponse,
         response_model_exclude_none=True
     )
 async def related_info(
@@ -71,7 +71,7 @@ async def related_info(
         session: NewSession,
         vendor_id: int,
         query: VendorQuery=Depends()
-    ) -> None:
+    ) -> RelatedVendorInfoResponse:
     return auth.secured_get_query(
         db=SCA_DB,
         session=session,
