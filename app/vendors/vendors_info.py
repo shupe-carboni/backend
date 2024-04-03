@@ -10,7 +10,7 @@ from app.jsonapi.core_models import convert_query
 from app.vendors.models import (
     VendorInfoResponse, NewVendorInfo,
     VendorInfoModification, VendorInfoQuery,
-    VendorInfoQueryJSONAPI
+    VendorInfoQueryJSONAPI, RelatedVendorResponse
 )
 from app.vendors.utils import add_new_vendor_info, modify_existing_vendor_info, delete_vendor_info
 
@@ -22,11 +22,11 @@ NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 VendorsPerm = Annotated[auth.VerifiedToken, Depends(auth.vendor_perms_present)]
 converter = convert_query(VendorInfoQueryJSONAPI)
 
-@vendors_info.get('')
-async def info(
+@vendors_info.get('', response_model=VendorInfoResponse, response_model_exclude_none=True)
+async def all_info(
         token: VendorsPerm,
         session: NewSession,
-        query: VendorInfoQuery
+        query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
     if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
@@ -39,12 +39,12 @@ async def info(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.get('/{info_id}')
-async def info(
+@vendors_info.get('/{info_id}', response_model=VendorInfoResponse, response_model_exclude_none=True)
+async def one_info(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
-        query: VendorInfoQuery
+        query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
     if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
@@ -58,13 +58,13 @@ async def info(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.get('/{info_id}/vendors')
+@vendors_info.get('/{info_id}/vendors', response_model=RelatedVendorResponse, response_model_exclude_none=True)
 async def info_related_vendor(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
-        query: VendorInfoQuery
-    ) -> VendorInfoResponse:
+        query: VendorInfoQuery=Depends()
+    ) -> RelatedVendorResponse:
     if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
             db=SCA_DB,
@@ -83,7 +83,7 @@ async def info_vendors_relationships(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
-        query: VendorInfoQuery
+        query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
     if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
@@ -99,7 +99,7 @@ async def info_vendors_relationships(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.post('')
+@vendors_info.post('', response_model=VendorInfoResponse, response_model_exclude_none=True)
 async def add_info(
         token: VendorsPerm,
         session: NewSession,
@@ -109,7 +109,7 @@ async def add_info(
         return add_new_vendor_info(session=session, payload=body)
     raise HTTPException(status_code=401)
 
-@vendors_info.patch('/{info_id}')
+@vendors_info.patch('/{info_id}', response_model=VendorInfoResponse, response_model_exclude_none=True)
 async def modify_info(
         token: VendorsPerm,
         session: NewSession,
