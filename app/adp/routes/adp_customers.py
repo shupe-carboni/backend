@@ -18,15 +18,14 @@ from app.adp.models import (
     RelatedPartsResponse
 )
 from app.jsonapi.sqla_models import ADPCustomer
+from app.jsonapi.core_models import convert_query
 
 ADP_CUSTOMERS = ADPCustomer.__jsonapi_type_override__
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
-NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-
 adp_customers = APIRouter(prefix=f'/{ADP_CUSTOMERS}', tags=['customers'])
 
-def convert_query(query: CustomersQuery) -> dict[str,str]:
-    return CustomersQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
+NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
+converter = convert_query(CustomersQueryJSONAPI)
 
 @adp_customers.get(
         '',
@@ -48,7 +47,7 @@ def all_adp_customers(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_CUSTOMERS,
-        query=convert_query(query)
+        query=converter(query)
     )
 
 @adp_customers.get(
@@ -70,7 +69,7 @@ def adp_customer(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_CUSTOMERS,
-        query=convert_query(query),
+        query=converter(query),
         obj_id=customer_id
     )
 

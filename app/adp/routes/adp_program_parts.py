@@ -5,21 +5,18 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import Session, ADP_DB
 from app.adp.models import (
-    NewPartRObj,
-    PartsQuery,
-    PartsResp,
-    PartsQueryJSONAPI
+    NewPartRObj, PartsQuery,
+    PartsResp, PartsQueryJSONAPI
 )
 from app.jsonapi.sqla_models import serializer, ADPProgramPart
+from app.jsonapi.core_models import convert_query
 
 ADP_PARTS_RESOURCE = ADPProgramPart.__jsonapi_type_override__
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
-NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-
 prog_parts = APIRouter(prefix=f'/{ADP_PARTS_RESOURCE}', tags=['parts','programs'])
 
-def convert_query(query: PartsQuery) -> dict[str,str]:
-    return PartsQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
+NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
+converter = convert_query(PartsQueryJSONAPI)
 
 @prog_parts.get(
         '',
@@ -38,7 +35,7 @@ def all_parts(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_PARTS_RESOURCE,
-        query=convert_query(query)
+        query=converter(query)
     )
 
 @prog_parts.get(
@@ -59,7 +56,7 @@ def a_part(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_PARTS_RESOURCE,
-        query=convert_query(query),
+        query=converter(query),
         obj_id=part_id
     )
 

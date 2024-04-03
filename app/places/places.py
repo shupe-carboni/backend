@@ -6,13 +6,12 @@ from app import auth
 from app.db import SCA_DB
 from app.places.models import PlaceQuery, PlaceResponse, PlaceQueryJSONAPI
 from app.jsonapi.sqla_models import SCAPlace
+from app.jsonapi.core_models import convert_query
 
 API_TYPE = SCAPlace.__jsonapi_type_override__
 places = APIRouter(prefix=f'/{API_TYPE}', tags=['places', 'jsonapi'])
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
-
-def convert_query(query: PlaceQuery) -> PlaceQueryJSONAPI:
-    return PlaceQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+converter = convert_query(PlaceQueryJSONAPI)
 
 @places.get('')
 async def places_collection(

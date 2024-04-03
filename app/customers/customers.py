@@ -7,15 +7,14 @@ from app import auth
 from app.customers.models import CustomerQuery, CustomerResponse, CustomerQueryJSONAPI
 from app.db.db import SCA_DB
 from app.jsonapi.sqla_models import SCACustomer
+from app.jsonapi.core_models import convert_query
 
 API_TYPE = SCACustomer.__jsonapi_type_override__
 customers = APIRouter(prefix=f'/{API_TYPE}', tags=['customers'])
 
 CustomersPerm = Annotated[auth.VerifiedToken, Depends(auth.customers_perms_present)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
-
-def convert_query(query: CustomerQuery) -> CustomerQueryJSONAPI:
-    return CustomerQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+converter = convert_query(CustomerQueryJSONAPI)
 
 @customers.get('', response_model=CustomerResponse, response_model_exclude_none=True)
 async def customer_collection(
@@ -30,7 +29,7 @@ async def customer_collection(
         token=token,
         auth_scheme=auth.Permissions['customers'],
         resource=API_TYPE,
-        query=convert_query(query)
+        query=converter(query)
     )
 
 @customers.get('/{customer_id}', response_model=CustomerResponse, response_model_exclude_none=True)
@@ -46,6 +45,6 @@ async def customer(
         token=token,
         auth_scheme=auth.Permissions['customers'],
         resource=API_TYPE,
-        query=convert_query(query),
+        query=converter(query),
         obj_id=customer_id
     )

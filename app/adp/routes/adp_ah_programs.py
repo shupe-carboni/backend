@@ -13,15 +13,14 @@ from app.adp.models import (
     ModStageAHReq
 )
 from app.jsonapi.sqla_models import serializer, ADPAHProgram
+from app.jsonapi.core_models import convert_query
 
 ADP_AIR_HANDLERS_RESOURCE = ADPAHProgram.__jsonapi_type_override__
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
-NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-
 ah_progs = APIRouter(prefix=f'/{ADP_AIR_HANDLERS_RESOURCE}', tags=['air handlers','programs'])
 
-def convert_query(query: AirHandlerProgQuery) -> dict[str,str]:
-    return AHProgQueryJSONAPI(**query.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
+NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
+converter = convert_query(AHProgQueryJSONAPI)
 
 @ah_progs.get(
         '',
@@ -43,7 +42,7 @@ def all_ah_programs(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_AIR_HANDLERS_RESOURCE,
-        query=convert_query(query)
+        query=converter(query)
     )
 
 @ah_progs.get(
@@ -65,7 +64,7 @@ def ah_program_product(
         token=token,
         auth_scheme=auth.Permissions['adp'],
         resource=ADP_AIR_HANDLERS_RESOURCE,
-        query=convert_query(query),
+        query=converter(query),
         obj_id=program_product_id
     )
 
@@ -87,7 +86,7 @@ def add_to_ah_program(
         new_id = add_model_to_program(session=session, model=model_num, adp_customer_id=adp_customer_id)
         return serializer.get_resource(
             session=session,
-            query=convert_query(AirHandlerProgQuery()),
+            query=converter(AirHandlerProgQuery()),
             api_type=ADP_AIR_HANDLERS_RESOURCE,
             obj_id=new_id,
             obj_only=True,

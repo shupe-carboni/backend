@@ -10,16 +10,20 @@ from app.adp.main import add_ratings_to_program
 from app.adp.models import (
     RatingsResp,
     RatingsQuery,
+    # RatingsQueryJSONAPI,
     Rating,
     Ratings
 )
 from app.jsonapi.sqla_models import serializer, ADPProgramRating
+from app.jsonapi.core_models import convert_query
 
 ADP_RATINGS_RESOURCE = ADPProgramRating.__jsonapi_type_override__
+prog_ratings = APIRouter(prefix=f'/{ADP_RATINGS_RESOURCE}', tags=['ratings','programs'])
+
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
+# converter = convert_query(RatingsQueryJSONAPI)
 
-prog_ratings = APIRouter(prefix=f'/{ADP_RATINGS_RESOURCE}', tags=['ratings','programs'])
 
 @prog_ratings.get('', tags=['jsonapi'])
 async def get_all_ratings_on_programs(

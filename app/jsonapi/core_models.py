@@ -4,7 +4,7 @@ for requests and responses for the API
 """
 
 from pydantic import BaseModel, Field, BeforeValidator
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Any, Callable
 
 StringToNum = Annotated[int, BeforeValidator(lambda num: int(num))]
 
@@ -70,3 +70,9 @@ class Query(BaseModel):
     # filter: implemented at runtime
     page_number: Optional[StringToNum] = None
     page_size: Optional[StringToNum] = None
+
+def convert_query(model_type: BaseModel) -> Callable[[BaseModel], dict[str, Any]]:
+    """Use the model_type as a converter to transform a query from it's pydantic type into a dict of JSONAPI arguments"""
+    def inner(query_model: BaseModel) -> dict[str, Any]:
+        return model_type(**query_model.model_dump(exclude_none=True)).model_dump(by_alias=True, exclude_none=True)
+    return inner
