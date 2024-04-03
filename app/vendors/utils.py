@@ -39,6 +39,7 @@ def modify_existing_vendor(session: Session, payload: VendorModification, obj_id
 def delete_vendor_info(session: Session, obj_id: int):
     return serializer.delete_resource(
         session=session,
+        data={},
         api_type=SCAVendorInfo.__jsonapi_type_override__,
         obj_id=obj_id
     ).data
