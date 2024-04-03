@@ -14,6 +14,7 @@ from jose.jwt import get_unverified_header, decode
 from typing import Optional
 from functools import partial
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
+from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session, Database
 from app.jsonapi.sqla_models import serializer
 
@@ -332,4 +333,8 @@ def secured_get_query(
             select_type=the_perm.name
         )
         result = result_query(permitted_ids=ids)
-    return result
+    match result:
+        case JSONAPIResponse():
+            return result.data
+        case _:
+            return result
