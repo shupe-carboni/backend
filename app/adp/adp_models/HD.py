@@ -11,10 +11,10 @@ class HD(ModelSeries):
         (?P<scode>\d{2})
         (?P<meter>\d)
         (?P<ton>\d{2})
-        (?P<depth>E)
-        (?P<width>\d{3})
+        (?P<width>E)
+        (?P<height>\d{3})
         (?P<notch>B)
-        (?P<height>\d{2})
+        (?P<length>\d{2})
         (?P<config>\d{2})
         (?P<AP>AP)
     '''
@@ -29,13 +29,9 @@ class HD(ModelSeries):
             self.cabinet_config = Cabinet.EMBOSSED
         else:
             self.cabinet_config = Cabinet.PAINTED
-        width: int = int(self.attributes['width'])
-        if width % 10 == 2:
-            self.width = width/10 + 0.05
-        else:
-            self.width = width/10
-        self.depth = self.coil_depth_mapping[self.attributes['depth']]
-        self.height = int(self.attributes['height']) + 0.5
+        self.width = self.coil_depth_mapping[self.attributes['width']] # NOTE width is in the depth slot of the HE-style nomenclature
+        self.height = int(self.attributes['height']) / 10
+        self.length = int(self.attributes['length']) + 0.5
         self.material = self.material_mapping[self.attributes['mat']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.color = self.paint_color_mapping[self.attributes['paint']]
@@ -83,7 +79,7 @@ class HD(ModelSeries):
             Fields.TONNAGE.value: self.tonnage,
             Fields.PALLET_QTY.value: self.pallet_qty,
             Fields.WIDTH.value: self.width,
-            Fields.DEPTH.value: self.depth,
+            Fields.LENGTH.value: self.length,
             Fields.HEIGHT.value: self.height,
             Fields.WEIGHT.value: self.weight,
             Fields.CABINET.value: self.cabinet_config.name.title(),
