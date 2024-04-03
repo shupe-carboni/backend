@@ -154,7 +154,7 @@ async def delete(
             obj_id=vendor_id,
             relationship=True,
             related_resource='info'
-        )
+        ).data
         related_info_ids: list[int] = list(map(lambda record: record['id'], related_info['data']))
         for rec_id in related_info_ids:
             delete_vendor_info(session, rec_id)
