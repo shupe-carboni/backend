@@ -19,7 +19,7 @@ class VendorAttributes(BaseModel):
     headquarters: str
     description: str
     phone: int
-    logo_path: str
+    logo_path: Optional[str] = None
 
 class VendorFilters(BaseModel):
     filter_name: str = Field(default=None, alias='filter[name]')
