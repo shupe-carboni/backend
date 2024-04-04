@@ -12,7 +12,7 @@ from starlette.routing import Match
 from app import relationships
 from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel
-from app.places import places, place_rel
+from app.places import places
 from app.adp import (
     adp, adp_quotes, adp_quote_rel,
     coil_progs, ah_progs, prog_parts,
@@ -61,8 +61,6 @@ app.add_middleware(
 ## NOTE: order really, really matters
 # customers
 customers.include_router(customer_rel)
-# places
-places.include_router(place_rel)
 # adp
 adp_quotes.include_router(adp_quote_rel)
 adp.include_router(adp_quotes)
