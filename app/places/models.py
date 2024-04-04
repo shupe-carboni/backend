@@ -1,16 +1,14 @@
 from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
 from app.jsonapi.core_models import (
-    JSONAPIResourceIdentifier,
-    JSONAPIRelationshipsResponse,
-    JSONAPIRelationships,
-    JSONAPIResourceObject,
-    Pagination,
-    Query
+    JSONAPIResourceIdentifier, JSONAPIRelationshipsResponse,
+    JSONAPIRelationships, JSONAPIResourceObject,
+    Pagination, Query
 )
+from app.jsonapi.sqla_models import SCAPlace
 
 class PlaceResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "places"
+    type: str = SCAPlace.__jsonapi_type_override__
 
 class PlaceRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[PlaceResourceIdentifier]|PlaceResourceIdentifier
@@ -22,6 +20,12 @@ class PlaceAttributes(BaseModel):
     state: str
     lat: float
     long: float
+
+class Place(PlaceAttributes):
+    id: int
+
+class ListOfPlaces(BaseModel):
+    data: list[Place]
 
 class PlaceFilters(BaseModel):
     filter_name: str = Field(default=None, alias='filter[name]')
@@ -40,20 +44,20 @@ class PlaceFieldSelector(BaseModel):
     field_adp_quotes: str = Field(default=None, alias='fields[adp-quotes]')
 
 class PlaceResourceObject(PlaceResourceIdentifier):
-    attributes: PlaceAttributes
-    relationships: PlaceRelationships
+    attributes: Optional[PlaceAttributes] = None
+    relationships: Optional[PlaceRelationships] = None
 
 class PlaceResponse(BaseModel):
     meta: Optional[dict] = {}
-    data: Optional[list[PlaceResourceObject]]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination]
+    data: Optional[list[PlaceResourceObject] | PlaceResourceObject]
+    included: Optional[list[JSONAPIResourceObject]] = []
+    links: Optional[Pagination] = None
 
 class RelatedPlaceResponse(PlaceResponse):
     """When pulling as a related object, included is always empty
         and links are not in the object"""
     included: dict = {}
-    links: dict = Field(..., exclude=True)
+    links: dict = Field(default=None, exclude=True)
 
 _PlaceQuery: type[BaseModel] = create_model(
     'PlaceQuery',
