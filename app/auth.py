@@ -61,8 +61,17 @@ class CustomersPermPriority(IntEnum):
     sca_employee = 20
     sca_admin = 21
 
+class AdminPerm(IntEnum):
+    view_only = 0
+    customer_std = 0
+    customer_manager = 0
+    customer_admin = 0
+    sca_employee = 0
+    sca_admin = 21
+
 class Permissions(Enum):
     adp = ADPPermPriority
+    admin = AdminPerm
     quotes = QuotePermPriority
     vendors = VendorPermPriority
     customers = CustomersPermPriority
@@ -234,7 +243,7 @@ def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
     elif perm_level <= 0:
         raise HTTPException(
             status_code=status_codes[401],
-            detail=f'Access to {category.title()} is restricted.'
+            detail=f'Access to this {category.lower()} resource is restricted.'
         )
     return token
 
@@ -249,6 +258,9 @@ def quotes_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token
 
 def customers_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
     return perm_category_present(token, 'customers')
+
+def admin_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+    return perm_category_present(token, 'admin')
 
 def adp_quotes_perms(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
     perm_category_present(token, 'adp')
