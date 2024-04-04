@@ -561,10 +561,3 @@ def jsonapi_error_handling(route_function):
             detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":f"An error occurred. Contact {CONTACT_EMAIL} with the id number"}]}
             raise HTTPException(status_code=400,detail=detail_obj)
     return error_handling
-
-class UnvalidatedResponse(Response):
-    def __init__(self, content: dict, *args, **kwargs) -> None:
-        content_str = json.dumps(content)
-        media_type = 'application/json'
-        super().__init__(content=content_str, media_type=media_type, *args, **kwargs)
-    
