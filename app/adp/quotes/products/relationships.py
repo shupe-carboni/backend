@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Depends
 from fastapi.routing import APIRouter
 from app import auth
-from app.quotes.job_quotes.models import RelatedQuoteResponse, QuoteRelationshipsResponse
+from app.adp.quotes.job_quotes.models import RelatedQuoteResponse, QuoteRelationshipsResponse
 
 product_rel = APIRouter(prefix='/products', tags=['products'])
 
