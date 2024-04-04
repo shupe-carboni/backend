@@ -19,12 +19,13 @@ from app.jsonapi.sqla_models import SCAPlace
 API_TYPE = SCAPlace.__jsonapi_type_override__
 places = APIRouter(prefix=f'/{API_TYPE}', tags=['places'])
 AdminPerm = Annotated[auth.VerifiedToken, Depends(auth.admin_perms_present)]
+BarePerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 
 @places.get('')
 async def all_places(
         session: NewSession,
-        token: AdminPerm,
+        token: BarePerm,
         filter_name: str=None,
         filter_state: str=None,
     ) -> ListOfPlaces:
