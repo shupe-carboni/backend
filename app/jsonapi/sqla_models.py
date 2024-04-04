@@ -1,8 +1,7 @@
-"""Database Table Models / Data Transfer Objects"""
+"""Database Table Models with relaltionships defined between models and jsonapi names defined"""
 
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, UniqueConstraint, Numeric, ARRAY, BigInteger, exists
+from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, TEXT, ForeignKey, Enum, ARRAY, BigInteger, exists
 from sqlalchemy.orm import declarative_base, relationship, Query, aliased, Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
 from app.db import Stage
 
@@ -40,7 +39,6 @@ class ADPAHProgram(Base):
     effective_date = Column(DateTime)
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
-    # stage = Column(STAGE_ENUM)
     stage: Mapped[Stage] = mapped_column()
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
@@ -85,7 +83,6 @@ class ADPCoilProgram(Base):
     effective_date = Column(DateTime)
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
-    # stage = Column(STAGE_ENUM)
     stage: Mapped[Stage] = mapped_column()
     customer_id = Column(Integer, ForeignKey('adp_customers.id'))
     ## relationships
@@ -110,8 +107,6 @@ class ADPAliasToSCACustomerLocation(Base):
     customer_locations = relationship('SCACustomerLocation', back_populates=__tablename__)
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class ADPCustomer(Base):
@@ -158,8 +153,13 @@ class ADPCustomerTerms(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.sca_customer_location_id == ADPCustomerTerms.sca_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class SCACustomer(Base):
     __tablename__ = 'sca_customers'
@@ -176,8 +176,6 @@ class SCACustomer(Base):
     customer_locations = relationship('SCACustomerLocation', back_populates=__jsonapi_type_override__)
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class ADPMaterialGroupDiscount(Base):
@@ -194,8 +192,13 @@ class ADPMaterialGroupDiscount(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPMaterialGroupDiscount.customer_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class ADPProgramRating(Base):
     __tablename__ = 'adp_program_ratings'
@@ -240,8 +243,13 @@ class ADPProgramRating(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPProgramRating.customer_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class ADPPricingPart(Base):
     __tablename__ = 'adp_pricing_parts'
@@ -257,8 +265,6 @@ class ADPPricingPart(Base):
     adp_program_parts = relationship('ADPProgramPart', back_populates=__tablename__)
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class ADPProgramPart(Base):
@@ -274,11 +280,17 @@ class ADPProgramPart(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPProgramPart.customer_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class ADPQuote(Base):
     __tablename__ = 'adp_quotes'
+    __jsonapi_type_override__ = 'adp-quotes'
     ## fields
     id = Column(Integer, primary_key=True)
     adp_quote_id = Column(String, unique=True)
@@ -299,8 +311,13 @@ class ADPQuote(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class SCACustomerLocation(Base):
     __tablename__ = 'sca_customer_locations'
@@ -325,7 +342,7 @@ class SCACustomerLocation(Base):
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
             ids = list()
-        return q
+        return q.where(SCACustomerLocation.id.in_(ids))
 
 class ADPSNP(Base):
     __tablename__ = 'adp_snps'
@@ -342,8 +359,13 @@ class ADPSNP(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        exists_subquery = exists().where(
+            adptoloc.adp_customer_id == ADPSNP.customer_id,
+            adptoloc.sca_customer_location_id.in_(ids)
+        )
+        return q.where(exists_subquery)
 
 class ADPQuoteProduct(Base):
     __tablename__ = 'adp_quote_products'
@@ -359,8 +381,6 @@ class ADPQuoteProduct(Base):
     adp_quotes = relationship('ADPQuote', back_populates=__tablename__)
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class SCAPlace(Base):
@@ -377,8 +397,6 @@ class SCAPlace(Base):
     customer_locations = relationship('SCACustomerLocation', back_populates=__jsonapi_type_override__)
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class SCAManagerMap(Base):
@@ -395,8 +413,8 @@ class SCAManagerMap(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        return q.where(SCAManagerMap.customer_location_id.in_(ids))
 
 class SCAUser(Base):
     __tablename__ = 'sca_users'
@@ -412,8 +430,8 @@ class SCAUser(Base):
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
         if not ids:
-            ids = list()
-        return q
+            return q
+        return q.where(SCAUser.customer_location_id.in_(ids))
 
 class SCAVendor(Base):
     __tablename__ = 'sca_vendors'
@@ -428,8 +446,6 @@ class SCAVendor(Base):
     info = relationship('SCAVendorInfo', back_populates=__jsonapi_type_override__)
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 class SCAVendorInfo(Base):
@@ -443,8 +459,6 @@ class SCAVendorInfo(Base):
     vendors = relationship('SCAVendor', back_populates=__jsonapi_type_override__)
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int]=None) -> Query:
-        if not ids:
-            ids = list()
         return q
 
 serializer = JSONAPI_(Base)
