@@ -264,7 +264,7 @@ def admin_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)
 
 def adp_quotes_perms(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
     perm_category_present(token, 'adp')
-    perm_category_present(token, 'qutoes')
+    perm_category_present(token, 'quotes')
     return token
 
 class UnverifiedEmail(Exception): ...
