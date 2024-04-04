@@ -8,7 +8,6 @@ from app.jsonapi.core_models import (
     JSONAPIResourceObject,
     Pagination,
     Query,
-    StringToNum
 )
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
