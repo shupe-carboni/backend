@@ -16,6 +16,14 @@ class Stage(StrEnum):
     REJECTED = auto()
     REMOVED = auto()
 
+class UserTypes(StrEnum):
+    sca_admin = auto()
+    sca_employee = auto()
+    customer_admin = auto()
+    customer_manager = auto()
+    customer_std = auto()
+    view_only = auto()
+
 
 class Database:
 
@@ -116,6 +124,7 @@ class Database:
                 * manager - get customer locations associated with all mapped branches in the sca_manager_map table
                 * admin - get all customer locations associated with the customer id associated with the location associated to the user.:W
         """
+        user_type = UserTypes[select_type]
         sql_user_only = """
             SELECT cl.id
             FROM sca_customer_locations cl
@@ -150,13 +159,13 @@ class Database:
             );
         """
         query_set = {sql_admin, sql_manager, sql_user_only}
-        match select_type:
-            case 'customer_std':
+        match user_type:
+            case UserTypes.customer_std:
                 query_set.remove(sql_admin)
                 query_set.remove(sql_manager)
-            case 'customer_manager':
+            case UserTypes.customer_manager:
                 query_set.remove(sql_admin)
-            case 'customer_admin':
+            case UserTypes.customer_admin:
                 pass
             case _:
                 raise Exception('invalid select_type')
