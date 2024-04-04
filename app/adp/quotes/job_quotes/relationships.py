@@ -9,12 +9,12 @@ from app.customers.models import RelatedCustomerResponse, CustomerRelationshipsR
 from app.places.models import RelatedPlaceResponse, PlaceRelationshipsResponse
 from app.adp.quotes.products.models import RelatedProductResponse, ProductRelationshipsResponse
 
-quote_rel = APIRouter(tags=['quotes'])
+quote_rel = APIRouter(tags=['adp quotes'])
 
 ADPQuotesPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_quotes_perms)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
-@quote_rel.get('/{quote_id}/place')
+@quote_rel.get('/{quote_id}/places')
 async def related_place(
         token: ADPQuotesPerm,
         session: NewSession,
@@ -22,7 +22,7 @@ async def related_place(
     ) -> RelatedPlaceResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/customer')
+@quote_rel.get('/{quote_id}/customers')
 async def related_customer(
         token: ADPQuotesPerm,
         session: NewSession,
@@ -38,7 +38,7 @@ async def related_products(
     ) -> RelatedProductResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/relationships/place')
+@quote_rel.get('/{quote_id}/relationships/places')
 async def quote_place_relationships(
         token: ADPQuotesPerm,
         session: NewSession,
@@ -46,7 +46,7 @@ async def quote_place_relationships(
     ) -> PlaceRelationshipsResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/relationships/customer')
+@quote_rel.get('/{quote_id}/relationships/adp-customers')
 async def quote_customer_relationships(
         quote_id: int,
         token: ADPQuotesPerm,
@@ -54,7 +54,7 @@ async def quote_customer_relationships(
     ) -> CustomerRelationshipsResponse:
     raise HTTPException(status_code=501)
 
-@quote_rel.get('/{quote_id}/relationships/products')
+@quote_rel.get('/{quote_id}/relationships/adp-quote-products')
 async def quote_products_relationships(
         token: ADPQuotesPerm,
         session: NewSession,
