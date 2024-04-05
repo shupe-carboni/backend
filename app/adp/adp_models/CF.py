@@ -4,7 +4,7 @@ from app.adp.utils.validator import Validator
 from app.db import ADP_DB, Session
 
 class CF(ModelSeries):
-    text_len = (12,)
+    text_len = (12,13)
     regex = r'''
         (?P<series>CF)
         (?P<application>[C|P|W])
@@ -13,6 +13,7 @@ class CF(ModelSeries):
         (?P<scode>\D{2}\d|\D\d{2})
         (?P<heat>\d{2})
         (?P<voltage>\d)
+        (?P<rds>[N|R]?)
     '''
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)

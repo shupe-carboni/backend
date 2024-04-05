@@ -21,6 +21,8 @@ from app.adp.adp_models.model_series import Fields
 from app.adp.adp_models import MODELS
 from app.db import Stage
 
+from sqlalchemy.orm import Session
+
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
 STATIC_DIR = os.getenv('STATIC_DIR')
@@ -138,7 +140,7 @@ class PriceBook:
         self.cursor = Cursor()
         adp_logo = Logo(
             img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
-            price_pos=AnchorPosition("C2", offset_x=40, offset_y=0),
+            price_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -147,7 +149,7 @@ class PriceBook:
         )
         sca_logo = Logo(
             img_path=os.path.join(STATIC_DIR,'sca-logo.png'),
-            price_pos=AnchorPosition("H1", offset_x=100, offset_y=0),
+            price_pos=AnchorPosition("J1", offset_x=200, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
             nomen_long_pos=AnchorPosition("H1", offset_x=100, offset_y=0),
@@ -221,8 +223,8 @@ class PriceBook:
     def new_price_sheet(self, title: str) -> 'PriceBook':
         sheet_type = 'pricing'
         new_sheet_template = self._9_col_template
-        self.min_col, self.min_row, self.max_col, self.max_row = range_boundaries("A12:I15")
-        self.product_block: tuple[tuple[Cell]] = self._9_col_template["A12:I15"]
+        self.min_col, self.min_row, self.max_col, self.max_row = range_boundaries("B12:L15")
+        self.product_block: tuple[tuple[Cell]] = self._9_col_template["B12:L15"]
         new_sheet = self.new_sheet(template=new_sheet_template, title=title, sheet_type=sheet_type)
         self.cursor.move_to(1,1)
         return new_sheet
@@ -242,7 +244,7 @@ class PriceBook:
         sheet_type = f'nomen-{len_option}'
         template = self.template_wb[sheet_type]
         title = 'Nomenclature'
-        return self.new_sheet(template=template, title=title, sheet_type=sheet_type)
+        return self.new_sheet(template=template, title=title, sheet_type=sheet_type, include_logos=False)
 
     def movex(self, n_cols: int) -> 'PriceBook':
         self.cursor.move_by(cols=n_cols)
@@ -263,9 +265,8 @@ class PriceBook:
         self.cursor.move_to(row=starting_row)
         return self
 
-    def append_blank_product_block(self) -> 'PriceBook':
-        self.cursor.slam_left()
-        self.cursor.move_by(rows=3)
+    def append_blank_product_block(self, col_offset: int=0) -> 'PriceBook':
+        self.cursor.slam_left().move_by(rows=3, cols=col_offset)
         row_offset = self.cursor.row - self.min_row
         ## copy new product block from template
         for row in self.product_block:
@@ -279,16 +280,17 @@ class PriceBook:
             end_row=self.cursor.row,
             end_column=len(self.product_block[0])+self.cursor.col-1
         )
+        self.cursor.slam_left()
         return self
     
-    def append_parts_block(self) -> 'PriceBook':
-        self.cursor.slam_left()
+    def append_parts_block(self, col_offset: int=0) -> 'PriceBook':
+        self.cursor.slam_left().move_by(cols=col_offset)
         min_col, min_row, max_col, max_row = range_boundaries("A1:D4")
         row_offset = self.cursor.row - min_row
         for row in self.parts_block:
             for cell in row:
                 new_row = cell.row + row_offset
-                new_col = cell.column
+                new_col = cell.column + col_offset
                 self.copy_cell(cell, new_row, new_col)
         self.active.merge_cells(
             start_row=self.cursor.row,
@@ -296,6 +298,7 @@ class PriceBook:
             end_row=self.cursor.row,
             end_column=len(self.parts_block[0])+self.cursor.col-1
         )
+        self.cursor.slam_left()
         return self
 
     
@@ -315,7 +318,7 @@ class PriceBook:
             min_col = None
         return min_row, min_col
 
-    def insert_nomenclature_block(self, series: str) -> 'PriceBook':
+    def insert_nomenclature_block(self, series: str, offset: tuple[int,int]=(0,0)) -> 'PriceBook':
         nomenclature_sheet: Worksheet = self.nomenclatures[series]
         model_type, = tuple([e for e in MODELS if e.__name__ == series])
         model_example = self.program.sample_from_program(series=series)
@@ -342,8 +345,7 @@ class PriceBook:
                 for val in model_nomenclature.values():
                     self.active_cell(value=val)
                     self.cursor.move_by(cols=1)
-                self.cursor.slam_left()
-                self.cursor.move_by(-1)
+                self.cursor.move_by(-1,-1).slam_left().move_by(*offset)
         _, min_col = self.find_min_coords_with_data(nomenclature_sheet)
         self.active.merge_cells(
             start_row=self.cursor.row,
@@ -351,18 +353,18 @@ class PriceBook:
             end_row=self.cursor.row,
             end_column=nomenclature_sheet.max_column
         )
-        self.cursor.move_by(rows=self.max_row)
+        self.cursor.move_by(rows=nomenclature_sheet.max_row).slam_left().move_by(*offset)
         return self
     
     def attach_nomenclature_tab(self) -> 'PriceBook':
         long_nomens = {'HE', 'HH', 'B', 'F', 'CP'}
         medium_nomens = {'V', 'CE', 'CF'}
         if self.program.series_contained.intersection(long_nomens):
-            self.new_nomenclature_sheet('long').movey(12)
+            self.new_nomenclature_sheet('long').movey(1)
         elif self.program.series_contained.intersection(medium_nomens):
-            self.new_nomenclature_sheet('med').movey(12)
+            self.new_nomenclature_sheet('med').movey(1)
         else:
-            self.new_nomenclature_sheet('short').movey(12)
+            self.new_nomenclature_sheet('short').movey(1)
 
         for series in self.program.series_contained:
             self.insert_nomenclature_block(series).movey(2)
@@ -392,19 +394,21 @@ class PriceBook:
         file_obj.seek(0)
         return file_obj
     
-    def add_footer(self) -> 'PriceBook':
+    def add_footer(self,offset: tuple[int,int]=(0,0)) -> 'PriceBook':
         for name, value in self.program.terms.items():
-            cell = self.active_cell(name)
+            cell = self.active_cell(name+': ')
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='right')
             self.movex(1)
             cell = self.active_cell(value['value'])
             for style_name, style_value in value['style'].items():
                 cell.__setattr__(style_name, style_value)
-            self.cursor.slam_left().move_by(rows=1)
+                cell.alignment = Alignment(horizontal='left')
+            self.cursor.slam_left().move_by(rows=1).move_by(*offset)
         return self
 
     def insert_data(self, df: pd.DataFrame, headers: bool=True, offset: tuple=(0,0)) -> 'PriceBook':
+        self.cursor.move_by(*offset)
         if headers:
             for col in df:
                 if col == Fields.STAGE.formatted():
@@ -412,9 +416,7 @@ class PriceBook:
                 else:
                     self.active_cell(value=str(col))
                 self.cursor.move_by(cols=1)
-            self.cursor.slam_left()
-            self.cursor.move_by(rows=1)
-            self.cursor.move_by(*offset)
+            self.cursor.slam_left().move_by(rows=1).move_by(*offset)
 
         for label, data in df.iterrows():
             for datum in data:
@@ -426,9 +428,7 @@ class PriceBook:
                 else:
                     self.active_cell(value=datum)
                 self.cursor.move_by(cols=1)
-            self.cursor.move_by(rows=1)
-            self.cursor.slam_left()
-            self.cursor.move_by(*offset)
+            self.cursor.slam_left().move_by(rows=1).move_by(*offset)
         if headers:
             if Fields.PALLET_QTY.formatted() in df.columns:
                 self.cursor.move_by(cols=1)
@@ -458,16 +458,17 @@ class PriceBook:
         return result
 
 
-    def build_program(self) -> 'PriceBook':
+    def build_program(self, session: Session) -> 'PriceBook':
         """
             One file per "program"
             One product block per "category"
         """
+        offset = (0,1)
         self.new_price_sheet(title='Model List')
         self.cursor.move_by(11).slam_left()
         for i, program in enumerate(self.program):
             data_by_category: dict[str, pd.DataFrame] = {
-                category: program.category_data(category)
+                category: program.category_data(category, self.program.customer_id, session)
                 for category in program.product_categories
             }
             data_by_category = self.split_rated_from_unrated(data_by_category)
@@ -479,15 +480,21 @@ class PriceBook:
                 cat = re.sub(r'(- Embossed )|( Painted)','', cat)
                 rows = df_copy.shape[0]
                 if i > 0 or j > 0:
-                    self.append_blank_product_block()
-                self.active_cell(value=cat) # put in category 
+                    self.append_blank_product_block(col_offset=1)
+                match offset:
+                    case 0,0:
+                        self.active_cell(value=cat) # put in category 
+                    case _:
+                        self.cursor.move_by(*offset)
+                        self.active_cell(value=cat) # put in category 
+                        self.cursor.slam_left()
                 (
                 self.movey(2) # the first data row
                     .adjust_number_of_formatted_rows(self.max_row-self.min_row-1, rows)
                     .movey(-1) # headers row
-                    .insert_data(df_copy)
+                    .insert_data(df_copy, offset=offset)
                 )
-        return self.movex(-self.cursor.col+1).movey(2).attach_parts()
+        return self.movex(-self.cursor.col+1).movey(2).attach_parts(offset=offset)
     
     def adjust_number_of_formatted_rows(self, startin_row_num: int, target_row_num: int) -> 'PriceBook':
         diff = target_row_num - startin_row_num
@@ -497,17 +504,17 @@ class PriceBook:
             self.active.delete_rows(self.cursor.row, amount=abs(diff))
         return self
     
-    def attach_parts(self) -> 'PriceBook':
+    def attach_parts(self, offset: tuple[int,int]=(0,0)) -> 'PriceBook':
         """unlike the model numbers tab, headers have been provided"""
         data = self.program.parts
         if data.empty:
             logger.info("skipped parts due to empty table")
             return self
         num_rows = data.shape[0]
-        self.append_parts_block()\
+        self.append_parts_block(col_offset=offset[1])\
             .movey(2)\
             .adjust_number_of_formatted_rows(2, num_rows)\
-            .insert_data(data, headers=False)
+            .insert_data(data, headers=False, offset=offset)
         return self.movey(1)
 
     def attach_ratings(self) -> 'PriceBook':

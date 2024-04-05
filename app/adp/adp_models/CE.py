@@ -4,7 +4,7 @@ from app.adp.utils.validator import Validator
 from app.db import ADP_DB, Session
 
 class CE(ModelSeries):
-    text_len = (10,)
+    text_len = (10,11)
     regex = r'''
         (?P<series>CE)
         (?P<config>[H|M|P|S|V])
@@ -12,6 +12,7 @@ class CE(ModelSeries):
         (?P<width_height>\d{2})
         (?P<mat>[E|G|H|D|P])
         (?P<scode>\d{2})
+        (?P<rds>[N|R]?)
     '''
     ce_configurations = {
         'H': ('Horizontal','CR'),

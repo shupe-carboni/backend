@@ -40,10 +40,16 @@ class Fields(StrEnum):
     RATINGS_FIELD_TXV = auto()
     RATED = auto()
     STAGE = auto()
+    FLEXCOIL_MODEL = auto()
+    FLEXCOIL_PRICE = auto()
 
     def formatted(self):
         if self.name == 'ADP_ALIAS':
             return self.name.lower()
+        elif self.name == 'FLEXCOIL_MODEL':
+            return 'FlexCoil Model'
+        elif self.name == 'FLEXCOIL_PRICE':
+            return 'FlexCoil Price'
         result = self.name.replace('_', ' ').title()
         if result.startswith('Snp'):
             result = 'SNP' + result[3:]

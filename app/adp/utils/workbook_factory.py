@@ -154,8 +154,8 @@ def generate_program(
         for prog in full_program:
             logger.info(f'{prog} program included')
         price_book = (PriceBook(TEMPLATES, full_program)
-                            .build_program()
-                            .add_footer()
+                            .build_program(session=session)
+                            .add_footer(offset=(0,1))
                             .attach_nomenclature_tab()
                             .attach_ratings()
                             .save_and_close())
