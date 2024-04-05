@@ -1,11 +1,10 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-import app.adp.pricing.v as pricing
 from app.adp.pricing.v.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class V(ModelSeries):
-    text_len = (11,)
+    text_len = (11,12)
     regex = r'''
         (?P<paint>[V|A|G|J|N|P|R|T|Y|C])
         (?P<ton>\d{2})
@@ -14,6 +13,7 @@ class V(ModelSeries):
         (?P<mat>[D|P])
         (?P<scode>\d{2})
         (?P<meter>\d)
+        (?P<rds>[N|R]?)
         '''
     material_weight = {
         'D': 'WEIGHT_CU',
@@ -43,12 +43,12 @@ class V(ModelSeries):
         self.pallet_qty = model_specs['pallet_qty'].item()
         self.length = model_specs['length'].item()
         self.weight = model_specs[self.material_weight[self.attributes['mat']]].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__())
             & (self.mat_grps['mat'] == self.attributes['mat']),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
+        self.is_flex_coil = True if self.attributes.get('rds') else False
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_ac_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
             self.ratings_hp_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
@@ -59,11 +59,15 @@ class V(ModelSeries):
             self.ratings_hp_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
             self.ratings_piston = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
             self.ratings_field_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
+        self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
         material = self.material
         paint = self.color
-        return f'Dedicated Horizontal "A" {material} Coils - {paint}'
+        value = f'Dedicated Horizontal "A" {material} Coils - {paint}'
+        if self.is_flex_coil:
+            value += ' - FlexCoil'
+        return value
     
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
@@ -72,6 +76,8 @@ class V(ModelSeries):
             self.cabinet_config.name
             ].item()
         result += adders_.get(self.attributes['meter'],0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def record(self) -> dict:

@@ -24,6 +24,8 @@ class UserTypes(StrEnum):
     customer_std = auto()
     view_only = auto()
 
+class S3:
+    ...
 
 class Database:
 

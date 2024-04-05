@@ -4,7 +4,7 @@ from app.adp.pricing.hd.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class HD(ModelSeries):
-    text_len = (18,)
+    text_len = (18,17)
     regex = r'''
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
         (?P<mat>[D|P])
@@ -16,7 +16,7 @@ class HD(ModelSeries):
         (?P<notch>B)
         (?P<length>\d{2})
         (?P<config>\d{2})
-        (?P<AP>AP)
+        (?P<option>[AP|R|N])
     '''
     material_weight = {
         'D': 'WEIGHT_CU',
@@ -38,8 +38,8 @@ class HD(ModelSeries):
         model_specs = self.specs.loc[self.specs['SC_1'] == int(self.attributes['scode'])]
         self.pallet_qty = model_specs['pallet_qty'].item()
         self.weight = model_specs[self.material_weight[self.attributes['mat']]].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.tonnage = int(self.attributes['ton'])
+        self.is_flex_coil = True if self.attributes['option'] in ('R','N') else False
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"
             self.ratings_field_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
@@ -54,6 +54,7 @@ class HD(ModelSeries):
             (self.mat_grps['series'] == self.__series_name__())
             & (self.mat_grps['mat'].str.contains(self.attributes['mat'])),
             'mat_grp'].item()
+        self.zero_disc_price = self.calc_zero_disc_price()
     
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
@@ -61,6 +62,8 @@ class HD(ModelSeries):
         pricing = pricing_.loc[pricing_['slab'] == self.attributes['scode'], col]
         result = pricing.item()
         result += adders_.get(self.attributes['meter'],0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def category(self) -> str:

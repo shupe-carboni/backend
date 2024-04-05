@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import ADP_DB, Session
 
 class B(ModelSeries):
-    text_len = (13,)
+    text_len = (13,14)
     regex = r'''
         (?P<series>B)
         (?P<motor>[C|V])
@@ -17,6 +17,7 @@ class B(ModelSeries):
         (?P<line_conn>S)
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
+        (?P<rds>[N|R]?)
         '''
     class InvalidHeatOption: ...
     hydronic_heat = {
@@ -40,7 +41,6 @@ class B(ModelSeries):
         self.motor = self.motors[self.attributes['motor']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.heat = self.hydronic_heat[self.attributes['heat']]
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
@@ -49,11 +49,16 @@ class B(ModelSeries):
         self.ratings_hp_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}9{self.tonnage}"""
         self.ratings_piston = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}"""
         self.ratings_field_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
+        self.is_flex_coil = True if self.attributes.get('rds') else False
+        self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
         orientation = 'Multiposition'
         motor = self.motor
-        return f'Hydronic {orientation} Air Handlers - {motor}'
+        value = f'Hydronic {orientation} Air Handlers - {motor}'
+        if self.is_flex_coil:
+            value += ' - FlexCoil'
+        return value
     
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
@@ -71,6 +76,8 @@ class B(ModelSeries):
         result += adders_.get(self.attributes['voltage'],0)
         result += adders_.get(self.attributes['heat'][-1],0)
         result += adders_.get(self.attributes['motor'],0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def record(self) -> dict:

@@ -7,7 +7,7 @@ session = next(ADP_DB.get_db())
 
 
 class HH(ModelSeries):
-    text_len = (18,)
+    text_len = (18,17)
     regex = r'''
         (?P<paint>H)
         (?P<mat>H)
@@ -19,7 +19,7 @@ class HH(ModelSeries):
         (?P<notch>A)
         (?P<height>\d{2})
         (?P<config>\d{2})
-        (?P<AP>AP)
+        (?P<option>[AP|R|N])
     '''
 
     def __init__(self, session: Session, re_match: re.Match):
@@ -35,7 +35,6 @@ class HH(ModelSeries):
         model_specs = self.specs.loc[self.specs['SC_1'] == int(self.attributes['scode'])]
         self.pallet_qty = model_specs['pallet_qty'].item()
         self.weight = model_specs['WEIGHT'].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
@@ -44,15 +43,21 @@ class HH(ModelSeries):
         self.ratings_hp_txv = fr"""HH{self.attributes['scode']}9{self.tonnage}"""
         self.ratings_piston = fr"""HH{self.attributes['scode']}\(1,2\){self.tonnage}"""
         self.ratings_field_txv = fr"""HH{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
+        self.is_flex_coil = True if self.attributes['option'] in ('R','N') else False
+        self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
-        return "Horizontal Slab Coils"
+        value =  "Horizontal Slab Coils"
+        if self.is_flex_coil:
+            value += " - FlexCoil"
+        return value
     
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=session)
-
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(self.attributes['meter'], 0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
 

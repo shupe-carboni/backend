@@ -4,7 +4,7 @@ from app.adp.pricing.he.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class HE(ModelSeries):
-    text_len = (18,)
+    text_len = (18,17)
     regex = r'''
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
         (?P<mat>[A|E|G])
@@ -16,7 +16,7 @@ class HE(ModelSeries):
         (?P<notch>[A|B])
         (?P<height>\d{2})
         (?P<config>\d{2})
-        (?P<AP>AP)
+        (?P<option>[AP|R|N])
     '''
 
     mat_config_map = {
@@ -78,8 +78,8 @@ class HE(ModelSeries):
             & (self.mat_grps['mat'].str.contains(self.attributes['mat']))
             & (self.mat_grps['config'].str.contains(self.attributes['config'])),
             'mat_grp'].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.tonnage = int(self.attributes['ton'])
+        self.is_flex_coil = True if self.attributes['option'] in ('R','N') else False
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"
             self.ratings_field_txv = fr"H(,.){{1,2}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
@@ -90,13 +90,17 @@ class HE(ModelSeries):
             self.ratings_field_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
             self.ratings_hp_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"
             self.ratings_ac_txv = fr"H(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"
+        self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
         material = self.material
         color = self.color if self.attributes['paint'] == 'H' else self.color+" Painted"
         connections, orientation = self.orientations[self.attributes['config']]
         additional = 'Cased Coils'
-        return f"{orientation} {material} {additional} - {color}"
+        value = f"{orientation} {material} {additional} - {color}"
+        if self.is_flex_coil:
+            value += " - FlexCoil"
+        return value
 
     
     def calc_zero_disc_price(self) -> int:
@@ -140,6 +144,8 @@ class HE(ModelSeries):
         model_hand = hand[self.attributes['config']]
         hand_core_status = 'core' if model_hand in core_hands_list else 'non-core'
         result += adders_.get(hand_core_status,0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def record(self) -> dict:

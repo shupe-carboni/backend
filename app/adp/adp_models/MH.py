@@ -4,13 +4,14 @@ from app.adp.pricing.mh.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class MH(ModelSeries):
-    text_len = (7,)
+    text_len = (7,8)
     regex = r'''
         (?P<series>M)
         (?P<ton>\d{2})
         (?P<mat>E)
         (?P<scode>\d{2})
         (?P<meter>\d)
+        (?P<rds>[R|N]?)
         '''
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
@@ -24,7 +25,6 @@ class MH(ModelSeries):
         self.height = model_specs['HEIGHT'].item()
         self.pallet_qty = model_specs['PALLET_QTY'].item()
         self.weight = model_specs['WEIGHT'].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
@@ -33,15 +33,21 @@ class MH(ModelSeries):
         self.ratings_hp_txv = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}9"""
         self.ratings_piston = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
         self.ratings_field_txv = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
+        self.is_flex_coil = True if self.attributes.get('rds') else False
+        self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
-        return "Manufactured Housing Coils"
+        value = "Manufactured Housing Coils" 
+        if self.is_flex_coil:
+            value += " - FlexCoil"
+        return value
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
-
         result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
         result += adders_.get(self.attributes['meter'], 0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def record(self) -> dict:

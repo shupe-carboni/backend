@@ -4,7 +4,7 @@ from app.adp.pricing.s.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 class S(ModelSeries):
-    text_len = (8,)
+    text_len = (8,9)
     regex = r'''
         (?P<series>S)
         (?P<mat>[M|K|L])
@@ -12,6 +12,7 @@ class S(ModelSeries):
         (?P<meter>\d)
         (?P<ton>\d{2})
         (?P<heat>(\d{2}|(XX)))
+        (?P<rds>[N|R]?)
     '''
     weight_by_material = {
         'K': 'weight_cu',
@@ -38,10 +39,15 @@ class S(ModelSeries):
         self.ratings_hp_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"""
         self.ratings_piston = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"""
         self.ratings_field_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
+        self.is_flex_coil = True if self.attributes.get('rds') else False
     
     def category(self) -> str:
         motor = self.motor
-        return f'Wall Mount Air Handlers - {motor}'
+        value = f'Wall Mount Air Handlers - {motor}'
+        if self.is_flex_coil:
+            value += ' - FlexCoil'
+        return value
+        
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(session=self.session)
@@ -52,6 +58,8 @@ class S(ModelSeries):
         result = pricing_[heat].item()
         result += adders_.get(self.attributes['meter'],0)
         result += adders_.get(self.attributes['ton'],0)
+        if self.is_flex_coil:
+            result += 10
         return result
 
     def set_heat(self):
