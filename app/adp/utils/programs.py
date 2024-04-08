@@ -28,10 +28,10 @@ def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Se
     if series in ('HE', 'HH', 'HD'):
         if model_number.endswith('AP'):
             model_to_parse = model_number.replace('AP', 'N')
-        else:
-            return pd.Series([no_change, no_change])
+        elif model_number[:2] == 'CE':
+            model_to_parse = model_number + 'N'
     # flexcoil by append
-    elif series in ('MH', 'V', 'B', 'F', 'S', 'CP', 'CE', 'CF'):
+    elif series in ('MH', 'V', 'B', 'F', 'S', 'CP'):
         if model_number[-1] not in ('R', 'N'):
             model_to_parse = model_number + 'N'
         else:
@@ -45,7 +45,10 @@ def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Se
         model=model_to_parse,
         mode=ParsingModes.CUSTOMER_PRICING
     )
-    return result[[Fields.MODEL_NUMBER.value, Fields.NET_PRICE.value]]
+    if result[Fields.PRIVATE_LABEL.value] is not None:
+        return result[[Fields.PRIVATE_LABEL.value, Fields.NET_PRICE.value]].rename({Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value})
+    else:
+        return result[[Fields.MODEL_NUMBER.value, Fields.NET_PRICE.value]]
 
 class EmptyProgram(Exception): ...
 class Program:
