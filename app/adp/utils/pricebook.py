@@ -395,6 +395,7 @@ class PriceBook:
         return file_obj
     
     def add_footer(self,offset: tuple[int,int]=(0,0)) -> 'PriceBook':
+        self.cursor.move_by(*offset)
         for name, value in self.program.terms.items():
             cell = self.active_cell(name+': ')
             cell.font = Font(bold=True)
@@ -438,6 +439,7 @@ class PriceBook:
                 self.cursor.move_by(cols=1)
                 disclaimer = self.active_cell('* Must order at least the minimum quantity per-SKU')
                 disclaimer.font = Font(bold=True, italic=True)
+            self.cursor.slam_left()
         return self
 
     @staticmethod
@@ -515,6 +517,7 @@ class PriceBook:
             .movey(2)\
             .adjust_number_of_formatted_rows(2, num_rows)\
             .insert_data(data, headers=False, offset=offset)
+        self.cursor.slam_left()
         return self.movey(1)
 
     def attach_ratings(self) -> 'PriceBook':
