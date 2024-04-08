@@ -16,7 +16,7 @@ class HE(ModelSeries):
         (?P<notch>[A|B])
         (?P<height>\d{2})
         (?P<config>\d{2})
-        (?P<option>[AP|R|N])
+        (?P<option>(AP)|[R|N])
     '''
 
     mat_config_map = {
