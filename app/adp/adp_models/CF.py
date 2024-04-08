@@ -19,8 +19,13 @@ class CF(ModelSeries):
         super().__init__(session, re_match)
         self.mappings = ADP_DB.load_df(session=session, table_name='carrier_cf_label_mapping')
         self.tonnage = int(self.attributes['ton'])
+        if rds := self.attributes.get('rds',''):
+            model_alias: str = str(self)[:-4] + rds
+        else:
+            model_alias: str = str(self)[:-3]
+
         actual_model = self.mappings.loc[
-            self.mappings['model_alias'] == str(self)[:-3],
+            self.mappings['model_alias'] == model_alias,
             'model']
         if not actual_model.empty:
             actual_model = actual_model.item()
