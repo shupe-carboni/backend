@@ -31,6 +31,8 @@ def parse_model_string(session: Session, adp_customer_id: int, model: str, mode:
     for m in MODELS:
         if matched_model := Validator(session, model, m).is_model():
             model_obj = matched_model
+    if not model_obj:
+        raise Exception(f'No match found for model number {model}')
     record = model_obj.record()
     record_series = pd.Series(record)
     match mode:
