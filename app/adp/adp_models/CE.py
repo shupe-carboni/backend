@@ -12,6 +12,7 @@ class CE(ModelSeries):
         (?P<width_height>\d{2})
         (?P<mat>[E|G|H|D|P])
         (?P<scode>\d{2}|\d\D)
+        (?P<metering>[1|9])
         (?P<rds>[N|R]?)
     '''
     ce_configurations = {
@@ -27,7 +28,7 @@ class CE(ModelSeries):
         self.configuration = self.ce_configurations[self.attributes['config']]
         self.mat_grp = self.configuration[1]
         self.cabinet_config = Cabinet.PAINTED
-        self.metering = self.metering_mapping[9]
+        self.metering = self.metering_mapping[int(self.attributes['metering'])]
         model_specs = self.specs[self.specs['model'] == str(self)]
         self.pallet_qty = model_specs['pallet_qty'].item()
         self.width = model_specs['width'].item()
