@@ -4,6 +4,10 @@
 .ebextensions/*
 .platform/*
 make_zip.sh
+*.key
+*.csr
+*.crt
+*.pem
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
