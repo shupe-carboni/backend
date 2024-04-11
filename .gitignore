@@ -1,8 +1,9 @@
 # My own ignores
 *.zip
 /tests/*.csv
-.ebextensions/*
-.platform/*
+# need prefix slashes for rsync to work correctly with dot-prefix directories
+/.ebextensions/*
+/.platform/*
 make_zip.sh
 *.key
 *.csr
