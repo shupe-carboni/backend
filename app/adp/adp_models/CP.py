@@ -10,7 +10,7 @@ class CP(ModelSeries):
         (?P<motor>[P|E])
         (?P<ton>\d{2})
         (?P<scode>\d{2})
-        (?P<mat>\D)
+        (?P<mat>[C|A])
         (?P<meter>[A|H])
         (?P<config>H)
         (?P<line_conn>[S|P])
@@ -18,6 +18,7 @@ class CP(ModelSeries):
         (?P<voltage>\d)
         (?P<option>C?)
         (?P<drain>R?)
+        (?P<rds>[N|R]?)
     '''
     metering_mapping_ = {
         'A': 'Piston (R-410A) w/ Access Port',
@@ -26,29 +27,45 @@ class CP(ModelSeries):
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
         self.pallet_qty = 8
-        self.specs = ADP_DB.load_df(session=session, table_name='cp_dims')
-        model_specs = self.specs.loc[
-                (self.specs['series'] == self.attributes['series'])
-                & (self.specs['motor'] == self.attributes['motor'])
-                & (self.specs['ton'] == int(self.attributes['ton']))
-                & (self.specs['cased'] == (self.attributes.get('option') == "C")),:]
-        self.width = model_specs['width'].item()
-        self.depth = model_specs['depth'].item()
-        self.height = model_specs['height'].item()
-        self.weight = model_specs['weight'].item()
         self.cased = self.attributes.get('option') == "C"
+        dims_sql = """
+            SELECT weight, width, depth, height
+            FROM cp_dims
+            WHERE series = :series
+            AND motor = :motor
+            AND ton = :ton
+            AND cased = :cased ;
+        """
+        params = dict(
+            series=self.attributes['series'],
+            motor=self.attributes['motor'],
+            ton=self.attributes['ton'],
+            cased=self.cased
+        )
+        specs = ADP_DB.execute(
+            session=session,
+            sql=dims_sql,
+            params=params).mappings().one()
+        self.width = specs['width']
+        self.depth = specs['depth']
+        self.height = specs['height']
+        self.weight = specs['weight']
         self.motor = self.motors[self.attributes['motor']]
         self.metering = self.metering_mapping_[self.attributes['meter']]
-        self.zero_disc_price = self.get_zero_disc_price()
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"C{self.attributes['motor']}{self.tonnage}{self.attributes['scode']}{self.attributes['mat']}\+TXV"
+        self.ratings_ac_txv = fr"C{self.attributes['motor']}"\
+            fr"{self.tonnage}{self.attributes['scode']}"\
+            fr"{self.attributes['mat']}\+TXV"
         self.ratings_hp_txv = self.ratings_ac_txv
-        self.ratings_piston = fr"C{self.attributes['motor']}{self.tonnage}{self.attributes['scode']}{self.attributes['mat']}"
+        self.ratings_piston = fr"C{self.attributes['motor']}"\
+            fr"{self.tonnage}{self.attributes['scode']}"\
+            fr"{self.attributes['mat']}"
         self.ratings_field_txv = self.ratings_ac_txv
-    
+        self.is_flexcoil = True if self.attributes.get('rds') else False
+        self.zero_disc_price = self.get_zero_disc_price()
         try:
             self.heat = int(self.attributes['heat'])
             self.heat = self.kw_heat[self.heat]
@@ -62,8 +79,20 @@ class CP(ModelSeries):
         return f'Soffit Mount {cased} Air Handlers - {material} - {motor}'
 
     def get_zero_disc_price(self) -> int:
-        pricing_ = load_pricing(session=self.session)
-        return pricing_.loc[pricing_[self.attributes['mat']] == str(self),'price'].item()
+        model = str(self)
+        if self.is_flexcoil:
+            model = model[:-1]
+            base_price = load_pricing(
+                    session=self.session,
+                    material=self.attributes['mat'],
+                    model=model)
+            base_price += 10
+        else:
+            base_price = load_pricing(
+                    session=self.session,
+                    material=self.attributes['mat'],
+                    model=model)
+        return base_price
 
     def record(self) -> dict:
         model_record = super().record()
