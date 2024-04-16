@@ -19,7 +19,7 @@ class B(ModelSeries):
         (?P<voltage>\d)
         (?P<rds>[N|R]?)
         '''
-    class InvalidHeatOption: ...
+    class InvalidHeatOption(Exception): ...
     hydronic_heat = {
         '00': 'no heat',
         '2P': '2 row hot water coil with pump assembly',
@@ -31,13 +31,21 @@ class B(ModelSeries):
     }
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.specs = ADP_DB.load_df(session=session, table_name='b_dims')
         self.min_qty = 4
-        model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]
-        self.width = model_specs['width'].item()
-        self.depth = model_specs['depth'].item()
-        self.height = model_specs['height'].item()
-        self.weight = model_specs['weight'].item()
+        dims_sql = """
+            SELECT weight, height, depth, width
+            FROM b_dims
+            WHERE tonnage = :tonnage;
+        """
+        specs = ADP_DB.execute(
+            session=session,
+            sql=dims_sql,
+            params={'tonnage': int(self.attributes['ton'])}
+            ).mappings().one_or_none()
+        self.width = specs['width']
+        self.depth = specs['depth']
+        self.height = specs['height']
+        self.weight = specs['weight']
         self.motor = self.motors[self.attributes['motor']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.heat = self.hydronic_heat[self.attributes['heat']]
@@ -45,10 +53,23 @@ class B(ModelSeries):
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(6,9\){self.tonnage}"""
-        self.ratings_hp_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}9{self.tonnage}"""
-        self.ratings_piston = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}"""
-        self.ratings_field_txv = fr"""B{self.attributes['motor']}\*\*{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
+        self.ratings_ac_txv = fr"""
+            B{self.attributes['motor']}
+            \*\*{self.attributes['scode']}
+            \(6,9\){self.tonnage}"""
+        self.ratings_hp_txv = fr"""
+            B{self.attributes['motor']}
+            \*\*{self.attributes['scode']}
+            9{self.tonnage}"""
+        self.ratings_piston = fr"""
+            B{self.attributes['motor']}
+            \*\*{self.attributes['scode']}
+            \(1,2\){self.tonnage}"""
+        self.ratings_field_txv = fr"""
+            B{self.attributes['motor']}
+            \*\*{self.attributes['scode']}
+            \(1,2\){self.tonnage}
+            \+TXV"""
         self.is_flex_coil = True if self.attributes.get('rds') else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
@@ -61,16 +82,20 @@ class B(ModelSeries):
         return value
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(session=self.session)
-        pricing_ = pricing_.loc[
-            (pricing_['tonnage'] == int(self.attributes['ton']))
-            & (pricing_['slab'] == self.attributes['scode']), :]
-        if pricing_.empty:
-            raise self.NoBasePrice
+        pricing_, adders_ = load_pricing(
+            session=self.session,
+            series=self.__series_name__(),
+            tonnage=str(self.tonnage),
+            slab=self.attributes['scode'],
+        )
         heat: str = self.attributes['heat']
-        result =  pricing_['base'].item()
-        heat_option = pricing_[heat[0]].item() if heat != '00' else 0
-        if isnan(heat_option): raise self.InvalidHeatOption
+        if not pricing_:
+            raise self.NoBasePrice
+        result =  pricing_['base']
+        try:
+            heat_option = pricing_[heat[0]] if heat != '00' else 0
+        except:
+            raise self.InvalidHeatOption
         result += heat_option
         result += adders_.get(self.attributes['meter'],0)
         result += adders_.get(self.attributes['voltage'],0)
