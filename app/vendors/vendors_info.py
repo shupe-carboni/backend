@@ -12,23 +12,31 @@ from app.vendors.models import (
     VendorInfoModification, VendorInfoQuery,
     VendorInfoQueryJSONAPI, RelatedVendorResponse
 )
-from app.vendors.utils import add_new_vendor_info, modify_existing_vendor_info, delete_vendor_info
+from app.vendors.utils import (
+    add_new_vendor_info, modify_existing_vendor_info,
+    delete_vendor_info
+)
 
 INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
 VENDOR_RESOURCE = SCAVendor.__jsonapi_type_override__
-vendors_info = APIRouter(prefix=f'/{INFO_RESOURCE}', tags=['vendor info'])
+vendors_info = APIRouter(prefix=f'/{INFO_RESOURCE}', tags=['vendors','info'])
 
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 VendorsPerm = Annotated[auth.VerifiedToken, Depends(auth.vendor_perms_present)]
 converter = convert_query(VendorInfoQueryJSONAPI)
 
-@vendors_info.get('', response_model=VendorInfoResponse, response_model_exclude_none=True)
+
+@vendors_info.get(
+        '',
+        tags=['jsonapi'],
+        response_model=VendorInfoResponse,
+        response_model_exclude_none=True)
 async def all_info(
         token: VendorsPerm,
         session: NewSession,
         query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
             db=SCA_DB,
             session=session,
@@ -39,14 +47,18 @@ async def all_info(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.get('/{info_id}', response_model=VendorInfoResponse, response_model_exclude_none=True)
+@vendors_info.get(
+        '/{info_id}',
+        tags=['jsonapi'],
+        response_model=VendorInfoResponse,
+        response_model_exclude_none=True)
 async def one_info(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
         query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
             db=SCA_DB,
             session=session,
@@ -58,14 +70,18 @@ async def one_info(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.get('/{info_id}/vendors', response_model=RelatedVendorResponse, response_model_exclude_none=True)
+@vendors_info.get(
+        '/{info_id}/vendors',
+        tags=['jsonapi'],
+        response_model=RelatedVendorResponse,
+        response_model_exclude_none=True)
 async def info_related_vendor(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
         query: VendorInfoQuery=Depends()
     ) -> RelatedVendorResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
             db=SCA_DB,
             session=session,
@@ -78,14 +94,18 @@ async def info_related_vendor(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.get('/{info_id}/relationships/vendors')
+@vendors_info.get(
+        '/{info_id}/relationships/vendors',
+        tags=['jsonapi'],
+        response_model=VendorInfoResponse,
+        response_model_exclude_none=True)
 async def info_vendors_relationships(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
         query: VendorInfoQuery=Depends()
     ) -> VendorInfoResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.view_only:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.view_only:
         return auth.secured_get_query(
             db=SCA_DB,
             session=session,
@@ -99,33 +119,44 @@ async def info_vendors_relationships(
         )
     raise HTTPException(status_code=401)
 
-@vendors_info.post('', response_model=VendorInfoResponse, response_model_exclude_none=True)
+@vendors_info.post(
+        '',
+        tags=['jsonapi'],
+        response_model=VendorInfoResponse,
+        response_model_exclude_none=True)
 async def add_info(
         token: VendorsPerm,
         session: NewSession,
         body: NewVendorInfo,
     ) -> VendorInfoResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.sca_employee:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.sca_employee:
         return add_new_vendor_info(session=session, payload=body)
     raise HTTPException(status_code=401)
 
-@vendors_info.patch('/{info_id}', response_model=VendorInfoResponse, response_model_exclude_none=True)
+@vendors_info.patch(
+        '/{info_id}',
+        tags=['jsonapi'],
+        response_model=VendorInfoResponse,
+        response_model_exclude_none=True)
 async def modify_info(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
         body: VendorInfoModification,
     ) -> VendorInfoResponse:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.sca_employee:
-        return modify_existing_vendor_info(session=session, payload=body, obj_id=info_id)
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.sca_employee:
+        return modify_existing_vendor_info(
+            session=session,
+            payload=body,
+            obj_id=info_id)
     raise HTTPException(status_code=401)
 
-@vendors_info.delete('/{info_id}')
+@vendors_info.delete('/{info_id}', tags=['jsonapi'])
 async def delete_info(
         token: VendorsPerm,
         session: NewSession,
         info_id: int,
     ) -> None:
-    if token.permissions.get('vendors') >= auth.VendorPermPriority.sca_employee:
+    if auth.get_vendor_perm(token) >= auth.VendorPermPriority.sca_employee:
         return delete_vendor_info(session=session, obj_id=info_id)
     raise HTTPException(status_code=401)
