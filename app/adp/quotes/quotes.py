@@ -1,12 +1,10 @@
-from io import BytesIO
 from typing import Annotated, Optional
-from dataclasses import dataclass
 from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends, Form, UploadFile
 from fastapi.routing import APIRouter
 from app import auth
-from app.db import ADP_DB, Stage
+from app.db import ADP_DB, Stage, File, S3
 from app.jsonapi.core_models import convert_query
 from app.adp.quotes.job_quotes.models import (
     QuoteResponse, NewQuote,
@@ -22,13 +20,6 @@ ADPQuotesPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_quotes_perms)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(QuoteQueryJSONAPI)
 
-@dataclass
-class NewFile:
-    file_name: str
-    file_mime: str
-    file_content: bytes|BytesIO
-    def __post_init__(self) -> None:
-        self.s3 = S3_DIR
 
 @quotes.get('', response_model=QuoteResponse, response_model_exclude_none=True)
 async def quote_collection(
@@ -100,7 +91,7 @@ async def new_quote(
         if adp_quote_id:
             attrs['adp_quote_id'] = adp_quote_id
         if quote_doc:
-            quote_file = NewFile(
+            quote_file = File(
                 file_name=S3_DIR+quote_doc.filename,
                 file_mime=quote_doc.content_type,
                 file_content=await quote_doc.read()
@@ -109,7 +100,7 @@ async def new_quote(
             attrs['quote_doc'] = quote_file.s3
 
         if plans_doc:
-            plans_file = NewFile(
+            plans_file = File(
                 file_name=S3_DIR+plans_doc.filename,
                 file_mime=plans_doc.content_type,
                 file_content=await plans_doc.read()

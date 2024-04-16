@@ -1,12 +1,21 @@
 from dotenv import load_dotenv; load_dotenv()
 import re
 import os
+import boto3
+import botocore
+from dataclasses import dataclass
+from io import BytesIO
 from enum import StrEnum, auto
 from typing import Iterable, Literal
 from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
 from pandas import DataFrame, read_sql
 
+@dataclass
+class File:
+    file_name: str
+    file_mime: str
+    file_content: bytes|BytesIO
 
 class Stage(StrEnum):
     """used for separating product and pricing status by line item while
@@ -25,7 +34,34 @@ class UserTypes(StrEnum):
     view_only = auto()
 
 class S3:
-    ...
+    bucket = os.getenv('S3_BUCKET')
+    client = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv('AWS_ACCESS_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_KEY')
+    )
+    @classmethod
+    def upload_file(cls, file: File, destination: str) -> None:
+        try:
+            cls.client.put_object(
+                Body=file.file_content,
+                Bucket=cls.bucket,
+                Key= destination,
+                ContentType=file.file_mime
+            )
+        except Exception as e:
+            raise Exception(f'upload failed: {e}')
+
+    @classmethod
+    def get_file(cls ,key: str) -> File:
+        response: dict = cls.client.get_object(Bucket=cls.bucket, Key=key)
+        if response.get('HTTPStatusCode') == 200:
+            file_data = response.get('Body').read()
+            file_content_type: str = response.get('ContentType')
+            file = File(os.path.basename(key), file_mime=file_content_type, file_content=file_data)
+            return file
+        raise Exception('File Not Found')
+
 
 class Database:
 
