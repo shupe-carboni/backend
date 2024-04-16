@@ -30,44 +30,44 @@ status_codes = {
 }
 
 class QuotePermPriority(IntEnum):
-    view_only = 1
-    customer_std = 10
-    customer_manager = 11
-    customer_admin = 12
-    sca_employee = 20
     sca_admin = 21
+    sca_employee = 20
+    customer_admin = 12
+    customer_manager = 11
+    customer_std = 10
+    view_only = 1
 
 class ADPPermPriority(IntEnum):
-    view_only = 1
-    customer_std = 10
-    customer_manager = 11
-    customer_admin = 12
-    sca_employee = 20
     sca_admin = 21
+    sca_employee = 20
+    customer_admin = 12
+    customer_manager = 11
+    customer_std = 10
+    view_only = 1
 
 class VendorPermPriority(IntEnum):
-    view_only = 1
-    customer_std = 10
-    customer_manager = 11
-    customer_admin = 12
-    sca_employee = 20
     sca_admin = 21
+    sca_employee = 20
+    customer_admin = 12
+    customer_manager = 11
+    customer_std = 10
+    view_only = 1
 
 class CustomersPermPriority(IntEnum):
-    view_only = 1
-    customer_std = 0
-    customer_manager = 0
-    customer_admin = 0
-    sca_employee = 20
     sca_admin = 21
+    sca_employee = 20
+    customer_admin = 0
+    customer_manager = 0
+    customer_std = 0
+    view_only = 1
 
 class AdminPerm(IntEnum):
-    view_only = 0
-    customer_std = 0
-    customer_manager = 0
-    customer_admin = 0
-    sca_employee = 0
     sca_admin = 21
+    sca_employee = 0
+    customer_admin = 0
+    customer_manager = 0
+    customer_std = 0
+    view_only = 0
 
 class Permissions(Enum):
     adp = ADPPermPriority
@@ -82,9 +82,10 @@ class VerifiedToken(BaseModel):
         along with expiry time and permissions in order to check
         whether or not token should be used and how it can be used.
 
-        This will representation will be used in an in-memory storage system 
-        called LocalTokenStore, which will keep a set of VerifiedTokens and check
-        for the incoming token in the collection.
+        This will representation will be used in an in-memory storage 
+        system called LocalTokenStore, which will keep a set of
+        VerifiedTokens and check for the incoming token in the 
+        collection.
     """
     token: bytes
     exp: int
@@ -140,12 +141,19 @@ def get_user_info(access_token: str) -> dict:
     if 299 >= user_info.status_code >= 200:
         user_info = user_info.json()
     else:
-        raise HTTPException(status_code=status_codes[401], detail="user could not be verified")
+        raise HTTPException(
+            status_code=status_codes[401],
+            detail="user could not be verified"
+        )
     match user_info:
-        case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
+        case {"nickname": a, "name": b, "email": c,
+              "email_verified": d, **other}:
             return {"nickname": a, "name": b, "email": c, "email_verified": d}
         case _:
-            raise HTTPException(status_code=status_codes[401], detail="user could not be verified")
+            raise HTTPException(
+                status_code=status_codes[401],
+                detail="user could not be verified"
+            )
         
 def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
     if not all_permissions:
@@ -160,8 +168,9 @@ def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
         except KeyError:
             current_perm_lvl = 0
         if resource in all_permissions_dict:
-            # set the permissions to the most restictive (lowest priority enum value)
-            # if more than one permission value is provided for a resource
+            # set the permissions to the most restictive
+            # (lowest priority enum value)
+            # if more than one permission value is provided
             if all_permissions_dict[resource] < current_perm_lvl:
                 continue
         all_permissions_dict[resource] = current_perm_lvl
@@ -177,7 +186,9 @@ def find_duplicates(input_list):
             seen.add(item)
     return duplicates
 
-async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(token_auth_scheme)):
+async def authenticate_auth0_token(
+        token: HTTPAuthorizationCredentials=Depends(token_auth_scheme)
+    ):
     error = None
     if verified_token := LocalTokenStore.contains(token.credentials):
         return verified_token
@@ -233,12 +244,16 @@ async def authenticate_auth0_token(token: HTTPAuthorizationCredentials=Depends(t
     raise HTTPException(status_code=status_codes[401], detail=str(error)) 
 
 
-def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
+def perm_category_present(
+        token: VerifiedToken,
+        category: str
+    ) -> VerifiedToken:
     perm_level = token.perm_level(category)
     if not perm_level:
         raise HTTPException(
             status_code=status_codes[401],
-            detail=f'Permissions for access to {category.title()} have not been defined.'
+            detail=f'Permissions for access to {category.title()} '\
+                'have not been defined.'
         )
     elif perm_level <= 0:
         raise HTTPException(
@@ -247,25 +262,46 @@ def perm_category_present(token: VerifiedToken, category: str) -> VerifiedToken:
         )
     return token
 
-def adp_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def adp_perms_present(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     return perm_category_present(token, 'adp')
 
-def vendor_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def vendor_perms_present(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     return perm_category_present(token, 'vendors')
 
-def quotes_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def quotes_perms_present(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     return perm_category_present(token, 'quotes')
 
-def customers_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def customers_perms_present(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     return perm_category_present(token, 'customers')
 
-def admin_perms_present(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def admin_perms_present(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     return perm_category_present(token, 'admin')
 
-def adp_quotes_perms(token: VerifiedToken = Depends(authenticate_auth0_token)) -> VerifiedToken:
+def adp_quotes_perms(
+        token: VerifiedToken = Depends(authenticate_auth0_token)
+    ) -> VerifiedToken:
     perm_category_present(token, 'adp')
     perm_category_present(token, 'quotes')
     return token
+
+def get_vendor_perm(token: VerifiedToken) -> VendorPermPriority:
+    return token.permissions.get('vendors')
+
+def get_adp_perm(token: VerifiedToken) -> ADPPermPriority:
+    return token.permissions.get('adp')
+
+def get_vendor_perm(token: VerifiedToken) -> VendorPermPriority:
+    return token.permissions.get('vendors')
 
 class UnverifiedEmail(Exception): ...
 
@@ -274,12 +310,18 @@ def standard_error_handler(func):
         try:
             return func(*args, **kwargs)
         except UnverifiedEmail:
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Email not verified")
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                detail="Email not verified"
+            )
         except ResourceNotFoundError:
             raise HTTPException(status.HTTP_204_NO_CONTENT)
         except:
             import traceback as tb
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc())
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=tb.format_exc()
+            )
     return wrapper
 
 @standard_error_handler
@@ -335,7 +377,8 @@ def secured_get_query(
                 rel_key=related_resource
             )
         case _:
-            raise Exception('Invalid argument set supplied to auth.secured_get_query')
+            raise Exception('Invalid argument set supplied to '\
+                            'auth.secured_get_query')
     if the_perm >= auth_scheme.value.sca_employee:
         result = result_query()
     elif the_perm >= auth_scheme.value.customer_std:
