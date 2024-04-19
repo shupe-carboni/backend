@@ -171,7 +171,11 @@ def generate_program(
         logger.info(tb.format_exc())
     else:
         tables.remove('program_ratings')
-        update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
+        try:
+            update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
+        except Exception as e:
+            logger.warning('File Generation dates unable to be updated'
+                           f'due to an error: {e}')
         return new_program_file
 
 def update_dates_in_tables(
