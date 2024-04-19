@@ -46,7 +46,9 @@ def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Se
         mode=ParsingModes.CUSTOMER_PRICING
     )
     if result[Fields.PRIVATE_LABEL.value] is not None:
-        return result[[Fields.PRIVATE_LABEL.value, Fields.NET_PRICE.value]].rename({Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value})
+        return result[
+            [Fields.PRIVATE_LABEL.value, Fields.NET_PRICE.value]
+        ].rename({Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value})
     else:
         return result[[Fields.MODEL_NUMBER.value, Fields.NET_PRICE.value]]
 
