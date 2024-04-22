@@ -1,6 +1,6 @@
 import re
 from app.db import ADP_DB, Session
-from enum import Enum, StrEnum, auto
+from enum import StrEnum, auto
 
 class Cabinet(StrEnum):
     UNCASED = auto()
