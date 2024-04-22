@@ -17,20 +17,20 @@ class CF(ModelSeries):
     '''
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.mappings = ADP_DB.load_df(session=session, table_name='carrier_cf_label_mapping')
         self.tonnage = int(self.attributes['ton'])
         if rds := self.attributes.get('rds',''):
             model_alias: str = str(self)[:-4] + rds
         else:
             model_alias: str = str(self)[:-3]
-
-        actual_model = self.mappings.loc[
-            self.mappings['model_alias'] == model_alias,
-            'model']
-        if not actual_model.empty:
-            actual_model = actual_model.item()
-        else:
-            actual_model = str()
+        
+        model_mapping_sql = """
+            SELECT model
+            FROM carrier_cf_label_mapping
+            WHERE model_alias = :alias;
+        """
+        params = dict(alias=model_alias)
+        actual_model = ADP_DB.execute(session=session, sql=model_mapping_sql,
+                                  params=params).scalar_one()
         match self.attributes['application']:
             case 'C':
                 from app.adp.adp_models.F import F
@@ -56,11 +56,18 @@ class CF(ModelSeries):
                     model_series=S,
                 ).is_model()
                 self._record = self.model_obj.record()
-            
+        self.ratings_ac_txv = fr"{self.attributes['series']}"\
+            fr"{self.attributes['application']}"\
+            fr"{self.attributes['ton']}"\
+            fr"{self.attributes['motor']}"\
+            fr"{self.attributes['scode']}"
+        self.ratings_hp_txv = self.ratings_ac_txv
 
     def record(self) -> dict:
         self._record.update({
             Fields.PRIVATE_LABEL.value: str(self),
             Fields.CATEGORY.value: self.model_obj.category(),
+            Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,
+            Fields.RATINGS_HP_TXV.value: self.ratings_hp_txv
         })
         return self._record

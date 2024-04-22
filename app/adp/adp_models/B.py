@@ -1,5 +1,4 @@
 import re
-from numpy import isnan
 from app.adp.pricing.b.pricing import load_pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import ADP_DB, Session
@@ -38,9 +37,9 @@ class B(ModelSeries):
             WHERE tonnage = :tonnage;
         """
         specs = ADP_DB.execute(
-            session=session,
-            sql=dims_sql,
-            params={'tonnage': int(self.attributes['ton'])}
+                session=session,
+                sql=dims_sql,
+                params={'tonnage': int(self.attributes['ton'])}
             ).mappings().one_or_none()
         self.width = specs['width']
         self.depth = specs['depth']

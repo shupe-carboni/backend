@@ -21,24 +21,42 @@ class S(ModelSeries):
     }
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session,re_match)
-        self.specs = ADP_DB.load_df(session=self.session, table_name='s_dims')
+        self.tonnage = int(self.attributes['ton'])
+        weight_col = self.weight_by_material[self.attributes['mat']]
+        specs_sql = f"""
+            SELECT width, depth, height, {weight_col}
+            FROM s_dims
+            WHERE tonnage = :ton;
+        """
+        params = dict(ton=self.tonnage)
+        specs = ADP_DB.execute(
+            session=session,
+            sql=specs_sql,
+            params=params
+        ).mappings().one()
         self.min_qty = 4
-        model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]
-        self.width = model_specs['width'].item()
-        self.depth = model_specs['depth'].item()
-        self.height = model_specs['height'].item()
-        self.weight = model_specs[self.weight_by_material[self.attributes['mat']]].item()
-        self.motor = 'PSC Motor' if int(self.attributes['ton']) % 2 == 0 else 'ECM Motor'
+        self.width = specs['width']
+        self.depth = specs['depth']
+        self.height = specs['height']
+        self.weight = specs[weight_col]
+        self.motor = (
+            'PSC Motor' 
+            if int(self.attributes['ton']) % 2 == 0
+            else 'ECM Motor'
+        )
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__())
-            & (self.mat_grps['mat'].str.contains(self.attributes['mat'])),
+            &(self.mat_grps['mat'].str.contains(self.attributes['mat'])),
             'mat_grp'].item()
-        self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(6,9\){self.tonnage}"""
-        self.ratings_hp_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}9{self.tonnage}"""
-        self.ratings_piston = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}"""
-        self.ratings_field_txv = fr"""S{self.attributes['mat']}{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"""
+        self.ratings_ac_txv = fr"S{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(6,9\){self.tonnage}"
+        self.ratings_hp_txv = fr"S{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}9{self.tonnage}"
+        self.ratings_piston = fr"S{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(1,2\){self.tonnage}"
+        self.ratings_field_txv = fr"S{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
         self.is_flex_coil = True if self.attributes.get('rds') else False
     
     def category(self) -> str:
@@ -50,13 +68,14 @@ class S(ModelSeries):
         
 
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(session=self.session)
-        pricing_ = pricing_.loc[
-            pricing_['model'].apply(lambda regex: self.regex_match(regex)),
-            :]
         heat: str = self.attributes['heat']
-        result = pricing_[heat].item()
-        result += adders_.get(self.attributes['meter'],0)
+        pricing_, adders_ = load_pricing(
+            session=self.session,
+            series=self.__series_name__(),
+            model_number=str(self),
+            heat_option=heat
+        )
+        result = pricing_ + adders_.get(self.attributes['meter'],0)
         result += adders_.get(self.attributes['ton'],0)
         if self.is_flex_coil:
             result += 10

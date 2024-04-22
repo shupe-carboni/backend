@@ -1,11 +1,32 @@
 from app.db import ADP_DB, Session
-from pandas import DataFrame
 
-def load_pricing(session: Session) -> tuple[DataFrame, dict[str, int]]:
-    pricing = ADP_DB.load_df(session=session, table_name='pricing_hh_series')
-    __adders_df = ADP_DB.load_df(session=session, table_name='price_adders')
-    __adders_df = __adders_df.loc[__adders_df['series'] == 'HH', ['key', 'price']]
+def load_pricing(
+        session: Session,
+        series: str,
+        slab: str
+    ) -> tuple[int, dict[str, int]]:
+
+    pricing_sql = """
+        SELECT price
+        FROM pricing_hh_series
+        WHERE slab = :slab;
+    """
+    params = dict(slab=slab)
+    pricing: int = ADP_DB.execute(
+        session=session,
+        sql=pricing_sql,
+        params=params
+    ).scalar_one()
+
+    price_adders_sql = """
+        SELECT key, price
+        FROM price_adders
+        WHERE series = :series;
+    """
+    params = dict(series=series)
+    adders_ = ADP_DB.execute(session=session, sql=price_adders_sql,
+                        params=params).mappings().all()
     adders = dict()
-    for row in __adders_df.itertuples():
-        adders[row.key] = row.price
+    for adder in adders_:
+        adders |= {adder['key']: adder['price']}
     return pricing, adders

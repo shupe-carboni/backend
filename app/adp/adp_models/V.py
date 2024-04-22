@@ -21,7 +21,18 @@ class V(ModelSeries):
     }
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.specs = ADP_DB.load_df(session=session, table_name='v_or_hd_len_pallet_weights')
+        weight_column = self.material_weight[self.attributes['mat']] 
+        specs_sql = f"""
+            SELECT length, pallet_qty, "{weight_column}"
+            FROM v_or_hd_len_pallet_weights
+            WHERE "SC_1" = :scode;
+        """
+        params = dict(scode=self.attributes['scode'])
+        specs = ADP_DB.execute(
+            session=session,
+            sql=specs_sql,
+            params=params
+        ).mappings().one()
         if self.attributes['paint'] == 'V':
             self.cabinet_config = Cabinet.EMBOSSED
         else:
@@ -39,10 +50,9 @@ class V(ModelSeries):
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.color = self.paint_color_mapping[self.attributes['paint']]
         self.width = 21
-        model_specs = self.specs.loc[self.specs['SC_1'] == int(self.attributes['scode'])]
-        self.pallet_qty = model_specs['pallet_qty'].item()
-        self.length = model_specs['length'].item()
-        self.weight = model_specs[self.material_weight[self.attributes['mat']]].item()
+        self.pallet_qty = specs['pallet_qty']
+        self.length = specs['length']
+        self.weight = specs[weight_column]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__())
             & (self.mat_grps['mat'] == self.attributes['mat']),
@@ -50,15 +60,29 @@ class V(ModelSeries):
         self.tonnage = int(self.attributes['ton'])
         self.is_flex_coil = True if self.attributes.get('rds') else False
         if self.cabinet_config != Cabinet.PAINTED:
-            self.ratings_ac_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
-            self.ratings_hp_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
-            self.ratings_piston = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
-            self.ratings_field_txv = fr"""V,.{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
+            self.ratings_ac_txv = fr"V,.{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"
+            self.ratings_hp_txv = fr"V,.{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}9"
+            self.ratings_piston = fr"V,.{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"
+            self.ratings_field_txv = fr"V,.{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"\
+                fr"\+TXV"
         else:
-            self.ratings_ac_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
-            self.ratings_hp_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}9"""
-            self.ratings_piston = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
-            self.ratings_field_txv = fr"""V(,.){{0,2}},{self.attributes['paint']}(,.){{0,1}}{self.tonnage}H{height_str}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
+            self.ratings_ac_txv = fr"V(,.){{0,2}},{self.attributes['paint']}"\
+                fr"(,.){{0,1}}{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"
+            self.ratings_hp_txv = fr"V(,.){{0,2}},{self.attributes['paint']}"\
+                fr"(,.){{0,1}}{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}9"
+            self.ratings_piston = fr"V(,.){{0,2}},{self.attributes['paint']}"\
+                fr"(,.){{0,1}}{self.tonnage}H{height_str}"\
+                fr"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"
+            self.ratings_field_txv = fr"V(,.){{0,2}},"\
+                fr"{self.attributes['paint']}(,.){{0,1}}{self.tonnage}"\
+                fr"H{height_str}{self.attributes['mat']}"\
+                fr"{self.attributes['scode']}\(1,2\)\+TXV"
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
@@ -70,12 +94,13 @@ class V(ModelSeries):
         return value
     
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(session=self.session)
-        result = pricing_.loc[
-            pricing_['slab'] == int(self.attributes['scode']),
-            self.cabinet_config.name
-            ].item()
-        result += adders_.get(self.attributes['meter'],0)
+        pricing_, adders_ = load_pricing(
+            session=self.session,
+            series=self.__series_name__(),
+            scode=self.attributes['scode'],
+            cabinet=self.cabinet_config.name
+        )
+        result = pricing_ + adders_.get(self.attributes['meter'],0)
         if self.is_flex_coil:
             result += 10
         return result

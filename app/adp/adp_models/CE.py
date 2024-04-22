@@ -24,49 +24,61 @@ class CE(ModelSeries):
     }
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session,re_match)
-        self.specs = ADP_DB.load_df(session=session, table_name='ce_dims')
+        dims_sql = """
+            SELECT adp_model, width, depth, height, length, weight,
+                pallet_qty
+            FROM ce_dims
+            WHERE model = :model ;
+        """
+        params = dict(model=str(self))
+        specs = ADP_DB.execute(session=session, sql=dims_sql,
+                               params=params).mappings().one()
+        specs = {k: v for k,v in specs.items() if v}
         self.configuration = self.ce_configurations[self.attributes['config']]
         self.mat_grp = self.configuration[1]
         self.cabinet_config = Cabinet.PAINTED
         self.metering = self.metering_mapping[int(self.attributes['metering'])]
-        model_specs = self.specs[self.specs['model'] == str(self)]
-        self.pallet_qty = model_specs['pallet_qty'].item()
-        self.width = model_specs['width'].item()
-        self.depth = model_specs['depth'].item()
-        self.weight = model_specs['weight'].item()
-        self.real_model = model_specs['adp_model'].item()
+        self.pallet_qty = specs['pallet_qty']
+        self.height = specs['height']
+        self.width = specs['width']
+        self.weight = specs['weight']
+        self.real_model = specs['adp_model']
         self.tonnage = int(self.attributes['ton'])
         match self.attributes['config']:
             case 'H':
                 from app.adp.adp_models.V import V
-                self.length = model_specs['length'].item()
-                self.height = None
+                self.length = specs['length']
+                self.depth = None
                 real_model_obj = V
             case 'M':
                 from app.adp.adp_models.MH import MH
                 self.length = None
-                self.height = model_specs['height'].item()
+                self.depth = specs['depth']
                 real_model_obj = MH
             case 'P':
                 from app.adp.adp_models.HE import HE
                 self.length = None
-                self.height = model_specs['height'].item()
+                self.depth = specs['depth']
                 real_model_obj = HE
             case 'V':
                 from app.adp.adp_models.HE import HE
                 self.length = None
-                self.height = model_specs['height'].item()
+                self.depth = specs['depth']
                 real_model_obj = HE
             case 'S':
                 from app.adp.adp_models.HH import HH
                 self.length = None
-                self.height = model_specs['height'].item()
+                self.depth = specs['depth']
                 real_model_obj = HH
 
-        self.real_model_obj = Validator(session, self.real_model, real_model_obj).is_model()
+        self.real_model_obj = Validator(session, self.real_model,
+                                        real_model_obj).is_model()
         self.zero_disc_price = self.real_model_obj.calc_zero_disc_price()
-        self.ratings_ac_txv = None
-        self.ratings_hp_txv = None
+        self.ratings_ac_txv = fr"CE\(([P|V|S|H|M],){{1:4}}[P|V|S|H|M]\)"\
+            fr"{self.tonnage}{self.attributes['width_height']}"\
+            fr"{self.attributes['mat']}{self.attributes['scode']}"\
+            fr"{self.metering}"
+        self.ratings_hp_txv = self.ratings_ac_txv
         self.ratings_piston = None
         self.ratings_field_txv = None
                 

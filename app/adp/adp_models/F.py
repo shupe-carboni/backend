@@ -19,13 +19,20 @@ class F(ModelSeries):
         '''
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.specs = ADP_DB.load_df(session=session, table_name='f_dims')
+        self.tonnage = int(self.attributes['ton'])
+        specs_sql = """
+            SELECT height, depth, width, weight
+            FROM f_dims
+            WHERE tonnage = :tonnage;
+        """
+        params = dict(tonnage=self.tonnage)
+        specs = ADP_DB.execute(session=session, sql=specs_sql,
+                               params=params).mappings().one()
         self.min_qty = 4
-        model_specs = self.specs[self.specs['tonnage'] == int(self.attributes['ton'])]
-        self.width = model_specs['width'].item()
-        self.depth = model_specs['depth'].item()
-        self.height = model_specs['height'].item()
-        self.weight = model_specs['weight'].item()
+        self.width = specs['width']
+        self.depth = specs['depth']
+        self.height = specs['height']
+        self.weight = specs['weight']
         self.motor = self.motors[self.attributes['motor']]
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.heat = self.kw_heat[int(self.attributes['heat'])]
@@ -33,7 +40,6 @@ class F(ModelSeries):
             (self.mat_grps['series'] == self.__series_name__())
             & (self.mat_grps['mat'].str.contains(re.sub(r'\d+','',self.attributes['scode']))),
             'mat_grp'].item()
-        self.tonnage = int(self.attributes['ton'])
         s_code = self.attributes['scode']
         self.s_code_mat = s_code[0] if s_code[0] in ('E','G') else s_code[:2]
         self.ratings_ac_txv = fr"""F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}"""
@@ -53,18 +59,20 @@ class F(ModelSeries):
         return value
 
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_= load_pricing(session=self.session)
-        pricing_ = pricing_.loc[
-            (pricing_['slab'].apply(lambda regex: self.regex_match(regex, self.attributes['scode'])))
-            & (pricing_['tonnage'] == int(self.attributes['ton'])),:]
+        pricing_, adders_= load_pricing(
+            session=self.session,
+            slab=self.attributes['scode'],
+            series=self.__series_name__(),
+            ton=self.tonnage
+            )
         heat: str = self.attributes['heat']
         if heat != '00':
             try:
-                result = pricing_[heat].item()
+                result = pricing_[heat]
             except:
                 raise self.NoBasePrice
         else:
-            result = pricing_['base'].item()
+            result = pricing_['base']
         result += adders_.get(self.attributes['voltage'],0)
         if heat == '05' and self.attributes['line_conn'] == 'B':
             result += adders_.get(self.attributes['line_conn'],0)

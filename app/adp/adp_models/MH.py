@@ -15,24 +15,36 @@ class MH(ModelSeries):
         '''
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.specs = ADP_DB.load_df(session=session, table_name='mh_pallet_weight_height')
+        spec_sql = """
+            SELECT "HEIGHT", "WEIGHT", "PALLET_QTY"
+            FROM mh_pallet_weight_height
+            WHERE "SC_1" = :slab;
+        """
+        specs = ADP_DB.execute(
+            session=self.session,
+            sql=spec_sql,
+            params=dict(slab=self.attributes['scode'])
+        ).mappings().one()
         self.cabinet_config = Cabinet.UNCASED
         self.metering = self.metering_mapping[int(self.attributes['meter'])]
         self.material = 'Copper'
         self.width = 18
         self.depth = 19.5
-        model_specs = self.specs[self.specs['SC_1'] == int(self.attributes['scode'])]
-        self.height = model_specs['HEIGHT'].item()
-        self.pallet_qty = model_specs['PALLET_QTY'].item()
-        self.weight = model_specs['WEIGHT'].item()
+        self.height = specs['HEIGHT']
+        self.pallet_qty = specs['PALLET_QTY']
+        self.weight = specs['WEIGHT']
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps['series'] == self.__series_name__()),
             'mat_grp'].item()
         self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"""
-        self.ratings_hp_txv = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}9"""
-        self.ratings_piston = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"""
-        self.ratings_field_txv = fr"""M{self.tonnage}{self.attributes['mat']}{self.attributes['scode']}\(1,2\)\+TXV"""
+        self.ratings_ac_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(6,9\)"
+        self.ratings_hp_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}9"
+        self.ratings_piston = fr"M{self.tonnage}{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(1,2\)"
+        self.ratings_field_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
+            fr"{self.attributes['scode']}\(1,2\)\+TXV"
         self.is_flex_coil = True if self.attributes.get('rds') else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
@@ -43,9 +55,12 @@ class MH(ModelSeries):
         return value
 
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(session=self.session)
-        result = pricing_.loc[pricing_['slab'] == int(self.attributes['scode']),'price'].item()
-        result += adders_.get(self.attributes['meter'], 0)
+        pricing_, adders_ = load_pricing(
+            session=self.session,
+            slab=self.attributes['scode'],
+            series=self.__series_name__()
+        )
+        result = pricing_ + adders_.get(self.attributes['meter'], 0)
         if self.is_flex_coil:
             result += 10
         return result
