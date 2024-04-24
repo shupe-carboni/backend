@@ -9,7 +9,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
 from starlette.routing import Match
 ## Routers ##
-from app import relationships
 from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel
 from app.places import places
@@ -31,20 +30,35 @@ class BotTarpit(BaseHTTPMiddleware):
         for route in app.routes:
             match_, scope = route.matches(request)
             if match_ == Match.FULL or path == '/favicon.ico':
-                if (route.path == '/' and any(request.query_params._dict.keys())):
-                    logging.info('Allowed passthrough of request on the root endpoint')
+                if (
+                    route.path == '/' 
+                    and any(request.query_params._dict.keys())
+                ):
+                    logging.info('Allowed passthrough of request"\
+                                 " on the root endpoint')
                 return await call_next(request)
         host = request.client.host
         await self.trigger_delay(host, path)
-        return Response(status_code=status.HTTP_301_MOVED_PERMANENTLY,content="Sorry, this resource has moved.")
+        return Response(
+            status_code=status.HTTP_301_MOVED_PERMANENTLY,
+            content="Sorry, this resource has moved."
+        )
 
     @staticmethod
     async def trigger_delay(host: str, path: str):
         delay = randint(10,30)
-        logger.info(f'Honeypot triggered by {host} on {path}. Delaying for {delay}s')
+        logger.info(f'Honeypot triggered by {host}"\
+                    " on {path}. Delaying for {delay}s')
         await sleep(delay)
-    
-app = FastAPI()
+
+with open('README.md','r') as read_me:
+    description = read_me.read()
+
+app = FastAPI(
+    title="Shupe Carboni Backend API",
+    version='0.17.0',
+    description=description
+)
 ORIGINS = os.getenv('ORIGINS')
 ORIGINS_REGEX = os.getenv('ORIGINS_REGEX')
 
@@ -76,11 +90,10 @@ app.include_router(vendors_info)
 app.include_router(customers)
 app.include_router(places)
 app.include_router(adp)
-app.include_router(relationships)
 
 @app.get('/')
 async def home():
-    return RedirectResponse('/docs')
+    return RedirectResponse('/redoc')
 
 @app.get('/test-db')
 async def test_db():
