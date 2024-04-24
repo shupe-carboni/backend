@@ -33,7 +33,8 @@ class DownloadIDs:
     @classmethod
     def generate_id(cls, customer_id: int, stage: Stage) -> str:
         value = uuid4()
-        expiry = datetime.now() + timedelta(float(getenv('DL_LINK_DURATION'))*60)
+        duration = timedelta(float(getenv('DL_LINK_DURATION'))*60)
+        expiry = datetime.now() + duration
         request = DownloadRequest(
             customer_id=customer_id,
             stage=stage,
