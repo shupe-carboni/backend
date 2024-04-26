@@ -16,25 +16,18 @@ Permissions set on users registered in Auth0 (i.e. vendors:sca-employee) are del
 #### JSON:API
 Routes and responses follow, as much as reasonably possible, the JSON:API specification.
 
-HTTP requests on resources follow this general format
--	**<span style="color: green">GET</span> /{resource}**
-	- the full collection of objects, unless a filter is applied
--	**<span style="color: green">GET</span> /{resource}/{id}**
-	- a single resource object
--	**<span style="color: magenta">POST</span> /{resource}**
-	- create a single new resource object
--	**<span style="color: yellow">PATCH</span> /{resource}/{id}**
-	- modify a single resource
--	**<span style="color: red">DELETE</span> /{resource}/{id}**
-	- remove a resource
+HTTP requests on resources follow this general format  
+&emsp;**<span style="color: green">GET</span> &emsp; /{resource}** &emsp; the full collection of objects, unless a filter is applied  
+&emsp;**<span style="color: green">GET</span> &emsp; /{resource}/{id}** &emsp; a single resource object  
+&emsp;**<span style="color: magenta">POST</span> &emsp;/{resource}** &emsp; create a single new resource object  
+&emsp;**<span style="color: #FFD700">PATCH</span> &emsp; /{resource}/{id}** &emsp; modify a single resource  
+&emsp;**<span style="color: red">DELETE</span> &emsp; /{resource}/{id}** &emsp; remove a resource  
 
-Relationships between resources are represented in routes that follow these formats
-- 	Related Resource Object
-	-	/{resource}/{id}/{related_resource}
--	Relationship Object
-	-	/{resource}/{id}/relationship/{related_resource}  
+Relationships between resources are represented in routes that follow these formats  
+&emsp;**<span style="color: green">GET</span> /{resource}/{id}/{related_resource}** (Related Resource Object)  
+&emsp;**<span style="color: green">GET</span> /{resource}/{id}/relationship/{related_resource}** (Relationship Object)
 
-*More information on [JSON:API](https://jsonapi.org)*
+*See here for more --> [JSON:API](https://jsonapi.org)*
 
 #### Conceptual example of vendor resources
 Vendor resources start at the top level. Vendors have their own approaches to pricing, definitions for customers (i.e. the entire corporation vs. specific locations), customer payment terms, model numbers, and project quotes. All resources other than "Customers" for any given vendor ought to be understood as related to their "Customers" resource.
@@ -69,7 +62,7 @@ top-level
 |	|	+-- adp-customers
 |	|	+-- adp-customer-terms
 |	|	+-- adp-quotes
-|		+-- ...
+|	|	+-- ...
 +-- Vendors
 |	+-- Vendors	<-- hq location, phone number, contacts, etc.
 |	+-- Info	<-- frieght paid amount, warranty policies - related to "Vendors"
