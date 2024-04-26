@@ -1,4 +1,6 @@
-"""Catch-all for undocumented links"""
+"""Catch-all for undocumented links
+    NOTE: removing from app setup on 2024-04-24.
+    If enough time passes and this isen't needed. DELETE"""
 from fastapi import APIRouter, HTTPException, status
 
 err_desc_template = "{link_type} link {primary}/{id_}/{secondary} has not been implemented"
