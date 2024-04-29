@@ -121,7 +121,6 @@ def extract_ratings_from_sheet(sheet: Worksheet) -> list[Rating]:
                 ratings.append(rating)
             else:
                 continue
-                print(ahri, outdoor, indoor)
 
     return ratings
 
