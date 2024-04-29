@@ -58,7 +58,8 @@ class S3:
         if response.get('HTTPStatusCode') == 200:
             file_data = response.get('Body').read()
             file_content_type: str = response.get('ContentType')
-            file = File(os.path.basename(key), file_mime=file_content_type, file_content=file_data)
+            file = File(os.path.basename(key),
+                        file_mime=file_content_type, file_content=file_data)
             return file
         raise Exception('File Not Found')
 
@@ -74,8 +75,8 @@ class Database:
     }
 
     _connection_url = URL.create('postgresql',**conn_params)
-    # without doing this, the password is not properly passed due to url encoding
-    # when passing the URL object
+    # without doing this, the password is not properly passed
+    # due to url encoding when passing the URL object
     _connection_str = _connection_url.render_as_string(hide_password=False)
     _ENGINE = create_engine(_connection_str)
     _SESSIONLOCAL = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
@@ -84,7 +85,8 @@ class Database:
         self.PREFIX = database_name + "_" if database_name else None
 
     def __str__(self) -> str:
-        return f"<Database obj, connection_path: {self._connection_str}, subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
+        return f"<Database obj, connection_path: {self._connection_str}, "\
+                "subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
 
     def get_db(self):
         session = self._SESSIONLOCAL()
