@@ -30,5 +30,4 @@ def load_pricing(
     adders = dict()
     for adder in adders_:
         adders |= {adder['key']: adder['price']}
-    print(adders)
     return int(pricing), adders
