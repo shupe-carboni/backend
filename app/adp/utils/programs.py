@@ -1,11 +1,13 @@
 from datetime import datetime
 import re
 import pandas as pd
+import logging
 from functools import partial
 from app.adp.adp_models import Fields
 from app.adp.extraction.models import parse_model_string, ParsingModes
 
 from sqlalchemy.orm import Session
+logger = logging.getLogger('uvicorn.info')
 
 def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Series) -> pd.Series:
     """
@@ -280,7 +282,7 @@ class CustomerProgram:
             try:
                 sample = prog._data.loc[prog._data[Fields.SERIES.value] == series, Fields.MODEL_NUMBER.value].sample(n=1)
             except Exception as e:
-                print(f'issue with series {series}: {e}')
+                logger.warning(f'unable to obtain sample from series {series}: {e}')
                 continue
             else:
                 result: str = sample.item()
