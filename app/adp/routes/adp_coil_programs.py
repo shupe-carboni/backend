@@ -16,7 +16,8 @@ from app.jsonapi.sqla_models import serializer, ADPCoilProgram
 from app.jsonapi.core_models import convert_query
 
 ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
-coil_progs = APIRouter(prefix=f'/{ADP_COILS_RESOURCE}', tags=['coils','programs'])
+coil_progs = APIRouter(prefix=f'/{ADP_COILS_RESOURCE}',
+                       tags=['coils','programs'])
 
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.adp_perms_present)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
@@ -84,7 +85,11 @@ def add_to_coil_program(
     """add coil product for a customer"""
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
         model_num = new_coil.attributes.model_number
-        new_id = add_model_to_program(session=session, model=model_num, adp_customer_id=adp_customer_id)
+        new_id = add_model_to_program(
+            session=session,
+            model=model_num,
+            adp_customer_id=adp_customer_id
+        )
         return serializer.get_resource(
             session=session,
             query=converter(CoilProgQuery()),
@@ -114,11 +119,23 @@ def change_product_status(
             PROPOSED -> ACTIVE
             ACTIVE -> REMOVED
     """
-    associated_ids = ADP_DB.load_df(session, 'coil_programs', adp_customer_id, id_only=True).id.to_list()
+    associated_ids = ADP_DB.load_df(
+        session,
+        'coil_programs',
+        adp_customer_id,
+        id_only=True
+    ).id.to_list()
     if new_stage.data.id not in associated_ids or not associated_ids:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Customer ID {adp_customer_id} is not associated with product id {new_stage.data.id}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            f"Customer ID {adp_customer_id} is not associated "
+                            f"with product id {new_stage.data.id}")
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_employee:
-        result = serializer.patch_resource(session=session, json_data=new_stage.model_dump(), api_type=ADP_COILS_RESOURCE, obj_id=new_stage.data.id)
+        result = serializer.patch_resource(
+            session=session,
+            json_data=new_stage.model_dump(),
+            api_type=ADP_COILS_RESOURCE,
+            obj_id=new_stage.data.id
+        )
         return result.data
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
@@ -129,7 +146,12 @@ def permanently_delete_record(
         program_product_id: int,
     ) -> None:
     if token.permissions.get('adp') >= auth.ADPPermPriority.sca_admin:
-        return serializer.delete_resource(session, data={}, api_type=ADP_COILS_RESOURCE, obj_id=program_product_id)
+        return serializer.delete_resource(
+            session,
+            data={},
+            api_type=ADP_COILS_RESOURCE,
+            obj_id=program_product_id
+        )
     else:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
