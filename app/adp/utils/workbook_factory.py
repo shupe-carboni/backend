@@ -77,8 +77,10 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
         pre_paid_freight = footer['ppf'].item()
         effective_date = str(footer['effective_date'].item())
     except:
-        logger.info("footer capture failed")
-        logger.info(alias_name)
+        logger.info(f"footer capture failed for {alias_name}")
+        payment_terms = None
+        pre_paid_freight = None
+        effective_date = '1900-01-01 00:00:00'
     terms = {
         'Payment Terms': {
             'value': payment_terms,
@@ -107,6 +109,8 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
     }
     ## logo_path
     logo_filename = parent_accounts.loc[parent_accounts['id'] == alias_mapping['sca_id'].item(), 'logo'].item()
+    if not logo_filename:
+        logo_filename = ''
     full_logo_path = os.path.join(LOGOS_DIR, logo_filename)
     return CustomerProgram(
             customer_id=customer_id,
@@ -174,7 +178,7 @@ def generate_program(
         try:
             update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
         except Exception as e:
-            logger.warning('File Generation dates unable to be updated'
+            logger.warning('File Generation dates unable to be updated '
                            f'due to an error: {e}')
         return new_program_file
 
@@ -185,6 +189,7 @@ def update_dates_in_tables(
     ) -> None:
     coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer_id IN :customers;""" for table in tables]
     params = {"customers": (customer_id,), "date": TODAY}
-    with session.begin():
+    with session:
         for q in coil_update_q, ah_update_q:
             ADP_DB.execute(session, q, params)
+        session.commit()
