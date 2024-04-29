@@ -23,7 +23,7 @@ class InvalidParsingMode(Exception): ...
 def add_model_to_program(session: Session, adp_customer_id: int, model: str) -> int:
     record_series = parse_model_string(session, adp_customer_id, model, ParsingModes.CUSTOMER_PRICING)
     record_series['stage'] = Stage.PROPOSED.name
-    with session.begin():
+    with session:
         return separate_by_product_type_and_commit_to_db(session=session, data=record_series)
     
 def parse_model_string(session: Session, adp_customer_id: int, model: str, mode: ParsingModes) -> pd.Series:
@@ -144,6 +144,7 @@ def separate_by_product_type_and_commit_to_db(session: Session, data: pd.Series)
             VALUES ({','.join(vals)})
             RETURNING id;"""
     new_id = ADP_DB.execute(session=session, sql=sql, params=dict(columns=cols, values=vals)).fetchone()[0]
+    session.commit()
     return new_id
 
 def reprice_programs(session: Session) -> None:
