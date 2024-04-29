@@ -42,6 +42,7 @@ class AnchorPosition:
 class Logo:
     def __init__(
             self,
+            name: str,
             img_path: str,
             price_pos: AnchorPosition,
             ratings_pos: AnchorPosition,
@@ -50,6 +51,7 @@ class Logo:
             nomen_med_pos: AnchorPosition,
             nomen_short_pos: AnchorPosition
         ) -> None:
+        self.name = name
         self.img_path = img_path
         self.price_pos = price_pos
         self.ratings_pos = ratings_pos
@@ -57,6 +59,9 @@ class Logo:
         self.nomen_long_pos = nomen_long_pos
         self.nomen_med_pos = nomen_med_pos
         self.nomen_short_pos = nomen_short_pos
+    
+    def __str__(self) -> str:
+        return self.name
     
     def create_image(self, sheet_type: str) -> Image:
         """Images must be created fresh in every addition.
@@ -139,6 +144,7 @@ class PriceBook:
         self.active = self._9_col_template
         self.cursor = Cursor()
         adp_logo = Logo(
+            name='ADP Logo',
             img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
             price_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
@@ -148,6 +154,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
         sca_logo = Logo(
+            name='SCA Logo',
             img_path=os.path.join(STATIC_DIR,'sca-logo.png'),
             price_pos=AnchorPosition("J1", offset_x=200, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
@@ -157,6 +164,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("F1", offset_x=100, offset_y=0),
         )
         customer_logo = Logo(
+            name='Customer Logo',
             img_path=program.logo_path,
             price_pos=AnchorPosition("A2", offset_x=10, offset_y=0),
             parts_pos=AnchorPosition("A2", offset_x=10, offset_y=0),
@@ -214,8 +222,11 @@ class PriceBook:
         self.active = new_sheet
         if include_logos:
             for logo in self.logos:
-                logo_img = logo.create_image(sheet_type=sheet_type)
-                self.active.add_image(logo_img, logo_img.anchor)
+                try:
+                    logo_img = logo.create_image(sheet_type=sheet_type)
+                    self.active.add_image(logo_img, logo_img.anchor)
+                except Exception as e:
+                    logger.warning(f'Logo insertion failed for {logo}: {e}')
         self.active.sheet_view.showGridLines = False
         self.cursor.move_to(1,1)
         return self
@@ -386,8 +397,8 @@ class PriceBook:
             self.active_wb.save(file_obj)
         except IndexError as e:
             import traceback as tb
-            print(f"file empty on save for {self.program.customer_name}")
-            print(tb.format_exc())
+            logger.critical(f"file empty on save for {self.program.customer_name}")
+            logger.critical(tb.format_exc())
             raise FileGenExecption
         finally:
             self.template_wb.close()
