@@ -9,9 +9,10 @@ from app.jsonapi.core_models import (
     Pagination,
     Query,
 )
+from app.jsonapi.sqla_models import SCACustomer
 
 class CustomerResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "customers"
+    type: str = SCACustomer.__jsonapi_type_override__
 
 class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[CustomerResourceIdentifier]|CustomerResourceIdentifier
@@ -64,14 +65,34 @@ class RelatedCustomerResponse(CustomerResponse):
 
 _CustomerQuery: type[BaseModel] = create_model(
     'CustomerQuery',
-    **{field: (field_info.annotation, field_info) for field, field_info in Query.model_fields.items()},
+    **{field: (field_info.annotation, field_info)
+       for field, field_info in Query.model_fields.items()},
     **{f"fields_customers":(Optional[str], None)},
-    **{f"fields_{field}":(Optional[str], None) for field in CustomerRelationships.model_fields.keys()},
-    **{f"filter_{field}":(Optional[str], None) for field in CustomerAttributes.model_fields.keys()},
+    **{f"fields_{field}":(Optional[str], None)
+       for field in CustomerRelationships.model_fields.keys()},
+    **{f"filter_{field}":(Optional[str], None)
+       for field in CustomerAttributes.model_fields.keys()},
 )
-class CustomerQuery(_CustomerQuery, BaseModel):
-    ...
 
-class CustomerQueryJSONAPI(CustomerFilterSelector, CustomerRelationshipsFieldsSelectors, Query):
+class CustomerQuery(_CustomerQuery, BaseModel): ...
+
+class CustomerQueryJSONAPI(CustomerFilterSelector,
+                           CustomerRelationshipsFieldsSelectors, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+class NewCustomerRObj(BaseModel):
+    type: str = SCACustomer.__jsonapi_type_override__
+    attributes: CustomerAttributes
+
+class NewCustomer(BaseModel):
+    data: NewCustomerRObj
+
+class ModCustomerRObj(BaseModel):
+    id: int
+    type: str = SCACustomer.__jsonapi_type_override__
+    attributes: CustomerAttributes
+    relationships: CustomerRelationships
+
+class ModCustomer(BaseModel):
+    data: ModCustomerRObj
