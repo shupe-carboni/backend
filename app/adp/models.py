@@ -1,5 +1,7 @@
 
-from pydantic import BaseModel, Field, create_model, model_validator, ConfigDict
+from pydantic import (
+    BaseModel, Field, create_model, model_validator, ConfigDict
+)
 from typing import Optional
 from datetime import datetime
 from app.jsonapi.core_models import (
