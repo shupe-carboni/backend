@@ -48,7 +48,7 @@ class BotTarpit(BaseHTTPMiddleware):
     async def trigger_delay(host: str, path: str):
         delay = randint(10,30)
         logger.info(f"{host} - {path} -  Honeypot triggered."
-                    " Delaying for {delay}s")
+                    f" Delaying for {delay}s")
         await sleep(delay)
 
 with open('README.md','r') as read_me:
