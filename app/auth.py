@@ -113,7 +113,7 @@ class VerifiedToken(BaseModel):
         other_sha_256 = sha256(other_b).digest()
         return bcrypt.checkpw(other_sha_256, self.token)
 
-    def perm_level(self, resource) -> bool:
+    def perm_level(self, resource) -> int:
         if perm := self.permissions.get(resource, None):
             return perm.value
         else:
