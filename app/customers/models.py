@@ -88,11 +88,21 @@ class NewCustomerRObj(BaseModel):
 class NewCustomer(BaseModel):
     data: NewCustomerRObj
 
+class CustomerModLogoAttr(BaseModel):
+    logo: str
+
 class ModCustomerRObj(BaseModel):
     id: int
     type: str = SCACustomer.__jsonapi_type_override__
-    attributes: CustomerAttributes
-    relationships: CustomerRelationships
+    attributes: CustomerAttributes|CustomerModLogoAttr
+    relationships: Optional[CustomerRelationships] = {}
 
 class ModCustomer(BaseModel):
     data: ModCustomerRObj
+
+class CMMSSNSCustomer(BaseModel):
+    id: int
+    name: str
+
+class CMMSSNSCustomers(BaseModel):
+    data: list[CMMSSNSCustomer]
