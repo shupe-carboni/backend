@@ -2,7 +2,7 @@ from dotenv import load_dotenv; load_dotenv()
 import re
 import os
 import boto3
-import botocore
+import asyncio
 from dataclasses import dataclass
 from io import BytesIO
 from enum import StrEnum, auto
@@ -40,8 +40,9 @@ class S3:
         aws_access_key_id=os.getenv('AWS_ACCESS_ID'),
         aws_secret_access_key=os.getenv('AWS_SECRET_KEY')
     )
+
     @classmethod
-    def upload_file(cls, file: File, destination: str) -> None:
+    def _sync_upload_file(cls, file: File, destination: str) -> None:
         try:
             cls.client.put_object(
                 Body=file.file_content,
@@ -53,7 +54,15 @@ class S3:
             raise Exception(f'upload failed: {e}')
 
     @classmethod
-    def get_file(cls ,key: str) -> File:
+    async def upload_file(cls, file: File, destination: str) -> None:
+        return await asyncio.to_thread(
+            cls._sync_upload_file,
+            file,
+            destination
+        )
+
+    @classmethod
+    def get_file(cls, key: str) -> File:
         response: dict = cls.client.get_object(Bucket=cls.bucket, Key=key)
         if response.get('HTTPStatusCode') == 200:
             file_data = response.get('Body').read()
@@ -79,7 +88,8 @@ class Database:
     # due to url encoding when passing the URL object
     _connection_str = _connection_url.render_as_string(hide_password=False)
     _ENGINE = create_engine(_connection_str)
-    _SESSIONLOCAL = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
+    _SESSIONLOCAL = sessionmaker(bind=_ENGINE, autoflush=False, 
+                                 autocommit=False)
 
     def __init__(self, database_name: str='') -> None:
         self.PREFIX = database_name + "_" if database_name else None
@@ -107,7 +117,12 @@ class Database:
             if_exists: str='append'
         ) -> None:
         full_table_name = self.full_table_name(table_name)
-        data.to_sql(full_table_name, con=session.get_bind(), if_exists=if_exists, index=False)
+        data.to_sql(
+            full_table_name,
+            con=session.get_bind(),
+            if_exists=if_exists,
+            index=False
+        )
         if primary_key and if_exists == 'replace':
             sql = f"""
                     ALTER TABLE {full_table_name}
@@ -144,8 +159,17 @@ class Database:
             params: Iterable[dict|str|int|None]=None
         ) -> Result:
         ## add prefix to custom query table_name
-        substitution = lambda match: match.group(0).replace(match.group(1), f'{self.PREFIX}{match.group(1)}')
-        sql = re.sub(r'(?:FROM|UPDATE|INSERT INTO|TABLE)\s+([^\s,;]+)', substitution, sql, count=1)
+        substitution = (
+            lambda match:
+            match.group(0).replace(match.group(1), 
+                                   f'{self.PREFIX}{match.group(1)}')
+        )
+        sql = re.sub(
+            r'(?:FROM|UPDATE|INSERT INTO|TABLE)\s+([^\s,;]+)',
+            substitution,
+            sql,
+            count=1
+        )
         return session.execute(text(sql),params=params)
     
     def test(self, session: Session) -> str:
@@ -156,13 +180,21 @@ class Database:
             self,
             session: Session,
             email_address: str,
-            select_type: Literal['customer_std','customer_manager','customer_admin']
+            select_type: Literal[
+                'customer_std',
+                'customer_manager',
+                'customer_admin']
         ) -> list[int]:
-        """Using select statements, get the customer location ids that will be permitted for view
+        """Using select statements, get the customer location ids that 
+            will be permitted for view
             select_type:
-                * user - get only the customer location associated with the user. which ought to be 1 id
-                * manager - get customer locations associated with all mapped branches in the sca_manager_map table
-                * admin - get all customer locations associated with the customer id associated with the location associated to the user.:W
+                * user - get only the customer location associated with
+                    the user. which ought to be 1 id
+                * manager - get customer locations associated with all
+                    mapped branches in the sca_manager_map table
+                * admin - get all customer locations associated with the
+                    customer id associated with the location associated 
+                    to the user.
         """
         user_type = UserTypes[select_type]
         sql_user_only = """
@@ -193,7 +225,8 @@ class Database:
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
-                JOIN sca_customer_locations customer_loc ON u.customer_location_id = customer_loc.id
+                JOIN sca_customer_locations customer_loc
+                ON u.customer_location_id = customer_loc.id
                 WHERE u.email = :user_email
                 AND customer_loc.customer_id = scl.customer_id
             );
@@ -211,7 +244,10 @@ class Database:
                 raise Exception('invalid select_type')
         
         for sql in query_set:
-            result = session.scalars(text(sql), params={'user_email': email_address}).all() 
+            result = session.scalars(
+                text(sql),
+                params={'user_email': email_address}
+            ).all() 
             if result:
                 return result
         return []
