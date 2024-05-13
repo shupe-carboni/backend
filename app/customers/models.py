@@ -1,5 +1,8 @@
-from pydantic import BaseModel, Field, create_model, ConfigDict
-from typing import Optional
+from pydantic import (
+    BaseModel, Field, create_model,
+    ConfigDict, StringConstraints
+)
+from typing import Optional, Annotated
 from app.jsonapi.core_models import (
     JSONAPIVersion,
     JSONAPIResourceIdentifier,
@@ -22,7 +25,10 @@ class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class CustomerAttributes(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    name: str
+    name: Annotated[str, StringConstraints(
+        to_upper=True,
+        strip_whitespace=True
+    )]
     domains: Optional[list[str]] = None
     logo: Optional[str] = None
     buying_group: Optional[str] = Field(default=None, alias='buying-group')
@@ -31,20 +37,26 @@ class CustomerFilterSelector(BaseModel):
     filter_name: str = Field(default=None, alias='filter[name]')
     filter_domains: str = Field(default=None, alias='filter[domains]')
     filter_logo: str = Field(default=None, alias='filter[logo]')
-    filter_buying_group: str = Field(default=None, alias='filter[buying-group]')
+    filter_buying_group: str = Field(default=None,
+                                     alias='filter[buying-group]')
 
 # Schema
 class CustomerRelationships(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    customer_locations: JSONAPIRelationships = Field(alias='customer-locations')
+    customer_locations: JSONAPIRelationships = Field(
+        alias='customer-locations')
     adp_customers: JSONAPIRelationships = Field(alias='adp-customers')
-    adp_customer_terms: JSONAPIRelationships = Field(alias='adp-customer-terms') 
+    adp_customer_terms: JSONAPIRelationships = Field(
+        alias='adp-customer-terms') 
 
 class CustomerRelationshipsFieldsSelectors(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_customer_locations: str = Field(default=None, alias='fields[customer-locations]')
-    fields_adp_customers: str = Field(default=None, alias='fields[adp-customers]')
-    fields_adp_customer_terms: str = Field(default=None, alias='fields[adp-customer-terms]')
+    fields_customer_locations: str = Field(default=None,
+                                           alias='fields[customer-locations]')
+    fields_adp_customers: str = Field(default=None,
+                                      alias='fields[adp-customers]')
+    fields_adp_customer_terms: str = Field(default=None,
+                                           alias='fields[adp-customer-terms]')
 
 class CustomerResourceObject(CustomerResourceIdentifier):
     attributes: CustomerAttributes
@@ -82,6 +94,7 @@ class CustomerQueryJSONAPI(CustomerFilterSelector,
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 class NewCustomerRObj(BaseModel):
+    id: Optional[int] = None
     type: str = SCACustomer.__jsonapi_type_override__
     attributes: CustomerAttributes
 
@@ -100,9 +113,28 @@ class ModCustomerRObj(BaseModel):
 class ModCustomer(BaseModel):
     data: ModCustomerRObj
 
-class CMMSSNSCustomer(BaseModel):
+class CMMSSNSCustomerSearchResult(BaseModel):
     id: int
     name: str
 
-class CMMSSNSCustomers(BaseModel):
-    data: list[CMMSSNSCustomer]
+class CMMSSNSCustomerResults(BaseModel):
+    data: list[CMMSSNSCustomerSearchResult]
+
+class NewCMMSSNSCustomerAttrs(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    name: str
+
+class NewCMMSSNSCustomerObj(BaseModel):
+    type: str = 'customers'
+    attributes: NewCMMSSNSCustomerAttrs
+class NewCMMSSNSCustomerObjwID(NewCMMSSNSCustomerObj):
+    id: int
+
+class NewCMMSSNSCustomer(BaseModel):
+    data: NewCMMSSNSCustomerObj
+
+class CMMSSNSCustomerResp(BaseModel):
+    jsonapi: dict[str, str]
+    meta: dict[str, str]
+    included: list = []
+    data: NewCMMSSNSCustomerObjwID

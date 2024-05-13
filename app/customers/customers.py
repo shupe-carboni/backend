@@ -1,8 +1,16 @@
+"""
+Customer Routes
+    TODO: Implement Customer Deletion
+    NOTE: These customers are tied in with customer entites in CMMSSNS.
+          Those customers' id's are used to maintain consistency.
+          If a customer is deleted here, only an sca_admin may opt to 
+          reach into the CMMSSNS service and delete it there as well.
+"""
 from typing import Annotated
 from os import getenv
 from time import sleep
 from dataclasses import dataclass
-from requests import get, post, patch, delete
+from requests import get, post, delete
 from fastapi import Depends, HTTPException, status, UploadFile
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
@@ -10,7 +18,8 @@ from sqlalchemy.orm import Session
 from app import auth
 from app.customers.models import (
     CustomerQuery, CustomerResponse, CustomerQueryJSONAPI,
-    NewCustomer, ModCustomer, CMMSSNSCustomers
+    NewCustomer, ModCustomer, CMMSSNSCustomerResults, NewCMMSSNSCustomer,
+    CMMSSNSCustomerResp
 )
 from app.db.db import SCA_DB, S3, File
 from app.jsonapi.sqla_models import SCACustomer, serializer
@@ -84,12 +93,12 @@ async def customer_collection(
 
 @customers.get(
         '/cmmssns-customers',
-        response_model=CMMSSNSCustomers
+        response_model=CMMSSNSCustomerResults
     )
 async def cmmssns_customers(
         token: CustomersPerm,
         search_term: str
-    ) -> CMMSSNSCustomers:
+    ) -> CMMSSNSCustomerResults:
     """
         Special endpoint for querying a protected endpoint on 
         another service. The intent is to allow the user to perform a 
@@ -107,7 +116,7 @@ async def cmmssns_customers(
         resp = get(url=url, headers=CMMSSNSToken.auth_header())
         if resp.status_code != 200:
             raise HTTPException(resp.status_code, resp.text)
-        return CMMSSNSCustomers(data=resp.json())
+        return CMMSSNSCustomerResults(data=resp.json())
     return HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 @customers.get(
@@ -132,22 +141,21 @@ async def customer(
         obj_id=customer_id
     )
 
-# TODO
-"""
-    1. when a customer is added, call out to the CMMSSNS API to either 
-        send back or generate a customer id. (HALF DONE)
-    2. When creating a new customer loction, POST that to the CMMSSNS
-        application.
-        - if CMMSSNS creates a new branch, should it be sent down or
-        is it on this application to check for it first?
-    3. For each applicable vendor, make a record in respective
-        customer tables for those vendors as well as mapping tables to 
-        branches (at least one).
-    4. Add ancillary required records (i.e. customer payment tems, 
-      logo file, special prepaid frieght terms, etc.)
-    5. If files are required (i.e. images), upload them. (DONE)
-"""
-
+def new_cmmssns_customer(
+        new_customer: NewCMMSSNSCustomer) -> CMMSSNSCustomerResp:
+    """
+        Make a POST request to the CMMSSNS API to create a new customer
+        under the Shupe Carboni Account. The token's permissions comes 
+        with an admin scope via 'admin:shupecarboni.com' in the scopes
+        claim, which means no user account is required and we don't have 
+        to know the user id in that service.
+    """
+    url = CMMSSNS_URL + 'customers'
+    resp = post(url=url, json=new_customer.model_dump(),
+                headers=CMMSSNSToken.auth_header())
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, resp.text)
+    return CMMSSNSCustomerResp(**resp.json())
 
 @customers.post(
         '',
@@ -158,7 +166,7 @@ async def customer(
 async def new_customer(
         session: NewSession,
         token: CustomersPerm,
-        new_customer: NewCustomer
+        new_customer: NewCustomer,
     ) -> CustomerResponse:
     """
         Creates a new customer.
@@ -168,10 +176,27 @@ async def new_customer(
             call out to the CMMSSNS service to create
             a new customer entity and use the id returned.
     """
+    create_new_entity = not bool(new_customer.data.id)
     customer_perm = token.permissions.get('customers')
     authorized = customer_perm >= auth.CustomersPermPriority.sca_employee
     if authorized:
-        ...
+        if create_new_entity:
+            cmmssns_customer = new_cmmssns_customer(
+                new_customer=NewCMMSSNSCustomer(
+                    data={
+                        'attributes': {
+                            'name': new_customer.data.attributes.name
+                        }
+                    }
+                )
+            )
+            new_customer.data.id = cmmssns_customer.data.id
+        result = serializer.post_collection(
+            session=session,
+            data=new_customer.model_dump(exclude_none=True),
+            api_type=SCACustomer.__jsonapi_type_override__
+        )
+        return result.data
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 @customers.patch(
