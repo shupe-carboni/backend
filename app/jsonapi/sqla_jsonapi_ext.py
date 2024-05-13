@@ -2,13 +2,13 @@ from os import getenv
 from dotenv import load_dotenv; load_dotenv()
 import functools
 import re
-import json
 import warnings
+from typing import Any
 from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
 from starlette.requests import QueryParams
 from starlette.datastructures import QueryParams
-from fastapi import Response, HTTPException
+from fastapi import HTTPException
 from sqlalchemy import or_, func, inspect
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import (
@@ -25,14 +25,18 @@ from sqlalchemy_jsonapi.serializer import (
     RelationshipActions, MANYTOONE
 )
 class SQLAlchemyModel:
-    """This class is for typing, so that the linter recognizes my custom methods on 
-        SQLAlchemy Base models"""
+    """This class is for typing, so that the linter recognizes 
+        my custom methods on SQLAlchemy Base models"""
     __tablename__: str
     __jsonapi_type_override__: str
     __jsonapi_map_to_py__: dict[str,str]
-    def apply_customer_location_filtering(q: sqlQuery, ids: list[int]=None) -> sqlQuery:
-        ...
 
+    def apply_customer_location_filtering(
+            q: sqlQuery, 
+            ids: list[int]=None
+        ) -> sqlQuery: ...
+
+GenericData = dict[str, dict[str, Any] | list[dict[str, Any]]]
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300
@@ -49,16 +53,19 @@ def convert_query(model: BaseModel) -> dict[str,str|int]:
         val: str
         if b_param := set(param.split('_')) & bracketed_params:
             b_param_val = b_param.pop()
-            new_key = f"{b_param_val}[{param.removeprefix(b_param_val+'_').replace('_','-')}]"
+            new_key = f"{b_param_val}"\
+                f"[{param.removeprefix(b_param_val+'_').replace('_','-')}]"
             jsonapi_query.update({new_key: val})
         else:
             jsonapi_query.update({param: val})
     return jsonapi_query
 
 def format_error(error: BaseError, tb: str) -> dict:
-    """format the error for raises an HTTPException so FastAPI can handle it properly"""
+    """format the error for raises an HTTPException 
+        so FastAPI can handle it properly"""
     data: dict = error.data
-    status_code: int = error.status_code #subclass of BaseError actually raised will have this attr
+    # subclass of BaseError actually raised will have this attr
+    status_code: int = error.status_code
     data["errors"][0]["id"] = str(data["errors"][0]["id"])
     data["errors"][0]["traceback"] = tb
     return {"status_code": status_code, "detail": data}
@@ -74,14 +81,16 @@ class JSONAPI_(JSONAPI):
         as well as pagination links
 
     get_collection is a copy of JSONAPI's same method, but with new
-        logic spliced in to handle filtering arguments, add pagination metadata and links,
-        and apply a default sorting pattern if a sort argument is not applied.
+        logic spliced in to handle filtering arguments, 
+        add pagination metadata and links, and apply a default
+        sorting pattern if a sort argument is not applied.
 
-    _filter_deleted filters for null values in a hard-coded "deleted" column
+    _filter_deleted filters for null values in 
+        a hard-coded "deleted" column
 
     __init__  copies the base.registry._class_registry
-        attribute under a new attribute named _decl_class_registry so that
-        the underlying constructor will work
+        attribute under a new attribute named _decl_class_registry
+        so that the underlying constructor will work
     """
 
     def __init__(self, base, prefix=''):
@@ -101,15 +110,25 @@ class JSONAPI_(JSONAPI):
             return query_params
 
     @staticmethod
-    def _apply_filter(model: SQLAlchemyModel, sqla_query_obj: sqlQuery, query_params: dict):
+    def _apply_filter(model: SQLAlchemyModel, sqla_query_obj: sqlQuery, 
+                      query_params: dict) -> sqlQuery:
         """
         handler for filter parameters in the query string
         for any value or list of values, this filter is permissive,
-        looking for a substring anywhere in the field value that matches the arguement(s)
-        Roughly equivalent to SELECT field FROM table WHERE field LIKE '%value_1% OR LIKE '%value_2%'
+        looking for a substring anywhere in the field value that 
+        matches the arguement(s).
+        Roughly equivalent to
+            SELECT field 
+            FROM table 
+            WHERE field LIKE '%value_1% 
+            OR LIKE '%value_2%';
         """
         filter_param = re.compile(r'^filter\[([^\[\]]+)\]$')
-        filters: list[tuple[str,str]] = [(filter_param.match(key).group(1), query_params[key]) for key in query_params.keys() if filter_param.match(key)]
+        filters: list[tuple[str,str]] = [
+            (filter_param.match(key).group(1), query_params[key])
+            for key in query_params.keys() 
+            if filter_param.match(key)
+        ]
         filter_query_args = []
         for field, value in filters:
             field_py = model.__jsonapi_map_to_py__[field]
@@ -118,12 +137,18 @@ class JSONAPI_(JSONAPI):
                     or_(model_attr.like('%'+value+'%'))
                     )
             else:
-                warnings.warn(f"Warning: filter field {field} with value {value} was ignored.")
-        return sqla_query_obj.filter(*filter_query_args) if filter_query_args else sqla_query_obj
+                warnings.warn(f"Warning: filter field {field} "
+                              "with value {value} was ignored.")
+        return (
+            sqla_query_obj.filter(*filter_query_args)
+            if filter_query_args 
+            else sqla_query_obj
+        )
 
 
     @staticmethod
-    def _filter_deleted(model: SQLAlchemyModel, sqla_query_obj: sqlQuery):
+    def _filter_deleted(model: SQLAlchemyModel,
+                        sqla_query_obj: sqlQuery) -> sqlQuery:
         """
         The 'deleted' column signals a soft delete.
         While soft deleting preserves reference integrity,
@@ -136,7 +161,13 @@ class JSONAPI_(JSONAPI):
             return sqla_query_obj
 
 
-    def _add_pagination(self, query: dict, db: Session, resource_name: str, sa_query: sqlQuery) -> tuple[dict, dict]:
+    def _add_pagination(
+            self,
+            query: dict,
+            db: Session,
+            resource_name: str,
+            sa_query: sqlQuery
+        ) -> tuple[dict, dict]:
         size = MAX_PAGE_SIZE
         offset = 0
 
@@ -157,7 +188,11 @@ class JSONAPI_(JSONAPI):
 
             def return_disabled_pagination(self):
                 if row_count > MAX_RECORDS:
-                    raise HTTPException(status_code=400, detail=f"This request attempted to retrieve {row_count:,} records to be retrieved exceeded the allowed maxiumum: {MAX_RECORDS:,}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"This request attempted to retrieve "
+                        f"{row_count:,}, exceeding the allowed maxiumum: "
+                        f"{MAX_RECORDS:,}")
                 return self.result
             
             def return_one_page(self, link):
@@ -182,24 +217,38 @@ class JSONAPI_(JSONAPI):
         row_count: int = db.execute(sa_query.statement).fetchone()[0]
         if row_count == 0:
             return NoPagination(query, row_count).return_zero_page()
-        passed_args = {k[5:-1]: str(v) for k, v in query.items() if k.startswith('page[')}
-        link_template = "/{resource_name}?page_number={page_num}&page_size={page_size}" # defaulting to number-size
+        passed_args = {
+            k[5:-1]: str(v)
+            for k, v in query.items()
+            if k.startswith('page[')
+        }
+        link_template = "/{resource_name}"\
+                        "?page_number={page_num}"\
+                        "&page_size={page_size}" # defaulting to number-size
         if passed_args:
             if {'number', 'size'} == set(passed_args.keys()):
                 number = int(passed_args['number'])
                 if number == 0:
-                    return NoPagination(query, row_count).return_disabled_pagination() 
+                    return NoPagination(
+                            query,
+                            row_count
+                        ).return_disabled_pagination() 
                 size = min(int(passed_args['size']), MAX_PAGE_SIZE)
                 offset = (number-1) * size
             elif {'limit', 'offset'} == set(passed_args.keys()):
                 offset = int(passed_args['offset'])
                 limit = int(passed_args['limit'])
                 size = min(limit, MAX_PAGE_SIZE)
-                link_template = "/{resource_name}?page_offset={offset}&page_limit={limit}"
+                link_template = "/{resource_name}"\
+                                "?page_offset={offset}"\
+                                "&page_limit={limit}"
             elif {'number'} == set(passed_args.keys()): 
                 number = int(passed_args['number'])
                 if number == 0:
-                    return NoPagination(query, row_count).return_disabled_pagination() 
+                    return NoPagination(
+                        query,
+                        row_count
+                    ).return_disabled_pagination() 
                 size = MAX_PAGE_SIZE
                 offset = (number-1) * size
             elif {'size'} == set(passed_args.keys()):
@@ -214,7 +263,10 @@ class JSONAPI_(JSONAPI):
                 'page_num': 1,
                 'page_size': size,
             }
-            return NoPagination(query=query, row_count=row_count).return_one_page(link=link_template.format(**link_args))
+            return NoPagination(
+                query=query,
+                row_count=row_count
+            ).return_one_page(link=link_template.format(**link_args))
         else:
             current_page = (offset // size) + 1
             first_page = 1
@@ -241,15 +293,25 @@ class JSONAPI_(JSONAPI):
                     if page_val is not None
                 }
                 query.update({
-                    "page[number]": str(current_page-1), # NOTE: This fix feels really wrong .. but it's working. Results start on 2nd item without it.
+                    # NOTE: This fix feels really wrong .. but it's working. 
+                    #       Results start on 2nd item without it.
+                    "page[number]": str(current_page-1), 
                     "page[size]": str(size)
                 })
             else:
                 offsets = {
                     "first": 0,
                     "last": (total_pages - 1) * size,
-                    "next": (next_page - 1) * size if next_page is not None else None,
-                    "prev": (prev_page - 1) * size if prev_page is not None else None
+                    "next": (
+                        (next_page - 1) * size 
+                        if next_page is not None 
+                        else None
+                    ),
+                    "prev": (
+                        (prev_page - 1) * size
+                        if prev_page is not None 
+                        else None
+                    )
                 }
                 links = {
                     link_name: link_template.format(
@@ -276,7 +338,13 @@ class JSONAPI_(JSONAPI):
         return result_addition
 
 
-    def get_collection(self, session: Session, query: dict[str, str], api_type: str, permitted_ids: list[int]=None):
+    def get_collection(
+            self,
+            session: Session,
+            query: dict[str,str], 
+            api_type: str,
+            permitted_ids: list[int]=None
+        ) -> GenericData:
         """
         Fetch a collection of resources of a specified type.
 
@@ -284,10 +352,10 @@ class JSONAPI_(JSONAPI):
         :param query: Dict of query args
         :param api_type: The type of the model
 
-        Override of JSONAPI get_collection - adding filter parameter handling
-        after instantation of session.query on the 'model'
+        Override of JSONAPI get_collection - adding filter 
+            parameter handling after instantation of 
+            session.query on the 'model'
         """
-        # query = convert_query(query)
         model: SQLAlchemyModel = self._fetch_model(api_type=api_type)
         include = self._parse_include(query.get('include', '').split(','))
         fields = self._parse_fields(query)
@@ -302,16 +370,28 @@ class JSONAPI_(JSONAPI):
         collection = self._apply_filter(model, collection, query)
         collection = self._filter_deleted(model, collection)
 
-        # for pagination, use count query instead of pulling in all of the data just for a row count
+        # for pagination, use count query instead of pulling in all 
+        #   of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
-        collection_count = self._apply_filter(model, collection_count, query_params=query)
+        collection_count = self._apply_filter(model, collection_count,
+                                              query_params=query)
         collection_count = self._filter_deleted(model, collection_count)
         
         # apply customer-location based filtering
         if permitted_ids:
-            collection = model.apply_customer_location_filtering(collection, permitted_ids)
-            collection_count = model.apply_customer_location_filtering(collection_count, permitted_ids)
-        pagination_meta_and_links = self._add_pagination(query, session, api_type, collection_count)
+            collection = model.apply_customer_location_filtering(
+                collection, permitted_ids
+            )
+            collection_count = model.apply_customer_location_filtering(
+                collection_count,
+                permitted_ids
+            )
+        pagination_meta_and_links = self._add_pagination(
+            query,
+            session,
+            api_type,
+            collection_count
+        )
 
         for attr in sorts:
             if attr == '':
@@ -382,7 +462,7 @@ class JSONAPI_(JSONAPI):
             obj_id: int,
             obj_only: bool=False,
             permitted_ids: list[int]=None
-        ) -> JSONAPIResponse | dict:
+        ) -> JSONAPIResponse | GenericData:
         """
         Fetch a resource.
 
@@ -422,7 +502,8 @@ class JSONAPI_(JSONAPI):
         """
         Fetch a collection of related resources.
 
-        Customization to allow passing of permitted id numbers to _fetch_resource()
+        Customization to allow passing of permitted id 
+            numbers to _fetch_resource()
 
         :param session: SQLAlchemy session
         :param query: Dict of query args
@@ -430,20 +511,28 @@ class JSONAPI_(JSONAPI):
         :param obj_id: ID of the resource
         :param rel_key: Key of the relationship to fetch
         """
-        resource: SQLAlchemyModel = self._fetch_resource(session, api_type, obj_id,
-                                        Permissions.VIEW, permitted_ids)
+        resource: SQLAlchemyModel = self._fetch_resource(
+            session, 
+            api_type, 
+            obj_id,
+            Permissions.VIEW, 
+            permitted_ids
+        )
         if rel_key not in resource.__jsonapi_map_to_py__.keys():
             raise RelationshipNotFoundError(resource, resource, rel_key)
         py_key = resource.__jsonapi_map_to_py__[rel_key]
-        relationship = self._get_relationship(resource, py_key, Permissions.VIEW)
+        relationship = self._get_relationship(resource, py_key,
+                                              Permissions.VIEW)
         response = JSONAPIResponse()
-        related = get_rel_desc(resource, relationship.key, RelationshipActions.GET)(resource)
+        related = get_rel_desc(resource, relationship.key,
+                               RelationshipActions.GET)(resource)
         if relationship.direction == MANYTOONE:
             try:
                 if related is None:
                     response.data['data'] = None
                 else:
-                    response.data['data'] = self._render_full_resource(related, {}, {})
+                    response.data['data'] = self._render_full_resource(related, 
+                                                                       {}, {})
             except PermissionDeniedError:
                 response.data['data'] = None
         else:
@@ -465,7 +554,7 @@ class JSONAPI_(JSONAPI):
             obj_id: int,
             rel_key: str,
             permitted_ids: list[int]=None
-        ):
+        ) -> JSONAPIResponse:
         """
         Fetch a collection of related resource types and ids.
 
@@ -511,7 +600,14 @@ class JSONAPI_(JSONAPI):
         return response
 
 
-    def _fetch_resource(self, session: Session, api_type: str, obj_id: int, permission, permitted_ids:list[int]=None):
+    def _fetch_resource(
+            self,
+            session: Session,
+            api_type: str,
+            obj_id: int,
+            permission,
+            permitted_ids:list[int]=None
+        ) -> SQLAlchemyModel | None:
         """
         Fetch a resource by type and id, also doing a permission check.
 
@@ -530,9 +626,13 @@ class JSONAPI_(JSONAPI):
         model: SQLAlchemyModel = self.models[api_type]
         if permitted_ids is not None:
             preflight = session.query(model)
-            preflight: sqlQuery = model.apply_customer_location_filtering(preflight, permitted_ids)
+            preflight: sqlQuery = model.apply_customer_location_filtering(
+                preflight, permitted_ids)
             pk = inspect(model).primary_key[0].name
-            permitted_object_ids = set([getattr(result, pk) for result in preflight])
+            permitted_object_ids = set([
+                getattr(result, pk) 
+                for result in preflight
+            ])
             if obj_id in permitted_object_ids:
                 obj: SQLAlchemyModel = session.get(model, obj_id)
             else:
@@ -558,6 +658,11 @@ def jsonapi_error_handling(route_function):
             raise http_e
         except Exception as err:
             import traceback
-            detail_obj = {"errors": [{"traceback": traceback.format_exc(),"detail":f"An error occurred. Contact {CONTACT_EMAIL} with the id number"}]}
+            detail_obj = {"errors": [{
+                "traceback": traceback.format_exc(),
+                "detail": "An error occurred. "
+                    f"Contact {CONTACT_EMAIL} with the id number"
+                }]
+            }
             raise HTTPException(status_code=400,detail=detail_obj)
     return error_handling
