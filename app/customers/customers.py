@@ -1,19 +1,16 @@
 """
 Customer Routes
-    TODO: Implement Customer Deletion
-    NOTE: These customers are tied in with customer entites in CMMSSNS.
-          Those customers' id's are used to maintain consistency.
-          If a customer is deleted here, only an sca_admin may opt to 
-          reach into the CMMSSNS service and delete it there as well.
 """
+import logging
 from typing import Annotated
 from os import getenv
 from time import sleep
 from dataclasses import dataclass
-from requests import get, post, delete
-from fastapi import Depends, HTTPException, status, UploadFile
+from requests import get, post
+from fastapi import Depends, HTTPException, status, UploadFile, Response
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app import auth
 from app.customers.models import (
@@ -25,10 +22,10 @@ from app.db.db import SCA_DB, S3, File
 from app.jsonapi.sqla_models import SCACustomer, serializer
 from app.jsonapi.core_models import convert_query
 
+CMMSSNS_URL: str = getenv('CMMSSNS_AUDIENCE')
 API_TYPE = SCACustomer.__jsonapi_type_override__
 customers = APIRouter(prefix=f'/{API_TYPE}', tags=['customers'])
-
-CMMSSNS_URL: str = getenv('CMMSSNS_AUDIENCE')
+logger = logging.getLogger('uvicorn.info')
 
 CustomersPerm = Annotated[
     auth.VerifiedToken,
@@ -267,10 +264,28 @@ async def mod_customer(
         return result.data
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
-@customers.delete('/{customer_id}',tags=['jsonapi'])
+@customers.delete('/{customer_id}', tags=['jsonapi'])
 async def del_customer(
         session: NewSession,
         token: CustomersPerm,
         customer_id: int
     ) -> None:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    customer_perm = token.permissions.get('customers')
+    authorized = customer_perm >= auth.CustomersPermPriority.sca_admin
+    if authorized:
+        del_customer = """
+            DELETE FROM customers
+            WHERE id = :customer_id;
+        """
+        try:
+            SCA_DB.execute(session, del_customer, {'customer_id': customer_id})
+        except IntegrityError as e:
+            session.rollback()
+            logger.warning('Delete unsuccessful due to an integrity error.')
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail=e)
+        else:
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
+        finally:
+            session.commit()
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
