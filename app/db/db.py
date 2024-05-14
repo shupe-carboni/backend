@@ -63,14 +63,20 @@ class S3:
 
     @classmethod
     def get_file(cls, key: str) -> File:
-        response: dict = cls.client.get_object(Bucket=cls.bucket, Key=key)
-        if response.get('HTTPStatusCode') == 200:
-            file_data = response.get('Body').read()
-            file_content_type: str = response.get('ContentType')
-            file = File(os.path.basename(key),
-                        file_mime=file_content_type, file_content=file_data)
-            return file
-        raise Exception('File Not Found')
+        try:
+            response: dict = cls.client.get_object(Bucket=cls.bucket, Key=key)
+        except Exception as e:
+            raise Exception(f'File Not Found: {e}')
+        else:
+            status_code: int = response['ResponseMetadata']['HTTPStatusCode']
+            if status_code == 200:
+                file_data = response.get('Body').read()
+                file_content_type: str = response.get('ContentType')
+                file = File(os.path.basename(key), file_mime=file_content_type,
+                            file_content=file_data)
+                return file
+            else:
+                raise Exception(f'File Not Found: {response}')
 
 
 class Database:
@@ -96,7 +102,7 @@ class Database:
 
     def __str__(self) -> str:
         return f"<Database obj, connection_path: {self._connection_str}, "\
-                "subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
+                f"subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
 
     def get_db(self):
         session = self._SESSIONLOCAL()
