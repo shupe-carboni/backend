@@ -3,19 +3,21 @@ import os
 import pandas as pd
 import logging
 from dataclasses import dataclass
-from typing import Iterable, Literal
+from typing import Iterable
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, numbers
 from app.adp.adp_models import Fields
-from app.adp.utils.programs import CoilProgram, AirHandlerProgram, CustomerProgram, EmptyProgram
+from app.adp.utils.programs import (
+    CoilProgram, AirHandlerProgram, CustomerProgram,
+    EmptyProgram
+)
 from app.adp.utils.pricebook import PriceBook
-from app.db import Session, ADP_DB, SCA_DB, Stage
+from app.db import Session, ADP_DB, SCA_DB, Stage, S3
 
 
 logger = logging.getLogger('uvicorn.info')
 TODAY = str(datetime.today().date())
 TEMPLATES = os.getenv('TEMPLATES')
-LOGOS_DIR = os.getenv('LOGOS_DIR')
 
 @dataclass
 class ProgramFile:
@@ -23,7 +25,10 @@ class ProgramFile:
     file_data: bytes
 
 
-def build_coil_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> CoilProgram:
+def build_coil_program(
+        program_data: pd.DataFrame,
+        ratings: pd.DataFrame
+    ) -> CoilProgram:
     program_data = program_data.drop(columns=['customer_id'])
     program_data = program_data.sort_values(by=[
         Fields.CATEGORY.value,
@@ -37,10 +42,18 @@ def build_coil_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> Coi
     prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
     return CoilProgram(program_data=program_data, ratings=prog_ratings)
     
-def build_ah_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> AirHandlerProgram:
+def build_ah_program(
+        program_data: pd.DataFrame,
+        ratings: pd.DataFrame
+    ) -> AirHandlerProgram:
     program_data = program_data.drop(columns=['customer_id'])
     temp_heat_num_col = 'heat_num'
-    program_data[temp_heat_num_col] = program_data[Fields.HEAT.value].str.extract(r'(\d+|\d\.\d)\s*kW').fillna(0).astype(float).astype(int)
+    program_data[temp_heat_num_col] = (
+        program_data[Fields.HEAT.value].str.extract(r'(\d+|\d\.\d)\s*kW')
+            .fillna(0)
+            .astype(float)
+            .astype(int)
+        )
     program_data = program_data.sort_values(by=[
         Fields.CATEGORY.value,
         Fields.SERIES.value,
@@ -53,9 +66,22 @@ def build_ah_program(program_data: pd.DataFrame, ratings: pd.DataFrame) -> AirHa
     prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
-def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, coil_prog: CoilProgram, ah_prog: AirHandlerProgram) -> CustomerProgram:
-    footer = ADP_DB.load_df(session=session, table_name="customer_terms_by_customer_id", customer_id=customer_id)
-    prog_parts = ADP_DB.load_df(session=session, table_name='program_parts_expanded', customer_id=customer_id)
+def add_customer_terms_parts_and_logo_path(
+        session: Session,
+        customer_id: int,
+        coil_prog: CoilProgram,
+        ah_prog: AirHandlerProgram
+    ) -> CustomerProgram:
+    footer = ADP_DB.load_df(
+        session=session,
+        table_name="customer_terms_by_customer_id",
+        customer_id=customer_id
+    )
+    prog_parts = ADP_DB.load_df(
+        session=session,
+        table_name='program_parts_expanded',
+        customer_id=customer_id
+    )
     alias_mapping = ADP_DB.load_df(session=session, table_name='customers')
     parent_accounts = SCA_DB.load_df(session=session, table_name='customers')
     alias_mapping = alias_mapping[alias_mapping['id'] == customer_id]
@@ -66,11 +92,19 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
     ## specific column name for pricing is to be set
     if customer_preferred:
         part_price_col = 'preferred'
-        # some "preferred" pricing is left blank, so default the price to standard pricing
-        customer_parts[part_price_col] = customer_parts[part_price_col].fillna(customer_parts['standard'])
+        # some "preferred" pricing is left blank, 
+        # so default the price to standard pricing
+        customer_parts[part_price_col] = (
+            customer_parts[part_price_col].fillna(customer_parts['standard'])
+        )
     else:
         part_price_col = 'standard'
-    customer_parts = customer_parts[['description', 'part_number', 'pkg_qty', part_price_col]]
+    customer_parts = customer_parts[[
+        'description',
+        'part_number',
+        'pkg_qty',
+        part_price_col
+    ]]
     ## footer
     try:
         payment_terms = footer['terms'].item()
@@ -108,10 +142,11 @@ def add_customer_terms_parts_and_logo_path(session: Session, customer_id: int, c
         }
     }
     ## logo_path
-    logo_filename = parent_accounts.loc[parent_accounts['id'] == alias_mapping['sca_id'].item(), 'logo'].item()
+    customer_sca_id = parent_accounts['id'] == alias_mapping['sca_id'].item()
+    logo_filename = parent_accounts.loc[customer_sca_id, 'logo'].item()
     if not logo_filename:
         logo_filename = ''
-    full_logo_path = os.path.join(LOGOS_DIR, logo_filename)
+    full_logo_path = logo_filename
     return CustomerProgram(
             customer_id=customer_id,
             customer_name=alias_name,
@@ -128,7 +163,11 @@ def generate_program(
         stage: Stage
     ) -> ProgramFile:
     tables = ["coil_programs", "ah_programs", "program_ratings"]
-    coil_prog_table, ah_prog_table, ratings = [ADP_DB.load_df(session=session, table_name=table, customer_id=customer_id) for table in tables]
+    coil_prog_table, ah_prog_table, ratings = [
+        ADP_DB.load_df(session=session, table_name=table,
+                       customer_id=customer_id)
+        for table in tables
+    ]
     match stage:
         case Stage.ACTIVE:
             active_coils = coil_prog_table['stage'] == stage.name
@@ -176,7 +215,11 @@ def generate_program(
     else:
         tables.remove('program_ratings')
         try:
-            update_dates_in_tables(session=session, tables=tables, customer_id=customer_id)
+            update_dates_in_tables(
+                session=session,
+                tables=tables,
+                customer_id=customer_id
+            )
         except Exception as e:
             logger.warning('File Generation dates unable to be updated '
                            f'due to an error: {e}')
@@ -187,7 +230,13 @@ def update_dates_in_tables(
         tables: Iterable[str],
         customer_id: int=None
     ) -> None:
-    coil_update_q, ah_update_q = [f"""UPDATE {table} SET last_file_gen = :date WHERE customer_id IN :customers;""" for table in tables]
+    coil_update_q, ah_update_q = [
+        f"""UPDATE {table}
+            SET last_file_gen = :date
+            WHERE customer_id 
+            IN :customers;""" 
+        for table in tables
+    ]
     params = {"customers": (customer_id,), "date": TODAY}
     with session:
         for q in coil_update_q, ah_update_q:

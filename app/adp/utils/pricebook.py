@@ -1,6 +1,7 @@
 from dotenv import load_dotenv; load_dotenv()
 import re
 import os
+from pathlib import Path
 from copy import copy
 from io import BytesIO
 import pandas as pd
@@ -15,18 +16,25 @@ from openpyxl.styles import Font, Alignment
 from openpyxl.drawing.xdr import XDRPositiveSize2D
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.utils.units import pixels_to_EMU
-from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+from openpyxl.utils.cell import (
+    coordinate_from_string, column_index_from_string
+)
 from app.adp.utils.programs import CustomerProgram
 from app.adp.adp_models.model_series import Fields
 from app.adp.adp_models import MODELS
-from app.db import Stage
+from app.db import Stage, S3
 
 from sqlalchemy.orm import Session
 
 NOMENCLATURE_COL_WIDTH = 20
 NOMENCLATURES = os.getenv('NOMENCLATURES')
-STATIC_DIR = os.getenv('STATIC_DIR')
+STATIC_DIR = Path(os.getenv('STATIC_DIR'))
 logger = getLogger('uvicorn.info')
+
+CellRange = tuple[tuple[Cell]]
+LenOption = Literal['long', 'med', 'short']
+MinCoords = tuple[int|None, int|None] 
+DataByCategory = dict[str, pd.DataFrame]
 
 class FileGenExecption(Exception): ...
 
@@ -37,13 +45,12 @@ class AnchorPosition:
         col, row = column_index_from_string(coords[0])-1, coords[1]-1
         x_emu = pixels_to_EMU(offset_x)
         y_emu = pixels_to_EMU(offset_y)
-        self.anchor = AnchorMarker(col=col, colOff=x_emu, row=row, rowOff=y_emu)
+        self.anchor = AnchorMarker(col=col, colOff=x_emu,
+                                   row=row, rowOff=y_emu)
 
 class Logo:
     def __init__(
             self,
-            name: str,
-            img_path: str,
             price_pos: AnchorPosition,
             ratings_pos: AnchorPosition,
             parts_pos: AnchorPosition,
@@ -51,8 +58,8 @@ class Logo:
             nomen_med_pos: AnchorPosition,
             nomen_short_pos: AnchorPosition
         ) -> None:
-        self.name = name
-        self.img_path = img_path
+        self.name: str
+        self.img: str | BytesIO
         self.price_pos = price_pos
         self.ratings_pos = ratings_pos
         self.parts_pos = parts_pos
@@ -66,10 +73,11 @@ class Logo:
     def create_image(self, sheet_type: str) -> Image:
         """Images must be created fresh in every addition.
             Using the same Image instance can cause a file write issue
-            and the custom anchoring hides another issue that's more tricky,
-            which is that ALL images in all tabs will anchor to the last
-            anchor setting used -- unless a new image object is provided"""
-        img = Image(self.img_path)
+            and the custom anchoring hides another issue that's more
+            tricky, which is that ALL images in all tabs will anchor to
+            the last anchor setting used -- unless a new image object
+            is provided."""
+        img = Image(self.img)
         img_size = XDRPositiveSize2D(
             cx=pixels_to_EMU(img.width),
             cy=pixels_to_EMU(img.height)
@@ -88,6 +96,24 @@ class Logo:
         )
         return img
 
+class ADPLogo(Logo):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.img = str(STATIC_DIR / 'adp-program-logo.png')
+        self.name = "ADP Logo"
+
+class SCALogo(Logo):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.img = str(STATIC_DIR / 'sca-logo.png')
+        self.name = "SCA Logo"
+
+class CustomerLogo(Logo):
+    def __init__(self, s3_key: str, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        print(s3_key)
+        self.img = BytesIO(S3.get_file(s3_key).file_content)
+        self.name = "Customer Logo"
 class Logos:
     def __init__(self, *args: Logo) -> None:
         self.logos = args
@@ -100,7 +126,8 @@ class Logos:
     
 class Cursor:
     """Track state of the cursor and provide movements
-        Unpackable by `**` but replaces "col" with "column" as a key name"""
+        Unpackable by `**` but replaces "col" with "column"
+        as a key name"""
     def __init__(self) -> None:
         self.col = 1
         self.row = 1
@@ -143,9 +170,7 @@ class PriceBook:
         self.active_wb = self.template_wb
         self.active = self._9_col_template
         self.cursor = Cursor()
-        adp_logo = Logo(
-            name='ADP Logo',
-            img_path=os.path.join(STATIC_DIR,'adp-program-logo.png'),
+        adp_logo = ADPLogo(
             price_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
@@ -153,9 +178,7 @@ class PriceBook:
             nomen_med_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
-        sca_logo = Logo(
-            name='SCA Logo',
-            img_path=os.path.join(STATIC_DIR,'sca-logo.png'),
+        sca_logo = SCALogo(
             price_pos=AnchorPosition("J1", offset_x=200, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
@@ -163,9 +186,8 @@ class PriceBook:
             nomen_med_pos=AnchorPosition("G1", offset_x=100, offset_y=0),
             nomen_short_pos=AnchorPosition("F1", offset_x=100, offset_y=0),
         )
-        customer_logo = Logo(
-            name='Customer Logo',
-            img_path=program.logo_path,
+        customer_logo = CustomerLogo(
+            s3_key=program.logo_path,
             price_pos=AnchorPosition("A2", offset_x=10, offset_y=0),
             parts_pos=AnchorPosition("A2", offset_x=10, offset_y=0),
             ratings_pos=AnchorPosition("A2", offset_x=10, offset_y=0),
@@ -188,13 +210,16 @@ class PriceBook:
         """Copy content and style from one cell to another."""
         new_cell = self.active.cell(dest_row, dest_col, src_cell.value)
         self.copy_cell_style(src_cell, new_cell)
-        # NOTE below causes an error with styling indexing with 'Nomenclature' tab operations.
+        # NOTE below causes an error with styling indexing with 
+        # 'Nomenclature' tab operations.
         # so it was swapped out for the `copy_cell_style` method
         # new_cell._style = copy(src_cell._style)
     
     def merged_col_bounds(self, cell: Cell) -> tuple[int,int,int]|None:
         for merge_range in self.active.merged_cells.ranges:
-            min_col,min_row,max_col,max_row = range_boundaries(str(merge_range))
+            min_col, min_row, max_col, max_row = range_boundaries(
+                str(merge_range)
+            )
             if min_col <= cell.column <= max_col:
                 if min_row <= cell.row <= max_row:
                     return min_col, max_col, min_row
@@ -230,32 +255,38 @@ class PriceBook:
         self.active.sheet_view.showGridLines = False
         self.cursor.move_to(1,1)
         return self
+    
 
     def new_price_sheet(self, title: str) -> 'PriceBook':
         sheet_type = 'pricing'
         new_sheet_template = self._9_col_template
-        self.min_col, self.min_row, self.max_col, self.max_row = range_boundaries("B12:L15")
-        self.product_block: tuple[tuple[Cell]] = self._9_col_template["B12:L15"]
-        new_sheet = self.new_sheet(template=new_sheet_template, title=title, sheet_type=sheet_type)
+        (self.min_col, self.min_row,
+         self.max_col, self.max_row) = range_boundaries("B12:L15")
+        self.product_block: CellRange = self._9_col_template["B12:L15"]
+        new_sheet = self.new_sheet(template=new_sheet_template,
+                                   title=title, sheet_type=sheet_type)
         self.cursor.move_to(1,1)
         return new_sheet
     
     def new_ratings_sheet(self, title: str="M1 Ratings") -> 'PriceBook':
         sheet_type = 'ratings'
         template = self.template_wb['ratings']
-        return self.new_sheet(template=template, title=title, sheet_type=sheet_type, include_logos=False)
+        return self.new_sheet(template=template, title=title,
+                              sheet_type=sheet_type, include_logos=False)
     
     def new_parts_sheet(self) -> 'PriceBook':
         sheet_type = "parts"
         template = self.parts_template
         title = "Parts"
-        return self.new_sheet(template=template, title=title, sheet_type=sheet_type)
+        return self.new_sheet(template=template, title=title,
+                              sheet_type=sheet_type)
     
-    def new_nomenclature_sheet(self, len_option: Literal['long', 'med', 'short']) -> 'PriceBook':
+    def new_nomenclature_sheet(self, len_option: LenOption) -> 'PriceBook':
         sheet_type = f'nomen-{len_option}'
         template = self.template_wb[sheet_type]
         title = 'Nomenclature'
-        return self.new_sheet(template=template, title=title, sheet_type=sheet_type, include_logos=False)
+        return self.new_sheet(template=template, title=title,
+                              sheet_type=sheet_type, include_logos=False)
 
     def movex(self, n_cols: int) -> 'PriceBook':
         self.cursor.move_by(cols=n_cols)
@@ -313,7 +344,7 @@ class PriceBook:
         return self
 
     
-    def find_min_coords_with_data(self, sheet: Worksheet=None) -> tuple[int|None, int|None]:
+    def find_min_coords_with_data(self, sheet: Worksheet=None) -> MinCoords:
         if not sheet:
             sheet = self.active
         min_row = sheet.max_row
@@ -329,21 +360,33 @@ class PriceBook:
             min_col = None
         return min_row, min_col
 
-    def insert_nomenclature_block(self, series: str, offset: tuple[int,int]=(0,0)) -> 'PriceBook':
+    def insert_nomenclature_block(
+            self, series: str, 
+            offset: tuple[int,int]=(0,0)
+        ) -> 'PriceBook':
         nomenclature_sheet: Worksheet = self.nomenclatures[series]
         model_type, = tuple([e for e in MODELS if e.__name__ == series])
         model_example = self.program.sample_from_program(series=series)
         try:
-            model_nomenclature = re.match(model_type.regex, model_example, re.VERBOSE).groupdict()
+            model_nomenclature = re.match(
+                model_type.regex,
+                model_example,
+                re.VERBOSE).groupdict()
             ignore_custom_model_insertion = False
         except:
             ignore_custom_model_insertion = True
         else:
             if 'scode' in model_nomenclature and 'mat' in model_nomenclature:
                 if series == 'CP':
-                    model_nomenclature['scode'] = model_nomenclature['scode'] + model_nomenclature['mat']
+                    model_nomenclature['scode'] = (
+                        model_nomenclature['scode']
+                        + model_nomenclature['mat']
+                    )
                 else:
-                    model_nomenclature['scode'] = model_nomenclature['mat'] + model_nomenclature['scode']
+                    model_nomenclature['scode'] = (
+                        model_nomenclature['mat']
+                        + model_nomenclature['scode']
+                    )
                 model_nomenclature.pop('mat')
         for i, row in enumerate(nomenclature_sheet):
             row_num = i+1
@@ -364,7 +407,9 @@ class PriceBook:
             end_row=self.cursor.row,
             end_column=nomenclature_sheet.max_column
         )
-        self.cursor.move_by(rows=nomenclature_sheet.max_row).slam_left().move_by(*offset)
+        self.cursor.move_by(rows=nomenclature_sheet.max_row)\
+                   .slam_left()\
+                   .move_by(*offset)
         return self
     
     def attach_nomenclature_tab(self) -> 'PriceBook':
@@ -381,7 +426,8 @@ class PriceBook:
             self.insert_nomenclature_block(series).movey(2)
         for col in self.active.iter_cols():
             col_letter = col[0].column_letter
-            self.active.column_dimensions[col_letter].width = NOMENCLATURE_COL_WIDTH
+            active_col = self.active.column_dimensions[col_letter]
+            active_col.width = NOMENCLATURE_COL_WIDTH
         return self
     
     def save_and_close(self) -> BytesIO:
@@ -392,12 +438,14 @@ class PriceBook:
             for option in ('long', 'med', 'short'):
                 self.active_wb.remove(self.template_wb[f'nomen-{option}'])
             self.active_wb.remove(self.parts_template)
-            # set the opening sheet to the first sheet, which should be the model list
+            # set the opening sheet to the first sheet, 
+            # which should be the model list
             self.active_wb.active = 0
             self.active_wb.save(file_obj)
         except IndexError as e:
             import traceback as tb
-            logger.critical(f"file empty on save for {self.program.customer_name}")
+            logger.critical("file empty on save for "
+                            f"{self.program.customer_name}")
             logger.critical(tb.format_exc())
             raise FileGenExecption
         finally:
@@ -419,7 +467,12 @@ class PriceBook:
             self.cursor.slam_left().move_by(rows=1).move_by(*offset)
         return self
 
-    def insert_data(self, df: pd.DataFrame, headers: bool=True, offset: tuple=(0,0)) -> 'PriceBook':
+    def insert_data(
+            self,
+            df: pd.DataFrame,
+            headers: bool=True,
+            offset: tuple=(0,0)
+        ) -> 'PriceBook':
         self.cursor.move_by(*offset)
         if headers:
             for col in df:
@@ -443,18 +496,23 @@ class PriceBook:
             self.cursor.slam_left().move_by(rows=1).move_by(*offset)
         if headers:
             if Fields.PALLET_QTY.formatted() in df.columns:
+                disclaimer_txt = '* Must order in pallet quantities' 
                 self.cursor.move_by(cols=1)
-                disclaimer = self.active_cell('* Must order in pallet quantities')
+                disclaimer = self.active_cell(disclaimer_txt)
                 disclaimer.font = Font(bold=True, italic=True)
             elif Fields.MIN_QTY.formatted() in df.columns:
+                disclaimer_txt = '* Must order at least'\
+                                 'the minimum quantity per-SKU' 
                 self.cursor.move_by(cols=1)
-                disclaimer = self.active_cell('* Must order at least the minimum quantity per-SKU')
+                disclaimer = self.active_cell(disclaimer_txt)
                 disclaimer.font = Font(bold=True, italic=True)
             self.cursor.slam_left()
         return self
 
     @staticmethod
-    def split_rated_from_unrated(category_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    def split_rated_from_unrated(
+            category_data: DataByCategory
+        ) -> DataByCategory:
         result = dict()
         for category, df in category_data.items():
             all_rated = df['rated'].all()
@@ -481,15 +539,22 @@ class PriceBook:
         self.cursor.move_by(11).slam_left()
         for i, program in enumerate(self.program):
             data_by_category: dict[str, pd.DataFrame] = {
-                category: program.category_data(category, self.program.customer_id, session)
+                category: program.category_data(
+                        category, self.program.customer_id, session
+                    )
                 for category in program.product_categories
             }
             data_by_category = self.split_rated_from_unrated(data_by_category)
             for j, cat_data in enumerate(data_by_category.items()):
                 cat, df = cat_data
                 df_copy = df.copy(deep=True)
-                df_copy.drop(columns=[Fields.RATED.value, Fields.SERIES.value], inplace=True)
-                df_copy.rename(columns={col: Fields(col).formatted() for col in df_copy.columns}, inplace=True)
+                df_copy.drop(
+                    columns=[Fields.RATED.value, Fields.SERIES.value],
+                    inplace=True)
+                df_copy.rename(columns={
+                        col: Fields(col).formatted() 
+                        for col in df_copy.columns
+                    }, inplace=True)
                 cat = re.sub(r'(- Embossed )|( Painted)','', cat)
                 rows = df_copy.shape[0]
                 if i > 0 or j > 0:
@@ -503,13 +568,19 @@ class PriceBook:
                         self.cursor.slam_left()
                 (
                 self.movey(2) # the first data row
-                    .adjust_number_of_formatted_rows(self.max_row-self.min_row-1, rows)
+                    .adjust_number_of_formatted_rows(
+                        self.max_row-self.min_row-1, rows)
                     .movey(-1) # headers row
                     .insert_data(df_copy, offset=offset)
                 )
-        return self.movex(-self.cursor.col+1).movey(2).attach_parts(offset=offset)
+        return self.movex(-self.cursor.col+1)\
+                   .movey(2)\
+                   .attach_parts(offset=offset)
     
-    def adjust_number_of_formatted_rows(self, startin_row_num: int, target_row_num: int) -> 'PriceBook':
+    def adjust_number_of_formatted_rows(
+            self, startin_row_num: int,
+            target_row_num: int
+        ) -> 'PriceBook':
         diff = target_row_num - startin_row_num
         if diff > 0:
             self.insert_rows(n_rows=diff)
@@ -545,7 +616,9 @@ class PriceBook:
                 start, end = (0,4)
             return oemseries[start:end]
 
-        data['OEM Series'] = data['OEM Series'].fillna(data['OutdoorModel']).apply(set_series_name)
+        data['OEM Series'] = data['OEM Series']\
+                                .fillna(data['OutdoorModel'])\
+                                .apply(set_series_name)
         data['OEM Name'] = data['OEM Name'].fillna(data['OEMName'])
         ratings: dict[str, pd.DataFrame] = {
             oem_series: data[data['OEM Series'] == oem_series]
@@ -557,7 +630,8 @@ class PriceBook:
             unique_oems = data['OEM Name'].unique().tolist()
             if len(unique_oems) > 1:
                 for oem in unique_oems:
-                    new_series[f'{series} {oem}'] = data[data['OEM Name'] == oem]
+                    tab_name = f'{series} {oem}'
+                    new_series[tab_name] = data[data['OEM Name'] == oem]
                 substituted_series.append(series)
         if substituted_series:
             ratings |= new_series
@@ -567,7 +641,9 @@ class PriceBook:
         for tab, table in ratings.items():
             if len(tab) > 31:
                 tab = tab[:31].strip()
-            if table['FurnaceModel'].isna().all() and table['Furnace Model Number'].isna().all():
+            if (table['FurnaceModel'].isna().all()
+                and table['Furnace Model Number'].isna().all()
+            ):
                 include_furnace_col = False
             else:
                 include_furnace_col = True
@@ -596,7 +672,8 @@ class PriceBook:
             #                 'Capacity2','HSPF2')
             
             table['Model Number'].fillna(table['OutdoorModel'], inplace=True)
-            table['Coil Model Number'].fillna(table['IndoorModel'], inplace=True)
+            table['Coil Model Number'].fillna(table['IndoorModel'],
+                                              inplace=True)
             table['ADP Series'].ffill(inplace=True)
             table = table.sort_values(by=[
                 'ADP Series','Model Number','Coil Model Number',
@@ -605,19 +682,23 @@ class PriceBook:
 
             for label, row in table.iterrows():
                 if not row['AHRI Ref Number']:
-                    row_view = row[['AHRINumber','OEMName','OutdoorModel',
-                                    'IndoorModel','FurnaceModel','seer2_as_submitted',
-                                    'eer95f2_as_submitted','capacity2_as_submitted','hspf2_as_submitted']]
+                    row_view = row[[
+                        'AHRINumber', 'OEMName', 'OutdoorModel', 
+                        'IndoorModel', 'FurnaceModel', 'seer2_as_submitted', 
+                        'eer95f2_as_submitted', 'capacity2_as_submitted',
+                        'hspf2_as_submitted']]
                     if not include_furnace_col:
                         row_view = row_view.drop(index=['FurnaceModel'])
                     if not include_HSPF_col:
                         row_view = row_view.drop(index=['hspf2_as_submitted'])
                 else:
-                    row_view = row[['AHRI Ref Number','OEM Name','Model Number',
-                                    'Coil Model Number','Furnace Model Number','SEER2',
-                                    'EER2','Capacity2','HSPF2']]
+                    row_view = row[[
+                        'AHRI Ref Number', 'OEM Name', 'Model Number', 
+                        'Coil Model Number', 'Furnace Model Number', 'SEER2', 
+                        'EER2', 'Capacity2', 'HSPF2']]
                     if not include_furnace_col:
-                        row_view = row_view.drop(index=['Furnace Model Number'])
+                        row_view = row_view.drop(
+                            index=['Furnace Model Number'])
                     if not include_HSPF_col:
                         row_view = row_view.drop(index=['HSPF2'])
                 for datum in row_view:

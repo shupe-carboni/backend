@@ -9,17 +9,22 @@ from app.adp.extraction.models import parse_model_string, ParsingModes
 from sqlalchemy.orm import Session
 logger = logging.getLogger('uvicorn.info')
 
-def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Series) -> pd.Series:
+def price_flexcoil_version(customer_id: int, session: Session,
+                           row_subset: pd.Series) -> pd.Series:
     """
-        I don't like doing it this way, but this seems the most straightforward given the requirements.
-        To accomplish this, I needed to pass the customer_id in from CustomerProgram as well as
-        pass in the database Session down from generate_program in workbook_factory down through the 
-        build_program method, in which the Program's `category_data` method is called.
+        I don't like doing it this way, but this seems the most 
+            straightforward given the requirements.
+        To accomplish this, I needed to pass the customer_id in from 
+            CustomerProgram as well as pass in the database Session down
+            from generate_program in workbook_factory down through the 
+            build_program method, in which the Program's `category_data`
+            method is called.
 
         Really wild.
         
-        The point here is to parse out the Flexcoil versions of non-flexcoil product and show the model
-        nubers and prices side-by-side with currently active or proposed product.
+        The point here is to parse out the Flexcoil versions of
+            non-flexcoil product and show the model nubers and prices
+            side-by-side with currently active or proposed product.
 
         -- 2024-04-05 (Joseph Carboni)
     """
@@ -55,16 +60,26 @@ def price_flexcoil_version(customer_id: int, session: Session, row_subset: pd.Se
         return result[[Fields.MODEL_NUMBER.value, Fields.NET_PRICE.value]]
 
 class EmptyProgram(Exception): ...
+
 class Program:
-    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+    def __init__(self, program_data: pd.DataFrame,
+                 ratings: pd.DataFrame) -> None:
         self._data = program_data
-        self.product_categories = program_data[Fields.CATEGORY.value].drop_duplicates()
+        self.product_categories = program_data[
+            Fields.CATEGORY.value].drop_duplicates()
         self.ratings = ratings
         if program_data[Fields.PRIVATE_LABEL.value].isna().all():
-            self.product_series_contained = set(program_data[Fields.SERIES.value].unique().tolist())
+            self.product_series_contained = set(
+                program_data[Fields.SERIES.value].unique().tolist()
+            )
         elif program_data[Fields.PRIVATE_LABEL.value].isna().any():
-            temp = program_data[[Fields.SERIES.value, Fields.PRIVATE_LABEL.value]]
-            temp[Fields.PRIVATE_LABEL.value] = temp[Fields.PRIVATE_LABEL.value].str.slice(0,2)
+            temp = program_data[[
+                Fields.SERIES.value,
+                Fields.PRIVATE_LABEL.value
+            ]]
+            temp[Fields.PRIVATE_LABEL.value] = temp[
+                    Fields.PRIVATE_LABEL.value
+                ].str.slice(0,2)
             temp = temp.drop_duplicates()
             pl_series = temp.loc[
                 ~pd.isna(temp[Fields.PRIVATE_LABEL.value]),
@@ -89,7 +104,8 @@ class Program:
 
 class CoilProgram(Program):
 
-    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+    def __init__(self, program_data: pd.DataFrame,
+                 ratings: pd.DataFrame) -> None:
         super().__init__(program_data, ratings)
         self.length_or_depth = Fields.DEPTH.value
         self.model_number = Fields.MODEL_NUMBER.value
@@ -113,7 +129,8 @@ class CoilProgram(Program):
             Fields.STAGE.value
         ] 
 
-    def category_data(self, category, customer_id: int, session: Session) -> pd.DataFrame:
+    def category_data(self, category, customer_id: int,
+                      session: Session) -> pd.DataFrame:
         data = super().category_data(category)
         if Fields.LENGTH.value in data.columns:
             self.length_or_depth = Fields.LENGTH.value
@@ -130,14 +147,25 @@ class CoilProgram(Program):
             )
         # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
         apply_method = partial(price_flexcoil_version, customer_id, session)
-        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[[Fields.MODEL_NUMBER.value, Fields.SERIES.value]].apply(apply_method, axis=1, result_type='expand')
-        data.insert(1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value))
-        data.insert(10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value))
+        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
+                [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
+            ].apply(apply_method, axis=1, result_type='expand')
+        data.insert(
+            1,
+            Fields.FLEXCOIL_MODEL.value,
+            data.pop(Fields.FLEXCOIL_MODEL.value)
+        )
+        data.insert(
+            10,
+            Fields.FLEXCOIL_PRICE.value,
+            data.pop(Fields.FLEXCOIL_PRICE.value)
+        )
         return data
 
 class AirHandlerProgram(Program):
 
-    def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
+    def __init__(self, program_data: pd.DataFrame,
+                 ratings: pd.DataFrame) -> None:
         super().__init__(program_data, ratings)
         self.pallet_or_min = Fields.MIN_QTY.value
         self.model_number = Fields.MODEL_NUMBER.value
@@ -161,7 +189,8 @@ class AirHandlerProgram(Program):
             Fields.STAGE.value
         ]
 
-    def category_data(self, category, customer_id: int, session: Session) -> pd.DataFrame:
+    def category_data(self, category, customer_id: int,
+                      session: Session) -> pd.DataFrame:
         data = super().category_data(category)
         if Fields.WEIGHT.value not in data.columns:
             data[Fields.WEIGHT.value] = '--'
@@ -183,9 +212,19 @@ class AirHandlerProgram(Program):
             )
         # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
         apply_method = partial(price_flexcoil_version, customer_id, session)
-        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[[Fields.MODEL_NUMBER.value, Fields.SERIES.value]].apply(apply_method, axis=1, result_type='expand')
-        data.insert(1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value))
-        data.insert(10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value))
+        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
+            [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
+        ].apply(apply_method, axis=1, result_type='expand')
+        data.insert(
+            1,
+            Fields.FLEXCOIL_MODEL.value,
+            data.pop(Fields.FLEXCOIL_MODEL.value)
+        )
+        data.insert(
+            10,
+            Fields.FLEXCOIL_PRICE.value,
+            data.pop(Fields.FLEXCOIL_PRICE.value)
+        )
         return data
 
 class CustomerProgram:
@@ -200,7 +239,8 @@ class CustomerProgram:
             terms: dict[str, str|dict]=None
         ) -> None:
         if not (coils or air_handlers):
-            raise Exception("Either a Coil Program or an Air Handler Program are required")
+            raise Exception("Either a Coil Program or an Air Handler "
+                            "Program are required")
        
         self.customer_id = customer_id
         self.customer_name = customer_name
@@ -212,7 +252,8 @@ class CustomerProgram:
         self.series_contained = set()
         for prog in self.progs:
             prog_ratings = prog.ratings
-            self.ratings = pd.concat([self.ratings, prog_ratings]).drop_duplicates()
+            self.ratings = pd.concat(
+                [self.ratings, prog_ratings]).drop_duplicates()
             self.series_contained |= prog.product_series_contained
         self.filter_ratings()
         self.tag_models_rated_unrated()
@@ -231,8 +272,15 @@ class CustomerProgram:
         customer_name = self.customer_name.title()
         if "'" in customer_name:
             # title() capitalizes or leaves alone letters after an apostrophe
-            customer_name = re.sub(r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name)
-        return f"{customer_name} 2024 ADP Product Strategy {TODAY}".replace('/','_')
+            customer_name = re.sub(
+                r"(?<=')([^'])",
+                lambda match: match.group(1).lower(),
+                customer_name
+            )
+        return (
+            f"{customer_name} 2024 ADP Product Strategy {TODAY}"
+                .replace('/','_')
+        )
 
     def filter_ratings(self) -> None:
         if not self.ratings.empty:
@@ -243,25 +291,48 @@ class CustomerProgram:
                 if not value:
                     return False
                 for prog in self.progs:
-                    ratings_models: pd.Series = prog._data.loc[:,prog._data.columns.str.contains('ratings')].stack(future_stack=True)
-                    ratings_models = ratings_models.drop_duplicates().dropna().reset_index(drop=True)
-                    if ratings_models.apply(lambda ref: re.match(ref, value) is not None).any():
+                    ratings_models: pd.Series = prog._data.loc[
+                            :,
+                            prog._data.columns.str.contains('ratings')
+                        ].stack(future_stack=True)
+                    ratings_models = (
+                        ratings_models.drop_duplicates()
+                            .dropna()
+                            .reset_index(drop=True)
+                    )
+                    matches = ratings_models.apply(
+                        lambda ref: re.match(ref, value) is not None
+                    )
+                    if matches.any():
                         return True
                 return False
-            registered['in_prog'] = registered['Coil Model Number'].apply(in_program)
-            unregistered['in_prog'] = unregistered['IndoorModel'].apply(in_program)
+            registered['in_prog'] = registered[
+                'Coil Model Number'].apply(in_program)
+            unregistered['in_prog'] = unregistered[
+                'IndoorModel'].apply(in_program)
             registered = registered[registered['in_prog'] == True]
             unregistered = unregistered[unregistered['in_prog'] == True]
-            self.ratings = pd.concat([registered, unregistered]).drop(columns='in_prog')
+            self.ratings = (
+                pd.concat([registered, unregistered])
+                    .drop(columns='in_prog')
+            )
     
     def tag_models_rated_unrated(self) -> None:
         if not self.ratings.empty:
-            ratings_models: pd.Series = self.ratings.loc[:,['Coil Model Number', 'IndoorModel']].drop_duplicates().fillna('no val').stack(future_stack=True)
+            ratings_models: pd.Series = (
+                self.ratings.loc[:,['Coil Model Number', 'IndoorModel']]
+                    .drop_duplicates()
+                    .fillna('no val')
+                    .stack(future_stack=True)
+            )
             ratings_models = ratings_models[ratings_models != 'no val']
             def in_ratings(value: str) -> bool:
                 if not value:
                     return False
-                if ratings_models.apply(lambda ref: re.match(value, ref) is not None).any():
+                matches = ratings_models.apply(
+                    lambda ref: re.match(value, ref) is not None
+                ) 
+                if matches.any():
                     return True
                 return False
             def check_model_row(row: pd.Series) -> bool:
@@ -280,9 +351,14 @@ class CustomerProgram:
     def sample_from_program(self, series: str) -> str:
         for prog in self.progs:
             try:
-                sample = prog._data.loc[prog._data[Fields.SERIES.value] == series, Fields.MODEL_NUMBER.value].sample(n=1)
+                sample_series = prog._data[Fields.SERIES.value] == series
+                sample = prog._data.loc[
+                        sample_series,
+                        Fields.MODEL_NUMBER.value
+                    ].sample(n=1)
             except Exception as e:
-                logger.warning(f'unable to obtain sample from series {series}: {e}')
+                logger.warning('unable to obtain sample from series '
+                               f'{series}: {e}')
                 continue
             else:
                 result: str = sample.item()
