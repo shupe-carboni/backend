@@ -1,10 +1,13 @@
 from app.db import ADP_DB, Session
+from typing import Literal
+
+heat_option = Literal["00", "05", "07", "10"]
 
 def load_pricing(
         session: Session,
         series: str,
         model_number: str,
-        heat_option: str
+        heat_option: heat_option
     ) -> tuple[int, dict[str, int]]:
     # NOTE the ~ operator compares the parameter str to the regex
     # patterns in the column
@@ -16,7 +19,6 @@ def load_pricing(
     params = dict(model_number = model_number)
     pricing = ADP_DB.execute(session=session, sql=pricing_sql,
                         params=params).scalar_one()
-
     price_adders_sql = """
         SELECT key, price
         FROM price_adders
