@@ -117,7 +117,11 @@ async def coil_programs_relationships(
         related_resource='adp-coil-programs'
     )
 
-@adp_customers.get('/{customer_id}/adp-ah-programs', response_model=RelatedAirHandlerProgResp, response_model_exclude_none=True)
+@adp_customers.get(
+        '/{customer_id}/adp-ah-programs',
+        response_model=RelatedAirHandlerProgResp,
+        response_model_exclude_none=True
+    )
 async def related_ah_programs(
         session: NewSession,
         customer_id: int,

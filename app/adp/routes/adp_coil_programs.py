@@ -28,7 +28,7 @@ converter = convert_query(CoilProgQueryJSONAPI)
         response_model=CoilProgResp,
         response_model_exclude_none=True,
         tags=['jsonapi']
-)
+    )
 def all_coil_programs(
         token: ADPPerm,
         session: NewSession,
@@ -52,7 +52,7 @@ def all_coil_programs(
         response_model=CoilProgResp,
         response_model_exclude_none=True,
         tags=['jsonapi']
-)
+    )
 def coil_program_product(
         token: ADPPerm,
         session: NewSession,
@@ -98,8 +98,7 @@ def add_to_coil_program(
             obj_only=True,
             permitted_ids=None
         )
-    else:
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 @coil_progs.patch(
         '/{adp_customer_id}',
@@ -120,11 +119,11 @@ def change_product_status(
             ACTIVE -> REMOVED
     """
     associated_ids = ADP_DB.load_df(
-        session,
-        'coil_programs',
-        adp_customer_id,
-        id_only=True
-    ).id.to_list()
+            session,
+            'coil_programs',
+            adp_customer_id,
+            id_only=True
+        ).id.to_list()
     if new_stage.data.id not in associated_ids or not associated_ids:
         raise HTTPException(status.HTTP_404_NOT_FOUND,
                             f"Customer ID {adp_customer_id} is not associated "
