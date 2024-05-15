@@ -22,7 +22,10 @@ token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
 ALGORITHMS = os.getenv('ALGORITHMS')
 AUDIENCE = os.getenv('AUDIENCE')
-SCA_CLOUD_TUI = os.getenv('SCA_CLOUD_TUI_CLIENT_ID')
+
+class TUI(Enum):
+    SCA_CLOUD = os.getenv('SCA_CLOUD_TUI_CLIENT_ID')
+    DEVELOPER = os.getenv('DEVELOPER_TUI_CLIENT_ID')
 
 status_codes = {
     400: status.HTTP_400_BAD_REQUEST,
@@ -30,6 +33,7 @@ status_codes = {
 }
 
 class QuotePermPriority(IntEnum):
+    developer = 22
     sca_admin = 21
     sca_employee = 20
     customer_admin = 12
@@ -38,6 +42,7 @@ class QuotePermPriority(IntEnum):
     view_only = 1
 
 class ADPPermPriority(IntEnum):
+    developer = 22
     sca_admin = 21
     sca_employee = 20
     customer_admin = 12
@@ -46,6 +51,7 @@ class ADPPermPriority(IntEnum):
     view_only = 1
 
 class VendorPermPriority(IntEnum):
+    developer = 22
     sca_admin = 21
     sca_employee = 20
     customer_admin = 12
@@ -54,6 +60,7 @@ class VendorPermPriority(IntEnum):
     view_only = 1
 
 class CustomersPermPriority(IntEnum):
+    developer = 22
     sca_admin = 21
     sca_employee = 20
     customer_admin = 0
@@ -62,6 +69,7 @@ class CustomersPermPriority(IntEnum):
     view_only = 1
 
 class AdminPerm(IntEnum):
+    developer = 22
     sca_admin = 21
     sca_employee = 0
     customer_admin = 0
@@ -148,7 +156,8 @@ def get_user_info(access_token: str) -> dict:
     match user_info:
         case {"nickname": a, "name": b, "email": c,
               "email_verified": d, **other}:
-            return {"nickname": a, "name": b, "email": c, "email_verified": d}
+            return {"nickname": a, "name": b, "email": c,
+                    "email_verified": d}
         case _:
             raise HTTPException(
                 status_code=status_codes[401],
@@ -219,24 +228,29 @@ async def authenticate_auth0_token(
             except Exception as err:
                 error = err
             else:
+                client_id: str = payload['azp']
+                match client_id:
+                    case TUI.SCA_CLOUD.value:
+                        user_info = dict(
+                            nickname='SCA Cloud TUI',
+                            name='SCA Cloud TUI',
+                            email='',
+                            email_verified=True
+                        )
+                    case TUI.DEVELOPER.value:
+                        user_info = dict(
+                            nickname='Developer TUI',
+                            name='Developer TUI',
+                            email=os.getenv('TEST_USER_EMAIL'),
+                            email_verified=True
+                        )
+                    case _:
+                        user_info = get_user_info()
                 permissions = set_permissions(payload['permissions'])
-                if payload['azp'] == SCA_CLOUD_TUI:
-                    verified_token = VerifiedToken(
-                        token=token.credentials,
-                        exp=payload['exp'],
-                        permissions=permissions,
-                        nickname='SCA Cloud TUI',
-                        name='SCA Cloud TUI',
-                        email='',
-                        email_verified=True,
-                    )
-                else:
-                    verified_token = VerifiedToken(
-                        token=token.credentials,
-                        exp=payload['exp'],
-                        permissions=permissions,
-                        **get_user_info(token.credentials)
-                    )
+                verified_token = VerifiedToken(
+                    token=token.credentials, exp=payload['exp'],
+                    permissions=permissions, **user_info
+                )
                 LocalTokenStore.add_token(new_token=verified_token)
                 return verified_token
         else:
@@ -252,7 +266,7 @@ def perm_category_present(
     if not perm_level:
         raise HTTPException(
             status_code=status_codes[401],
-            detail=f'Permissions for access to {category.title()} '\
+            detail=f'Permissions for access to {category.title()} '
                 'have not been defined.'
         )
     elif perm_level <= 0:
@@ -377,16 +391,26 @@ def secured_get_query(
                 rel_key=related_resource
             )
         case _:
-            raise Exception('Invalid argument set supplied to '\
+            raise Exception('Invalid argument set supplied to '
                             'auth.secured_get_query')
-    if the_perm >= auth_scheme.value.sca_employee:
-        result = result_query()
-    elif the_perm >= auth_scheme.value.customer_std:
+
+    developer = the_perm == auth_scheme.value.developer
+    sca = the_perm >= auth_scheme.value.sca_employee
+    customer = the_perm >= auth_scheme.value.customer_std
+
+    if developer:
         ids = db.get_permitted_customer_location_ids(
             session=session,
             email_address=token.email,
-            select_type=the_perm.name
-        )
+            select_type=the_perm.name)
+        result = result_query(permitted_ids=ids)
+    elif sca:
+        result = result_query()
+    elif customer:
+        ids = db.get_permitted_customer_location_ids(
+            session=session,
+            email_address=token.email,
+            select_type=the_perm.name)
         result = result_query(permitted_ids=ids)
     match result:
         case JSONAPIResponse():
