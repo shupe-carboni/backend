@@ -26,6 +26,7 @@ class Stage(StrEnum):
     REMOVED = auto()
 
 class UserTypes(StrEnum):
+    developer = auto()
     sca_admin = auto()
     sca_employee = auto()
     customer_admin = auto()
@@ -187,6 +188,7 @@ class Database:
             session: Session,
             email_address: str,
             select_type: Literal[
+                'developer',
                 'customer_std',
                 'customer_manager',
                 'customer_admin']
@@ -237,19 +239,19 @@ class Database:
                 AND customer_loc.customer_id = scl.customer_id
             );
         """
-        query_set = {sql_admin, sql_manager, sql_user_only}
+        queries = [sql_admin, sql_manager, sql_user_only]
         match user_type:
             case UserTypes.customer_std:
-                query_set.remove(sql_admin)
-                query_set.remove(sql_manager)
+                queries.remove(sql_admin)
+                queries.remove(sql_manager)
             case UserTypes.customer_manager:
-                query_set.remove(sql_admin)
-            case UserTypes.customer_admin:
+                queries.remove(sql_admin)
+            case UserTypes.customer_admin | UserTypes.developer:
                 pass
             case _:
                 raise Exception('invalid select_type')
         
-        for sql in query_set:
+        for sql in queries:
             result = session.scalars(
                 text(sql),
                 params={'user_email': email_address}
