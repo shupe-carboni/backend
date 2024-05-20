@@ -1,54 +1,39 @@
-from functools import partial
-from app.auth import Permissions, perm_category_present
-from dotenv import load_dotenv; load_dotenv()
+from app.auth import Permissions
+from dotenv import load_dotenv
+
+load_dotenv()
 from os import getenv
 
+
 class AdminToken:
-    permissions = {perm.name: perm.value.sca_admin for perm in Permissions}
+    permissions = Permissions.sca_admin
     email_verified = True
-    def perm_level(category):
-        return Permissions[category].value.sca_admin.value
+
 
 class SCAEmployeeToken:
-    permissions = {perm.name: perm.value.sca_employee for perm in Permissions}
+    permissions = Permissions.sca_employee
     email_verified = True
-    def perm_level(category):
-        return Permissions[category].value.sca_employee.value
+
+
+class DeveloperToken:
+    permissions = Permissions.developer
+    email_verified = True
+    email = getenv("TEST_USER_EMAIL")
+
 
 class CustomerAdminToken:
-    permissions = {perm.name: perm.value.customer_admin for perm in Permissions}
+    permissions = Permissions.customer_admin
     email_verified = True
-    email = getenv('TEST_USER_EMAIL')
-    def perm_level(category):
-        return Permissions[category].value.customer_admin.value
+    email = getenv("TEST_USER_EMAIL")
+
 
 class CustomerManagerToken:
-    permissions = {perm.name: perm.value.customer_manager for perm in Permissions}
+    permissions = Permissions.customer_manager
     email_verified = True
-    email = getenv('TEST_USER_EMAIL')
-    def perm_level(category):
-        return Permissions[category].value.customer_manager.value
+    email = getenv("TEST_USER_EMAIL")
+
 
 class CustomerStandardToken:
-    permissions = {perm.name: perm.value.customer_std for perm in Permissions}
+    permissions = Permissions.customer_std
     email_verified = True
-    email = getenv('TEST_USER_EMAIL')
-    def perm_level(category):
-        return Permissions[category].value.customer_std.value
-
-def auth_as_sca_admin(perm_category):
-    return partial(perm_category_present, AdminToken, perm_category)
-
-def auth_as_sca_employee(perm_category):
-    return partial(perm_category_present, SCAEmployeeToken, perm_category)
-
-def auth_as_customer_admin(perm_category):
-    return partial(perm_category_present, CustomerAdminToken, perm_category)
-
-def auth_as_customer_manager(perm_category):
-    return partial(perm_category_present, CustomerManagerToken, perm_category)
-
-def auth_as_customer_std(perm_category):
-    return partial(perm_category_present, CustomerStandardToken, perm_category)
-
-
+    email = getenv("TEST_USER_EMAIL")
