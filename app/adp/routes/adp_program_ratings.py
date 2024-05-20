@@ -6,7 +6,7 @@ from numpy import nan
 
 from app import auth
 from app.db import Session, ADP_DB
-from app.adp.main import add_ratings_to_program
+from app.adp.extraction.ratings import add_ratings_to_program
 from app.adp.models import (
     RatingsResp,
     RatingsQuery,

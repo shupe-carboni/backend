@@ -6,7 +6,7 @@ from fastapi.routing import APIRouter
 
 from app import auth
 from app.db import Session, ADP_DB
-from app.adp.main import (
+from app.adp.extraction.ratings import (
     update_ratings_reference,
     update_all_unregistered_program_ratings,
 )

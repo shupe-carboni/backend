@@ -7,7 +7,8 @@ from fastapi.routing import APIRouter
 
 from app import auth, downloads
 from app.db import Session, ADP_DB, Stage
-from app.adp.main import generate_program, parse_model_string, ParsingModes
+from app.adp.extraction.models import parse_model_string, ParsingModes
+from app.adp.utils.workbook_factory import generate_program
 from app.adp.utils.programs import EmptyProgram
 from app.adp.models import DownloadLink, ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
