@@ -2,102 +2,74 @@ import os
 import time
 import requests
 import bcrypt
-from enum import Enum, IntEnum
+from abc import ABC, abstractmethod
+from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
-from dotenv import load_dotenv; load_dotenv()
+from dotenv import load_dotenv
+
+load_dotenv()
 from pydantic import BaseModel, field_validator
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
 
-from typing import Optional
+from typing import Optional, Callable, Literal
+import collections.abc as collections
 from functools import partial
+from sqlalchemy import text
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session, Database
 from app.jsonapi.sqla_models import serializer
+from app.jsonapi.sqla_jsonapi_ext import GenericData
 
 token_auth_scheme = HTTPBearer()
-AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
-ALGORITHMS = os.getenv('ALGORITHMS')
-AUDIENCE = os.getenv('AUDIENCE')
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
+ALGORITHMS = os.getenv("ALGORITHMS")
+AUDIENCE = os.getenv("AUDIENCE")
+
 
 class TUI(Enum):
-    SCA_CLOUD = os.getenv('SCA_CLOUD_TUI_CLIENT_ID')
-    DEVELOPER = os.getenv('DEVELOPER_TUI_CLIENT_ID')
+    SCA_CLOUD = os.getenv("SCA_CLOUD_TUI_CLIENT_ID")
+    DEVELOPER = os.getenv("DEVELOPER_TUI_CLIENT_ID")
 
-status_codes = {
-    400: status.HTTP_400_BAD_REQUEST,
-    401: status.HTTP_401_UNAUTHORIZED
-}
 
-class QuotePermPriority(IntEnum):
-    developer = 22
-    sca_admin = 21
-    sca_employee = 20
+class UserTypes(StrEnum):
+    developer = auto()
+    sca_admin = auto()
+    sca_employee = auto()
+    customer_admin = auto()
+    customer_manager = auto()
+    customer_std = auto()
+    view_only = auto()
+
+
+class Permissions(IntEnum):
+    sca_admin = 31
+    sca_employee = 30
+    developer = 20
     customer_admin = 12
     customer_manager = 11
     customer_std = 10
     view_only = 1
 
-class ADPPermPriority(IntEnum):
-    developer = 22
-    sca_admin = 21
-    sca_employee = 20
-    customer_admin = 12
-    customer_manager = 11
-    customer_std = 10
-    view_only = 1
-
-class VendorPermPriority(IntEnum):
-    developer = 22
-    sca_admin = 21
-    sca_employee = 20
-    customer_admin = 12
-    customer_manager = 11
-    customer_std = 10
-    view_only = 1
-
-class CustomersPermPriority(IntEnum):
-    developer = 22
-    sca_admin = 21
-    sca_employee = 20
-    customer_admin = 0
-    customer_manager = 0
-    customer_std = 0
-    view_only = 1
-
-class AdminPerm(IntEnum):
-    developer = 22
-    sca_admin = 21
-    sca_employee = 0
-    customer_admin = 0
-    customer_manager = 0
-    customer_std = 0
-    view_only = 0
-
-class Permissions(Enum):
-    adp = ADPPermPriority
-    admin = AdminPerm
-    quotes = QuotePermPriority
-    vendors = VendorPermPriority
-    customers = CustomersPermPriority
 
 class VerifiedToken(BaseModel):
     """
-        Representing a verified token by the hash of the token itself
-        along with expiry time and permissions in order to check
-        whether or not token should be used and how it can be used.
+    Representing a verified token by the hash of the token itself
+    along with expiry time and permissions in order to check
+    whether or not token should be used and how it can be used.
 
-        This will representation will be used in an in-memory storage 
-        system called LocalTokenStore, which will keep a set of
-        VerifiedTokens and check for the incoming token in the 
-        collection.
+    This will representation will be used in an in-memory storage
+    system called LocalTokenStore, which will keep a set of
+    VerifiedTokens and check for the incoming token in the
+    collection.
     """
+
     token: bytes
     exp: int
-    permissions: dict[str,IntEnum]
+    permissions: IntEnum
     nickname: str
     name: str
     email: str
@@ -106,9 +78,9 @@ class VerifiedToken(BaseModel):
     def is_expired(self) -> bool:
         return time.time() > self.exp
 
-    @field_validator('token', mode='before')
+    @field_validator("token", mode="before")
     def hash_token(cls, value: str):
-        token_b = value.encode('utf-8')
+        token_b = value.encode("utf-8")
         token_256_hash = sha256(token_b).digest()
         salt = bcrypt.gensalt(12)
         return bcrypt.hashpw(token_256_hash, salt)
@@ -117,7 +89,7 @@ class VerifiedToken(BaseModel):
         return self.token.__hash__()
 
     def is_same_token(self, other: str) -> bool:
-        other_b = other.encode('utf-8')
+        other_b = other.encode("utf-8")
         other_sha_256 = sha256(other_b).digest()
         return bcrypt.checkpw(other_sha_256, self.token)
 
@@ -130,78 +102,64 @@ class VerifiedToken(BaseModel):
 
 class LocalTokenStore:
     """Global in-memory storage system for access tokens"""
+
     tokens: set[VerifiedToken] = set()
+
     @classmethod
     def add_token(cls, new_token: VerifiedToken) -> None:
         cls.tokens.add(new_token)
+
     @classmethod
-    def contains(cls, token: str) -> VerifiedToken|None:
+    def contains(cls, token: str) -> VerifiedToken | None:
         for verified_token in cls.tokens:
             if verified_token.is_same_token(token):
                 if not verified_token.is_expired():
                     return verified_token
         return
 
+
 def get_user_info(access_token: str) -> dict:
-    user_info_ep = AUTH0_DOMAIN + '/userinfo'
-    auth_header = {'Authorization': f"Bearer {access_token}"}
+    user_info_ep = AUTH0_DOMAIN + "/userinfo"
+    auth_header = {"Authorization": f"Bearer {access_token}"}
     user_info = requests.get(user_info_ep, headers=auth_header)
     if 299 >= user_info.status_code >= 200:
         user_info = user_info.json()
     else:
         raise HTTPException(
-            status_code=status_codes[401],
-            detail="user could not be verified"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="user could not be verified",
         )
     match user_info:
-        case {"nickname": a, "name": b, "email": c,
-              "email_verified": d, **other}:
-            return {"nickname": a, "name": b, "email": c,
-                    "email_verified": d}
+        case {"nickname": a, "name": b, "email": c, "email_verified": d, **other}:
+            return {"nickname": a, "name": b, "email": c, "email_verified": d}
         case _:
             raise HTTPException(
-                status_code=status_codes[401],
-                detail="user could not be verified"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="user could not be verified",
             )
-        
-def set_permissions(all_permissions: list[str]) -> dict[str,Enum]:
-    if not all_permissions:
-        return dict()
-    all_permissions_dict = dict()
-    for perm in all_permissions:
-        resource, permission = perm.split(':')
-        permission = permission.replace('-','_')
-        resource_perms = Permissions[resource].value
-        try:
-            current_perm_lvl = resource_perms[permission] 
-        except KeyError:
-            current_perm_lvl = 0
-        if resource in all_permissions_dict:
-            # set the permissions to the most restictive
-            # (lowest priority enum value)
-            # if more than one permission value is provided
-            if all_permissions_dict[resource] < current_perm_lvl:
-                continue
-        all_permissions_dict[resource] = current_perm_lvl
-    return all_permissions_dict
 
-def find_duplicates(input_list):
-    seen = set()
-    duplicates = set()
-    for item in input_list:
-        if item in seen:
-            duplicates.add(item)
-        else:
-            seen.add(item)
-    return duplicates
+
+def set_permissions(permissions: list[str]) -> IntEnum:
+    if not permissions:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    elif len(permissions) > 1:
+        vals = []
+        for perm in permissions:
+            perm = perm.replace("-", "_")
+            perm_obj = Permissions[perm]
+            vals.append(perm_obj)
+        return min(vals)
+    else:
+        return Permissions[permissions[0].replace("-", "_")]
+
 
 async def authenticate_auth0_token(
-        token: HTTPAuthorizationCredentials=Depends(token_auth_scheme)
-    ):
+    token: HTTPAuthorizationCredentials = Depends(token_auth_scheme),
+) -> VerifiedToken:
     error = None
     if verified_token := LocalTokenStore.contains(token.credentials):
         return verified_token
-    jwks = requests.get(AUTH0_DOMAIN+"/.well-known/jwks.json").json()
+    jwks = requests.get(AUTH0_DOMAIN + "/.well-known/jwks.json").json()
     try:
         unverified_header = get_unverified_header(token.credentials)
     except Exception as err:
@@ -215,109 +173,55 @@ async def authenticate_auth0_token(
                     "kid": key["kid"],
                     "use": key["use"],
                     "n": key["n"],
-                    "e": key["e"]             
+                    "e": key["e"],
                 }
         if rsa_key:
             try:
                 payload = decode(
-                    token.credentials,
-                    rsa_key,
-                    algorithms=ALGORITHMS,
-                    audience=AUDIENCE
+                    token.credentials, rsa_key, algorithms=ALGORITHMS, audience=AUDIENCE
                 )
             except Exception as err:
                 error = err
             else:
-                client_id: str = payload['azp']
+                client_id: str = payload["azp"]
                 match client_id:
                     case TUI.SCA_CLOUD.value:
                         user_info = dict(
-                            nickname='SCA Cloud TUI',
-                            name='SCA Cloud TUI',
-                            email='',
-                            email_verified=True
+                            nickname="SCA Cloud TUI",
+                            name="SCA Cloud TUI",
+                            email="",
+                            email_verified=True,
                         )
                     case TUI.DEVELOPER.value:
                         user_info = dict(
-                            nickname='Developer TUI',
-                            name='Developer TUI',
-                            email=os.getenv('TEST_USER_EMAIL'),
-                            email_verified=True
+                            nickname="Developer TUI",
+                            name="Developer TUI",
+                            email=os.getenv("TEST_USER_EMAIL"),
+                            email_verified=True,
                         )
                     case _:
-                        user_info = get_user_info()
-                permissions = set_permissions(payload['permissions'])
+                        user_info = get_user_info(token.credentials)
                 verified_token = VerifiedToken(
-                    token=token.credentials, exp=payload['exp'],
-                    permissions=permissions, **user_info
+                    token=token.credentials,
+                    exp=payload["exp"],
+                    permissions=set_permissions(payload["permissions"]),
+                    **user_info,
                 )
                 LocalTokenStore.add_token(new_token=verified_token)
                 return verified_token
         else:
             error = "No RSA key found in JWT Header"
-    raise HTTPException(status_code=status_codes[401], detail=str(error)) 
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error))
 
-
-def perm_category_present(
-        token: VerifiedToken,
-        category: str
-    ) -> VerifiedToken:
-    perm_level = token.perm_level(category)
-    if not perm_level:
-        raise HTTPException(
-            status_code=status_codes[401],
-            detail=f'Permissions for access to {category.title()} '
-                'have not been defined.'
-        )
-    elif perm_level <= 0:
-        raise HTTPException(
-            status_code=status_codes[401],
-            detail=f'Access to this {category.lower()} resource is restricted.'
-        )
-    return token
-
-def adp_perms_present(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    return perm_category_present(token, 'adp')
-
-def vendor_perms_present(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    return perm_category_present(token, 'vendors')
-
-def quotes_perms_present(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    return perm_category_present(token, 'quotes')
-
-def customers_perms_present(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    return perm_category_present(token, 'customers')
-
-def admin_perms_present(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    return perm_category_present(token, 'admin')
-
-def adp_quotes_perms(
-        token: VerifiedToken = Depends(authenticate_auth0_token)
-    ) -> VerifiedToken:
-    perm_category_present(token, 'adp')
-    perm_category_present(token, 'quotes')
-    return token
-
-def get_vendor_perm(token: VerifiedToken) -> VendorPermPriority:
-    return token.permissions.get('vendors')
-
-def get_adp_perm(token: VerifiedToken) -> ADPPermPriority:
-    return token.permissions.get('adp')
-
-def get_vendor_perm(token: VerifiedToken) -> VendorPermPriority:
-    return token.permissions.get('vendors')
 
 class UnverifiedEmail(Exception): ...
+
+
+class IDsNotAssociated(Exception): ...
+
+
+class CustomerIDNotAssociatedWithUser(Exception): ...
+
 
 def standard_error_handler(func):
     def wrapper(*args, **kwargs):
@@ -325,95 +229,557 @@ def standard_error_handler(func):
             return func(*args, **kwargs)
         except UnverifiedEmail:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
-                detail="Email not verified"
+                status.HTTP_401_UNAUTHORIZED, detail="Email not verified"
             )
         except ResourceNotFoundError:
             raise HTTPException(status.HTTP_204_NO_CONTENT)
+        except CustomerIDNotAssociatedWithUser:
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                detail="ADP Customer ID is not associated with the user",
+            )
+        except IDsNotAssociated:
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                detail="Object ID not associated with the ADP Customer ID",
+            )
+        except HTTPException as e:
+            raise e
         except:
             import traceback as tb
+
             raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=tb.format_exc()
+                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc()
             )
+
     return wrapper
 
-@standard_error_handler
-def secured_get_query(
-        db: Database,
+
+def check_object_id_association(
+    session: Session,
+    customer_reference_resource: str,
+    customer_reference_id: int,
+    resource: str,
+    obj_id: int | None,
+) -> None:
+    if obj_id:
+        current_obj = serializer.get_resource(
+            session, {"include": customer_reference_resource}, resource, obj_id, True
+        )
+        if (
+            current_obj["data"]["relationships"][customer_reference_resource]["data"][
+                "id"
+            ]
+            != customer_reference_id
+        ):
+            raise IDsNotAssociated
+
+
+class SecOp(ABC):
+    """Abstract Base Class for determining how HTTP request types are performed
+    and how user types are allow-listed.
+
+    Each route type implements this class and uses their permission classes
+    to determind when each user type is allow-listed.
+
+    allow_* methods are called explicitly in each route implementation to allow-list
+    them when sufficient permissions are present (ex: .allow_admin() will execute
+    the check to see if the token has admin permissions and change the state of
+    self._admin to True)"""
+
+    def __init__(self, token: VerifiedToken) -> None:
+        if not token.email_verified:
+            raise UnverifiedEmail
+        self.token = token
+        self._admin = False
+        self._sca = False
+        self._dev = False
+        self._customer = False
+
+    @abstractmethod
+    def permitted_resource_customer_ids(self): ...
+
+    def permitted_customer_location_ids(
+        self,
         session: Session,
-        token: VerifiedToken,
-        auth_scheme: Permissions,
+    ) -> list[int]:
+        """Using select statements, get the customer location ids that
+        will be permitted for view
+        select_type:
+            * user - get only the customer location associated with
+                the user. which ought to be 1 id
+            * manager - get customer locations associated with all
+                mapped branches in the sca_manager_map table
+            * admin - get all customer locations associated with the
+                customer id associated with the location associated
+                to the user.
+            * developer - (same as customer_admin)
+        """
+        sql_user_only = """
+            SELECT cl.id
+            FROM sca_customer_locations cl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                WHERE u.email = :user_email
+                AND u.customer_location_id = cl.id
+            );
+        """
+        sql_manager = """
+            SELECT cl.id
+            FROM sca_customer_locations cl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                WHERE u.email = :user_email
+                AND mm.customer_location_id = cl.id
+            );
+        """
+        sql_admin = """
+            SELECT scl.id
+            FROM sca_customer_locations scl
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations customer_loc
+                ON u.customer_location_id = customer_loc.id
+                WHERE u.email = :user_email
+                AND customer_loc.customer_id = scl.customer_id
+            );
+        """
+        queries = [sql_admin, sql_manager, sql_user_only]
+        match UserTypes[self.token.permissions.name]:
+            case UserTypes.customer_std:
+                queries.remove(sql_admin)
+                queries.remove(sql_manager)
+            case UserTypes.customer_manager:
+                queries.remove(sql_admin)
+            case UserTypes.customer_admin | UserTypes.developer:
+                pass
+            case _:
+                raise Exception("invalid select_type")
+
+        for sql in queries:
+            result = session.scalars(
+                text(sql), params={"user_email": self.token.email}
+            ).all()
+            if result:
+                return result
+        return []
+
+    def allow_admin(self) -> "SecOp":
+        self._admin = self.token.permissions >= Permissions.sca_admin
+        return self
+
+    def allow_sca(self) -> "SecOp":
+        self._sca = (
+            Permissions.sca_admin >= self.token.permissions >= Permissions.sca_employee
+        )
+        return self
+
+    def allow_dev(self) -> "SecOp":
+        self._dev = self.token.permissions == Permissions.developer
+        return self
+
+    def allow_customer(
+        self, level: Literal["admin"] | Literal["manager"] | Literal["std"]
+    ) -> "SecOp":
+        self._customer = (
+            Permissions.customer_admin
+            >= self.token.permissions
+            >= Permissions[f"customer_{level}"]
+        )
+        return self
+
+    @standard_error_handler
+    def get(
+        self,
+        session: Session,
         resource: str,
         query: dict,
         obj_id: Optional[int] = None,
+        related_resource: Optional[str] = None,
         relationship: bool = False,
-        related_resource: str = None
     ):
-    if not token.email_verified:
-        raise UnverifiedEmail
-    perm_lookup_name: str = auth_scheme.name
-    the_perm: IntEnum = token.permissions.get(perm_lookup_name)
-    arguments = (obj_id, relationship, related_resource)
-    match arguments:
-        case None, False, None:
-            result_query = partial(
-                serializer.get_collection,
-                session=session,
-                query=query,
-                api_type=resource,
+        optional_arguments = (obj_id, relationship, related_resource)
+        match optional_arguments:
+            case None, False, None:
+                result_query = partial(
+                    serializer.get_collection,
+                    session=session,
+                    query=query,
+                    api_type=resource,
                 )
-        case int(), False, None:
-            result_query = partial(
-                serializer.get_resource,
-                session=session,
-                query=query,
-                api_type=resource,
-                obj_id=obj_id,
-                obj_only=True
-            )
-        case int(), False, str():
-            result_query = partial(
-                serializer.get_related,
-                session=session,
-                query=query,
-                api_type=resource,
-                obj_id=obj_id,
-                rel_key=related_resource
-            )
-        case int(), True, str():
-            result_query = partial(
-                serializer.get_relationship,
-                session=session,
-                query=query,
-                api_type=resource,
-                obj_id=obj_id,
-                rel_key=related_resource
-            )
-        case _:
-            raise Exception('Invalid argument set supplied to '
-                            'auth.secured_get_query')
+            case int(), False, None:
+                result_query = partial(
+                    serializer.get_resource,
+                    session=session,
+                    query=query,
+                    api_type=resource,
+                    obj_id=obj_id,
+                    obj_only=True,
+                )
+            case int(), False, str():
+                result_query = partial(
+                    serializer.get_related,
+                    session=session,
+                    query=query,
+                    api_type=resource,
+                    obj_id=obj_id,
+                    rel_key=related_resource,
+                )
+            case int(), True, str():
+                result_query = partial(
+                    serializer.get_relationship,
+                    session=session,
+                    query=query,
+                    api_type=resource,
+                    obj_id=obj_id,
+                    rel_key=related_resource,
+                )
+            case _:
+                raise Exception(
+                    "Invalid argument set supplied to auth.secured_get_query"
+                )
+        if self._admin or self._sca:
+            result = result_query()
+        elif self._customer or self._dev:
+            ids = self.permitted_customer_location_ids(session=session)
+            result = result_query(permitted_ids=ids)
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        match result:
+            case JSONAPIResponse():
+                return result.data
+            case dict():
+                return result
 
-    developer = the_perm == auth_scheme.value.developer
-    sca = the_perm >= auth_scheme.value.sca_employee
-    customer = the_perm >= auth_scheme.value.customer_std
+    @abstractmethod
+    @standard_error_handler
+    def post(
+        self,
+        session: Session,
+        resource: str,
+        data: dict | Callable,
+        customer_id: int,
+        obj_id: Optional[int] = None,
+        related_resource: Optional[str] = None,
+    ): ...
 
-    if developer:
-        ids = db.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=the_perm.name)
-        result = result_query(permitted_ids=ids)
-    elif sca:
-        result = result_query()
-    elif customer:
-        ids = db.get_permitted_customer_location_ids(
-            session=session,
-            email_address=token.email,
-            select_type=the_perm.name)
-        result = result_query(permitted_ids=ids)
-    match result:
-        case JSONAPIResponse():
-            return result.data
-        case _:
-            return result
+    @abstractmethod
+    @standard_error_handler
+    def patch(
+        self,
+        session: Session,
+        resource: str,
+        data: dict | Callable,
+        customer_id: int,
+        obj_id: int,
+        related_resource: Optional[str] = None,
+    ): ...
+
+    @abstractmethod
+    @standard_error_handler
+    def delete(self): ...
+
+
+class ADPOperations(SecOp):
+
+    def permitted_resource_customer_ids(
+        self,
+        session: Session,
+    ) -> list[int]:
+        """Using select statements, get the adp customer ids that
+        will be permitted for view
+        select_type:
+            * user - get only the customer location associated with
+                the user. which ought to be 1 id
+            * manager - get customer locations associated with all
+                mapped branches in the sca_manager_map table
+            * admin - get all customer locations associated with the
+                customer id associated with the location associated
+                to the user.
+            * developer - (same as customer_admin)
+        """
+        sql_user_only = """
+            SELECT ac.id
+            FROM adp_customers ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                WHERE u.email = :user_email
+                AND mapping.adp_customer_id = ac.id
+            );
+        """
+        sql_manager = """
+            SELECT ac.id
+            FROM adp_customers ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                JOIN sca_customer_locations AS scl
+                ON scl.id = mm.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                WHERE u.email = :user_email
+                AND mapping.adp_customer_id = ac.id
+            );
+        """
+        sql_admin = """
+            SELECT ac.id
+            FROM adp_customers ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                JOIN adp_customers ac_2
+                ON ac_2.id = mapping.adp_customer_id
+                WHERE u.email = :user_email
+                AND ac_2.sca_id = ac.sca_id
+            );
+        """
+        queries = [sql_admin, sql_manager, sql_user_only]
+        user_type = UserTypes[self.token.permissions.name]
+        match user_type:
+            case UserTypes.customer_std:
+                queries.remove(sql_admin)
+                queries.remove(sql_manager)
+            case UserTypes.customer_manager:
+                queries.remove(sql_admin)
+            case UserTypes.customer_admin | UserTypes.developer:
+                pass
+            case _:
+                raise Exception("invalid select_type")
+        for sql in queries:
+            result = session.scalars(
+                text(sql), params={"user_email": self.token.email}
+            ).all()
+            if result:
+                return result
+        return []
+
+    @standard_error_handler
+    def post(
+        self,
+        session: Session,
+        resource: str,
+        data: dict | Callable,
+        customer_id: int,
+        obj_id: Optional[int] = None,
+        related_resource: Optional[str] = None,
+    ) -> GenericData | None:
+        if self._customer or self._dev:
+            customer_ids = self.permitted_resource_customer_ids(session=session)
+            if customer_id not in customer_ids:
+                raise CustomerIDNotAssociatedWithUser
+
+        check_object_id_association(
+            session, "adp-customers", customer_id, resource, obj_id
+        )
+
+        match data:
+            case collections.Callable():
+                data: dict = data()
+
+        optional_arguments = (obj_id, related_resource)
+        match optional_arguments:
+            case None, None:
+                operation = partial(
+                    serializer.post_collection,
+                    session=session,
+                    data=data,
+                    api_type=resource,
+                )
+            case int(), str():
+                operation = partial(
+                    serializer.post_relationship,
+                    session=session,
+                    json_data=data,
+                    api_type=resource,
+                    obj_id=obj_id,
+                    rel_key=related_resource,
+                )
+            case int(), _:
+                raise Exception("The related resource name is missing")
+            case _, str():
+                raise Exception("the object id for the primary resource is missing")
+            case _:
+                raise Exception(
+                    "Invalid argument set. Provide either an object id and related "
+                    "object for a relationship or neither to create a new instance of "
+                    "the primary reseource."
+                )
+
+        result: GenericData | JSONAPIResponse = operation()
+
+        match result:
+            case JSONAPIResponse():
+                return result.data
+            case dict():
+                return result
+
+    @standard_error_handler
+    def patch(
+        self,
+        session: Session,
+        resource: str,
+        data: dict | Callable,
+        customer_id: int,
+        obj_id: int,
+        related_resource: Optional[str] = None,
+    ) -> GenericData | None:
+        if self._customer or self._dev:
+            customer_ids = self.permitted_resource_customer_ids(session=session)
+            if customer_id not in customer_ids:
+                raise CustomerIDNotAssociatedWithUser
+
+        check_object_id_association(
+            session, "adp-customers", customer_id, resource, obj_id
+        )
+
+        match data:
+            case collections.Callable():
+                data: dict = data()
+
+        if related_resource:
+            operation = partial(
+                serializer.patch_relationship,
+                session=session,
+                json_data=data,
+                api_type=resource,
+                obj_id=obj_id,
+                rel_key=related_resource,
+            )
+        else:
+            operation = partial(
+                serializer.patch_resource,
+                session=session,
+                json_data=data,
+                api_type=resource,
+                obj_id=obj_id,
+            )
+        result: GenericData | JSONAPIResponse = operation()
+
+        match result:
+            case JSONAPIResponse():
+                return result.data
+            case dict():
+                return result
+
+    @standard_error_handler
+    def delete(self): ...
+
+
+class VendorOperations(SecOp): ...
+
+
+class FriedrichOperations(SecOp): ...
+
+
+class MilwaukeeOperations(SecOp): ...
+
+
+class AtcoOperations(SecOp): ...
+
+
+class GenesisOperations(SecOp): ...
+
+
+class BerryOperations(SecOp): ...
+
+
+class GlasflossOperations(SecOp): ...
+
+
+class CustomersOperations(SecOp):
+
+    @standard_error_handler
+    def post(self): ...
+    @standard_error_handler
+    def patch(self): ...
+    @standard_error_handler
+    def delete(self): ...
+
+    def permitted_resource_customer_ids(self, session: Session):
+        """Using select statements, get the adp customer ids that
+        will be permitted for view
+        select_type:
+            * user - get only the customer location associated with
+                the user. which ought to be 1 id
+            * manager - get customer locations associated with all
+                mapped branches in the sca_manager_map table
+            * admin - get all customer locations associated with the
+                customer id associated with the location associated
+                to the user.
+            * developer - (same as customer_admin)
+        """
+        sql_user_only = """
+            SELECT c.id
+            FROM sca_customers c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                WHERE scl.customer_id = c.id
+                AND u.email = :user_email
+            );
+        """
+        sql_manager = """
+            SELECT c.id
+            FROM sca_customers c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                JOIN sca_customer_locations AS scl
+                ON scl.id = mm.customer_location_id
+                WHERE u.email = :user_email
+                AND scl.customer_id = c.id
+            );
+        """
+        sql_admin = """
+            SELECT c.id
+            FROM sca_customers c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN sca_customers c_2
+                ON c_2.id = scl.customer_id
+                WHERE u.email = :user_email
+                AND ac_2.id = ac.id
+            );
+        """
+        queries = [sql_admin, sql_manager, sql_user_only]
+        user_type = UserTypes[self.token.permissions.name]
+        match user_type:
+            case UserTypes.customer_std:
+                queries.remove(sql_admin)
+                queries.remove(sql_manager)
+            case UserTypes.customer_manager:
+                queries.remove(sql_admin)
+            case UserTypes.customer_admin | UserTypes.developer:
+                pass
+            case _:
+                raise Exception("invalid select_type")
+        for sql in queries:
+            result = session.scalars(
+                text(sql), params={"user_email": self.token.email}
+            ).all()
+            if result:
+                return result
+        return []
