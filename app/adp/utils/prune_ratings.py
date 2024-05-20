@@ -7,22 +7,51 @@ from app.db import ADP_DB
 # ah_models_by_customer = db.load_df('ah_programs')
 # ratings_by_customer = db.load_df('program_ratings')
 
+
 def prune() -> None:
-    coil_models_by_customer = coil_models_by_customer.loc[:, ((coil_models_by_customer.columns.str.contains('ratings')) | (coil_models_by_customer.columns.isin(['customer'])))]
-    ah_models_by_customer = ah_models_by_customer.loc[:, ((ah_models_by_customer.columns.str.contains('ratings')) | (ah_models_by_customer.columns.isin(['customer'])))]
+    coil_models_by_customer = coil_models_by_customer.loc[
+        :,
+        (
+            (coil_models_by_customer.columns.str.contains("ratings"))
+            | (coil_models_by_customer.columns.isin(["customer"]))
+        ),
+    ]
+    ah_models_by_customer = ah_models_by_customer.loc[
+        :,
+        (
+            (ah_models_by_customer.columns.str.contains("ratings"))
+            | (ah_models_by_customer.columns.isin(["customer"]))
+        ),
+    ]
 
     coil_models_by_customer = coil_models_by_customer.drop_duplicates()
     ah_models_by_customer = ah_models_by_customer.drop_duplicates()
 
     def mark_to_keep(row: pd.Series) -> bool:
-        customer = row['customer']
-        indoormodel = row['IndoorModel']
+        customer = row["customer"]
+        indoormodel = row["IndoorModel"]
         if indoormodel is None:
-            indoormodel = row['Coil Model Number']
+            indoormodel = row["Coil Model Number"]
             if indoormodel is None:
                 return False
-        coil_ratings_regexes = coil_models_by_customer.loc[coil_models_by_customer['customer'] == customer, coil_models_by_customer.columns.str.contains('ratings')].drop_duplicates().dropna().unstack()
-        ah_ratings_regexes = ah_models_by_customer.loc[ah_models_by_customer['customer'] == customer, ah_models_by_customer.columns.str.contains('ratings')].drop_duplicates().dropna().unstack()
+        coil_ratings_regexes = (
+            coil_models_by_customer.loc[
+                coil_models_by_customer["customer"] == customer,
+                coil_models_by_customer.columns.str.contains("ratings"),
+            ]
+            .drop_duplicates()
+            .dropna()
+            .unstack()
+        )
+        ah_ratings_regexes = (
+            ah_models_by_customer.loc[
+                ah_models_by_customer["customer"] == customer,
+                ah_models_by_customer.columns.str.contains("ratings"),
+            ]
+            .drop_duplicates()
+            .dropna()
+            .unstack()
+        )
         customer_regexes = pd.concat([coil_ratings_regexes, ah_ratings_regexes]).values
         for regex in customer_regexes:
             rating_model = re.compile(regex)

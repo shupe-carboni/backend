@@ -35,10 +35,6 @@ def build_model_attributes(
     record_series["effective_date"] = TODAY
     record_series = record_series.dropna()
     return record_series
-    with session:
-        return separate_by_product_type_and_commit_to_db(
-            session=session, data=record_series
-        )
 
 
 def parse_model_string(

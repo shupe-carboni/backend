@@ -2,23 +2,37 @@
     between models and jsonapi names defined separately"""
 
 from sqlalchemy import (
-    Column, Float, Integer,
-    String, Boolean, DateTime,
-    TEXT, ForeignKey, Enum,
-    ARRAY, BigInteger, exists
+    Column,
+    Float,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    TEXT,
+    ForeignKey,
+    Enum,
+    ARRAY,
+    BigInteger,
+    exists,
 )
 from sqlalchemy.orm import (
-    declarative_base, relationship, Query,
-    aliased, Mapped, mapped_column
+    declarative_base,
+    relationship,
+    Query,
+    aliased,
+    Mapped,
+    mapped_column,
 )
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
 from app.db import Stage
 
 Base = declarative_base()
-STAGE_ENUM = Enum('PROPOSED', 'ACTIVE', 'REJECTED', 'REMOVED', name='stage')
+STAGE_ENUM = Enum("PROPOSED", "ACTIVE", "REJECTED", "REMOVED", name="stage")
+
+
 class ADPAHProgram(Base):
-    __tablename__ = 'adp_ah_programs'
-    __jsonapi_type_override__ = 'adp-ah-programs'
+    __tablename__ = "adp_ah_programs"
+    __jsonapi_type_override__ = "adp-ah-programs"
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -49,22 +63,23 @@ class ADPAHProgram(Base):
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
     stage: Mapped[Stage] = mapped_column()
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query, 
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPAHProgram.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPCoilProgram(Base):
-    __tablename__ = 'adp_coil_programs'
-    __jsonapi_type_override__ = 'adp-coil-programs'
+    __tablename__ = "adp_coil_programs"
+    __jsonapi_type_override__ = "adp-coil-programs"
     ## fields
     category = Column(TEXT)
     model_number = Column(TEXT)
@@ -94,103 +109,100 @@ class ADPCoilProgram(Base):
     last_file_gen = Column(DateTime)
     id = Column(Integer, primary_key=True)
     stage: Mapped[Stage] = mapped_column()
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query, 
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPCoilProgram.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPAliasToSCACustomerLocation(Base):
-    __tablename__ = 'adp_alias_to_sca_customer_locations'
+    __tablename__ = "adp_alias_to_sca_customer_locations"
     ## fields
     id = Column(Integer, primary_key=True)
-    adp_customer_id = Column(Integer, ForeignKey('adp_customers.id'))
-    sca_customer_location_id = Column(
-        Integer,
-        ForeignKey('sca_customer_locations.id')
-    )
+    adp_customer_id = Column(Integer, ForeignKey("adp_customers.id"))
+    sca_customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## relationships
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__tablename__
+    )
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class ADPCustomer(Base):
-    __tablename__ = 'adp_customers'
-    __jsonapi_type_override__ = 'adp-customers'
+    __tablename__ = "adp_customers"
+    __jsonapi_type_override__ = "adp-customers"
     ## fields
     adp_alias = Column(TEXT, unique=True)
     customer = Column(TEXT)
-    sca_id = Column(Integer, ForeignKey('sca_customers.id'))
+    sca_id = Column(Integer, ForeignKey("sca_customers.id"))
     id = Column(Integer, primary_key=True)
     preferred_parts = Column(Boolean)
     ## relationships
-    customers = relationship('SCACustomer', back_populates=__tablename__)
-    adp_coil_programs = relationship('ADPCoilProgram',
-                                     back_populates=__tablename__)
-    adp_ah_programs = relationship('ADPAHProgram',back_populates=__tablename__)
-    adp_program_ratings = relationship('ADPProgramRating',
-                                       back_populates=__tablename__)
+    customers = relationship("SCACustomer", back_populates=__tablename__)
+    adp_coil_programs = relationship("ADPCoilProgram", back_populates=__tablename__)
+    adp_ah_programs = relationship("ADPAHProgram", back_populates=__tablename__)
+    adp_program_ratings = relationship("ADPProgramRating", back_populates=__tablename__)
     adp_alias_to_sca_customer_locations = relationship(
-        'ADPAliasToSCACustomerLocation',
-        back_populates=__tablename__
+        "ADPAliasToSCACustomerLocation", back_populates=__tablename__
     )
     adp_material_group_discounts = relationship(
-        'ADPMaterialGroupDiscount',
-        back_populates=__tablename__
+        "ADPMaterialGroupDiscount", back_populates=__tablename__
     )
-    adp_snps = relationship('ADPSNP', back_populates=__tablename__)
-    adp_program_parts = relationship('ADPProgramPart',
-                                     back_populates=__tablename__)
-    adp_quotes = relationship('ADPQuote', back_populates=__tablename__)
+    adp_snps = relationship("ADPSNP", back_populates=__tablename__)
+    adp_program_parts = relationship("ADPProgramPart", back_populates=__tablename__)
+    adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPCustomer.id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPCustomerTerms(Base):
-    __tablename__ = 'adp_customer_terms'
-    __jsonapi_type_override__ = 'adp-customer-terms'
+    __tablename__ = "adp_customer_terms"
+    __jsonapi_type_override__ = "adp-customer-terms"
     ## fields
-    sca_id = Column(Integer, ForeignKey('sca_customers.id'))
+    sca_id = Column(Integer, ForeignKey("sca_customers.id"))
     terms = Column(TEXT)
     ppf = Column(Integer)
     effective_date = Column(DateTime)
     id = Column(Integer, primary_key=True)
     ## relationships
-    customers = relationship('SCACustomer', back_populates=__tablename__)
+    customers = relationship("SCACustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.sca_customer_location_id == ADPCustomerTerms.sca_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class SCACustomer(Base):
-    __tablename__ = 'sca_customers'
-    __jsonapi_type_override__ = 'customers'
+    __tablename__ = "sca_customers"
+    __jsonapi_type_override__ = "customers"
     ## fields
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -198,58 +210,63 @@ class SCACustomer(Base):
     domains = Column(ARRAY(String))
     buying_group = Column(String)
     ## relationships
-    adp_customer_terms = relationship('ADPCustomerTerms',
-                                      back_populates=__jsonapi_type_override__)
-    adp_customers = relationship('ADPCustomer',
-                                 back_populates=__jsonapi_type_override__)
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__jsonapi_type_override__)
+    adp_customer_terms = relationship(
+        "ADPCustomerTerms", back_populates=__jsonapi_type_override__
+    )
+    adp_customers = relationship(
+        "ADPCustomer", back_populates=__jsonapi_type_override__
+    )
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__jsonapi_type_override__
+    )
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class ADPMaterialGroupDiscount(Base):
-    __tablename__ = 'adp_material_group_discounts'
+    __tablename__ = "adp_material_group_discounts"
     ## fields
     mat_grp = Column(TEXT)
     discount = Column(Float)
     id = Column(Integer, primary_key=True)
     stage = Column(STAGE_ENUM)
     effective_date = Column(DateTime)
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPMaterialGroupDiscount.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPProgramRating(Base):
-    __tablename__ = 'adp_program_ratings'
-    __jsonapi_type_override__ = 'adp-program-ratings'
+    __tablename__ = "adp_program_ratings"
+    __jsonapi_type_override__ = "adp-program-ratings"
 
     ## fields
-    ahrinumber = Column("AHRINumber",TEXT)
-    outdoor_model = Column("OutdoorModel",TEXT)
-    oem_name = Column("OEMName",TEXT)
-    indoor_model = Column("IndoorModel",TEXT)
-    furnace_model = Column("FurnaceModel",TEXT)
-    oem_name_1= Column("OEM Name",TEXT)
-    m1 = Column("M1",TEXT)
-    status = Column("Status",TEXT)
-    oem_series = Column("OEM Series",TEXT)
-    adp_series = Column("ADP Series",TEXT)
-    model_number = Column("Model Number",TEXT)
-    coil_model_number = Column("Coil Model Number",TEXT)
-    furnace_model_number = Column("Furnace Model Number",TEXT)
+    ahrinumber = Column("AHRINumber", TEXT)
+    outdoor_model = Column("OutdoorModel", TEXT)
+    oem_name = Column("OEMName", TEXT)
+    indoor_model = Column("IndoorModel", TEXT)
+    furnace_model = Column("FurnaceModel", TEXT)
+    oem_name_1 = Column("OEM Name", TEXT)
+    m1 = Column("M1", TEXT)
+    status = Column("Status", TEXT)
+    oem_series = Column("OEM Series", TEXT)
+    adp_series = Column("ADP Series", TEXT)
+    model_number = Column("Model Number", TEXT)
+    coil_model_number = Column("Coil Model Number", TEXT)
+    furnace_model_number = Column("Furnace Model Number", TEXT)
     seer = Column("SEER", Float)
     eer = Column("EER", Float)
     capacity = Column("Capacity", Float)
@@ -264,29 +281,30 @@ class ADPProgramRating(Base):
     ahri_ref_number = Column("AHRI Ref Number", BigInteger)
     region = Column("Region", TEXT)
     effective_date = Column(DateTime)
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     seer2_as_submitted = Column(Float)
     eer95f2_as_submitted = Column(Float)
     capacity2_as_submitted = Column(Float)
     hspf2_as_submitted = Column(Float)
     id = Column(Integer, primary_key=True)
     ## relationships
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPProgramRating.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPPricingPart(Base):
-    __tablename__ = 'adp_pricing_parts'
-    __jsonapi_type_override__ = 'adp-pricing-parts'
+    __tablename__ = "adp_pricing_parts"
+    __jsonapi_type_override__ = "adp-pricing-parts"
     ## fields
     id = Column(Integer)
     part_number = Column(String, nullable=False, primary_key=True)
@@ -295,145 +313,146 @@ class ADPPricingPart(Base):
     preferred = Column(Integer)
     standard = Column(Integer)
     ## relationships
-    adp_program_parts = relationship('ADPProgramPart',
-                                     back_populates=__tablename__)
+    adp_program_parts = relationship("ADPProgramPart", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class ADPProgramPart(Base):
-    __tablename__ = 'adp_program_parts'
-    __jsonapi_type_override__ = 'adp-program-parts'
+    __tablename__ = "adp_program_parts"
+    __jsonapi_type_override__ = "adp-program-parts"
     ## fields
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
-    part_number = Column(String, ForeignKey('adp_pricing_parts.part_number'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
+    part_number = Column(String, ForeignKey("adp_pricing_parts.part_number"))
     ## relationships
-    adp_pricing_parts = relationship('ADPPricingPart',
-                                     back_populates=__tablename__)
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
+    adp_pricing_parts = relationship("ADPPricingPart", back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPProgramPart.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPQuote(Base):
-    __tablename__ = 'adp_quotes'
-    __jsonapi_type_override__ = 'adp-quotes'
+    __tablename__ = "adp_quotes"
+    __jsonapi_type_override__ = "adp-quotes"
     ## fields
     id = Column(Integer, primary_key=True)
     adp_quote_id = Column(String, unique=True)
-    place_id = Column(Integer, ForeignKey('sca_places.id'))
-    adp_customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    place_id = Column(Integer, ForeignKey("sca_places.id"))
+    adp_customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     job_name = Column(String)
     created_at = Column(DateTime)
     expires_at = Column(DateTime)
     status = Column(STAGE_ENUM)
     quote_doc = Column(TEXT, unique=True)
     plans_doc = Column(TEXT)
-    customer_location_id = Column(
-        Integer, ForeignKey('sca_customer_locations.id')
-    )
+    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## relationships
-    places = relationship('SCAPlace', back_populates=__tablename__)
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__tablename__)
-    adp_quote_products = relationship('ADPQuoteProduct',
-                                      back_populates=__tablename__)
+    places = relationship("SCAPlace", back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__tablename__
+    )
+    adp_quote_products = relationship("ADPQuoteProduct", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class SCACustomerLocation(Base):
-    __tablename__ = 'sca_customer_locations'
-    __jsonapi_type_override__ = 'customer-locations'
-    __tablename_alt__ = 'customer_locations'
+    __tablename__ = "sca_customer_locations"
+    __jsonapi_type_override__ = "customer-locations"
+    __tablename_alt__ = "customer_locations"
     ## fields
     id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey('sca_customers.id'))
-    place_id = Column(Integer, ForeignKey('sca_places.id'))
+    customer_id = Column(Integer, ForeignKey("sca_customers.id"))
+    place_id = Column(Integer, ForeignKey("sca_places.id"))
     hq = Column(Boolean)
     dc = Column(Boolean)
-    serviced_by_id = Column(Integer, ForeignKey('sca_customer_locations.id'))
+    serviced_by_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## relationships
-    serviced_by = relationship('SCACustomerLocation')
+    serviced_by = relationship("SCACustomerLocation")
     adp_alias_to_sca_customer_locations = relationship(
-        'ADPAliasToSCACustomerLocation', back_populates=__tablename_alt__
+        "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
     )
-    adp_quotes = relationship('ADPQuote', back_populates=__tablename_alt__)
-    customers = relationship('SCACustomer', back_populates=__tablename_alt__)
-    places = relationship('SCAPlace', back_populates=__tablename_alt__)
-    manager_map = relationship('SCAManagerMap',
-                               back_populates=__tablename_alt__)
-    users = relationship('SCAUser', back_populates=__tablename_alt__)
+    adp_quotes = relationship("ADPQuote", back_populates=__tablename_alt__)
+    customers = relationship("SCACustomer", back_populates=__tablename_alt__)
+    places = relationship("SCAPlace", back_populates=__tablename_alt__)
+    manager_map = relationship("SCAManagerMap", back_populates=__tablename_alt__)
+    users = relationship("SCAUser", back_populates=__tablename_alt__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             ids = list()
         return q.where(SCACustomerLocation.id.in_(ids))
 
+
 class ADPSNP(Base):
-    __tablename__ = 'adp_snps'
-    __jsonapi_type_override__ = 'adp-snps'
+    __tablename__ = "adp_snps"
+    __jsonapi_type_override__ = "adp-snps"
     ## fields
     id = Column(Integer, primary_key=True)
     model = Column(TEXT)
     price = Column(Float)
     stage = Column(STAGE_ENUM)
     effective_date = Column(DateTime)
-    customer_id = Column(Integer, ForeignKey('adp_customers.id'))
+    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
-    adp_customers = relationship('ADPCustomer', back_populates=__tablename__)
+    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPSNP.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids)
+            adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
 
+
 class ADPQuoteProduct(Base):
-    __tablename__ = 'adp_quote_products'
-    __jsonapi_type_override__ = 'adp-quote-products'
+    __tablename__ = "adp_quote_products"
+    __jsonapi_type_override__ = "adp-quote-products"
     ## fields
     id = Column(Integer, primary_key=True)
     tag = Column(String, nullable=False)
     qty = Column(Integer, nullable=False)
     price = Column(Float)
-    adp_quote_id = Column(Integer, ForeignKey('adp_quotes.id'))
+    adp_quote_id = Column(Integer, ForeignKey("adp_quotes.id"))
     model_number = Column(String)
     ## relationships
-    adp_quotes = relationship('ADPQuote', back_populates=__tablename__)
+    adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class SCAPlace(Base):
-    __tablename__ = 'sca_places'
-    __jsonapi_type_override__ = 'places'
+    __tablename__ = "sca_places"
+    __jsonapi_type_override__ = "places"
     ## fields
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -441,61 +460,63 @@ class SCAPlace(Base):
     lat = Column(Float)
     long = Column(Float)
     ## relationships
-    adp_quotes = relationship('ADPQuote', 
-                              back_populates=__jsonapi_type_override__)
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__jsonapi_type_override__)
+    adp_quotes = relationship("ADPQuote", back_populates=__jsonapi_type_override__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__jsonapi_type_override__
+    )
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class SCAManagerMap(Base):
-    __tablename__ = 'sca_manager_map'
-    __jsonapi_type_override__ = 'manager-map'
-    __tablename_alt__ = 'manager_map'
+    __tablename__ = "sca_manager_map"
+    __jsonapi_type_override__ = "manager-map"
+    __tablename_alt__ = "manager_map"
     ## fields
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('sca_users.id'))
-    customer_location_id = Column(
-        Integer, ForeignKey('sca_customer_locations.id')
-    )
+    user_id = Column(Integer, ForeignKey("sca_users.id"))
+    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## Relationships
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__tablename_alt__)
-    users = relationship('SCAUser', back_populates=__tablename_alt__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__tablename_alt__
+    )
+    users = relationship("SCAUser", back_populates=__tablename_alt__)
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         return q.where(SCAManagerMap.customer_location_id.in_(ids))
 
+
 class SCAUser(Base):
-    __tablename__ = 'sca_users'
-    __jsonapi_type_override__ = 'users'
+    __tablename__ = "sca_users"
+    __jsonapi_type_override__ = "users"
     ## fields
     id = Column(Integer, primary_key=True)
     username = Column(String)
     email = Column(String)
-    customer_location_id = Column(
-        Integer, ForeignKey('sca_customer_locations.id')
-    )
+    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## relationships
-    customer_locations = relationship('SCACustomerLocation',
-                                      back_populates=__jsonapi_type_override__)
-    manager_map = relationship('SCAManagerMap',
-                               back_populates=__jsonapi_type_override__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__jsonapi_type_override__
+    )
+    manager_map = relationship(
+        "SCAManagerMap", back_populates=__jsonapi_type_override__
+    )
+
     ## filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         if not ids:
             return q
         return q.where(SCAUser.customer_location_id.in_(ids))
 
+
 class SCAVendor(Base):
-    __tablename__ = 'sca_vendors'
-    __jsonapi_type_override__ = 'vendors'
+    __tablename__ = "sca_vendors"
+    __jsonapi_type_override__ = "vendors"
     id = Column(Integer, primary_key=True)
     name = Column(String)
     headquarters = Column(String)
@@ -503,26 +524,26 @@ class SCAVendor(Base):
     phone = Column(BigInteger)
     logo_path = Column(String)
     # relationships
-    info = relationship('SCAVendorInfo',
-                        back_populates=__jsonapi_type_override__)
+    info = relationship("SCAVendorInfo", back_populates=__jsonapi_type_override__)
+
     # filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+
 class SCAVendorInfo(Base):
-    __tablename__ = 'sca_vendors_info'
-    __jsonapi_type_override__ = 'info'
+    __tablename__ = "sca_vendors_info"
+    __jsonapi_type_override__ = "info"
     id = Column(Integer, primary_key=True)
-    vendor_id = Column(Integer, ForeignKey('sca_vendors.id'))
+    vendor_id = Column(Integer, ForeignKey("sca_vendors.id"))
     category = Column(TEXT)
     content = Column(TEXT)
     # relationships
-    vendors = relationship('SCAVendor',
-                           back_populates=__jsonapi_type_override__)
+    vendors = relationship("SCAVendor", back_populates=__jsonapi_type_override__)
+
     # filtering
-    def apply_customer_location_filtering(q: Query,
-                                          ids: list[int]=None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
+
 
 serializer = JSONAPI_(Base)
