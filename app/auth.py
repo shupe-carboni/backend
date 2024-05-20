@@ -297,7 +297,7 @@ class SecOp(ABC):
         self._customer = False
 
     @abstractmethod
-    def permitted_resource_customer_ids(self): ...
+    def permitted_resource_customer_ids(self) -> list[int]: ...
 
     def permitted_customer_location_ids(
         self,
@@ -711,7 +711,7 @@ class CustomersOperations(SecOp):
     @standard_error_handler
     def delete(self): ...
 
-    def permitted_resource_customer_ids(self, session: Session):
+    def permitted_resource_customer_ids(self, session: Session) -> list[int]:
         """Using select statements, get the adp customer ids that
         will be permitted for view
         select_type:
