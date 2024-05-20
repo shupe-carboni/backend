@@ -50,7 +50,7 @@ def customer_program_get_dl(
     stage: Stage,
 ) -> DownloadLink:
     """Generate one-time-use hash value for download"""
-    if token.permissions.get("adp") >= auth.Permissions.sca_employee:
+    if token.permissions >= auth.Permissions.sca_employee:
         download_id = downloads.DownloadIDs.generate_id(
             customer_id=adp_customer_id, stage=Stage(stage)
         )
