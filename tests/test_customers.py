@@ -14,388 +14,177 @@ from app.adp.models import (
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 
-# BUG should I really be using just ADP permissions for the adp relationships?
-
 test_client = TestClient(app)
 CUSTOMER_ID = 999999  # NOTE associated with TEST CUSTOMER
 
 
-## SCA ADMIN
-def test_customer_collection_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get("/customers")
-    assert response.status_code == 200
-    assert CustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_resource_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}")
-    assert response.status_code == 200
-    assert CustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_customer_locations_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    assert response.status_code == 200
-    assert RelatedLocationResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_customer_locations_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
+def test_customer_collection():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    assert response.status_code == 200
-    assert LocationRelationshipsResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 401, 401, 401, 401)
+
+    data_lens = (None, None, 1, 1, 1, 1)
+    assert len(perms) == len(response_codes) == len(data_lens)
+    for perm, rc, dl in zip(perms, response_codes, data_lens):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get("/customers")
+        assert response.status_code == rc
+        if rc == 200:
+            assert CustomerResponse(**response.json())
+            if dl:
+                assert len(response.json()["data"]) == dl
+            else:
+                assert len(response.json()["data"]) > 1
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-def test_related_adp_customers_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
-    assert response.status_code == 200
-    assert RelatedCustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customers_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/relationships/adp-customers")
-    assert response.status_code == 200
-    assert CustomersRelResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customer_terms_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
-    assert response.status_code == 200
-    assert RelatedADPCustomerTermsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customer_terms_as_sca_admin():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
+def test_customer_resource():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    assert response.status_code == 200
-    assert ADPCustomerTermsRelationshipsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 401, 401, 401, 401)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(f"/customers/{CUSTOMER_ID}")
+        assert response.status_code == rc
+        if rc == 200:
+            assert CustomerResponse(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-"""SCA Employees don't have any distingished abilities compared to admin, meaning these tests are
-    currently repeats of the admin tests, just with different permissions"""
-
-
-# SCA Customer
-def test_customer_collection_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get("/customers")
-    assert response.status_code == 200
-    assert CustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_resource_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}")
-    assert response.status_code == 200
-    assert CustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_customer_locations_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    assert response.status_code == 200
-    assert RelatedLocationResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_customer_locations_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
+def test_related_customer_locations():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    assert response.status_code == 200
-    assert LocationRelationshipsResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 401, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
+        assert response.status_code == rc
+        if rc == 200:
+            assert RelatedLocationResponse(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-def test_related_adp_customers_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
-    assert response.status_code == 200
-    assert RelatedCustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customers_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/relationships/adp-customers")
-    assert response.status_code == 200
-    assert CustomersRelResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customer_terms_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
-    assert response.status_code == 200
-    assert RelatedADPCustomerTermsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customer_terms_as_sca_employee():
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.SCAEmployeeToken
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
+def test_relationship_customer_locations():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    assert response.status_code == 200
-    assert ADPCustomerTermsRelationshipsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 401, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(
+            f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
+        )
+        assert response.status_code == rc
+        if rc == 200:
+            assert LocationRelationshipsResponse(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-"""Customer admins should be able to see info about themselves, but manager and standard customer permissions
-    seem a little more tricky .. so I'm leaving those restricted for now"""
-
-
-## ADMIN
-def test_customer_collection_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
+def test_related_adp_customers():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    response = test_client.get("/customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 200, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
+        assert response.status_code == rc
+        if rc == 200:
+            assert RelatedCustomerResponse(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-def test_customer_resource_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
+def test_relationship_adp_customers():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 200, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(
+            f"/customers/{CUSTOMER_ID}/relationships/adp-customers"
+        )
+        assert response.status_code == rc
+        if rc == 200:
+            assert CustomersRelResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-def test_related_customer_locations_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
+def test_related_adp_customer_terms():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 200, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
+        assert response.status_code == rc
+        if rc == 200:
+            assert RelatedADPCustomerTermsResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-def test_relationship_customer_locations_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
+def test_relationship_adp_customer_terms():
+    perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
     )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
-    )
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customers_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
-    assert response.status_code == 200
-    assert RelatedCustomerResponse(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customers_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/relationships/adp-customers")
-    assert response.status_code == 200
-    assert CustomersRelResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customer_terms_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
-    assert response.status_code == 200
-    assert RelatedADPCustomerTermsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customer_terms_as_customer_admin():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerAdminToken
-    )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
-    )
-    assert response.status_code == 200
-    assert ADPCustomerTermsRelationshipsResp(**response.json())
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-## MANAGER
-def test_customer_collection_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get("/customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_resource_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_customer_locations_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_customer_locations_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
-    )
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customers_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customers_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/relationships/adp-customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customer_terms_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customer_terms_as_customer_manager():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerManagerToken
-    )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
-    )
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-## STANDARD
-def test_customer_collection_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get("/customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_resource_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_customer_locations_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_customer_locations_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/customer-locations"
-    )
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customers_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customers_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/relationships/adp-customers")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_related_adp_customer_terms_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(f"/customers/{CUSTOMER_ID}/adp-customer-terms")
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_relationship_adp_customer_terms_as_customer_std():
-    app.dependency_overrides[authenticate_auth0_token] = (
-        auth_overrides.CustomerStandardToken
-    )
-    response = test_client.get(
-        f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
-    )
-    assert response.status_code == 401
-    app.dependency_overrides[authenticate_auth0_token] = {}
+    response_codes = (200, 200, 200, 401, 401, 200)
+    assert len(perms) == len(response_codes)
+    for perm, rc in zip(perms, response_codes):
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(
+            f"/customers/{CUSTOMER_ID}/relationships/adp-customer-terms"
+        )
+        assert response.status_code == rc
+        if rc == 200:
+            assert ADPCustomerTermsRelationshipsResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
