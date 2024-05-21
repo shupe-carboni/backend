@@ -276,18 +276,23 @@ def check_object_id_association(
 
 
 class SecOp(ABC):
-    """Abstract Base Class for determining how HTTP request types are performed
-    and how user types are allow-listed.
+    """Abstract Base Class for vendor specific routes for handiling HTTP requests.
 
-    Each route type implements this class and uses their permission classes
-    to determind when each user type is allow-listed.
+    Each route type implements this class and calls the alllow-listing methods
+    in each route.
 
     allow_* methods are called explicitly in each route implementation to allow-list
     them when sufficient permissions are present (ex: .allow_admin() will execute
     the check to see if the token has admin permissions and change the state of
-    self._admin to True)"""
+    self._admin to True)
 
-    def __init__(self, token: VerifiedToken) -> None:
+    Customer Location ("Branch") id is universal for gating GET requests. For the rest,
+    each resource shourld refer to it's own table of customer accounts and ids using
+    "permitted_resource_customer_ids" to properly gate POST, PATCH, and DELETE requests.
+
+    """
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
         self.token = token
@@ -295,9 +300,12 @@ class SecOp(ABC):
         self._sca = False
         self._dev = False
         self._customer = False
+        self._resource = resource
+        self._resource_customer_table: str
 
     @abstractmethod
-    def permitted_resource_customer_ids(self) -> list[int]: ...
+    def permitted_resource_customer_ids(self, session: Session) -> list[int]:
+        pass
 
     def permitted_customer_location_ids(
         self,
@@ -375,7 +383,7 @@ class SecOp(ABC):
 
     def allow_sca(self) -> "SecOp":
         self._sca = (
-            Permissions.sca_admin >= self.token.permissions >= Permissions.sca_employee
+            Permissions.sca_admin > self.token.permissions >= Permissions.sca_employee
         )
         return self
 
@@ -397,12 +405,12 @@ class SecOp(ABC):
     def get(
         self,
         session: Session,
-        resource: str,
-        query: dict,
+        query: dict = {},
         obj_id: Optional[int] = None,
         related_resource: Optional[str] = None,
         relationship: bool = False,
     ):
+        resource = self._resource
         optional_arguments = (obj_id, relationship, related_resource)
         match optional_arguments:
             case None, False, None:
@@ -456,36 +464,137 @@ class SecOp(ABC):
             case dict():
                 return result
 
-    @abstractmethod
     @standard_error_handler
     def post(
         self,
         session: Session,
-        resource: str,
         data: dict | Callable,
         customer_id: int,
         obj_id: Optional[int] = None,
         related_resource: Optional[str] = None,
-    ): ...
+    ) -> GenericData | None:
 
-    @abstractmethod
+        resource = self._resource
+        if self._customer or self._dev:
+            customer_ids = self.permitted_resource_customer_ids(session=session)
+            if customer_id not in customer_ids:
+                raise CustomerIDNotAssociatedWithUser
+
+        check_object_id_association(
+            session, self._resource_customer_table, customer_id, resource, obj_id
+        )
+
+        match data:
+            case collections.Callable():
+                data: dict = data()
+
+        optional_arguments = (obj_id, related_resource)
+        match optional_arguments:
+            case None, None:
+                operation = partial(
+                    serializer.post_collection,
+                    session=session,
+                    data=data,
+                    api_type=resource,
+                )
+            case int(), str():
+                operation = partial(
+                    serializer.post_relationship,
+                    session=session,
+                    json_data=data,
+                    api_type=resource,
+                    obj_id=obj_id,
+                    rel_key=related_resource,
+                )
+            case int(), _:
+                raise Exception("The related resource name is missing")
+            case _, str():
+                raise Exception("the object id for the primary resource is missing")
+            case _:
+                raise Exception(
+                    "Invalid argument set. Provide either an object id and related "
+                    "object for a relationship or neither to create a new instance of "
+                    "the primary reseource."
+                )
+
+        result: GenericData | JSONAPIResponse = operation()
+
+        match result:
+            case JSONAPIResponse():
+                return result.data
+            case dict():
+                return result
+
     @standard_error_handler
     def patch(
         self,
         session: Session,
-        resource: str,
         data: dict | Callable,
         customer_id: int,
         obj_id: int,
         related_resource: Optional[str] = None,
-    ): ...
+    ) -> GenericData | None:
+        resource = self._resource
+        if self._customer or self._dev:
+            customer_ids = self.permitted_resource_customer_ids(session=session)
+            if customer_id not in customer_ids:
+                raise CustomerIDNotAssociatedWithUser
 
-    @abstractmethod
+        check_object_id_association(
+            session, self._resource_customer_table, customer_id, resource, obj_id
+        )
+
+        match data:
+            case collections.Callable():
+                data: dict = data()
+
+        if related_resource:
+            operation = partial(
+                serializer.patch_relationship,
+                session=session,
+                json_data=data,
+                api_type=resource,
+                obj_id=obj_id,
+                rel_key=related_resource,
+            )
+        else:
+            operation = partial(
+                serializer.patch_resource,
+                session=session,
+                json_data=data,
+                api_type=resource,
+                obj_id=obj_id,
+            )
+        result: GenericData | JSONAPIResponse = operation()
+
+        match result:
+            case JSONAPIResponse():
+                return result.data
+            case dict():
+                return result
+
     @standard_error_handler
-    def delete(self): ...
+    def delete(self, session: Session, obj_id: int, customer_id: Optional[int] = None):
+        if self._dev or self._sca:
+            check_object_id_association(
+                session=session,
+                customer_reference_resource=self._resource_customer_table,
+                customer_reference_id=customer_id,
+                resource=self._resource,
+                obj_id=obj_id,
+            )
+        if self._admin or self._dev or self._sca:
+            return serializer.delete_resource(
+                session=session, data={}, api_type=self._resource, obj_id=obj_id
+            )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
 class ADPOperations(SecOp):
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
+        super().__init__(token, resource)
+        self._resource_customer_table = "adp-customers"
 
     def permitted_resource_customer_ids(
         self,
@@ -569,117 +678,6 @@ class ADPOperations(SecOp):
                 return result
         return []
 
-    @standard_error_handler
-    def post(
-        self,
-        session: Session,
-        resource: str,
-        data: dict | Callable,
-        customer_id: int,
-        obj_id: Optional[int] = None,
-        related_resource: Optional[str] = None,
-    ) -> GenericData | None:
-        if self._customer or self._dev:
-            customer_ids = self.permitted_resource_customer_ids(session=session)
-            if customer_id not in customer_ids:
-                raise CustomerIDNotAssociatedWithUser
-
-        check_object_id_association(
-            session, "adp-customers", customer_id, resource, obj_id
-        )
-
-        match data:
-            case collections.Callable():
-                data: dict = data()
-
-        optional_arguments = (obj_id, related_resource)
-        match optional_arguments:
-            case None, None:
-                operation = partial(
-                    serializer.post_collection,
-                    session=session,
-                    data=data,
-                    api_type=resource,
-                )
-            case int(), str():
-                operation = partial(
-                    serializer.post_relationship,
-                    session=session,
-                    json_data=data,
-                    api_type=resource,
-                    obj_id=obj_id,
-                    rel_key=related_resource,
-                )
-            case int(), _:
-                raise Exception("The related resource name is missing")
-            case _, str():
-                raise Exception("the object id for the primary resource is missing")
-            case _:
-                raise Exception(
-                    "Invalid argument set. Provide either an object id and related "
-                    "object for a relationship or neither to create a new instance of "
-                    "the primary reseource."
-                )
-
-        result: GenericData | JSONAPIResponse = operation()
-
-        match result:
-            case JSONAPIResponse():
-                return result.data
-            case dict():
-                return result
-
-    @standard_error_handler
-    def patch(
-        self,
-        session: Session,
-        resource: str,
-        data: dict | Callable,
-        customer_id: int,
-        obj_id: int,
-        related_resource: Optional[str] = None,
-    ) -> GenericData | None:
-        if self._customer or self._dev:
-            customer_ids = self.permitted_resource_customer_ids(session=session)
-            if customer_id not in customer_ids:
-                raise CustomerIDNotAssociatedWithUser
-
-        check_object_id_association(
-            session, "adp-customers", customer_id, resource, obj_id
-        )
-
-        match data:
-            case collections.Callable():
-                data: dict = data()
-
-        if related_resource:
-            operation = partial(
-                serializer.patch_relationship,
-                session=session,
-                json_data=data,
-                api_type=resource,
-                obj_id=obj_id,
-                rel_key=related_resource,
-            )
-        else:
-            operation = partial(
-                serializer.patch_resource,
-                session=session,
-                json_data=data,
-                api_type=resource,
-                obj_id=obj_id,
-            )
-        result: GenericData | JSONAPIResponse = operation()
-
-        match result:
-            case JSONAPIResponse():
-                return result.data
-            case dict():
-                return result
-
-    @standard_error_handler
-    def delete(self): ...
-
 
 class VendorOperations(SecOp): ...
 
@@ -704,12 +702,9 @@ class GlasflossOperations(SecOp): ...
 
 class CustomersOperations(SecOp):
 
-    @standard_error_handler
-    def post(self): ...
-    @standard_error_handler
-    def patch(self): ...
-    @standard_error_handler
-    def delete(self): ...
+    def __init__(self, token: VerifiedToken) -> None:
+        super().__init__(token)
+        self._resource_customer_table = "customers"
 
     def permitted_resource_customer_ids(self, session: Session) -> list[int]:
         """Using select statements, get the adp customer ids that
