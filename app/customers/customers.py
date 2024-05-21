@@ -33,7 +33,7 @@ API_TYPE = SCACustomer.__jsonapi_type_override__
 customers = APIRouter(prefix=f"/{API_TYPE}", tags=["customers"])
 logger = logging.getLogger("uvicorn.info")
 
-CustomersPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 converter = convert_query(CustomerQueryJSONAPI)
 
@@ -79,7 +79,7 @@ class CMMSSNSToken:
     tags=["jsonapi"],
 )
 async def customer_collection(
-    session: NewSession, token: CustomersPerm, query: CustomerQuery = Depends()
+    session: NewSession, token: Token, query: CustomerQuery = Depends()
 ) -> CustomerResponse:
 
     return (
@@ -91,9 +91,7 @@ async def customer_collection(
 
 
 @customers.get("/cmmssns-customers", response_model=CMMSSNSCustomerResults)
-async def cmmssns_customers(
-    token: CustomersPerm, search_term: str
-) -> CMMSSNSCustomerResults:
+async def cmmssns_customers(token: Token, search_term: str) -> CMMSSNSCustomerResults:
     """
     Special endpoint for querying a protected endpoint on
     another service. The intent is to allow the user to perform a
@@ -123,7 +121,7 @@ async def cmmssns_customers(
 )
 async def customer(
     session: NewSession,
-    token: CustomersPerm,
+    token: Token,
     customer_id: int,
     query: CustomerQuery = Depends(),
 ) -> CustomerResponse:
@@ -143,9 +141,9 @@ async def customer(
 def new_cmmssns_customer(new_customer: NewCMMSSNSCustomer) -> CMMSSNSCustomerResp:
     """
     Make a POST request to the CMMSSNS API to create a new customer
-    under the Shupe Carboni Account. The token's permissions comes
-    with an admin scope via 'admin:shupecarboni.com' in the scopes
-    claim, which means no user account is required and we don't have
+    under the Shupe Carboni Account. The token permissions are set to
+    an admin scope as 'admin:shupecarboni.com',
+    which means no user account is required and we don't have
     to know the user id in that service.
     """
     url = CMMSSNS_URL + "customers"
@@ -165,7 +163,7 @@ def new_cmmssns_customer(new_customer: NewCMMSSNSCustomer) -> CMMSSNSCustomerRes
 )
 async def new_customer(
     session: NewSession,
-    token: CustomersPerm,
+    token: Token,
     new_customer: NewCustomer,
 ) -> CustomerResponse:
     """
@@ -187,12 +185,16 @@ async def new_customer(
                 )
             )
             new_customer.data.id = cmmssns_customer.data.id
-        result = serializer.post_collection(
-            session=session,
-            data=new_customer.model_dump(exclude_none=True),
-            api_type=SCACustomer.__jsonapi_type_override__,
+        return (
+            auth.CustomersOperations(token)
+            .allow_admin()
+            .allow_sca()
+            .post(
+                session=session,
+                data=new_customer.model_dump(by_alias=True),
+                customer_id=new_customer.data.id,
+            )
         )
-        return result.data
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 
@@ -202,7 +204,7 @@ async def new_customer(
     tags=["file-upload"],
 )
 async def upload_customer_logo_file(
-    session: NewSession, token: CustomersPerm, customer_id: int, file: UploadFile
+    session: NewSession, token: Token, customer_id: int, file: UploadFile
 ) -> CustomerResponse:
     """
     Special path with the same structure as a related object query
@@ -242,26 +244,26 @@ async def upload_customer_logo_file(
 )
 async def mod_customer(
     session: NewSession,
-    token: CustomersPerm,
+    token: Token,
     customer_id: int,
     mod_customer: ModCustomer,
 ) -> CustomerResponse:
-    customer_perm = token.permissions
-    if customer_perm >= auth.Permissions.sca_employee:
-        result = serializer.patch_resource(
+    return (
+        auth.CustomersOperations(token)
+        .allow_admin()
+        .allow_sca()
+        .patch(
             session=session,
-            json_data=mod_customer.model_dump(),
-            api_type=API_TYPE,
+            resource=API_TYPE,
+            data=mod_customer.model_dump(by_alias=True),
+            customer_id=customer_id,
             obj_id=customer_id,
         )
-        return result.data
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    )
 
 
 @customers.delete("/{customer_id}", tags=["jsonapi"])
-async def del_customer(
-    session: NewSession, token: CustomersPerm, customer_id: int
-) -> None:
+async def del_customer(session: NewSession, token: Token, customer_id: int) -> None:
     customer_perm = token.permissions
     authorized = customer_perm >= auth.Permissions.sca_admin
     if authorized:

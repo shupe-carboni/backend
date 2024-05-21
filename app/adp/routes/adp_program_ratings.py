@@ -21,20 +21,20 @@ prog_ratings = APIRouter(
     prefix=f"/{ADP_RATINGS_RESOURCE}", tags=["ratings", "programs"]
 )
 
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 
 @prog_ratings.get("", tags=["jsonapi"])
 async def get_all_ratings_on_programs(
-    token: ADPPerm, session: NewSession, query: RatingsQuery = Depends()
+    token: Token, session: NewSession, query: RatingsQuery = Depends()
 ) -> RatingsResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @prog_ratings.get("/{rating_id}", tags=["jsonapi"])
 async def get_a_specific_rating(
-    token: ADPPerm,
+    token: Token,
     adp_customer_id: int,
     session: NewSession,
     query: RatingsQuery = Depends(),
@@ -44,7 +44,7 @@ async def get_a_specific_rating(
 
 @prog_ratings.post("/{adp_customer_id}", tags=["file-upload"])
 async def add_program_ratings(
-    token: ADPPerm, ratings_file: UploadFile, adp_customer_id: int, session: NewSession
+    token: Token, ratings_file: UploadFile, adp_customer_id: int, session: NewSession
 ) -> None:
     """add ratings to a customer's profile"""
     if token.permissions >= auth.Permissions.sca_employee:
@@ -72,10 +72,9 @@ async def add_program_ratings(
 
 
 @prog_ratings.delete("/{rating_id}")
-async def remove_rating(token: ADPPerm, rating_id: int, session: NewSession) -> None:
-    if token.permissions >= auth.Permissions.sca_employee:
-        serializer.delete_resource(
-            session=session, data={}, api_type=ADP_RATINGS_RESOURCE, obj_id=rating_id
-        )
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-    raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+async def remove_rating(token: Token, rating_id: int, session: NewSession) -> None:
+    return (
+        auth.ADPOperations(token, ADP_RATINGS_RESOURCE)
+        .allow_admin()
+        .delete(session=session, obj_id=rating_id)
+    )
