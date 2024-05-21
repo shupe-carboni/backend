@@ -265,6 +265,10 @@ class NewAHRObj(BaseModel):
     relationships: ProgRels
 
 
+class NewAHRObjFull(NewAHRObj):
+    attributes: ProgAttrs
+
+
 class NewPartRObj(BaseModel):
     type: str = ADPProgramPart.__jsonapi_type_override__
     attributes: NewPartNumber
