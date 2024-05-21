@@ -46,12 +46,12 @@ def all_adp_customers(
     token: ADPPerm, session: NewSession, query: CustomersQuery = Depends()
 ) -> CustomersResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session=session, resource=ADP_CUSTOMERS, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -68,14 +68,13 @@ def adp_customer(
     query: CustomersQuery = Depends(),
 ) -> CustomersResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
             query=converter(query),
             obj_id=customer_id,
         )
@@ -83,7 +82,7 @@ def adp_customer(
 
 
 @adp_customers.get(
-    "/{customer_id}/adp-coil-programs",
+    "/{customer_id}/" + ADP_COIL_PROGS,
     response_model=RelatedCoilProgResp,
     response_model_exclude_none=True,
 )
@@ -93,15 +92,13 @@ async def related_coil_programs(
     token: ADPPerm,
 ) -> RelatedCoilProgResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADP_COIL_PROGS,
@@ -110,7 +107,7 @@ async def related_coil_programs(
 
 
 @adp_customers.get(
-    "/{customer_id}/relationships/adp-coil-programs",
+    "/{customer_id}/relationships/" + ADP_COIL_PROGS,
     response_model=CoilProgRelResp,
     response_model_exclude_none=True,
 )
@@ -120,15 +117,13 @@ async def coil_programs_relationships(
     token: ADPPerm,
 ) -> CoilProgRelResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADP_COIL_PROGS,
@@ -137,7 +132,7 @@ async def coil_programs_relationships(
 
 
 @adp_customers.get(
-    "/{customer_id}/adp-ah-programs",
+    "/{customer_id}/" + ADP_AH_PROGS,
     response_model=RelatedAirHandlerProgResp,
     response_model_exclude_none=True,
 )
@@ -147,15 +142,13 @@ async def related_ah_programs(
     token: ADPPerm,
 ) -> RelatedAirHandlerProgResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADP_AH_PROGS,
@@ -164,7 +157,7 @@ async def related_ah_programs(
 
 
 @adp_customers.get(
-    "/{customer_id}/relationships/adp-ah-programs",
+    "/{customer_id}/relationships/" + ADP_AH_PROGS,
     response_model=AirHandlerProgRelResp,
     response_model_exclude_none=True,
 )
@@ -174,15 +167,13 @@ async def ah_programs_relationships(
     token: ADPPerm,
 ) -> AirHandlerProgRelResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADP_AH_PROGS,
@@ -191,7 +182,7 @@ async def ah_programs_relationships(
 
 
 @adp_customers.get(
-    "/{customer_id}/adp-program-ratings",
+    "/{customer_id}/" + ADP_PROG_RATINGS,
     response_model=RelatedRatingsResponse,
     response_model_exclude_none=True,
 )
@@ -201,15 +192,13 @@ async def related_ratings(
     token: ADPPerm,
 ) -> RelatedRatingsResponse:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADP_PROG_RATINGS,
@@ -218,7 +207,7 @@ async def related_ratings(
 
 
 @adp_customers.get(
-    "/{customer_id}/relationships/adp-program-ratings",
+    "/{customer_id}/relationships/" + ADP_PROG_RATINGS,
     response_model=RatingsRelResp,
     response_model_exclude_none=True,
 )
@@ -228,15 +217,13 @@ async def ratings_relationships(
     token: ADPPerm,
 ) -> RatingsRelResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADP_PROG_RATINGS,
@@ -245,7 +232,7 @@ async def ratings_relationships(
 
 
 @adp_customers.get(
-    "/{customer_id}/adp-program-parts",
+    "/{customer_id}/" + ADP_PROG_PARTS,
     response_model=RelatedPartsResponse,
     response_model_exclude_none=True,
 )
@@ -255,15 +242,13 @@ async def related_ratings(
     token: ADPPerm,
 ) -> RelatedPartsResponse:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADP_PROG_PARTS,
@@ -272,7 +257,7 @@ async def related_ratings(
 
 
 @adp_customers.get(
-    "/{customer_id}/relationships/adp-program-parts",
+    "/{customer_id}/relationships/" + ADP_PROG_PARTS,
     response_model=PartsRelResp,
     response_model_exclude_none=True,
 )
@@ -282,15 +267,13 @@ async def ratings_relationships(
     token: ADPPerm,
 ) -> PartsRelResp:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_CUSTOMERS)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_CUSTOMERS,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADP_PROG_PARTS,

@@ -13,7 +13,7 @@ from app.adp.extraction.ratings import (
 
 ratings_admin = APIRouter(prefix="/admin", tags=["adp", "admin", "ratings"])
 logger = logging.getLogger("uvicorn.info")
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 
 executor = ThreadPoolExecutor(max_workers=2)
@@ -21,7 +21,7 @@ executor = ThreadPoolExecutor(max_workers=2)
 
 @ratings_admin.get("/update-ratings-reference")
 def update_ratings_ref(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     # bg: BackgroundTasks
 ):
@@ -41,9 +41,7 @@ def update_ratings_ref(
 
 
 @ratings_admin.get("/update-unregistered-ratings")
-def update_unregistered_ratings(
-    token: ADPPerm, session: NewSession, bg: BackgroundTasks
-):
+def update_unregistered_ratings(token: Token, session: NewSession, bg: BackgroundTasks):
     """Update all program ratings
     that haven't been found in the ratings reference"""
     if token.permissions >= auth.Permissions.sca_admin:

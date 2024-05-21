@@ -19,7 +19,7 @@ QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
 S3_DIR = "/adp/quotes/"
 quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp quotes"])
 
-ADPQuotesPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(QuoteQueryJSONAPI)
 
@@ -28,15 +28,15 @@ converter = convert_query(QuoteQueryJSONAPI)
     "", response_model=QuoteResponse, response_model_exclude_none=True, tags=["jsonapi"]
 )
 async def quote_collection(
-    token: ADPQuotesPerm, session: NewSession, query: QuoteQuery = Depends()
+    token: Token, session: NewSession, query: QuoteQuery = Depends()
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, QUOTES_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session=session, resource=QUOTES_RESOURCE, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -47,20 +47,19 @@ async def quote_collection(
     tags=["jsonapi"],
 )
 async def one_quote(
-    token: ADPQuotesPerm,
+    token: Token,
     quote_id: int,
     session: NewSession,
     query: QuoteQuery = Depends(),
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, QUOTES_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=QUOTES_RESOURCE,
             query=converter(query),
             obj_id=quote_id,
         )
@@ -74,7 +73,7 @@ async def one_quote(
     tags=["jsonapi"],
 )
 async def new_quote(
-    token: ADPQuotesPerm,
+    token: Token,
     session: NewSession,
     adp_customer_id: int,
     adp_quote_id: str = Form(defualt=None),
@@ -141,15 +140,14 @@ async def new_quote(
 
 
 @quotes.patch(
-    "/{adp_customer_id}",
+    "/{quote_id}",
     response_model=QuoteResponse,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
 async def modify_quote(
-    token: ADPQuotesPerm,
+    token: Token,
     session: NewSession,
-    adp_customer_id: int,
     body: ExistingQuote,
 ) -> QuoteResponse:
     raise HTTPException(status_code=501)
@@ -157,7 +155,7 @@ async def modify_quote(
 
 @quotes.delete("/{quote_id}", tags=["jsonapi"])
 async def delete_quote(
-    token: ADPQuotesPerm,
+    token: Token,
     session: NewSession,
     quote_id: int,
 ) -> None:
