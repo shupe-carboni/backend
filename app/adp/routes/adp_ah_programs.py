@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import HTTPException, Depends, status
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from functools import partial
 
@@ -9,7 +9,7 @@ from app.adp.models import (
     AirHandlerProgResp,
     AirHandlerProgQuery,
     AHProgQueryJSONAPI,
-    NewAHRObj,
+    NewAHRequest,
     ModStageAHReq,
     NewAHRObjFull,
 )
@@ -107,16 +107,16 @@ def ah_program_product(
     )
 
 
-def build_full_model_obj(session: Session, new_coil: NewAHRObj):
-    model_num = new_coil.attributes.model_number
-    adp_customer_id = new_coil.relationships.adp_customers.data.id
+def build_full_model_obj(session: Session, new_coil: NewAHRequest):
+    model_num = new_coil.data.attributes.model_number
+    adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     model_w_attrs = build_model_attributes(
         session=session, model=model_num, adp_customer_id=adp_customer_id
     )
     json_api_data = dict(
         data=NewAHRObjFull(
             attributes=model_w_attrs.to_dict(),
-            relationships=new_coil.relationships,
+            relationships=new_coil.data.relationships,
         ).model_dump(by_alias=True, exclude_none=True)
     )
     return json_api_data
@@ -126,17 +126,17 @@ def build_full_model_obj(session: Session, new_coil: NewAHRObj):
     "",
     response_model=AirHandlerProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def add_to_ah_program(
     token: Token,
     session: NewSession,
-    adp_customer_id: int,
-    new_ah: NewAHRObj,
+    new_ah: NewAHRequest,
 ) -> AirHandlerProgResp:
     """create a new product in an existing program"""
     json_api_data = partial(build_full_model_obj, session, new_ah)
-    adp_customer_id = new_ah.relationships.adp_customers.data.id
+    adp_customer_id = new_ah.data.relationships.adp_customers.data.id
     return (
         auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
         .allow_admin()
@@ -155,6 +155,7 @@ def add_to_ah_program(
     "/{program_product_id}",
     response_model=AirHandlerProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def change_product_status(

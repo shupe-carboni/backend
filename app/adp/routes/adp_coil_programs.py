@@ -122,6 +122,7 @@ def build_full_model_obj(session: Session, new_coil: NewCoilRequest):
     "",
     response_model=CoilProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def add_to_coil_program(
@@ -147,6 +148,7 @@ def add_to_coil_program(
     "/{program_product_id}",
     response_model=CoilProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def change_product_status(
