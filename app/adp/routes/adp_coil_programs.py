@@ -21,7 +21,7 @@ ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
 coil_progs = APIRouter(prefix=f"/{ADP_COILS_RESOURCE}", tags=["coils", "programs"])
 
-ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(CoilProgQueryJSONAPI)
 
@@ -30,18 +30,18 @@ converter = convert_query(CoilProgQueryJSONAPI)
     "", response_model=CoilProgResp, response_model_exclude_none=True, tags=["jsonapi"]
 )
 def all_coil_programs(
-    token: ADPPerm, session: NewSession, query: CoilProgQuery = Depends()
+    token: Token, session: NewSession, query: CoilProgQuery = Depends()
 ) -> CoilProgResp:
     """List out all coil programs.
     An SCA admin or employee will see all programs that exist.
     A customer will see only their own programs"""
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session=session, resource=ADP_COILS_RESOURCE, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -52,21 +52,20 @@ def all_coil_programs(
     tags=["jsonapi"],
 )
 def coil_program_product(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     program_product_id: int,
     query: CoilProgQuery = Depends(),
 ) -> CoilProgResp:
     """get a specific product from the coil programs"""
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_COILS_RESOURCE,
             query=converter(query),
             obj_id=program_product_id,
         )
@@ -95,19 +94,18 @@ def build_full_model_obj(session: Session, new_coil: NewCoilRObj):
     tags=["jsonapi"],
 )
 def add_to_coil_program(
-    token: ADPPerm, session: NewSession, new_coil: NewCoilRObj
+    token: Token, session: NewSession, new_coil: NewCoilRObj
 ) -> CoilProgResp:
     json_api_data = partial(build_full_model_obj, session, new_coil)
     adp_customer_id = new_coil.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .post(
             session=session,
-            resource=ADP_COILS_RESOURCE,
             data=json_api_data,
             customer_id=adp_customer_id,
         )
@@ -121,7 +119,7 @@ def add_to_coil_program(
     tags=["jsonapi"],
 )
 def change_product_status(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     program_product_id: int,
     new_stage: ModStageCoilReq,
@@ -134,14 +132,13 @@ def change_product_status(
     """
     adp_customer_id = new_stage.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .patch(
             session=session,
-            resource=ADP_COILS_RESOURCE,
             data=new_stage.model_dump(by_alias=True),
             customer_id=adp_customer_id,
             obj_id=program_product_id,
@@ -151,34 +148,31 @@ def change_product_status(
 
 @coil_progs.delete("/{program_product_id}")
 def permanently_delete_record(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     program_product_id: int,
 ) -> None:
-    if token.permissions >= auth.Permissions.sca_admin:
-        return serializer.delete_resource(
-            session, data={}, api_type=ADP_COILS_RESOURCE, obj_id=program_product_id
-        )
-    else:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    return (
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
+        .allow_admin()
+        .delete(session, program_product_id)
+    )
 
 
-@coil_progs.get("/{program_product_id}/adp-customers")
+@coil_progs.get("/{program_product_id}/" + ADP_CUSTOMERS_RESOURCE)
 def get_related_customer(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_COILS_RESOURCE,
-            query={},
             obj_id=program_product_id,
             relationship=False,
             related_resource=ADP_CUSTOMERS_RESOURCE,
@@ -186,22 +180,20 @@ def get_related_customer(
     )
 
 
-@coil_progs.get("/{program_product_id}/relationships/adp-customers")
+@coil_progs.get("/{program_product_id}/relationships/" + ADP_CUSTOMERS_RESOURCE)
 def get_customer_relationship(
-    token: ADPPerm,
+    token: Token,
     session: NewSession,
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token)
+        auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=ADP_COILS_RESOURCE,
-            query={},
             obj_id=program_product_id,
             relationship=True,
             related_resource=ADP_CUSTOMERS_RESOURCE,
