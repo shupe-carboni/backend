@@ -13,7 +13,7 @@ import warnings
 warnings.simplefilter("ignore")
 
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
-TODAY = str(datetime.today().date())
+TODAY = datetime.today().date()
 
 
 class ParsingModes(Enum):
@@ -158,71 +158,4 @@ def price_models_by_customer_discounts(
     return model
 
 
-def separate_by_product_type_and_commit_to_db(session: Session, data: pd.Series) -> int:
-    if data["motor"]:
-        table = "ah_programs"
-    else:
-        table = "coil_programs"
-
-    model = data.dropna()
-    model["effective_date"] = TODAY
-    cols = [f'"{col}"' for col in model.index.values.tolist()]
-    vals = []
-    for val in model.values.tolist():
-        match val:
-            case int() | float():
-                vals.append(str(val))
-            case str():
-                vals.append(f"'{val}'")
-    sql = f"""INSERT INTO {table} ({','.join(cols)})
-            VALUES ({','.join(vals)})
-            RETURNING id;"""
-    new_id = ADP_DB.execute(
-        session=session, sql=sql, params=dict(columns=cols, values=vals)
-    ).fetchone()[0]
-    session.commit()
-    return new_id
-
-
-def reprice_programs(session: Session) -> None:
-    aliases = ADP_DB.load_df(session=session, table_name="customers")[
-        ["customer", "adp_alias"]
-    ]
-    for customer in aliases.itertuples():
-        sca_customer_name = customer.customer
-        adp_customer_name = customer.adp_alias
-        for table in ("coil_programs", "ah_programs"):
-            prog_data = ADP_DB.load_df(session=session, table_name=table)
-        ...
-
-    # def get_sales(data: pd.Series) -> pd.Series:
-    #     prog: str = data['program']
-    #     adp_alias = progs_to_alias.loc[progs_to_alias['program'] == prog, 'adp_alias']
-    #     adp_alias = adp_alias.item() if not adp_alias.empty else None
-    #     if not adp_alias:
-    #         return pd.Series({'sales 2022': 0, 'sales 2023': 0, 'total': 0})
-    #     model_num: str = data['model_number']
-    #     mat_group: str = data['mpg']
-    #     model_sales = sales.loc[
-    #         (sales['CustName'] == adp_alias)
-    #         & (sales['Description'] == model_num)
-    #         & (sales['MG'] == mat_group),
-    #         ['Year', 'Sales']
-    #     ]
-    #     if model_sales.empty:
-    #         return pd.Series({'sales 2022': 0, 'sales 2023': 0, 'total': 0})
-    #     model_sales_by_year = model_sales.groupby('Year')['Sales'].sum().sort_index(ascending=True)
-    #     if 2022 not in model_sales_by_year.index:
-    #         model_sales_by_year['2022'] = 0
-    #     if 2023 not in model_sales_by_year.index:
-    #         model_sales_by_year['2023'] = 0
-    #     model_sales_by_year.index = [f'sales_{year}' for year in model_sales_by_year.index]
-    #     model_sales_by_year['total'] = model_sales_by_year.sum()
-    #     model_sales_by_year = model_sales_by_year.apply(lambda val: f'{val:.2f}')
-    #     return model_sales_by_year
-
-    # program_data[
-    #     [Fields.SALES_2022.value,
-    #      Fields.SALES_2023.value,
-    #      Fields.TOTAL.value,
-    #     ]] = program_data.apply(get_sales, axis=1, result_type='expand')
+def reprice_programs(session: Session) -> None: ...
