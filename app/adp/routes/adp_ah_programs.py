@@ -16,6 +16,7 @@ from app.adp.models import (
 from app.adp.extraction.models import build_model_attributes
 from app.jsonapi.sqla_models import ADPAHProgram, ADPCustomer
 from app.jsonapi.core_models import convert_query
+from app.jsonapi.sqla_jsonapi_ext import MAX_PAGE_SIZE
 
 ADP_AIR_HANDLERS_RESOURCE = ADPAHProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
@@ -27,11 +28,37 @@ Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(AHProgQueryJSONAPI)
 
+RESOURCE_EXCLUSIONS = {
+    "data": {
+        "attributes": {
+            "ratings_ac_txv",
+            "ratings_hp_txv",
+            "ratings_piston",
+            "ratings_field_txv",
+        }
+    }
+}
+
+COLLECTION_EXCLUSIONS = {
+    "data": {
+        i: {
+            "attributes": {
+                "ratings_ac_txv",
+                "ratings_hp_txv",
+                "ratings_piston",
+                "ratings_field_txv",
+            }
+        }
+        for i in range(MAX_PAGE_SIZE)
+    }
+}
+
 
 @ah_progs.get(
     "",
     response_model=AirHandlerProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=COLLECTION_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def all_ah_programs(
@@ -56,6 +83,7 @@ def all_ah_programs(
     "/{program_product_id}",
     response_model=AirHandlerProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def ah_program_product(
@@ -89,7 +117,7 @@ def build_full_model_obj(session: Session, new_coil: NewAHRObj):
         data=NewAHRObjFull(
             attributes=model_w_attrs.to_dict(),
             relationships=new_coil.relationships,
-        ).model_dump(by_alias=True)
+        ).model_dump(by_alias=True, exclude_none=True)
     )
     return json_api_data
 

@@ -72,11 +72,10 @@ class ProgAttrs(BaseModel):
     effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     last_file_gen: Optional[datetime] = Field(default=None, alias="last-file-gen")
     stage: Optional[str] = None
-    # intentionally leaving out Ratings model regexes
-    #   ratings-ac-txv
-    #   ratings-hp-txv
-    #   ratings-piston
-    #   ratings-field-txv
+    ratings_ac_txv: Optional[str] = Field(default=None, alias="ratings-ac-txv")
+    ratings_hp_txv: Optional[str] = Field(default=None, alias="ratings-hp-txv")
+    ratings_piston: Optional[str] = Field(default=None, alias="ratings-piston")
+    ratings_field_txv: Optional[str] = Field(default=None, alias="ratings-field-txv")
 
     @model_validator(mode="after")
     def depth_or_length(self) -> "ProgAttrs":
@@ -255,6 +254,10 @@ class NewCoilRObj(BaseModel):
     relationships: ProgRels
 
 
+class NewCoilRequest(BaseModel):
+    data: NewCoilRObj
+
+
 class NewCoilRObjFull(NewCoilRObj):
     attributes: ProgAttrs
 
@@ -263,6 +266,10 @@ class NewAHRObj(BaseModel):
     type: str = ADPAHProgram.__jsonapi_type_override__
     attributes: NewModelNumber
     relationships: ProgRels
+
+
+class NewAHRequest(BaseModel):
+    data: NewAHRObj
 
 
 class NewAHRObjFull(NewAHRObj):

@@ -1,6 +1,6 @@
 from typing import Annotated
 from functools import partial
-from fastapi import HTTPException, Depends, status
+from fastapi import Depends
 from fastapi.routing import APIRouter
 
 from app import auth
@@ -11,11 +11,12 @@ from app.adp.models import (
     CoilProgQueryJSONAPI,
     CoilProgResp,
     NewCoilRObjFull,
-    NewCoilRObj,
+    NewCoilRequest,
     ModStageCoilReq,
 )
-from app.jsonapi.sqla_models import serializer, ADPCoilProgram, ADPCustomer
+from app.jsonapi.sqla_models import ADPCoilProgram, ADPCustomer
 from app.jsonapi.core_models import convert_query
+from app.jsonapi.sqla_jsonapi_ext import MAX_PAGE_SIZE
 
 ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
@@ -25,9 +26,38 @@ Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(CoilProgQueryJSONAPI)
 
+RESOURCE_EXCLUSIONS = {
+    "data": {
+        "attributes": {
+            "ratings_ac_txv",
+            "ratings_hp_txv",
+            "ratings_piston",
+            "ratings_field_txv",
+        }
+    }
+}
+
+COLLECTION_EXCLUSIONS = {
+    "data": {
+        i: {
+            "attributes": {
+                "ratings_ac_txv",
+                "ratings_hp_txv",
+                "ratings_piston",
+                "ratings_field_txv",
+            }
+        }
+        for i in range(MAX_PAGE_SIZE)
+    }
+}
+
 
 @coil_progs.get(
-    "", response_model=CoilProgResp, response_model_exclude_none=True, tags=["jsonapi"]
+    "",
+    response_model=CoilProgResp,
+    response_model_exclude_none=True,
+    response_model_exclude=COLLECTION_EXCLUSIONS,
+    tags=["jsonapi"],
 )
 def all_coil_programs(
     token: Token, session: NewSession, query: CoilProgQuery = Depends()
@@ -49,6 +79,7 @@ def all_coil_programs(
     "/{program_product_id}",
     response_model=CoilProgResp,
     response_model_exclude_none=True,
+    response_model_exclude=RESOURCE_EXCLUSIONS,
     tags=["jsonapi"],
 )
 def coil_program_product(
@@ -72,17 +103,17 @@ def coil_program_product(
     )
 
 
-def build_full_model_obj(session: Session, new_coil: NewCoilRObj):
-    model_num = new_coil.attributes.model_number
-    adp_customer_id = new_coil.relationships.adp_customers.data.id
+def build_full_model_obj(session: Session, new_coil: NewCoilRequest):
+    model_num = new_coil.data.attributes.model_number
+    adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     model_w_attrs = build_model_attributes(
         session=session, model=model_num, adp_customer_id=adp_customer_id
     )
     json_api_data = dict(
         data=NewCoilRObjFull(
             attributes=model_w_attrs.to_dict(),
-            relationships=new_coil.relationships,
-        ).model_dump(by_alias=True)
+            relationships=new_coil.data.relationships,
+        ).model_dump(by_alias=True, exclude_none=True)
     )
     return json_api_data
 
@@ -94,10 +125,10 @@ def build_full_model_obj(session: Session, new_coil: NewCoilRObj):
     tags=["jsonapi"],
 )
 def add_to_coil_program(
-    token: Token, session: NewSession, new_coil: NewCoilRObj
+    token: Token, session: NewSession, new_coil: NewCoilRequest
 ) -> CoilProgResp:
     json_api_data = partial(build_full_model_obj, session, new_coil)
-    adp_customer_id = new_coil.relationships.adp_customers.data.id
+    adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     return (
         auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
