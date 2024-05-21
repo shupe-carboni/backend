@@ -63,7 +63,7 @@ with open("README.md", "r") as read_me:
     description = read_me.read()
 
 app = FastAPI(
-    title="Shupe Carboni Backend API", version="0.18.0", description=description
+    title="Shupe Carboni Backend API", version="0.18.1", description=description
 )
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
