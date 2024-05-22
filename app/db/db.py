@@ -5,13 +5,17 @@ import re
 import os
 import boto3
 import asyncio
+from logging import getLogger
 from dataclasses import dataclass
 from io import BytesIO
 from enum import StrEnum, auto
-from typing import Iterable, Literal
+from typing import Iterable
 from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
 from pandas import DataFrame, read_sql
+
+logger = getLogger("uvicorn.info")
+TEST_DB = os.getenv("TEST_DATABASE")
 
 
 @dataclass
@@ -88,29 +92,49 @@ class S3:
 
 class Database:
 
-    conn_params = {
-        "database": os.environ.get("RDS_DB_NAME"),
-        "host": os.environ.get("RDS_HOSTNAME"),
-        "password": os.environ.get("RDS_PASSWORD"),
-        "port": os.environ.get("RDS_PORT"),
-        "username": os.environ.get("RDS_USER"),
-    }
+    conn_params = (
+        {
+            "database": os.environ.get("RDS_DB_NAME"),
+            "host": os.environ.get("RDS_HOSTNAME"),
+            "password": os.environ.get("RDS_PASSWORD"),
+            "port": os.environ.get("RDS_PORT"),
+            "username": os.environ.get("RDS_USER"),
+        }
+        if not TEST_DB
+        else None
+    )
 
-    _connection_url = URL.create("postgresql", **conn_params)
+    _connection_url = URL.create("postgresql", **conn_params) if conn_params else None
     # without doing this, the password is not properly passed
     # due to url encoding when passing the URL object
-    _connection_str = _connection_url.render_as_string(hide_password=False)
+    _connection_str = (
+        _connection_url.render_as_string(hide_password=False)
+        if _connection_url
+        else TEST_DB
+    )
     _ENGINE = create_engine(_connection_str)
     _SESSIONLOCAL = sessionmaker(bind=_ENGINE, autoflush=False, autocommit=False)
 
     def __init__(self, database_name: str = "") -> None:
         self.PREFIX = database_name + "_" if database_name else None
+        if TEST_DB:
+            logger.info("Connection set to local testing Database")
+            logger.info(f"DB -> {str(self)}")
+        else:
+            logger.info("Connection set to production Database")
+            logger.info(f"DB -> {str(self)}")
 
     def __str__(self) -> str:
-        return (
-            f"<Database obj, connection_path: {self._connection_str}, "
-            f"subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
-        )
+        if TEST_DB:
+            return (
+                f"<Database obj, connection_path: {self._connection_str}, "
+                f"subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
+            )
+        else:
+            return (
+                f"<Database obj, connection_path: {self._connection_url.render_as_string()}, "
+                f"subgroup: {self.PREFIX[:-1] if self.PREFIX else None}>"
+            )
 
     def get_db(self):
         session = self._SESSIONLOCAL()
