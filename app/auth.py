@@ -20,7 +20,7 @@ from functools import partial
 from sqlalchemy import text
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
-from app.db.db import Session, Database
+from app.db.db import Session
 from app.jsonapi.sqla_models import serializer
 from app.jsonapi.sqla_jsonapi_ext import GenericData
 
@@ -702,8 +702,8 @@ class GlasflossOperations(SecOp): ...
 
 class CustomersOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken) -> None:
-        super().__init__(token)
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
+        super().__init__(token, resource)
         self._resource_customer_table = "customers"
 
     def permitted_resource_customer_ids(self, session: Session) -> list[int]:

@@ -25,7 +25,7 @@ from app.customers.models import (
     CMMSSNSCustomerResp,
 )
 from app.db.db import SCA_DB, S3, File
-from app.jsonapi.sqla_models import SCACustomer, serializer
+from app.jsonapi.sqla_models import SCACustomer
 from app.jsonapi.core_models import convert_query
 
 CMMSSNS_URL: str = getenv("CMMSSNS_AUDIENCE")
@@ -83,10 +83,10 @@ async def customer_collection(
 ) -> CustomerResponse:
 
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
-        .get(session=session, resource=API_TYPE, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -126,12 +126,11 @@ async def customer(
     query: CustomerQuery = Depends(),
 ) -> CustomerResponse:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
         .get(
             session=session,
-            resource=API_TYPE,
             query=converter(query),
             obj_id=customer_id,
         )
@@ -186,7 +185,7 @@ async def new_customer(
             )
             new_customer.data.id = cmmssns_customer.data.id
         return (
-            auth.CustomersOperations(token)
+            auth.CustomersOperations(token, API_TYPE)
             .allow_admin()
             .allow_sca()
             .post(
@@ -249,12 +248,11 @@ async def mod_customer(
     mod_customer: ModCustomer,
 ) -> CustomerResponse:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
         .patch(
             session=session,
-            resource=API_TYPE,
             data=mod_customer.model_dump(by_alias=True),
             customer_id=customer_id,
             obj_id=customer_id,

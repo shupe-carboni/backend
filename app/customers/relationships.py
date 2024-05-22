@@ -40,14 +40,12 @@ async def related_location(
     token: CustomersPerm,
 ) -> RelatedLocationResponse:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=SCACustomerLocation.__jsonapi_type_override__,
@@ -66,14 +64,12 @@ async def customer_location_relationships(
     token: CustomersPerm,
 ) -> LocationRelationshipsResponse:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=SCACustomerLocation.__jsonapi_type_override__,
@@ -92,15 +88,13 @@ async def related_adp_customers(
     token: CustomersPerm,
 ) -> RelatedCustomerResponse:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .allow_customer("admin")
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADPCustomer.__jsonapi_type_override__,
@@ -119,15 +113,13 @@ async def adp_customer_relationships(
     token: CustomersPerm,
 ) -> CustomersRelResp:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .allow_customer("admin")
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADPCustomer.__jsonapi_type_override__,
@@ -147,15 +139,13 @@ async def related_adp_customer_terms(
 ) -> RelatedADPCustomerTermsResp:
 
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .allow_customer("admin")
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=False,
             related_resource=ADPCustomerTerms.__jsonapi_type_override__,
@@ -174,15 +164,13 @@ async def adp_customer_terms_relationships(
     token: CustomersPerm,
 ) -> ADPCustomerTermsRelationshipsResp:
     return (
-        auth.CustomersOperations(token)
+        auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_dev()
         .allow_sca()
         .allow_customer("admin")
         .get(
             session=session,
-            resource=API_TYPE,
-            query={},
             obj_id=customer_id,
             relationship=True,
             related_resource=ADPCustomerTerms.__jsonapi_type_override__,
