@@ -302,6 +302,7 @@ class SecOp(ABC):
         self._customer = False
         self._resource = resource
         self._resource_customer_table: str
+        self._associated_resource: bool
 
     @abstractmethod
     def permitted_resource_customer_ids(self, session: Session) -> list[int]:
@@ -480,9 +481,10 @@ class SecOp(ABC):
             if customer_id not in customer_ids:
                 raise CustomerIDNotAssociatedWithUser
 
-        check_object_id_association(
-            session, self._resource_customer_table, customer_id, resource, obj_id
-        )
+        if self._associated_resource:
+            check_object_id_association(
+                session, self._resource_customer_table, customer_id, resource, obj_id
+            )
 
         match data:
             case collections.Callable():
@@ -540,9 +542,10 @@ class SecOp(ABC):
             if customer_id not in customer_ids:
                 raise CustomerIDNotAssociatedWithUser
 
-        check_object_id_association(
-            session, self._resource_customer_table, customer_id, resource, obj_id
-        )
+        if self._associated_resource:
+            check_object_id_association(
+                session, self._resource_customer_table, customer_id, resource, obj_id
+            )
 
         match data:
             case collections.Callable():
@@ -575,7 +578,7 @@ class SecOp(ABC):
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, customer_id: Optional[int] = None):
-        if self._dev or self._sca:
+        if (self._dev or self._sca) and self._associated_resource:
             check_object_id_association(
                 session=session,
                 customer_reference_resource=self._resource_customer_table,
@@ -595,6 +598,7 @@ class ADPOperations(SecOp):
     def __init__(self, token: VerifiedToken, resource: str) -> None:
         super().__init__(token, resource)
         self._resource_customer_table = "adp-customers"
+        self._associated_resource = resource != self._resource_customer_table
 
     def permitted_resource_customer_ids(
         self,
@@ -705,6 +709,7 @@ class CustomersOperations(SecOp):
     def __init__(self, token: VerifiedToken, resource: str) -> None:
         super().__init__(token, resource)
         self._resource_customer_table = "customers"
+        self._associated_resource = resource != self._resource_customer_table
 
     def permitted_resource_customer_ids(self, session: Session) -> list[int]:
         """Using select statements, get the adp customer ids that
