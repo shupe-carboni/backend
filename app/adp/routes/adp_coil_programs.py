@@ -172,23 +172,24 @@ def change_product_status(
         .allow_customer("std")
         .patch(
             session=session,
-            data=new_stage.model_dump(by_alias=True),
+            data=new_stage.model_dump(exclude_none=True, by_alias=True),
             customer_id=adp_customer_id,
             obj_id=program_product_id,
         )
     )
 
 
-@coil_progs.delete("/{program_product_id}")
+@coil_progs.delete("/{program_product_id}", tags=["jsonapi"])
 def permanently_delete_record(
-    token: Token,
-    session: NewSession,
-    program_product_id: int,
+    token: Token, session: NewSession, program_product_id: int, adp_customer_id: int
 ) -> None:
     return (
         auth.ADPOperations(token, ADP_COILS_RESOURCE)
         .allow_admin()
-        .delete(session, program_product_id)
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .delete(session, program_product_id, adp_customer_id)
     )
 
 
