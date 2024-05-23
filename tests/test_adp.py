@@ -42,7 +42,8 @@ PATH_PREFIX = "/adp"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
-TEST_MODEL = "HE32924D175B1605AP"
+TEST_COIL_MODEL = "HE32924D175B1605AP"
+TEST_AH_MODEL = "SM312500"
 
 # AH Change Requests
 VALID_AH_CHANGE_REQ = TestRequest(
@@ -169,8 +170,44 @@ PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL = TestRequest(
 )
 
 
+def test_prog_dl_link():
+    sca_perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+    )
+    customer_perms = (
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+        auth_overrides.DeveloperToken,
+    )
+    ## valid requests
+    for perm in *sca_perms, *customer_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID}/get-download?stage=active"
+        response = test_client.post(url)
+        assert response.status_code == 200
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        # changed id number
+        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID + 1}/get-download?stage=active"
+        response = test_client.post(url)
+        assert response.status_code == 200
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+    ## invalid requests
+    for perm in customer_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        # changed id number
+        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID + 1}/get-download?stage=active"
+        response = test_client.post(url)
+        assert response.status_code == 401
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
 def test_collection_filtering():
-    """this is dependent on the data - in that we expect more than one customer to have data to return"""
     ## coil programs is the example
     ## I care only about the id numbers in "included", no other data
     trimmed_data_req = (
@@ -227,11 +264,11 @@ def test_model_lookup():
         base_url = f"{PATH_PREFIX}/model-lookup/"
         zero_id = base_url + "0"
         real_id = base_url + f"{ADP_CUSTOMER_ID}"
-        response = test_client.get(zero_id + f"?model_num={TEST_MODEL}")
+        response = test_client.get(zero_id + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 200
         assert "zero-discount-price" in response.json().keys()
         assert "net-price" not in response.json().keys()
-        response = test_client.get(real_id + f"?model_num={TEST_MODEL}")
+        response = test_client.get(real_id + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 200
         assert "zero-discount-price" in response.json().keys()
         assert "net-price" in response.json().keys()
@@ -248,9 +285,9 @@ def test_model_lookup():
         zero_id = base_url + "0"
         real_id = base_url + f"{ADP_CUSTOMER_ID}"
         invalid_id = base_url + f"{ADP_CUSTOMER_ID+1}"
-        response = test_client.get(zero_id + f"?model_num={TEST_MODEL}")
+        response = test_client.get(zero_id + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 401
-        response = test_client.get(real_id + f"?model_num={TEST_MODEL}")
+        response = test_client.get(real_id + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 200
         if show_pricing:
             zero_discount_price = "zero-discount-price" in response.json().keys()
@@ -260,12 +297,74 @@ def test_model_lookup():
             net_price = "net-price" not in response.json().keys()
         assert zero_discount_price
         assert net_price
-        response = test_client.get(invalid_id + f"?model_num={TEST_MODEL}")
+        response = test_client.get(invalid_id + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 401
         app.dependency_overrides[authenticate_auth0_token] = {}
 
 
 ## SCA
+
+
+def test_new_coil_as_sca():
+    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_coil = {
+            "data": {
+                "type": "adp-coil-programs",
+                "attributes": {"model-number": TEST_COIL_MODEL},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
+        assert response.status_code == 200, response.json()
+        assert CoilProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_new_ah_as_sca():
+    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_ah = {
+            "data": {
+                "type": "adp-ah-programs",
+                "attributes": {"model-number": TEST_AH_MODEL},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
+        assert response.status_code == 200, response.json()
+        assert AirHandlerProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_new_part_as_sca():
+    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_ah = {
+            "data": {
+                "type": "adp-program-parts",
+                "attributes": {"part-number": "165616601A"},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/adp-program-parts", json=new_ah)
+        assert response.status_code == 200, response.json()
+        app.dependency_overrides[authenticate_auth0_token] = {}
 
 
 def test_customer_coil_program_collection_as_sca():
@@ -393,7 +492,145 @@ def test_customer_program_resource_delete():
         assert response.status_code == 401
 
 
-## CUSTOMER ADMIN
+## CUSTOMER
+
+
+def test_new_coil_as_customer():
+    customer_perms = (
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+    )
+    for perm in customer_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_coil = {
+            "data": {
+                "type": "adp-coil-programs",
+                "attributes": {"model-number": TEST_COIL_MODEL},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
+        assert response.status_code == 200, response.json()
+        assert CoilProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_new_ah_as_customer():
+    customer_perms = (
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+    )
+    for perm in customer_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_ah = {
+            "data": {
+                "type": "adp-ah-programs",
+                "attributes": {"model-number": TEST_AH_MODEL},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
+        assert response.status_code == 200, response.json()
+        assert AirHandlerProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_new_part_as_customer():
+    customer_perms = (
+        auth_overrides.CustomerAdminToken,
+        auth_overrides.CustomerManagerToken,
+        auth_overrides.CustomerStandardToken,
+    )
+    for perm in customer_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        new_ah = {
+            "data": {
+                "type": "adp-program-parts",
+                "attributes": {"part-number": "165616601A"},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                    }
+                },
+            }
+        }
+        response = test_client.post(f"{PATH_PREFIX}/adp-program-parts", json=new_ah)
+        assert response.status_code == 200, response.json()
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_customer_coil_program_collection_as_sca():
+    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}")
+        assert response.status_code == 200, response.json()
+        assert CoilProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_customer_coil_program_resource_as_sca():
+    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
+    for perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = perm
+        response = test_client.get(
+            f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}"
+        )
+        assert response.status_code == 200
+        assert CoilProgResp(**response.json())
+        assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
+        response = test_client.get(
+            f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}"
+        )
+        assert response.status_code == 200
+        assert CoilProgResp(**response.json())
+        app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_customer_coil_program_modification_as_sca():
+    sca_perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+    )
+    for sca_perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = sca_perm
+        pre_mod_response = test_client.get(VALID_COIL_CHANGE_REQ.url)
+        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
+        try:
+            # good request
+            response = test_client.patch(**VALID_COIL_CHANGE_REQ)
+            assert response.status_code == 200
+            assert AirHandlerProgResp(**response.json())
+            assert response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+
+            # bad request - product ID is not associated with the customer
+            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL)
+            assert response.status_code == 401
+        finally:
+            test_client.patch(**RESET_COIL_STATUS)
+            app.dependency_overrides[authenticate_auth0_token] = {}
+
+
+def test_customer_ah_program_collection_as_sca():
+    sca_perms = (
+        auth_overrides.AdminToken,
+        auth_overrides.SCAEmployeeToken,
+    )
+    for sca_perm in sca_perms:
+        app.dependency_overrides[authenticate_auth0_token] = sca_perm
+        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}")
+        assert response.status_code == 200
+        assert AirHandlerProgResp(**response.json())
 
 
 def test_customer_coil_program_collection_as_customer():
