@@ -70,15 +70,17 @@ def test_modify_customer():
                 "id": CUSTOMER_ID,
                 "type": "customers",
                 "attributes": {
-                    "name": "TEST CUSTOMER",
-                    "logo": "customers/999999/logo/py-color.jpg",
+                    # "name": "TEST CUSTOMER",
+                    # "logo": "customers/999999/logo/py-color.jpg",
                     "domains": ["somedomain.com", "someotherdomain.net"],
                     "buying_group": "AD",
                 },
             }
-        ).model_dump()
+        ).model_dump(exclude_none=True)
         response = method(ROUTE, json=payload)
         assert response.status_code == rc, f"{response.status_code}: {perm}"
+        if response.status_code == 200:
+            assert response.json()["data"]["attributes"].get("name") is not None
         app.dependency_overrides[authenticate_auth0_token] = {}
 
 
