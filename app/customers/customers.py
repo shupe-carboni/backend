@@ -3,7 +3,7 @@ Customer Routes
 """
 
 import logging
-from typing import Annotated
+from typing import Annotated, Callable
 from os import getenv
 from time import sleep
 from dataclasses import dataclass
@@ -154,6 +154,13 @@ def new_cmmssns_customer(new_customer: NewCMMSSNSCustomer) -> CMMSSNSCustomerRes
     return CMMSSNSCustomerResp(**resp.json())
 
 
+def get_new_cmmssns_customer_method() -> Callable:
+    return new_cmmssns_customer
+
+
+GetCMMSSNSCustomer = Callable[[NewCMMSSNSCustomer], CMMSSNSCustomerResp]
+
+
 @customers.post(
     "",
     response_model=CustomerResponse,
@@ -164,6 +171,7 @@ async def new_customer(
     session: NewSession,
     token: Token,
     new_customer: NewCustomer,
+    new_cmmssns_customer: GetCMMSSNSCustomer = Depends(get_new_cmmssns_customer_method),
 ) -> CustomerResponse:
     """
     Creates a new customer.
