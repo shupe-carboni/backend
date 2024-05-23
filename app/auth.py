@@ -587,7 +587,9 @@ class SecOp(ABC):
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, customer_id: Optional[int] = None):
-        if (self._dev or self._sca) and self._associated_resource:
+        if self._associated_resource:
+            if not customer_id:
+                raise ValueError("customer_id query argument is required")
             check_object_id_association(
                 session=session,
                 customer_reference_resource=self._resource_customer_table,
@@ -595,7 +597,8 @@ class SecOp(ABC):
                 resource=self._resource,
                 obj_id=obj_id,
             )
-        if self._admin or self._dev or self._sca:
+
+        if any((self._admin, self._dev, self._sca, self._customer)):
             return serializer.delete_resource(
                 session=session, data={}, api_type=self._resource, obj_id=obj_id
             )
