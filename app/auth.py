@@ -476,10 +476,14 @@ class SecOp(ABC):
     ) -> GenericData | None:
 
         resource = self._resource
-        if self._customer or self._dev:
+        if self._admin or self._sca:
+            pass
+        elif self._customer or self._dev:
             customer_ids = self.permitted_resource_customer_ids(session=session)
             if customer_id not in customer_ids:
                 raise CustomerIDNotAssociatedWithUser
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
         if self._associated_resource:
             check_object_id_association(
@@ -536,12 +540,17 @@ class SecOp(ABC):
         obj_id: int,
         related_resource: Optional[str] = None,
     ) -> GenericData | None:
-        resource = self._resource
-        if self._customer or self._dev:
+
+        if self._admin or self._sca:
+            pass
+        elif self._customer or self._dev:
             customer_ids = self.permitted_resource_customer_ids(session=session)
             if customer_id not in customer_ids:
                 raise CustomerIDNotAssociatedWithUser
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+        resource = self._resource
         if self._associated_resource:
             check_object_id_association(
                 session, self._resource_customer_table, customer_id, resource, obj_id
