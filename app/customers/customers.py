@@ -261,7 +261,7 @@ async def mod_customer(
         .allow_sca()
         .patch(
             session=session,
-            data=mod_customer.model_dump(by_alias=True),
+            data=mod_customer.model_dump(exclude_none=True, by_alias=True),
             customer_id=customer_id,
             obj_id=customer_id,
         )
