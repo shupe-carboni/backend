@@ -281,6 +281,8 @@ class NewPartRObj(BaseModel):
     attributes: NewPartNumber
     relationships: ProgRels
 
+class NewPartRequest(BaseModel):
+    data: NewPartRObj
 
 ## Modifications to products in a Program
 class NewStage(BaseModel):
