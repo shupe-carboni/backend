@@ -173,7 +173,7 @@ def change_product_status(
         .allow_customer("std")
         .patch(
             session=session,
-            data=new_stage.model_dump(by_alias=True),
+            data=new_stage.model_dump(exclude_none=True, by_alias=True),
             customer_id=adp_customer_id,
             obj_id=program_product_id,
         )
@@ -182,14 +182,15 @@ def change_product_status(
 
 @ah_progs.delete("/{program_product_id}", tags=["jsonapi"])
 def delete_ah_program_product(
-    token: Token,
-    session: NewSession,
-    program_product_id: int,
+    token: Token, session: NewSession, program_product_id: int, adp_customer_id: int
 ):
     return (
         auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
         .allow_admin()
-        .delete(session=session, obj_id=program_product_id)
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .delete(session=session, obj_id=program_product_id, customer_id=adp_customer_id)
     )
 
 
