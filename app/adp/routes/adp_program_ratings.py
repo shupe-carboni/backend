@@ -10,11 +10,10 @@ from app.adp.extraction.ratings import add_ratings_to_program
 from app.adp.models import (
     RatingsResp,
     RatingsQuery,
-    # RatingsQueryJSONAPI,
     Rating,
     Ratings,
 )
-from app.jsonapi.sqla_models import serializer, ADPProgramRating
+from app.jsonapi.sqla_models import ADPProgramRating
 
 ADP_RATINGS_RESOURCE = ADPProgramRating.__jsonapi_type_override__
 prog_ratings = APIRouter(
@@ -72,9 +71,12 @@ async def add_program_ratings(
 
 
 @prog_ratings.delete("/{rating_id}")
-async def remove_rating(token: Token, rating_id: int, session: NewSession) -> None:
+async def remove_rating(
+    token: Token, rating_id: int, session: NewSession, adp_customer_id: int
+) -> None:
     return (
         auth.ADPOperations(token, ADP_RATINGS_RESOURCE)
         .allow_admin()
-        .delete(session=session, obj_id=rating_id)
+        .allow_sca()
+        .delete(session=session, obj_id=rating_id, customer_id=adp_customer_id)
     )
