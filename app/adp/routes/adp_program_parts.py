@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 
 from app import auth
 from app.db import Session, ADP_DB
-from app.adp.models import NewPartRObj, PartsQuery, PartsResp, PartsQueryJSONAPI
+from app.adp.models import PartsQuery, PartsResp, PartsQueryJSONAPI, NewPartRequest
 from app.jsonapi.sqla_models import ADPProgramPart
 from app.jsonapi.core_models import convert_query
 
@@ -55,18 +55,21 @@ def a_part(
     )
 
 
-@prog_parts.post("", tags=["jsonapi"])
+@prog_parts.post(
+    "", response_model=PartsResp, response_model_exclude_none=True, tags=["jsonapi"]
+)
 async def add_program_parts(
     token: Token,
     session: NewSession,
-    part: NewPartRObj,
-):
-    customer_id = part.relationships.adp_customers.data.id
+    part: NewPartRequest,
+) -> PartsResp:
+    customer_id = part.data.relationships.adp_customers.data.id
     return (
         auth.ADPOperations(token, ADP_PARTS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
+        .allow_customer("std")
         .post(
             session=session,
             data=part.model_dump(by_alias=True),
@@ -77,13 +80,19 @@ async def add_program_parts(
 
 @prog_parts.patch("/{part_id}", tags=["jsonapi", "not implemented"])
 def modify_part(token: Token):
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Parts/Accessories may be added or removed, but not modified",
+    )
 
 
 @prog_parts.delete("/{part_id}", tags=["jsonapi", "admin"])
-def delete_part(token: Token, session: NewSession, part_id):
+def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id: int):
     return (
         auth.ADPOperations(token, ADP_PARTS_RESOURCE)
         .allow_admin()
-        .delete(session=session, obj_id=part_id)
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .delete(session=session, obj_id=part_id, customer_id=adp_customer_id)
     )
