@@ -41,11 +41,20 @@ class XLSXFileResponse(StreamingResponse):
         )
 
 
+def generate_dl_link(adp_customer_id: int, download_id: int) -> DownloadLink:
+    link = DownloadLink(
+        downloadLink=f"/adp/programs/{adp_customer_id}"
+        f"/download?download_id={download_id}"
+    )
+    return link
+
+
 @adp.post(
     "/programs/{adp_customer_id}/get-download", tags=["programs", "file-download"]
 )
 def customer_program_get_dl(
     token: Token,
+    session: NewSession,
     adp_customer_id: int,
     stage: Stage,
 ) -> DownloadLink:
@@ -54,16 +63,23 @@ def customer_program_get_dl(
         download_id = downloads.DownloadIDs.generate_id(
             customer_id=adp_customer_id, stage=Stage(stage)
         )
-        return DownloadLink(
-            downloadLink=f"/adp/programs/{adp_customer_id}/download?download_id={download_id}"
-        )
+        return generate_dl_link(adp_customer_id, download_id)
 
     else:
-        print(
-            "Enforce that the customer is allowed to have the program associated with "
-            "the adp_customer_id selected"
-        )
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+        try:
+            auth.ADPOperations(token, "adp-customers").allow_dev().allow_customer(
+                "std"
+            ).get(session=session, obj_id=adp_customer_id)
+        except HTTPException as e:
+            if e.status_code == 204:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+            else:
+                raise e
+        else:
+            download_id = downloads.DownloadIDs.generate_id(
+                customer_id=adp_customer_id, stage=Stage(stage)
+            )
+            return generate_dl_link(adp_customer_id, download_id)
 
 
 @adp.get(
