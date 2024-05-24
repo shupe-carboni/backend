@@ -55,7 +55,7 @@ def test_quote_resource(perm, response_code):
 
 
 @mark.parametrize("perm,response_code", SCA_ONLY)
-def test_new_quote(perm, response_code):
+def test_new_quote_no_files(perm, response_code):
     url = PATH_PREFIX
     QN = randint(1000, 9999)
     app.dependency_overrides[authenticate_auth0_token] = perm
