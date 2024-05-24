@@ -1,5 +1,7 @@
+import os
 from typing import Annotated, Optional
-from datetime import datetime
+from time import time
+from datetime import datetime, date
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends, Form, UploadFile
 from fastapi.routing import APIRouter
@@ -16,7 +18,7 @@ from app.adp.quotes.job_quotes.models import (
 from app.jsonapi.sqla_models import ADPQuote
 
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
-S3_DIR = "/adp/quotes/"
+S3_DIR = os.getenv("S3_BUCKET") + "/adp/quotes"
 quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp quotes"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -67,7 +69,7 @@ async def one_quote(
 
 
 @quotes.post(
-    "/{adp_customer_id}",
+    "",
     response_model=QuoteResponse,
     response_model_exclude_none=True,
     tags=["jsonapi"],
@@ -75,10 +77,10 @@ async def one_quote(
 async def new_quote(
     token: Token,
     session: NewSession,
-    adp_customer_id: int,
-    adp_quote_id: str = Form(defualt=None),
+    adp_customer_id: int = Form(),
+    adp_quote_id: str = Form(default=None),
     job_name: str = Form(),
-    expires_at: datetime = Form(),
+    expires_at: date = Form(),
     status: Stage = Form(),
     quote_doc: Optional[UploadFile] = None,
     plans_doc: Optional[UploadFile] = None,
@@ -94,12 +96,14 @@ async def new_quote(
     # TODO generate filenames and upload documents to S3.
     # Plug the links to them into a NewQuote before post_collection
     created_at: datetime = datetime.today().date()
-    if token.permissions >= auth.Permissions.sca_employee:
+    time_id: int = int(time())
+    s3_quote_path = S3_DIR + f"/{adp_customer_id}/{time_id}"
+    if token.permissions >= auth.Permissions.developer:
         attrs = {
             "job_name": job_name,
             "created_at": created_at,
             "expires_at": expires_at,
-            "staus": status,
+            "status": status,
         }
         if adp_quote_id:
             attrs["adp_quote_id"] = adp_quote_id
@@ -109,8 +113,9 @@ async def new_quote(
                 file_mime=quote_doc.content_type,
                 file_content=await quote_doc.read(),
             )
-            # TODO do the upload to AWS
-            attrs["quote_doc"] = quote_file.s3
+            s3_path = f"{s3_quote_path}/{quote_file.file_name}"
+            await S3.upload_file(quote_file, s3_path)
+            attrs["quote_doc"] = s3_path
 
         if plans_doc:
             plans_file = File(
@@ -118,8 +123,9 @@ async def new_quote(
                 file_mime=plans_doc.content_type,
                 file_content=await plans_doc.read(),
             )
-            # TODO do the upload to AWS
-            attrs["plans_doc"] = plans_file.s3
+            s3_path = f"{s3_quote_path}/{plans_file.file_name}"
+            await S3.upload_file(quote_file, s3_path)
+            attrs["plans_doc"] = s3_path
 
         new_quote_obj = {
             "type": QUOTES_RESOURCE,
@@ -135,7 +141,18 @@ async def new_quote(
             },
         }
         new_quote = NewQuote(data=new_quote_obj)
-        raise HTTPException(status_code=501)
+        return (
+            auth.ADPOperations(token, QUOTES_RESOURCE)
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session=session,
+                data=new_quote.model_dump(exclude_none=True, by_alias=True),
+                customer_id=adp_customer_id,
+            )
+        )
+
     raise HTTPException(status_code=401)
 
 
