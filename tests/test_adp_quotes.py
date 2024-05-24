@@ -5,10 +5,13 @@ from tests import auth_overrides
 from pytest import mark
 from random import randint
 from datetime import datetime, timedelta
+from app.db import Stage
 
 test_client = TestClient(app)
 
 ADP_TEST_CUSTOMER_ID = 59
+TEST_CUSTOMER_LOCATION = 5
+TEST_CUSTOMER_PLACE = 4644585
 
 PATH_PREFIX = "/adp/adp-quotes"
 
@@ -64,9 +67,9 @@ def test_new_quote_no_files(perm, response_code):
         "adp_quote_id": f"QN-{QN}",
         "job_name": "Test Job",
         "expires_at": (datetime.today().date() + timedelta(days=90)),
-        "status": "proposed",
-        "place_id": 4644585,
-        "customer_location_id": 5,
+        "status": Stage("proposed"),
+        "place_id": TEST_CUSTOMER_PLACE,
+        "customer_location_id": TEST_CUSTOMER_LOCATION,
     }
     resp = test_client.post(url, data=new_quote)
     assert resp.status_code == response_code, resp.text
