@@ -354,7 +354,7 @@ class ADPQuote(Base):
     job_name = Column(String)
     created_at = Column(DateTime)
     expires_at = Column(DateTime)
-    status = Column(STAGE_ENUM)
+    status: Mapped[Stage] = mapped_column()
     quote_doc = Column(TEXT, unique=True)
     plans_doc = Column(TEXT)
     customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
