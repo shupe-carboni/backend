@@ -11,7 +11,7 @@ from app.jsonapi.core_models import convert_query
 from app.adp.quotes.job_quotes.models import (
     QuoteResponse,
     NewQuote,
-    ExistingQuote,
+    ExistingQuoteRequest,
     QuoteQuery,
     QuoteQueryJSONAPI,
 )
@@ -165,9 +165,22 @@ async def new_quote(
 async def modify_quote(
     token: Token,
     session: NewSession,
-    body: ExistingQuote,
+    quote_id: int,
+    body: ExistingQuoteRequest,
 ) -> QuoteResponse:
-    raise HTTPException(status_code=501)
+    customer_id = body.data.relationships.adp_customers.data.id
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session=session,
+            data=body.model_dump(exclude_none=True, by_alias=True),
+            customer_id=customer_id,
+            obj_id=quote_id,
+        )
+    )
 
 
 @quotes.delete("/{quote_id}", tags=["jsonapi"])
@@ -176,4 +189,10 @@ async def delete_quote(
     session: NewSession,
     quote_id: int,
 ) -> None:
-    raise HTTPException(status_code=501)
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(session=session, obj_id=quote_id)
+    )

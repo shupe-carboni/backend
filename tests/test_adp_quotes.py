@@ -72,4 +72,26 @@ def test_new_quote_no_files(perm, response_code):
         "customer_location_id": TEST_CUSTOMER_LOCATION,
     }
     resp = test_client.post(url, data=new_quote)
+    assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_patch_quote(perm, response_code):
+    url = PATH_PREFIX
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    sample_quote = test_client.get(
+        url + "?page_size=1&page_number=1&include=adp-customers"
+    ).json()["data"][0]
+    QN = randint(1000, 9999)
+    sample_quote["attributes"]["adp-quote-id"] = f"QN-{QN}"
+    rel_keys_to_delete = list()
+    for other_rel in sample_quote["relationships"]:
+        if other_rel != "adp-customers":
+            rel_keys_to_delete.append(other_rel)
+    for rel in rel_keys_to_delete:
+        del sample_quote["relationships"][rel]
+
+    resp = test_client.patch(
+        url + f"/{sample_quote['id']}", json=dict(data=sample_quote)
+    )
     assert resp.status_code == response_code, resp.text

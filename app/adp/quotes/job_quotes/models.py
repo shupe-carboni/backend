@@ -106,6 +106,10 @@ class ExistingQuote(NewQuoteResourceObject):
     id: str | int
 
 
+class ExistingQuoteRequest(BaseModel):
+    data: ExistingQuote
+
+
 # dyanamically created Pydantic Model extends on the non-dyanmic JSON:API Query Model
 # by pre-defining and auto-documenting all filter and field square bracket parameters
 _QuoteQuery: type[BaseModel] = create_model(
