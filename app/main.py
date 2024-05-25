@@ -18,7 +18,6 @@ from app.places import places
 from app.adp import (
     adp,
     adp_quotes,
-    adp_quote_rel,
     coil_progs,
     ah_progs,
     prog_parts,
@@ -82,7 +81,6 @@ app.add_middleware(
 # customers
 customers.include_router(customer_rel)
 # adp
-adp_quotes.include_router(adp_quote_rel)
 adp.include_router(adp_quotes)
 adp.include_router(adp_customers)
 adp.include_router(coil_progs)
