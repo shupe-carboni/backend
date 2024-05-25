@@ -281,8 +281,10 @@ class NewPartRObj(BaseModel):
     attributes: NewPartNumber
     relationships: ProgRels
 
+
 class NewPartRequest(BaseModel):
     data: NewPartRObj
+
 
 ## Modifications to products in a Program
 class NewStage(BaseModel):
@@ -481,7 +483,7 @@ class PartsResp(BaseModel):
     meta: Optional[dict] = {}
     data: Optional[list[PartsRObj] | PartsRObj]
     included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = {}
+    links: Optional[Pagination] = None
 
 
 _PartsQuery: type[BaseModel] = create_model(
