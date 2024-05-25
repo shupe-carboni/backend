@@ -15,6 +15,16 @@ from app.adp.quotes.job_quotes.models import (
     QuoteQuery,
     QuoteQueryJSONAPI,
 )
+from app.adp.models import RelatedCustomerResponse, CustomersRelResp
+from app.customers.locations.models import (
+    LocationRelationshipsResponse,
+    RelatedLocationResponse,
+)
+from app.places.models import RelatedPlaceResponse, PlaceRelationshipsResponse
+from app.adp.quotes.products.models import (
+    RelatedProductResponse,
+    ProductRelationshipsResponse,
+)
 from app.jsonapi.sqla_models import ADPQuote
 
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
@@ -195,4 +205,176 @@ async def delete_quote(
         .allow_sca()
         .allow_dev()
         .delete(session=session, obj_id=quote_id)
+    )
+
+
+@quotes.get(
+    "/{quote_id}/adp-customers",
+    response_model=RelatedCustomerResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_customers(
+    token: Token, session: NewSession, quote_id: int
+) -> RelatedCustomerResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session=session, obj_id=quote_id, related_resource="adp-customers")
+    )
+
+
+@quotes.get(
+    "/{quote_id}/adp-quote-products",
+    response_model=RelatedProductResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_products(
+    token: Token, session: NewSession, quote_id: int
+) -> RelatedProductResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session=session, obj_id=quote_id, related_resource="adp-quote-products")
+    )
+
+
+@quotes.get(
+    "/{quote_id}/places",
+    response_model=RelatedPlaceResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_place(
+    token: Token, session: NewSession, quote_id: int
+) -> RelatedPlaceResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session=session, obj_id=quote_id, related_resource="places")
+    )
+
+
+@quotes.get(
+    "/{quote_id}/customer-locations",
+    response_model=RelatedLocationResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_customer_location(
+    token: Token, session: NewSession, quote_id: int
+) -> RelatedLocationResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session=session, obj_id=quote_id, related_resource="customer-locations")
+    )
+
+
+@quotes.get(
+    "/{quote_id}/relationships/adp-customers",
+    response_model=CustomersRelResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_customers(
+    token: Token, session: NewSession, quote_id: int
+) -> CustomersRelResp:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=quote_id,
+            related_resource="adp-customers",
+            relationship=True,
+        )
+    )
+
+
+@quotes.get(
+    "/{quote_id}/relationships/adp-quote-products",
+    response_model=ProductRelationshipsResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_products(
+    token: Token, session: NewSession, quote_id: int
+) -> ProductRelationshipsResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=quote_id,
+            related_resource="adp-quote-products",
+            relationship=True,
+        )
+    )
+
+
+@quotes.get(
+    "/{quote_id}/relationships/places",
+    response_model=PlaceRelationshipsResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_place(
+    token: Token, session: NewSession, quote_id: int
+) -> PlaceRelationshipsResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=quote_id,
+            related_resource="places",
+            relationship=True,
+        )
+    )
+
+
+@quotes.get(
+    "/{quote_id}/relationships/customer-locations",
+    response_model=LocationRelationshipsResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def quote_customer_location(
+    token: Token, session: NewSession, quote_id: int
+) -> LocationRelationshipsResponse:
+    return (
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=quote_id,
+            related_resource="customer-locations",
+            relationship=True,
+        )
     )

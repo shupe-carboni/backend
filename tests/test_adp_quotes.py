@@ -95,3 +95,35 @@ def test_patch_quote(perm, response_code):
         url + f"/{sample_quote['id']}", json=dict(data=sample_quote)
     )
     assert resp.status_code == response_code, resp.text
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_related_adp_customer(perm, response_code):
+    url = PATH_PREFIX + "/1/adp-customers"
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_related_adp_quote_products(perm, response_code):
+    url = PATH_PREFIX + "/1/adp-quote-products"
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_related_places(perm, response_code):
+    url = PATH_PREFIX + "/1/places"
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_related_customer_locations(perm, response_code):
+    url = PATH_PREFIX + "/1/customer-locations"
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code
