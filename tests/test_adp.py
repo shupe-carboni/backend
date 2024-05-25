@@ -35,7 +35,7 @@ class TestRequest:
 ADP_CUSTOMER_ID = 59  # TEST CUSTOMER
 VALID_COIL_PRODUCT_ID = 483
 INVALID_COIL_PRODUCT_ID = 1  # invalid for the customer but not SCA
-VALID_AH_PRODUCT_ID = 247
+VALID_AH_PRODUCT_ID = 293
 INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
 
 PATH_PREFIX = "/adp"
@@ -81,7 +81,7 @@ RESET_AH_STATUS = TestRequest(
         "data": {
             "id": VALID_AH_PRODUCT_ID,
             "type": AH_PROGS,
-            "attributes": {"stage": Stage.REMOVED},
+            "attributes": {"stage": Stage.PROPOSED},
             "relationships": {
                 "adp-customers": {
                     "data": {"id": ADP_CUSTOMER_ID, "type": "adp-customers"}
@@ -459,7 +459,7 @@ def test_customer_ah_program_modification_as_sca():
     for sca_perm in sca_perms:
         app.dependency_overrides[authenticate_auth0_token] = sca_perm
         pre_mod_response = test_client.get(VALID_AH_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
         try:
             # good request
             response = test_client.patch(**VALID_AH_CHANGE_REQ)
@@ -477,19 +477,50 @@ def test_customer_ah_program_modification_as_sca():
 
 def test_customer_program_resource_delete():
     perms = (
+        auth_overrides.AdminToken,
         auth_overrides.SCAEmployeeToken,
         auth_overrides.CustomerAdminToken,
         auth_overrides.CustomerManagerToken,
         auth_overrides.CustomerStandardToken,
     )
+    new_ah = {
+        "data": {
+            "type": "adp-ah-programs",
+            "attributes": {"model-number": TEST_AH_MODEL},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                }
+            },
+        }
+    }
+    new_coil = {
+        "data": {
+            "type": "adp-coil-programs",
+            "attributes": {"model-number": TEST_COIL_MODEL},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                }
+            },
+        }
+    }
     for perm in perms:
         app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.delete(f"{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}")
-        assert response.status_code == 401
+        # Make a new AH
+        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
+        new_id = response.json()["data"]["id"]
         response = test_client.delete(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}"
+            f"{PATH_PREFIX}/{AH_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
         )
-        assert response.status_code == 401
+        assert response.status_code == 200
+        # Make a new Coil
+        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
+        new_id = response.json()["data"]["id"]
+        response = test_client.delete(
+            f"{PATH_PREFIX}/{COIL_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
+        )
+        assert response.status_code == 200
 
 
 ## CUSTOMER
@@ -709,7 +740,7 @@ def test_customer_ah_program_modification_as_customer():
     for customer_perm in customer_perms:
         app.dependency_overrides[authenticate_auth0_token] = customer_perm
         pre_mod_response = test_client.get(VALID_AH_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
         try:
             # good request
             response = test_client.patch(**VALID_AH_CHANGE_REQ)
