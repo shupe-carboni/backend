@@ -290,7 +290,7 @@ def quote_customer_location(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_customers(
+def quote_customers_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> CustomersRelResp:
     return (
@@ -314,7 +314,7 @@ def quote_customers(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_products(
+def quote_products_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> ProductRelationshipsResponse:
     return (
@@ -338,7 +338,7 @@ def quote_products(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_place(
+def quote_place_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> PlaceRelationshipsResponse:
     return (
@@ -362,7 +362,7 @@ def quote_place(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_customer_location(
+def quote_customer_location_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> LocationRelationshipsResponse:
     return (
