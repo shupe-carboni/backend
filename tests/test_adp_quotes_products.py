@@ -120,3 +120,29 @@ def test_mod_quote_product(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
     if resp.status_code == 200:
         assert resp.json()["data"]["attributes"]["comp-model"] == new_comp_model
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_del_quote_product(perm, response_code):
+    url = PATH_PREFIX
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    # make new record first
+    data = {
+        "type": ADPQuoteProduct.__jsonapi_type_override__,
+        "attributes": {
+            "tag": "PRODUCT-1",
+            "qty": randint(1, 100),
+            "price": randint(100, 1500),
+            "model-number": TEST_COIL_MODEL,
+            "comp-model": "".join(
+                choice(string.ascii_uppercase + string.digits) for _ in range(10)
+            ),
+        },
+        "relationships": {"adp-quotes": {"data": {"type": "adp-quotes", "id": 1}}},
+    }
+    resp = test_client.post(url, json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())
+    if resp.status_code == 200:
+        # delete it
+        del_resp = test_client.delete(url + f"/{resp.json()['data']['id']}?quote_id=1")
+        assert del_resp.status_code == 204

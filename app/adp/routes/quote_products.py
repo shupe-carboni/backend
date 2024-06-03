@@ -87,10 +87,15 @@ async def mod_quote_product(
 
 @adp_quote_products.delete("/{product_id}")
 async def delete_quote_product(
-    token: Token,
-    session: NewSession,
+    token: Token, session: NewSession, product_id: int, quote_id: int
 ) -> None:
-    raise HTTPException(status_code=501)
+    return (
+        auth.ADPQuoteOperations(token, API_TYPE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(session=session, obj_id=product_id, primary_id=quote_id)
+    )
 
 
 @adp_quote_products.get("/{product_id}/adp-quotes")
