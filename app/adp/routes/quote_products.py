@@ -52,8 +52,16 @@ async def quote_product(
     token: Token,
     session: NewSession,
     product_id: int,
+    query: QuoteProductQuery = Depends(),
 ) -> ProductResponse:
-    raise HTTPException(status_code=501)
+    return (
+        auth.ADPOperations(token, API_TYPE)
+        .allow_admin()
+        .allow_dev()
+        .allow_sca()
+        .allow_customer("std")
+        .get(session=session, query=converter(query), obj_id=product_id)
+    )
 
 
 @adp_quote_products.post(

@@ -3,9 +3,6 @@ from app.main import app
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 from pytest import mark
-from random import randint
-from datetime import datetime, timedelta
-from app.db import Stage
 from app.jsonapi.sqla_models import ADPQuoteProduct
 
 test_client = TestClient(app)
@@ -45,6 +42,14 @@ SCA_ONLY = list(
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_quote_products_collection(perm, response_code):
     url = PATH_PREFIX
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_quote_products_resource(perm, response_code):
+    url = PATH_PREFIX + "/1"
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code

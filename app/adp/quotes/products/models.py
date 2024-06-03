@@ -23,28 +23,22 @@ class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class ProductAttributes(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    request_brand: Optional[str] = Field(default=None, alias="request-brand")
-    product_tag_or_model: str = Field(alias="product-tag-or-model")
-    product_model_quoted: Optional[str] = Field(
-        default=None, alias="product-model-quoted"
-    )
+    tag: str
     qty: int
     price: Optional[float] = None
+    model_number: Optional[str] = Field(default=None, alias="model-number")
+    comp_model: Optional[str] = Field(default=None, alias="comp-model")
 
 
 class ProductQuoteFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_product_tag_or_model: str = Field(
-        default=None, alias="filter[product-tag-or-model]"
-    )
-    filter_product_model_quoted: Optional[str] = Field(
-        default=None, alias="filter[product-model-quoted]"
-    )
+    filter_tag: str = Field(default=None, alias="filter[tag]")
+    filter_comp_model: Optional[str] = Field(default=None, alias="filter[comp-model]")
 
 
 # Schema
 class ProductRelationships(BaseModel):
-    adp_quotes: JSONAPIRelationships
+    adp_quotes: JSONAPIRelationships = Field(alias="adp-quotes")
 
 
 class ProductQuoteFields(BaseModel):
@@ -73,7 +67,7 @@ class NewProductResourceObject(BaseModel):
 
 
 class ExistingProduct(NewProductResourceObject):
-    id: str | int
+    id: int
 
 
 class RelatedProductResponse(ProductResponse):
