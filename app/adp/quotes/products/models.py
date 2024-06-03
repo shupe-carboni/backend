@@ -66,6 +66,10 @@ class NewProductResourceObject(BaseModel):
     relationships: ProductRelationships
 
 
+class NewProductRequest(BaseModel):
+    data: NewProductResourceObject
+
+
 class ExistingProduct(NewProductResourceObject):
     id: int
 
@@ -100,6 +104,6 @@ _QuoteProductQuery: type[BaseModel] = create_model(
 class QuoteProductQuery(_QuoteProductQuery, BaseModel): ...
 
 
-class QuoteQueryJSONAPI(ProductQuoteFilters, ProductQuoteFields, Query):
+class QuoteProductQueryJSONAPI(ProductQuoteFilters, ProductQuoteFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
