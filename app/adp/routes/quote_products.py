@@ -8,6 +8,7 @@ from app.jsonapi.core_models import convert_query
 from app.adp.quotes.products.models import (
     ProductResponse,
     NewProductRequest,
+    ExistingProductRequest,
     QuoteProductQueryJSONAPI,
 )
 from app.jsonapi.sqla_models import ADPQuoteProduct
@@ -58,12 +59,30 @@ async def new_quote_product(
     )
 
 
-@adp_quote_products.patch("/{product_id}")
+@adp_quote_products.patch(
+    "/{product_id}",
+    response_model=ExistingProductRequest,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
 async def mod_quote_product(
     token: Token,
     session: NewSession,
+    mod_quote_prod: ExistingProductRequest,
+    product_id: int,
 ) -> ProductResponse:
-    raise HTTPException(status_code=501)
+    return (
+        auth.ADPQuoteOperations(token, API_TYPE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session=session,
+            data=mod_quote_prod.model_dump(exclude_none=True, by_alias=True),
+            primary_id=mod_quote_prod.data.relationships.adp_quotes.data.id,
+            obj_id=product_id,
+        )
+    )
 
 
 @adp_quote_products.delete("/{product_id}")

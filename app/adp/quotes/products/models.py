@@ -23,8 +23,8 @@ class ProductRelationshipsResponse(JSONAPIRelationshipsResponse):
 # Schema
 class ProductAttributes(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    tag: str
-    qty: int
+    tag: Optional[str] = None
+    qty: Optional[int] = None
     price: Optional[float] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
     comp_model: Optional[str] = Field(default=None, alias="comp-model")
@@ -72,6 +72,10 @@ class NewProductRequest(BaseModel):
 
 class ExistingProduct(NewProductResourceObject):
     id: int
+
+
+class ExistingProductRequest(BaseModel):
+    data: ExistingProduct
 
 
 class RelatedProductResponse(ProductResponse):

@@ -92,3 +92,31 @@ def test_new_quote_product(perm, response_code):
     }
     resp = test_client.post(url, json=dict(data=data))
     assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_mod_quote_product(perm, response_code):
+    url = PATH_PREFIX
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    pre_mod = test_client.get("/adp/adp-quotes/1/adp-quote-products").json()
+    rand_obj_i, rand_obj_id = choice(
+        [(i, obj["id"]) for i, obj in enumerate(pre_mod["data"])]
+    )
+    pre_mod_comp_model = pre_mod["data"][rand_obj_i]["attributes"]["comp-model"]
+    new_comp_model = pre_mod_comp_model
+    while pre_mod_comp_model == new_comp_model:
+        new_comp_model = "".join(
+            choice(string.ascii_uppercase + string.digits) for _ in range(10)
+        )
+    data = {
+        "id": rand_obj_id,
+        "type": ADPQuoteProduct.__jsonapi_type_override__,
+        "attributes": {
+            "comp-model": new_comp_model,
+        },
+        "relationships": {"adp-quotes": {"data": {"type": "adp-quotes", "id": 1}}},
+    }
+    resp = test_client.patch(url + f"/{rand_obj_id}", json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())
+    if resp.status_code == 200:
+        assert resp.json()["data"]["attributes"]["comp-model"] == new_comp_model
