@@ -73,7 +73,7 @@ async def add_program_parts(
         .post(
             session=session,
             data=part.model_dump(by_alias=True),
-            customer_id=customer_id,
+            primary_id=customer_id,
         )
     )
 
@@ -94,5 +94,5 @@ def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session=session, obj_id=part_id, customer_id=adp_customer_id)
+        .delete(session=session, obj_id=part_id, primary_id=adp_customer_id)
     )

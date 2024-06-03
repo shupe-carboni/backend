@@ -199,7 +199,7 @@ async def new_customer(
             .post(
                 session=session,
                 data=new_customer.model_dump(by_alias=True),
-                customer_id=new_customer.data.id,
+                primary_id=new_customer.data.id,
             )
         )
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
@@ -234,7 +234,7 @@ async def upload_customer_logo_file(
         result = await mod_customer(
             session=session,
             token=token,
-            customer_id=customer_id,
+            primary_id=customer_id,
             mod_customer=ModCustomer(
                 data={"id": customer_id, "attributes": {"logo": file_dest}}
             ),
@@ -262,7 +262,7 @@ async def mod_customer(
         .patch(
             session=session,
             data=mod_customer.model_dump(exclude_none=True, by_alias=True),
-            customer_id=customer_id,
+            primary_id=customer_id,
             obj_id=customer_id,
         )
     )

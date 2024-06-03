@@ -159,7 +159,7 @@ async def new_quote(
             .post(
                 session=session,
                 data=new_quote.model_dump(exclude_none=True, by_alias=True),
-                customer_id=adp_customer_id,
+                primary_id=adp_customer_id,
             )
         )
 
@@ -187,7 +187,7 @@ async def modify_quote(
         .patch(
             session=session,
             data=body.model_dump(exclude_none=True, by_alias=True),
-            customer_id=customer_id,
+            primary_id=customer_id,
             obj_id=quote_id,
         )
     )

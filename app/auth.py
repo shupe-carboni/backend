@@ -21,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session
-from app.jsonapi.sqla_models import serializer
+from app.jsonapi.sqla_models import serializer, ADPCustomer, ADPQuote, SCACustomer
 from app.jsonapi.sqla_jsonapi_ext import GenericData
 
 token_auth_scheme = HTTPBearer()
@@ -236,7 +236,7 @@ def standard_error_handler(func):
         except CustomerIDNotAssociatedWithUser:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                detail="ADP Customer ID is not associated with the user",
+                detail="Customer ID is not associated with the user",
             )
         except IDsNotAssociated:
             raise HTTPException(
@@ -257,20 +257,20 @@ def standard_error_handler(func):
 
 def check_object_id_association(
     session: Session,
-    customer_reference_resource: str,
-    customer_reference_id: int,
+    primary_reference_resource: str,
+    primary_reference_id: int,
     resource: str,
     obj_id: int | None,
 ) -> None:
     if obj_id:
         current_obj = serializer.get_resource(
-            session, {"include": customer_reference_resource}, resource, obj_id, True
+            session, {"include": primary_reference_resource}, resource, obj_id, True
         )
         if (
-            current_obj["data"]["relationships"][customer_reference_resource]["data"][
+            current_obj["data"]["relationships"][primary_reference_resource]["data"][
                 "id"
             ]
-            != customer_reference_id
+            != primary_reference_id
         ):
             raise IDsNotAssociated
 
@@ -288,7 +288,7 @@ class SecOp(ABC):
 
     Customer Location ("Branch") id is universal for gating GET requests. For the rest,
     each resource shourld refer to it's own table of customer accounts and ids using
-    "permitted_resource_customer_ids" to properly gate POST, PATCH, and DELETE requests.
+    "permitted_primary_resource_ids" to properly gate POST, PATCH, and DELETE requests.
 
     """
 
@@ -301,12 +301,41 @@ class SecOp(ABC):
         self._dev = False
         self._customer = False
         self._resource = resource
-        self._resource_customer_table: str
+        self._primary_resource: str
         self._associated_resource: bool
 
     @abstractmethod
-    def permitted_resource_customer_ids(self, session: Session) -> list[int]:
+    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         pass
+
+    def get_result_from_id_association_queries(
+        self,
+        session: Session,
+        sql_admin: str = "",
+        sql_manager: str = "",
+        sql_user_only: str = "",
+    ):
+        queries = [sql_admin, sql_manager, sql_user_only]
+        if not all(queries):
+            raise Exception("all user type sql queries must be defined")
+        match UserTypes[self.token.permissions.name]:
+            case UserTypes.customer_std:
+                queries.remove(sql_admin)
+                queries.remove(sql_manager)
+            case UserTypes.customer_manager:
+                queries.remove(sql_admin)
+            case UserTypes.customer_admin | UserTypes.developer:
+                pass
+            case _:
+                raise Exception("invalid select_type")
+
+        for sql in queries:
+            result = session.scalars(
+                text(sql), params={"user_email": self.token.email}
+            ).all()
+            if result:
+                return result
+        return []
 
     def permitted_customer_location_ids(
         self,
@@ -358,25 +387,12 @@ class SecOp(ABC):
                 AND customer_loc.customer_id = scl.customer_id
             );
         """
-        queries = [sql_admin, sql_manager, sql_user_only]
-        match UserTypes[self.token.permissions.name]:
-            case UserTypes.customer_std:
-                queries.remove(sql_admin)
-                queries.remove(sql_manager)
-            case UserTypes.customer_manager:
-                queries.remove(sql_admin)
-            case UserTypes.customer_admin | UserTypes.developer:
-                pass
-            case _:
-                raise Exception("invalid select_type")
-
-        for sql in queries:
-            result = session.scalars(
-                text(sql), params={"user_email": self.token.email}
-            ).all()
-            if result:
-                return result
-        return []
+        return self.get_result_from_id_association_queries(
+            session,
+            sql_admin=sql_admin,
+            sql_manager=sql_manager,
+            sql_user_only=sql_user_only,
+        )
 
     def allow_admin(self) -> "SecOp":
         self._admin = self.token.permissions >= Permissions.sca_admin
@@ -470,7 +486,7 @@ class SecOp(ABC):
         self,
         session: Session,
         data: dict | Callable,
-        customer_id: int,
+        primary_id: int,
         obj_id: Optional[int] = None,
         related_resource: Optional[str] = None,
     ) -> GenericData | None:
@@ -479,15 +495,15 @@ class SecOp(ABC):
         if self._admin or self._sca:
             pass
         elif self._customer or self._dev:
-            customer_ids = self.permitted_resource_customer_ids(session=session)
-            if customer_id not in customer_ids:
+            primary_ids = self.permitted_primary_resource_ids(session=session)
+            if primary_id not in primary_ids:
                 raise CustomerIDNotAssociatedWithUser
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
         if self._associated_resource:
             check_object_id_association(
-                session, self._resource_customer_table, customer_id, resource, obj_id
+                session, self._primary_resource, primary_id, resource, obj_id
             )
 
         match data:
@@ -536,7 +552,7 @@ class SecOp(ABC):
         self,
         session: Session,
         data: dict | Callable,
-        customer_id: int,
+        primary_id: int,
         obj_id: int,
         related_resource: Optional[str] = None,
     ) -> GenericData | None:
@@ -544,8 +560,8 @@ class SecOp(ABC):
         if self._admin or self._sca:
             pass
         elif self._customer or self._dev:
-            customer_ids = self.permitted_resource_customer_ids(session=session)
-            if customer_id not in customer_ids:
+            primary_ids = self.permitted_primary_resource_ids(session=session)
+            if primary_id not in primary_ids:
                 raise CustomerIDNotAssociatedWithUser
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -553,7 +569,7 @@ class SecOp(ABC):
         resource = self._resource
         if self._associated_resource:
             check_object_id_association(
-                session, self._resource_customer_table, customer_id, resource, obj_id
+                session, self._primary_resource, primary_id, resource, obj_id
             )
 
         match data:
@@ -586,14 +602,14 @@ class SecOp(ABC):
                 return result
 
     @standard_error_handler
-    def delete(self, session: Session, obj_id: int, customer_id: Optional[int] = None):
+    def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
         if self._associated_resource:
-            if not customer_id:
-                raise ValueError("customer_id query argument is required")
+            if not primary_id:
+                raise ValueError("primary_id query argument is required")
             check_object_id_association(
                 session=session,
-                customer_reference_resource=self._resource_customer_table,
-                customer_reference_id=customer_id,
+                primary_reference_resource=self._primary_resource,
+                primary_reference_id=primary_id,
                 resource=self._resource,
                 obj_id=obj_id,
             )
@@ -609,10 +625,10 @@ class ADPOperations(SecOp):
 
     def __init__(self, token: VerifiedToken, resource: str) -> None:
         super().__init__(token, resource)
-        self._resource_customer_table = "adp-customers"
-        self._associated_resource = resource != self._resource_customer_table
+        self._primary_resource = ADPCustomer.__jsonapi_type_override__
+        self._associated_resource = resource != self._primary_resource
 
-    def permitted_resource_customer_ids(
+    def permitted_primary_resource_ids(
         self,
         session: Session,
     ) -> list[int]:
@@ -627,6 +643,84 @@ class ADPOperations(SecOp):
                 customer id associated with the location associated
                 to the user.
             * developer - (same as customer_admin)
+        """
+        sql_user_only = f"""
+            SELECT ac.id
+            FROM {ADPCustomer.__tablename__} ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                WHERE u.email = :user_email
+                AND mapping.adp_customer_id = ac.id
+            );
+        """
+        sql_manager = f"""
+            SELECT ac.id
+            FROM {ADPCustomer.__tablename__} ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                JOIN sca_customer_locations AS scl
+                ON scl.id = mm.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                WHERE u.email = :user_email
+                AND mapping.adp_customer_id = ac.id
+            );
+        """
+        sql_admin = f"""
+            SELECT ac.id
+            FROM {ADPCustomer.__tablename__} ac
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN adp_alias_to_sca_customer_locations AS mapping
+                ON mapping.sca_customer_location_id = scl.id
+                JOIN {ADPCustomer.__tablename__} ac_2
+                ON ac_2.id = mapping.adp_customer_id
+                WHERE u.email = :user_email
+                AND ac_2.sca_id = ac.sca_id
+            );
+        """
+        return self.get_result_from_id_association_queries(
+            session,
+            sql_admin=sql_admin,
+            sql_manager=sql_manager,
+            sql_user_only=sql_user_only,
+        )
+
+
+class ADPQuoteOperations(SecOp):
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
+        super().__init__(token, resource)
+        self._primary_resource = ADPQuote.__jsonapi_type_override__
+        self._associated_resource = resource != self._primary_resource
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]:
+        """Using select statements, get the adp customer ids that
+        will be permitted for view
+        select_type:
+            * user - get only the customer location associated with
+                the user. which ought to be 1 id
+            * manager - get customer locations associated with all
+                mapped branches in the sca_manager_map table
+            * admin - get all customer locations associated with the
+                customer id associated with the location associated
+                to the user.
+            * developer - (same as customer_admin)
+        TODO rewrite queries to reflect check with adp_quotes instead of adp_customers
         """
         sql_user_only = """
             SELECT ac.id
@@ -674,25 +768,12 @@ class ADPOperations(SecOp):
                 AND ac_2.sca_id = ac.sca_id
             );
         """
-        queries = [sql_admin, sql_manager, sql_user_only]
-        user_type = UserTypes[self.token.permissions.name]
-        match user_type:
-            case UserTypes.customer_std:
-                queries.remove(sql_admin)
-                queries.remove(sql_manager)
-            case UserTypes.customer_manager:
-                queries.remove(sql_admin)
-            case UserTypes.customer_admin | UserTypes.developer:
-                pass
-            case _:
-                raise Exception("invalid select_type")
-        for sql in queries:
-            result = session.scalars(
-                text(sql), params={"user_email": self.token.email}
-            ).all()
-            if result:
-                return result
-        return []
+        return self.get_result_from_id_association_queries(
+            session,
+            sql_admin=sql_admin,
+            sql_manager=sql_manager,
+            sql_user_only=sql_user_only,
+        )
 
 
 class VendorOperations(SecOp): ...
@@ -720,11 +801,11 @@ class CustomersOperations(SecOp):
 
     def __init__(self, token: VerifiedToken, resource: str) -> None:
         super().__init__(token, resource)
-        self._resource_customer_table = "customers"
-        self._associated_resource = resource != self._resource_customer_table
+        self._primary_resource = SCACustomer.__jsonapi_type_override__
+        self._associated_resource = resource != self._primary_resource
 
-    def permitted_resource_customer_ids(self, session: Session) -> list[int]:
-        """Using select statements, get the adp customer ids that
+    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
+        """Using select statements, get the sca customer ids that
         will be permitted for view
         select_type:
             * user - get only the customer location associated with
@@ -736,9 +817,9 @@ class CustomersOperations(SecOp):
                 to the user.
             * developer - (same as customer_admin)
         """
-        sql_user_only = """
+        sql_user_only = f"""
             SELECT c.id
-            FROM sca_customers c
+            FROM {SCACustomer.__tablename__} c
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
@@ -748,9 +829,9 @@ class CustomersOperations(SecOp):
                 AND u.email = :user_email
             );
         """
-        sql_manager = """
+        sql_manager = f"""
             SELECT c.id
-            FROM sca_customers c
+            FROM {SCACustomer.__tablename__} c
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
@@ -762,36 +843,23 @@ class CustomersOperations(SecOp):
                 AND scl.customer_id = c.id
             );
         """
-        sql_admin = """
+        sql_admin = f"""
             SELECT c.id
-            FROM sca_customers c
+            FROM {SCACustomer.__tablename__} c
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
                 JOIN sca_customer_locations AS scl
                 ON scl.id = u.customer_location_id
-                JOIN sca_customers c_2
+                JOIN {SCACustomer.__tablename__} c_2
                 ON c_2.id = scl.customer_id
                 WHERE u.email = :user_email
                 AND ac_2.id = ac.id
             );
         """
-        queries = [sql_admin, sql_manager, sql_user_only]
-        user_type = UserTypes[self.token.permissions.name]
-        match user_type:
-            case UserTypes.customer_std:
-                queries.remove(sql_admin)
-                queries.remove(sql_manager)
-            case UserTypes.customer_manager:
-                queries.remove(sql_admin)
-            case UserTypes.customer_admin | UserTypes.developer:
-                pass
-            case _:
-                raise Exception("invalid select_type")
-        for sql in queries:
-            result = session.scalars(
-                text(sql), params={"user_email": self.token.email}
-            ).all()
-            if result:
-                return result
-        return []
+        return self.get_result_from_id_association_queries(
+            session,
+            sql_admin=sql_admin,
+            sql_manager=sql_manager,
+            sql_user_only=sql_user_only,
+        )

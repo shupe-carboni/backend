@@ -78,5 +78,5 @@ async def remove_rating(
         auth.ADPOperations(token, ADP_RATINGS_RESOURCE)
         .allow_admin()
         .allow_sca()
-        .delete(session=session, obj_id=rating_id, customer_id=adp_customer_id)
+        .delete(session=session, obj_id=rating_id, primary_id=adp_customer_id)
     )

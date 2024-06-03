@@ -146,7 +146,7 @@ def add_to_ah_program(
         .post(
             session=session,
             data=json_api_data,
-            customer_id=adp_customer_id,
+            primary_id=adp_customer_id,
         )
     )
 
@@ -174,7 +174,7 @@ def change_product_status(
         .patch(
             session=session,
             data=new_stage.model_dump(exclude_none=True, by_alias=True),
-            customer_id=adp_customer_id,
+            primary_id=adp_customer_id,
             obj_id=program_product_id,
         )
     )
@@ -190,7 +190,7 @@ def delete_ah_program_product(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session=session, obj_id=program_product_id, customer_id=adp_customer_id)
+        .delete(session=session, obj_id=program_product_id, primary_id=adp_customer_id)
     )
 
 

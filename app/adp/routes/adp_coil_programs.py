@@ -139,7 +139,7 @@ def add_to_coil_program(
         .post(
             session=session,
             data=json_api_data,
-            customer_id=adp_customer_id,
+            primary_id=adp_customer_id,
         )
     )
 
@@ -173,7 +173,7 @@ def change_product_status(
         .patch(
             session=session,
             data=new_stage.model_dump(exclude_none=True, by_alias=True),
-            customer_id=adp_customer_id,
+            primary_id=adp_customer_id,
             obj_id=program_product_id,
         )
     )
