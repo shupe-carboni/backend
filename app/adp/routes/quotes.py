@@ -195,16 +195,14 @@ async def modify_quote(
 
 @quotes.delete("/{quote_id}", tags=["jsonapi"])
 async def delete_quote(
-    token: Token,
-    session: NewSession,
-    quote_id: int,
+    token: Token, session: NewSession, quote_id: int, adp_customer_id: int
 ) -> None:
     return (
         auth.ADPOperations(token, QUOTES_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .delete(session=session, obj_id=quote_id)
+        .delete(session=session, obj_id=quote_id, primary_id=adp_customer_id)
     )
 
 
