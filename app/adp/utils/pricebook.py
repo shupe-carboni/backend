@@ -42,12 +42,21 @@ class FileGenExecption(Exception): ...
 
 class AnchorPosition:
     def __init__(self, anchor_cell: str, offset_x: int, offset_y: int) -> None:
+        self._anchor_cell = anchor_cell
+        self._offset_x = offset_x
+        self._offset_y = offset_y
         coords = coordinate_from_string(anchor_cell)
         ## anchoring works off of 0-indexing, coordinates are 1-indexed
         col, row = column_index_from_string(coords[0]) - 1, coords[1] - 1
         x_emu = pixels_to_EMU(offset_x)
         y_emu = pixels_to_EMU(offset_y)
         self.anchor = AnchorMarker(col=col, colOff=x_emu, row=row, rowOff=y_emu)
+
+    def __repr__(self) -> str:
+        return (
+            f"AnchorPosition(anchor_cell={self._anchor_cell}, "
+            f"offset_x={self._offset_x}, offset_y={self._offset_y})"
+        )
 
 
 class Logo:
@@ -71,6 +80,13 @@ class Logo:
 
     def __str__(self) -> str:
         return self.name
+
+    def __repr__(self) -> str:
+        position_attrs = {k: v for k, v in self.__dict__.items() if k.endswith("pos")}
+        arg_vals = ", ".join(
+            [f"{name}={repr(val)}" for name, val in position_attrs.items()]
+        )
+        return f"Logo({arg_vals})"
 
     def create_image(self, sheet_type: str) -> Image:
         """Images must be created fresh in every addition.
@@ -126,11 +142,8 @@ class Logos:
     def __iter__(self):
         return iter(self.logos)
 
-    def __str__(self) -> str:
-        return str(self.logos)
-
     def __repr__(self) -> str:
-        return str(self.logos)
+        return f"Logos({', '.join([repr(logo) for logo in self.logos])})"
 
 
 class Cursor:
