@@ -4,12 +4,16 @@ from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 from pytest import mark
 from app.jsonapi.sqla_models import ADPQuoteProduct
+from random import randint, choice
+import string
+from pprint import pprint
 
 test_client = TestClient(app)
 
 ADP_TEST_CUSTOMER_ID = 59
 TEST_CUSTOMER_LOCATION = 5
 TEST_CUSTOMER_PLACE = 4644585
+TEST_COIL_MODEL = "HE32924D175B1605AP"
 
 PATH_PREFIX = f"/adp/{ADPQuoteProduct.__jsonapi_type_override__}"
 
@@ -58,7 +62,7 @@ def test_quote_products_collection(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
-    assert resp.status_code == response_code
+    assert resp.status_code == response_code, pprint(resp.json())
 
 
 @mark.parametrize("perm,response_code", NOT_IMPLEMENTED)
@@ -66,4 +70,25 @@ def test_quote_products_resource(perm, response_code):
     url = PATH_PREFIX + "/1"
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
-    assert resp.status_code == response_code
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_new_quote_product(perm, response_code):
+    url = PATH_PREFIX
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    data = {
+        "type": ADPQuoteProduct.__jsonapi_type_override__,
+        "attributes": {
+            "tag": "PRODUCT-1",
+            "qty": randint(1, 100),
+            "price": randint(100, 1500),
+            "model-number": TEST_COIL_MODEL,
+            "comp-model": "".join(
+                choice(string.ascii_uppercase + string.digits) for _ in range(10)
+            ),
+        },
+        "relationships": {"adp-quotes": {"data": {"type": "adp-quotes", "id": 1}}},
+    }
+    resp = test_client.post(url, json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())

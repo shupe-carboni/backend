@@ -12,6 +12,7 @@ from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 import pandas as pd
+from pprint import pprint
 
 test_client = TestClient(app)
 
@@ -513,14 +514,14 @@ def test_customer_program_resource_delete():
         response = test_client.delete(
             f"{PATH_PREFIX}/{AH_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, pprint(response.json())
         # Make a new Coil
         response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
         new_id = response.json()["data"]["id"]
         response = test_client.delete(
             f"{PATH_PREFIX}/{COIL_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, pprint(response.json())
 
 
 ## CUSTOMER
