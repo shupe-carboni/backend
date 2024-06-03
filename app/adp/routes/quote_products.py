@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, status
 from fastapi.routing import APIRouter
 from typing import Annotated
 from app import auth
@@ -10,7 +10,7 @@ from app.adp.quotes.job_quotes.models import (
     QuoteRelationshipsResponse,
     QuoteQueryJSONAPI,
 )
-from app.adp.quotes.products.models import ProductResponse, QuoteProductQuery
+from app.adp.quotes.products.models import ProductResponse
 from app.jsonapi.sqla_models import ADPQuoteProduct
 
 API_TYPE = ADPQuoteProduct.__jsonapi_type_override__
@@ -23,45 +23,18 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(QuoteQueryJSONAPI)
 
 
-@adp_quote_products.get(
-    "",
-    response_model=ProductResponse,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def quote_products(
-    token: Token, session: NewSession, query: QuoteProductQuery = Depends()
-) -> ProductResponse:
-    return (
-        auth.ADPOperations(token, API_TYPE)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("std")
-        .get(session=session, query=converter(query))
-    )
+@adp_quote_products.get("", tags=["jsonapi"])
+async def quote_products(token: Token):
+    """Intentionally not implemented. Quote products ought to be retreived
+    only in the context of the associated quote"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@adp_quote_products.get(
-    "/{product_id}",
-    response_model=ProductResponse,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def quote_product(
-    token: Token,
-    session: NewSession,
-    product_id: int,
-    query: QuoteProductQuery = Depends(),
-) -> ProductResponse:
-    return (
-        auth.ADPOperations(token, API_TYPE)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("std")
-        .get(session=session, query=converter(query), obj_id=product_id)
-    )
+@adp_quote_products.get("/{product_id}", tags=["jsonapi"])
+async def quote_product(token: Token, product_id: int):
+    """Intentionally not implemented. Quote products ought to be retreived
+    only in the context of the associated quote"""
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @adp_quote_products.post(
@@ -94,16 +67,14 @@ async def delete_quote_product(
 
 
 @adp_quote_products.get("/{product_id}/adp-quotes")
-async def related_quotes(
-    token: Token,
-    session: NewSession,
-) -> RelatedQuoteResponse:
+async def related_quotes(token: Token):
+    """Intentionally not implemented. Quote products ought to be retreived
+    only in the context of the associated quote"""
     raise HTTPException(status_code=501)
 
 
 @adp_quote_products.get("/{product_id}/relationships/adp-quotes")
-async def product_quotes_relationships(
-    token: Token,
-    session: NewSession,
-) -> QuoteRelationshipsResponse:
+async def product_quotes_relationships(token: Token):
+    """Intentionally not implemented. Quote products ought to be retreived
+    only in the context of the associated quote"""
     raise HTTPException(status_code=501)

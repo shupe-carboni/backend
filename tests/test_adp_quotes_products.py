@@ -38,8 +38,22 @@ SCA_ONLY = list(
     )
 )
 
+NONE_ALLOWED = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [401, 401, 401, 401, 401, 401],
+    )
+)
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+NOT_IMPLEMENTED = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [501, 501, 501, 501, 501, 501],
+    )
+)
+
+
+@mark.parametrize("perm,response_code", NOT_IMPLEMENTED)
 def test_quote_products_collection(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -47,7 +61,7 @@ def test_quote_products_collection(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", NOT_IMPLEMENTED)
 def test_quote_products_resource(perm, response_code):
     url = PATH_PREFIX + "/1"
     app.dependency_overrides[authenticate_auth0_token] = perm
