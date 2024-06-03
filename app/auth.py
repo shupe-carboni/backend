@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from pydantic import BaseModel, field_validator
 from fastapi import Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
@@ -92,12 +93,6 @@ class VerifiedToken(BaseModel):
         other_b = other.encode("utf-8")
         other_sha_256 = sha256(other_b).digest()
         return bcrypt.checkpw(other_sha_256, self.token)
-
-    def perm_level(self, resource) -> int:
-        if perm := self.permissions.get(resource, None):
-            return perm.value
-        else:
-            return -1
 
 
 class LocalTokenStore:
@@ -220,7 +215,7 @@ class UnverifiedEmail(Exception): ...
 class IDsNotAssociated(Exception): ...
 
 
-class CustomerIDNotAssociatedWithUser(Exception): ...
+class IDNotAssociatedWithUser(Exception): ...
 
 
 def standard_error_handler(func):
@@ -233,7 +228,7 @@ def standard_error_handler(func):
             )
         except ResourceNotFoundError:
             raise HTTPException(status.HTTP_204_NO_CONTENT)
-        except CustomerIDNotAssociatedWithUser:
+        except IDNotAssociatedWithUser:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
                 detail="Customer ID is not associated with the user",
@@ -262,6 +257,9 @@ def check_object_id_association(
     resource: str,
     obj_id: int | None,
 ) -> None:
+    """Make sure the oject id passed in is associated with the the id of the primary
+    reference, usually pulled from the payload of a POST, PATCH, or DELETE request,
+    more specifically, the id contained in the relationships object."""
     if obj_id:
         current_obj = serializer.get_resource(
             session, {"include": primary_reference_resource}, resource, obj_id, True
@@ -287,7 +285,8 @@ class SecOp(ABC):
     self._admin to True)
 
     Customer Location ("Branch") id is universal for gating GET requests. For the rest,
-    each resource shourld refer to it's own table of customer accounts and ids using
+    each resource should refer to it's own table of primary IDs (usually customers but
+    not always, such as in the case of ADP Quotes) using
     "permitted_primary_resource_ids" to properly gate POST, PATCH, and DELETE requests.
 
     """
@@ -497,7 +496,7 @@ class SecOp(ABC):
         elif self._customer or self._dev:
             primary_ids = self.permitted_primary_resource_ids(session=session)
             if primary_id not in primary_ids:
-                raise CustomerIDNotAssociatedWithUser
+                raise IDNotAssociatedWithUser
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
@@ -562,7 +561,7 @@ class SecOp(ABC):
         elif self._customer or self._dev:
             primary_ids = self.permitted_primary_resource_ids(session=session)
             if primary_id not in primary_ids:
-                raise CustomerIDNotAssociatedWithUser
+                raise IDNotAssociatedWithUser
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
@@ -614,11 +613,18 @@ class SecOp(ABC):
                 obj_id=obj_id,
             )
 
-        if any((self._admin, self._dev, self._sca, self._customer)):
-            return serializer.delete_resource(
-                session=session, data={}, api_type=self._resource, obj_id=obj_id
-            )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        if self._admin or self._sca:
+            pass
+        elif self._customer or self._dev:
+            primary_ids = self.permitted_primary_resource_ids(session=session)
+            if primary_id not in primary_ids:
+                raise IDNotAssociatedWithUser
+        else:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        serializer.delete_resource(
+            session=session, data={}, api_type=self._resource, obj_id=obj_id
+        )
+        return JSONResponse({}, status_code=204)
 
 
 class ADPOperations(SecOp):
@@ -709,18 +715,6 @@ class ADPQuoteOperations(SecOp):
         self,
         session: Session,
     ) -> list[int]:
-        """Using select statements, get the adp customer ids that
-        will be permitted for view
-        select_type:
-            * user - get only the customer location associated with
-                the user. which ought to be 1 id
-            * manager - get customer locations associated with all
-                mapped branches in the sca_manager_map table
-            * admin - get all customer locations associated with the
-                customer id associated with the location associated
-                to the user.
-            * developer - (same as customer_admin)
-        """
         sql_user_only = f"""
             SELECT aq.id
             FROM {ADPQuote.__tablename__} aq
