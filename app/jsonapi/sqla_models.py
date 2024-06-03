@@ -440,8 +440,9 @@ class ADPQuoteProduct(Base):
     tag = Column(String, nullable=False)
     qty = Column(Integer, nullable=False)
     price = Column(Float)
-    adp_quote_id = Column(Integer, ForeignKey("adp_quotes.id"))
     model_number = Column(String)
+    comp_model = Column(String)
+    adp_quote_id = Column(Integer, ForeignKey("adp_quotes.id"))
     ## relationships
     adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
 
