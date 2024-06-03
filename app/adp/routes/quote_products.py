@@ -5,12 +5,11 @@ from app import auth
 from app.db import ADP_DB
 from sqlalchemy.orm import Session
 from app.jsonapi.core_models import convert_query
-from app.adp.quotes.job_quotes.models import (
-    RelatedQuoteResponse,
-    QuoteRelationshipsResponse,
-    QuoteQueryJSONAPI,
+from app.adp.quotes.products.models import (
+    ProductResponse,
+    NewProductRequest,
+    QuoteProductQueryJSONAPI,
 )
-from app.adp.quotes.products.models import ProductResponse
 from app.jsonapi.sqla_models import ADPQuoteProduct
 
 API_TYPE = ADPQuoteProduct.__jsonapi_type_override__
@@ -20,7 +19,7 @@ adp_quote_products = APIRouter(
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-converter = convert_query(QuoteQueryJSONAPI)
+converter = convert_query(QuoteProductQueryJSONAPI)
 
 
 @adp_quote_products.get("", tags=["jsonapi"])
@@ -44,10 +43,19 @@ async def quote_product(token: Token, product_id: int):
     tags=["jsonapi"],
 )
 async def new_quote_product(
-    token: Token,
-    session: NewSession,
+    token: Token, session: NewSession, new_quote_product: NewProductRequest
 ) -> ProductResponse:
-    raise HTTPException(status_code=501)
+    return (
+        auth.ADPOperations(token, API_TYPE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session=session,
+            data=new_quote_product.model_dump(exclude_none=True, by_alias=True),
+            primary_id=new_quote_product.data.relationships.adp_quotes.data.id,
+        )
+    )
 
 
 @adp_quote_products.patch("/{product_id}")
