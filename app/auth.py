@@ -720,11 +720,10 @@ class ADPQuoteOperations(SecOp):
                 customer id associated with the location associated
                 to the user.
             * developer - (same as customer_admin)
-        TODO rewrite queries to reflect check with adp_quotes instead of adp_customers
         """
-        sql_user_only = """
-            SELECT ac.id
-            FROM adp_customers ac
+        sql_user_only = f"""
+            SELECT aq.id
+            FROM {ADPQuote.__tablename__} aq
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
@@ -733,12 +732,12 @@ class ADPQuoteOperations(SecOp):
                 JOIN adp_alias_to_sca_customer_locations AS mapping
                 ON mapping.sca_customer_location_id = scl.id
                 WHERE u.email = :user_email
-                AND mapping.adp_customer_id = ac.id
+                AND mapping.adp_customer_id = aq.adp_customer_id
             );
         """
-        sql_manager = """
-            SELECT ac.id
-            FROM adp_customers ac
+        sql_manager = f"""
+            SELECT aq.id
+            FROM {ADPQuote.__tablename__} aq
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
@@ -749,12 +748,12 @@ class ADPQuoteOperations(SecOp):
                 JOIN adp_alias_to_sca_customer_locations AS mapping
                 ON mapping.sca_customer_location_id = scl.id
                 WHERE u.email = :user_email
-                AND mapping.adp_customer_id = ac.id
+                AND mapping.adp_customer_id = aq.adp_customer_id
             );
         """
-        sql_admin = """
-            SELECT ac.id
-            FROM adp_customers ac
+        sql_admin = f"""
+            SELECT aq.id
+            FROM {ADPQuote.__tablename__} aq
             WHERE EXISTS (
                 SELECT 1
                 FROM sca_users u
@@ -762,10 +761,10 @@ class ADPQuoteOperations(SecOp):
                 ON scl.id = u.customer_location_id
                 JOIN adp_alias_to_sca_customer_locations AS mapping
                 ON mapping.sca_customer_location_id = scl.id
-                JOIN adp_customers ac_2
-                ON ac_2.id = mapping.adp_customer_id
+                JOIN {ADPQuote.__tablename__} aq_2
+                ON aq_2.adp_customer_id = mapping.adp_customer_id
                 WHERE u.email = :user_email
-                AND ac_2.sca_id = ac.sca_id
+                AND aq_2.id = aq.id
             );
         """
         return self.get_result_from_id_association_queries(

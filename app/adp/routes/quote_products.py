@@ -46,7 +46,7 @@ async def new_quote_product(
     token: Token, session: NewSession, new_quote_product: NewProductRequest
 ) -> ProductResponse:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPQuoteOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
