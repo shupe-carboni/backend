@@ -15,7 +15,6 @@ from app.vendors.models import (
     RelatedVendorResponse,
 )
 from app.vendors.utils import (
-    add_new_vendor_info,
     modify_existing_vendor_info,
     delete_vendor_info,
 )
@@ -144,9 +143,17 @@ async def add_info(
     session: NewSession,
     body: NewVendorInfo,
 ) -> VendorInfoResponse:
-    if token.permissions >= auth.Permissions.sca_employee:
-        return add_new_vendor_info(session=session, payload=body)
-    raise HTTPException(status_code=401)
+    return (
+        auth.VendorOperations(token, INFO_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session=session,
+            data=body.model_dump(exclude_none=True, by_alias=True),
+            primary_id=body.data.relationships.vendors.data.id,
+        )
+    )
 
 
 @vendors_info.patch(
