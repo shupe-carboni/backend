@@ -22,7 +22,13 @@ from sqlalchemy import text
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session
-from app.jsonapi.sqla_models import serializer, ADPCustomer, ADPQuote, SCACustomer
+from app.jsonapi.sqla_models import (
+    serializer,
+    ADPCustomer,
+    ADPQuote,
+    SCACustomer,
+    SCAVendor,
+)
 from app.jsonapi.sqla_jsonapi_ext import GenericData
 
 token_auth_scheme = HTTPBearer()
@@ -417,6 +423,36 @@ class SecOp(ABC):
         )
         return self
 
+    def gate(
+        self,
+        session: Session,
+        primary_id: Optional[int] = None,
+        obj_id: Optional[int] = None,
+    ) -> None:
+        if self._associated_resource:
+            if not primary_id:
+                raise ValueError(
+                    "primary_id query argument is required when the"
+                    " resource initialized is not the primary key resource"
+                )
+            check_object_id_association(
+                session, self._primary_resource, primary_id, self._resource, obj_id
+            )
+            if self._admin or self._sca:
+                return
+            elif self._customer or self._dev:
+                primary_ids = self.permitted_primary_resource_ids(session=session)
+                if primary_id not in primary_ids:
+                    raise IDNotAssociatedWithUser
+                return
+            else:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        else:
+            if self._admin or self._sca or self._dev:
+                return
+            else:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
     @standard_error_handler
     def get(
         self,
@@ -485,25 +521,12 @@ class SecOp(ABC):
         self,
         session: Session,
         data: dict | Callable,
-        primary_id: int,
         obj_id: Optional[int] = None,
+        primary_id: Optional[int] = None,
         related_resource: Optional[str] = None,
     ) -> GenericData | None:
 
-        resource = self._resource
-        if self._admin or self._sca:
-            pass
-        elif self._customer or self._dev:
-            primary_ids = self.permitted_primary_resource_ids(session=session)
-            if primary_id not in primary_ids:
-                raise IDNotAssociatedWithUser
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-        if self._associated_resource:
-            check_object_id_association(
-                session, self._primary_resource, primary_id, resource, obj_id
-            )
+        self.gate(session, primary_id, obj_id)
 
         match data:
             case collections.Callable():
@@ -516,14 +539,14 @@ class SecOp(ABC):
                     serializer.post_collection,
                     session=session,
                     data=data,
-                    api_type=resource,
+                    api_type=self._resource,
                 )
             case int(), str():
                 operation = partial(
                     serializer.post_relationship,
                     session=session,
                     json_data=data,
-                    api_type=resource,
+                    api_type=self._resource,
                     obj_id=obj_id,
                     rel_key=related_resource,
                 )
@@ -551,26 +574,12 @@ class SecOp(ABC):
         self,
         session: Session,
         data: dict | Callable,
-        primary_id: int,
         obj_id: int,
+        primary_id: Optional[int] = None,
         related_resource: Optional[str] = None,
     ) -> GenericData | None:
 
-        if self._admin or self._sca:
-            pass
-        elif self._customer or self._dev:
-            primary_ids = self.permitted_primary_resource_ids(session=session)
-            if primary_id not in primary_ids:
-                raise IDNotAssociatedWithUser
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-        resource = self._resource
-        if self._associated_resource:
-            check_object_id_association(
-                session, self._primary_resource, primary_id, resource, obj_id
-            )
-
+        self.gate(session, primary_id, obj_id)
         match data:
             case collections.Callable():
                 data: dict = data()
@@ -580,7 +589,7 @@ class SecOp(ABC):
                 serializer.patch_relationship,
                 session=session,
                 json_data=data,
-                api_type=resource,
+                api_type=self._resource,
                 obj_id=obj_id,
                 rel_key=related_resource,
             )
@@ -589,7 +598,7 @@ class SecOp(ABC):
                 serializer.patch_resource,
                 session=session,
                 json_data=data,
-                api_type=resource,
+                api_type=self._resource,
                 obj_id=obj_id,
             )
         result: GenericData | JSONAPIResponse = operation()
@@ -602,29 +611,128 @@ class SecOp(ABC):
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
-        if self._associated_resource:
-            if not primary_id:
-                raise ValueError("primary_id query argument is required")
-            check_object_id_association(
-                session=session,
-                primary_reference_resource=self._primary_resource,
-                primary_reference_id=primary_id,
-                resource=self._resource,
-                obj_id=obj_id,
-            )
-
-        if self._admin or self._sca:
-            pass
-        elif self._customer or self._dev:
-            primary_ids = self.permitted_primary_resource_ids(session=session)
-            if primary_id not in primary_ids:
-                raise IDNotAssociatedWithUser
-        else:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        self.gate(session, primary_id, obj_id)
         serializer.delete_resource(
             session=session, data={}, api_type=self._resource, obj_id=obj_id
         )
         return JSONResponse({}, status_code=204)
+
+
+class CustomersOperations(SecOp):
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
+        super().__init__(token, resource)
+        self._primary_resource = SCACustomer.__jsonapi_type_override__
+        self._associated_resource = resource != self._primary_resource
+
+    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
+        """Using select statements, get the sca customer ids that
+        will be permitted for view
+        select_type:
+            * user - get only the customer location associated with
+                the user. which ought to be 1 id
+            * manager - get customer locations associated with all
+                mapped branches in the sca_manager_map table
+            * admin - get all customer locations associated with the
+                customer id associated with the location associated
+                to the user.
+            * developer - (same as customer_admin)
+        """
+        sql_user_only = f"""
+            SELECT c.id
+            FROM {SCACustomer.__tablename__} c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                WHERE scl.customer_id = c.id
+                AND u.email = :user_email
+            );
+        """
+        sql_manager = f"""
+            SELECT c.id
+            FROM {SCACustomer.__tablename__} c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_manager_map mm
+                ON mm.user_id = u.id
+                JOIN sca_customer_locations AS scl
+                ON scl.id = mm.customer_location_id
+                WHERE u.email = :user_email
+                AND scl.customer_id = c.id
+            );
+        """
+        sql_admin = f"""
+            SELECT c.id
+            FROM {SCACustomer.__tablename__} c
+            WHERE EXISTS (
+                SELECT 1
+                FROM sca_users u
+                JOIN sca_customer_locations AS scl
+                ON scl.id = u.customer_location_id
+                JOIN {SCACustomer.__tablename__} c_2
+                ON c_2.id = scl.customer_id
+                WHERE u.email = :user_email
+                AND ac_2.id = ac.id
+            );
+        """
+        return self.get_result_from_id_association_queries(
+            session,
+            sql_admin=sql_admin,
+            sql_manager=sql_manager,
+            sql_user_only=sql_user_only,
+        )
+
+
+class VendorOperations(SecOp):
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
+        super().__init__(token, resource)
+        self._primary_resource = SCAVendor.__jsonapi_type_override__
+        self._associated_resource = resource != self._primary_resource
+
+    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
+        """The Vendors resource does not have underlying resources that need to
+        be gated by user. Customers can only view the info, and only SCA is allowed
+        to add, edit, or delete any vendor and its associated information."""
+        return []
+
+    def post(
+        self,
+        session: Session,
+        data: GenericData | Callable,
+        obj_id: int | None = None,
+        primary_id: int | None = None,
+        related_resource: str | None = None,
+    ) -> GenericData | None:
+        """enforce the expectation that customers will not be allowed to perform
+        this action"""
+        if self._customer:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return super().post(session, data, obj_id, primary_id, related_resource)
+
+    def patch(
+        self,
+        session: Session,
+        data: GenericData | Callable,
+        obj_id: int,
+        primary_id: int | None = None,
+        related_resource: str | None = None,
+    ) -> GenericData | None:
+        """enforce the expectation that customers will not be allowed to perform
+        this action"""
+        if self._customer:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return super().patch(session, data, obj_id, primary_id, related_resource)
+
+    def delete(self, session: Session, obj_id: int, primary_id: int | None = None):
+        """enforce the expectation that customers will not be allowed to perform
+        this action"""
+        if self._customer:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return super().delete(session, obj_id, primary_id)
 
 
 class ADPOperations(SecOp):
@@ -769,9 +877,6 @@ class ADPQuoteOperations(SecOp):
         )
 
 
-class VendorOperations(SecOp): ...
-
-
 class FriedrichOperations(SecOp): ...
 
 
@@ -788,71 +893,3 @@ class BerryOperations(SecOp): ...
 
 
 class GlasflossOperations(SecOp): ...
-
-
-class CustomersOperations(SecOp):
-
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = SCACustomer.__jsonapi_type_override__
-        self._associated_resource = resource != self._primary_resource
-
-    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
-        """Using select statements, get the sca customer ids that
-        will be permitted for view
-        select_type:
-            * user - get only the customer location associated with
-                the user. which ought to be 1 id
-            * manager - get customer locations associated with all
-                mapped branches in the sca_manager_map table
-            * admin - get all customer locations associated with the
-                customer id associated with the location associated
-                to the user.
-            * developer - (same as customer_admin)
-        """
-        sql_user_only = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                WHERE scl.customer_id = c.id
-                AND u.email = :user_email
-            );
-        """
-        sql_manager = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_manager_map mm
-                ON mm.user_id = u.id
-                JOIN sca_customer_locations AS scl
-                ON scl.id = mm.customer_location_id
-                WHERE u.email = :user_email
-                AND scl.customer_id = c.id
-            );
-        """
-        sql_admin = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN {SCACustomer.__tablename__} c_2
-                ON c_2.id = scl.customer_id
-                WHERE u.email = :user_email
-                AND ac_2.id = ac.id
-            );
-        """
-        return self.get_result_from_id_association_queries(
-            session,
-            sql_admin=sql_admin,
-            sql_manager=sql_manager,
-            sql_user_only=sql_user_only,
-        )
