@@ -186,7 +186,7 @@ async def new_customer(
     authorized = customer_perm >= auth.Permissions.sca_employee
     if authorized:
         if create_new_entity:
-            cmmssns_customer = new_cmmssns_customer(
+            cmmssns_customer: CMMSSNSCustomerResp = new_cmmssns_customer(
                 new_customer=NewCMMSSNSCustomer(
                     data={"attributes": {"name": new_customer.data.attributes.name}}
                 )
