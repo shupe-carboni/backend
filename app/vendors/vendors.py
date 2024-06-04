@@ -16,8 +16,6 @@ from app.vendors.models import (
     VendorModification,
 )
 from app.vendors.utils import (
-    add_new_vendor,
-    modify_existing_vendor,
     delete_vendor,
     delete_vendor_info,
 )
@@ -40,12 +38,12 @@ async def vendor_collection(
     token: VendorsPerm, session: NewSession, query: VendorQuery = Depends()
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, VENDORS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session=session, resource=VENDORS_RESOURCE, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -62,14 +60,13 @@ async def vendor(
     query: VendorQuery = Depends(),
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, VENDORS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=VENDORS_RESOURCE,
             query=converter(query),
             obj_id=vendor_id,
         )
@@ -89,14 +86,13 @@ async def related_info(
     query: VendorQuery = Depends(),
 ) -> RelatedVendorInfoResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, VENDORS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=VENDORS_RESOURCE,
             query=converter(query),
             obj_id=vendor_id,
             relationship=False,
@@ -118,14 +114,13 @@ async def info_relationships(
     query: VendorQuery = Depends(),
 ) -> VendorRelationshipsResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, VENDORS_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=VENDORS_RESOURCE,
             query=converter(query),
             obj_id=vendor_id,
             relationship=True,
@@ -145,9 +140,16 @@ async def new_vendor(
     session: NewSession,
     body: NewVendor,
 ) -> VendorResponse:
-    if token.permissions >= auth.Permissions.sca_employee:
-        return add_new_vendor(session=session, payload=body)
-    raise HTTPException(status_code=401)
+    return (
+        auth.VendorOperations(token, VENDORS_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session=session,
+            data=body.model_dump(exclude_none=True, by_alias=True),
+        )
+    )
 
 
 @vendors.patch(
@@ -162,9 +164,17 @@ async def modify_vendor(
     vendor_id: int,
     body: VendorModification,
 ) -> VendorResponse:
-    if token.permissions >= auth.Permissions.sca_employee:
-        return modify_existing_vendor(session, body, vendor_id)
-    raise HTTPException(status_code=401)
+    return (
+        auth.VendorOperations(token, VENDORS_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session=session,
+            data=body.model_dump(exclude_none=True, by_alias=True),
+            obj_id=vendor_id,
+        )
+    )
 
 
 @vendors.delete("/{vendor_id}", tags=["jsonapi"])
