@@ -55,9 +55,7 @@ async def new_place(
     session: NewSession,
     token: Perm,
 ) -> None:
-    if token.permissions.get("admin") >= auth.AdminPerm.sca_admin:
-        raise HTTPException(status_code=501)
-    raise HTTPException(status_code=401)
+    raise HTTPException(status_code=501)
 
 
 @places.patch("/{place_id}")
@@ -65,9 +63,7 @@ async def mod_place(
     session: NewSession,
     token: Perm,
 ) -> None:
-    if token.permissions.get("admin") >= auth.AdminPerm.sca_admin:
-        raise HTTPException(status_code=501)
-    raise HTTPException(status_code=401)
+    raise HTTPException(status_code=501)
 
 
 @places.delete("/{place_id}")
@@ -75,6 +71,4 @@ async def remove_place(
     session: NewSession,
     token: Perm,
 ) -> None:
-    if token.permissions.get("admin") >= auth.AdminPerm.sca_admin:
-        raise HTTPException(status_code=501)
-    raise HTTPException(status_code=401)
+    raise HTTPException(status_code=501)
