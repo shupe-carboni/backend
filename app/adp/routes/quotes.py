@@ -103,8 +103,6 @@ async def new_quote(
     - Create timestamp is auto-generated and stuffed into the JSONAPI request
     - Expiration date is determined by rules associated with quote creation (i.e. +90 days).
     - Stage should defualt to 'proposed', but ought to be selectable."""
-    # TODO generate filenames and upload documents to S3.
-    # Plug the links to them into a NewQuote before post_collection
     created_at: datetime = datetime.today().date()
     time_id: int = int(time())
     s3_quote_path = S3_DIR + f"/{adp_customer_id}/{time_id}"
