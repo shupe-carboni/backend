@@ -54,7 +54,7 @@ class BotTarpit(BaseHTTPMiddleware):
 
     @staticmethod
     async def trigger_delay(host: str, path: str):
-        delay = randint(10, 30)
+        delay = randint(10, 20)
         logger.info(f"{host} - {path} -  Honeypot triggered." f" Delaying for {delay}s")
         await sleep(delay)
 
@@ -63,7 +63,7 @@ with open("README.md", "r") as read_me:
     description = read_me.read()
 
 app = FastAPI(
-    title="Shupe Carboni Backend API", version="0.18.1", description=description
+    title="Shupe Carboni Backend API", version="0.18.8", description=description
 )
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
