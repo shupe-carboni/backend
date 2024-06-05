@@ -7,10 +7,19 @@ from app.jsonapi.core_models import (
     JSONAPIResourceObject,
     Pagination,
 )
+from app.jsonapi.sqla_models import (
+    SCACustomerLocation,
+    SCAPlace,
+    # SCAManagerMap,
+    # SCAUser,
+    # ADPAliasToSCACustomerLocation,
+    SCACustomer,
+    ADPQuote,
+)
 
 
 class LocationResourceIdentifier(JSONAPIResourceIdentifier):
-    type: str = "sca-customer-locations"
+    type: str = SCACustomerLocation.__jsonapi_type_override__
 
 
 class LocationRelationshipsResponse(JSONAPIRelationshipsResponse):
@@ -25,9 +34,12 @@ class LocationAttrs(BaseModel):
 
 
 class LocationRelationships(BaseModel):
-    customers: JSONAPIRelationships = Field(alias="customers")
-    places: JSONAPIRelationships = Field(alias="places")
-    adp_quotes: JSONAPIRelationships = Field(alias="adp-quotes")
+    customers: JSONAPIRelationships = Field(alias=SCACustomer.__jsonapi_type_override__)
+    places: JSONAPIRelationships = Field(alias=SCAPlace.__jsonapi_type_override__)
+    # users: JSONAPIRelationships = Field(alias=SCAUser.__jsonapi_type_override__)
+    # manager_map: JSONAPIRelationships = Field(alias=SCAManagerMap.__jsonapi_type_override__)
+    # adp_alias_to_sca_customer_locations
+    adp_quotes: JSONAPIRelationships = Field(alias=ADPQuote.__jsonapi_type_override__)
 
 
 class LocationResourceObject(LocationResourceIdentifier):
