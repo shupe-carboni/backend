@@ -2,10 +2,12 @@ import re
 from app.db import ADP_DB, Session
 from enum import StrEnum, auto
 
+
 class Cabinet(StrEnum):
     UNCASED = auto()
     EMBOSSED = auto()
     PAINTED = auto()
+
 
 class Fields(StrEnum):
     CUSTOMER_ID = auto()
@@ -44,21 +46,21 @@ class Fields(StrEnum):
     FLEXCOIL_PRICE = auto()
 
     def formatted(self):
-        if self.name == 'ADP_ALIAS':
+        if self.name == "ADP_ALIAS":
             return self.name.lower()
-        elif self.name == 'FLEXCOIL_MODEL':
-            return 'FlexCoil Model'
-        elif self.name == 'FLEXCOIL_PRICE':
-            return 'FlexCoil Price'
-        result = self.name.replace('_', ' ').title()
-        if result.startswith('Snp'):
-            result = 'SNP' + result[3:]
-        elif result.endswith('Ac Txv'):
-            result = result.replace('Ac Txv', 'AC TXV')
-        elif result.endswith('Hp Txv'):
-            result = result.replace('Hp Txv', 'HP TXV')
-        elif result.endswith('Field Txv'):
-            result = result.replace('Field Txv', 'Field TXV')
+        elif self.name == "FLEXCOIL_MODEL":
+            return "FlexCoil Model"
+        elif self.name == "FLEXCOIL_PRICE":
+            return "FlexCoil Price"
+        result = self.name.replace("_", " ").title()
+        if result.startswith("Snp"):
+            result = "SNP" + result[3:]
+        elif result.endswith("Ac Txv"):
+            result = result.replace("Ac Txv", "AC TXV")
+        elif result.endswith("Hp Txv"):
+            result = result.replace("Hp Txv", "HP TXV")
+        elif result.endswith("Field Txv"):
+            result = result.replace("Field Txv", "Field TXV")
         return result
 
 
@@ -66,76 +68,76 @@ class ModelSeries:
     text_len: int
     regex: str
 
-    class NoBasePrice(Exception):...
+    class NoBasePrice(Exception): ...
 
     coil_depth_mapping = {
-        'A': 19.5,
-        'C': 20.5,
-        'D': 21.0,
-        'E': 21.5,
+        "A": 19.5,
+        "C": 20.5,
+        "D": 21.0,
+        "E": 21.5,
     }
 
     paint_color_mapping = {
-        'H': 'Embossed',
-        'V': 'Embossed',
-        'A': 'Armstrong',
-        'G': 'ICP',
-        'J': 'Goodman/Amana',
-        'N': 'Nordyne',
-        'P': 'Carrier/Bryant/Payne',
-        'C': 'Carrier/Bryant/Payne',
-        'R': 'Rheem/Ruud',
-        'T': 'Trane/American Standard',
-        'Y': 'York/Luxaire/Coleman',
+        "H": "Embossed",
+        "V": "Embossed",
+        "A": "Armstrong",
+        "G": "ICP",
+        "J": "Goodman/Amana",
+        "N": "Nordyne",
+        "P": "Carrier/Bryant/Payne",
+        "C": "Carrier/Bryant/Payne",
+        "R": "Rheem/Ruud",
+        "T": "Trane/American Standard",
+        "Y": "York/Luxaire/Coleman",
     }
 
     material_mapping = {
-        'E': 'Copper',
-        'G': 'Aluminum',
-        'D': 'Copper',
-        'P': 'Aluminum',
-        'M': 'Aluminum',
-        'L': 'Copper',
-        'K': 'Copper',
-        'A': 'Aluminum',
-        'C': 'Copper',
-        'SS': 'Aluminum',
-        'TT': 'Aluminum',
-        'UU': 'Aluminum',
-        'BB': 'Copper',
-        'CC': 'Copper',
-        'DD': 'Copper'
+        "E": "Copper",
+        "G": "Aluminum",
+        "D": "Copper",
+        "P": "Aluminum",
+        "M": "Aluminum",
+        "L": "Copper",
+        "K": "Copper",
+        "A": "Aluminum",
+        "C": "Copper",
+        "SS": "Aluminum",
+        "TT": "Aluminum",
+        "UU": "Aluminum",
+        "BB": "Copper",
+        "CC": "Copper",
+        "DD": "Copper",
     }
 
     metering_mapping = {
-        1: 'Piston (R-410a)',
-        9: 'Non-bleed HP-AC TXV (R-410a)',
+        1: "Piston (R-410a)",
+        9: "Non-bleed HP-AC TXV (R-410a)",
     }
 
     motors = {
-        'C': 'PSC motor',
-        'P': 'PSC motor',
-        'E': 'ECM motor',
-        'V': 'Variable-speed ECM motor'
+        "C": "PSC motor",
+        "P": "PSC motor",
+        "E": "ECM motor",
+        "V": "Variable-speed ECM motor",
     }
 
     kw_heat = {
-        0: 'no heat',
-        3: '3 kW',
-        5: '5 kW',
-        6: '6 kW',
-        7: '7.5 kW',
-        8: '8 kW',
-        10: '10 kW',
-        15: '15 kW',
-        20: '20 kW',
+        0: "no heat",
+        3: "3 kW",
+        5: "5 kW",
+        6: "6 kW",
+        7: "7.5 kW",
+        8: "8 kW",
+        10: "10 kW",
+        15: "15 kW",
+        20: "20 kW",
     }
 
     def __init__(self, session: Session, re_match: re.Match):
-        self.mat_grps = ADP_DB.load_df(session=session, table_name='material_groups')
+        self.mat_grps = ADP_DB.load_df(session=session, table_name="material_groups")
         self.attributes = re_match.groupdict()
         self.session = session
-    
+
     def __str__(self) -> str:
         return "".join(self.attributes.values())
 
@@ -147,22 +149,22 @@ class ModelSeries:
 
     def __delitem__(self, key):
         del self.attributes[key]
-    
+
     def get(self, key):
         return self.__getitem__(key)
-    
+
     def __series_name__(self):
         return self.__class__.__name__
-    
+
     def calc_zero_disc_price(self) -> int:
         pass
 
     def category(self) -> str:
         """Use model series and features to describe
-            a natural grouping in which it would appear 
-            in a customer program"""
+        a natural grouping in which it would appear
+        in a customer program"""
         pass
-    
+
     def record(self) -> dict:
         return {
             Fields.CATEGORY.value: None,
@@ -194,7 +196,7 @@ class ModelSeries:
             Fields.RATINGS_FIELD_TXV.value: None,
         }
 
-    def regex_match(self, pattern: str, ref: str=None) -> bool:
+    def regex_match(self, pattern: str, ref: str = None) -> bool:
         reference = str(self) if not ref else ref
         try:
             return re.search(pattern, reference) is not None

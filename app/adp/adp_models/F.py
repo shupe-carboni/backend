@@ -3,9 +3,10 @@ from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.adp.pricing.f.pricing import load_pricing
 from app.db import ADP_DB, Session
 
+
 class F(ModelSeries):
-    text_len = (13,14)
-    regex = r'''
+    text_len = (13, 14)
+    regex = r"""
         (?P<series>F)
         (?P<motor>[C|E])
         (?P<config>M)
@@ -16,68 +17,88 @@ class F(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
         (?P<rds>[N|R]?)
-        '''
+        """
+
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.tonnage = int(self.attributes['ton'])
+        self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT height, depth, width, weight
             FROM f_dims
             WHERE tonnage = :tonnage;
         """
         params = dict(tonnage=self.tonnage)
-        specs = ADP_DB.execute(session=session, sql=specs_sql,
-                               params=params).mappings().one()
+        specs = (
+            ADP_DB.execute(session=session, sql=specs_sql, params=params)
+            .mappings()
+            .one()
+        )
         self.min_qty = 4
-        self.width = specs['width']
-        self.depth = specs['depth']
-        self.height = specs['height']
-        self.weight = specs['weight']
-        self.motor = self.motors[self.attributes['motor']]
-        self.metering = self.metering_mapping[int(self.attributes['meter'])]
-        self.heat = self.kw_heat[int(self.attributes['heat'])]
+        self.width = specs["width"]
+        self.depth = specs["depth"]
+        self.height = specs["height"]
+        self.weight = specs["weight"]
+        self.motor = self.motors[self.attributes["motor"]]
+        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        self.heat = self.kw_heat[int(self.attributes["heat"])]
         self.mat_grp = self.mat_grps.loc[
-            (self.mat_grps['series'] == self.__series_name__())
-            & (self.mat_grps['mat'].str.contains(re.sub(r'\d+','',self.attributes['scode']))),
-            'mat_grp'].item()
-        s_code = self.attributes['scode']
-        self.s_code_mat = s_code[0] if s_code[0] in ('E','G') else s_code[:2]
-        self.ratings_ac_txv = fr"""F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}"""
-        self.ratings_hp_txv = fr"""F,P{self.attributes['motor']}\*{s_code}9{self.tonnage}"""
-        self.ratings_piston = fr"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}"""
-        self.ratings_field_txv = fr"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
-        self.is_flex_coil = True if self.attributes.get('rds') else False
+            (self.mat_grps["series"] == self.__series_name__())
+            & (
+                self.mat_grps["mat"].str.contains(
+                    re.sub(r"\d+", "", self.attributes["scode"])
+                )
+            ),
+            "mat_grp",
+        ].item()
+        s_code = self.attributes["scode"]
+        self.s_code_mat = s_code[0] if s_code[0] in ("E", "G") else s_code[:2]
+        self.ratings_ac_txv = (
+            rf"""F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}"""
+        )
+        self.ratings_hp_txv = (
+            rf"""F,P{self.attributes['motor']}\*{s_code}9{self.tonnage}"""
+        )
+        self.ratings_piston = (
+            rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}"""
+        )
+        self.ratings_field_txv = (
+            rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
+        )
+        self.is_flex_coil = True if self.attributes.get("rds") else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
-
     def category(self) -> str:
-        orientation = 'Multiposition'
+        orientation = "Multiposition"
         motor = self.motor
-        value = f'Low Profile {orientation} Air Handlers - {motor}'
+        value = f"Low Profile {orientation} Air Handlers - {motor}"
         if self.is_flex_coil:
             value += " - FlexCoil"
         return value
 
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_= load_pricing(
+        pricing_, adders_ = load_pricing(
             session=self.session,
-            slab=self.attributes['scode'],
+            slab=self.attributes["scode"],
             series=self.__series_name__(),
-            ton=self.tonnage
-            )
-        heat: str = self.attributes['heat']
-        if heat != '00':
+            ton=self.tonnage,
+        )
+        heat: str = self.attributes["heat"]
+        if heat != "00":
             try:
                 result = pricing_[heat]
             except:
                 raise self.NoBasePrice
         else:
-            result = pricing_['base']
-        result += adders_.get(self.attributes['voltage'],0)
-        if heat == '05' and self.attributes['line_conn'] == 'B':
-            result += adders_.get(self.attributes['line_conn'],0)
-        result += adders_.get(self.attributes['ton'],0) if self.attributes['motor'] == 'E' else 0
-        result += adders_.get(self.attributes['meter'],0)        
+            result = pricing_["base"]
+        result += adders_.get(self.attributes["voltage"], 0)
+        if heat == "05" and self.attributes["line_conn"] == "B":
+            result += adders_.get(self.attributes["line_conn"], 0)
+        result += (
+            adders_.get(self.attributes["ton"], 0)
+            if self.attributes["motor"] == "E"
+            else 0
+        )
+        result += adders_.get(self.attributes["meter"], 0)
         if self.is_flex_coil:
             result += 10
         return result

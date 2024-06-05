@@ -7,8 +7,8 @@ session = next(ADP_DB.get_db())
 
 
 class HH(ModelSeries):
-    text_len = (18,17)
-    regex = r'''
+    text_len = (18, 17)
+    regex = r"""
         (?P<paint>H)
         (?P<mat>H)
         (?P<scode>\d{2})
@@ -20,7 +20,7 @@ class HH(ModelSeries):
         (?P<height>\d{2})
         (?P<config>\d{2})
         (?P<option>[AP|R|N])
-    '''
+    """
 
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
@@ -29,55 +29,50 @@ class HH(ModelSeries):
             FROM hh_weights_pallet
             WHERE "SC_1" = :scode;
         """
-        params = dict(scode=int(self.attributes['scode']))
-        specs = ADP_DB.execute(
-            session=self.session,
-            sql=specs_sql,
-            params=params
-        ).mappings().one()
-        self.cabinet_config = Cabinet.EMBOSSED
-        width = int(self.attributes['width'])
-        self.width = width//10 + (5/8) + 4 + (3/8)
-        self.depth = 10
-        self.height = int(self.attributes['height']) + 0.25 + 1.5
-        self.metering = self.metering_mapping[int(self.attributes['meter'])]
-        self.material = 'Copper'
-        self.pallet_qty = specs['pallet_qty']
-        self.weight = specs['WEIGHT']
-        self.mat_grp = self.mat_grps.loc[
-            (self.mat_grps['series'] == self.__series_name__()),
-            'mat_grp'].item()
-        self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"HH{self.attributes['scode']}"\
-            fr"\(6,9\){self.tonnage}"
-        self.ratings_hp_txv = fr"HH{self.attributes['scode']}"\
-            fr"9{self.tonnage}"
-        self.ratings_piston = fr"HH{self.attributes['scode']}"\
-            fr"\(1,2\){self.tonnage}"
-        self.ratings_field_txv = fr"HH{self.attributes['scode']}"\
-            fr"\(1,2\){self.tonnage}\+TXV"
-        self.is_flex_coil = (
-            True if self.attributes['option'] in ('R','N') else False
+        params = dict(scode=int(self.attributes["scode"]))
+        specs = (
+            ADP_DB.execute(session=self.session, sql=specs_sql, params=params)
+            .mappings()
+            .one()
         )
+        self.cabinet_config = Cabinet.EMBOSSED
+        width = int(self.attributes["width"])
+        self.width = width // 10 + (5 / 8) + 4 + (3 / 8)
+        self.depth = 10
+        self.height = int(self.attributes["height"]) + 0.25 + 1.5
+        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        self.material = "Copper"
+        self.pallet_qty = specs["pallet_qty"]
+        self.weight = specs["WEIGHT"]
+        self.mat_grp = self.mat_grps.loc[
+            (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
+        ].item()
+        self.tonnage = int(self.attributes["ton"])
+        self.ratings_ac_txv = rf"HH{self.attributes['scode']}" rf"\(6,9\){self.tonnage}"
+        self.ratings_hp_txv = rf"HH{self.attributes['scode']}" rf"9{self.tonnage}"
+        self.ratings_piston = rf"HH{self.attributes['scode']}" rf"\(1,2\){self.tonnage}"
+        self.ratings_field_txv = (
+            rf"HH{self.attributes['scode']}" rf"\(1,2\){self.tonnage}\+TXV"
+        )
+        self.is_flex_coil = True if self.attributes["option"] in ("R", "N") else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
-        value =  "Horizontal Slab Coils"
+        value = "Horizontal Slab Coils"
         if self.is_flex_coil:
             value += " - FlexCoil"
         return value
-    
+
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(
             session=session,
             series=self.__series_name__(),
-            slab=self.attributes['scode']
+            slab=self.attributes["scode"],
         )
-        result = pricing_ + adders_.get(self.attributes['meter'], 0)
+        result = pricing_ + adders_.get(self.attributes["meter"], 0)
         if self.is_flex_coil:
             result += 10
         return result
-
 
     def record(self) -> dict:
         model_record = super().record()

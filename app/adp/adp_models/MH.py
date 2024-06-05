@@ -3,16 +3,18 @@ from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.pricing.mh.pricing import load_pricing
 from app.db import ADP_DB, Session
 
+
 class MH(ModelSeries):
-    text_len = (7,8)
-    regex = r'''
+    text_len = (7, 8)
+    regex = r"""
         (?P<series>M)
         (?P<ton>\d{2})
         (?P<mat>E)
         (?P<scode>\d{2})
         (?P<meter>\d)
         (?P<rds>[R|N]?)
-        '''
+        """
+
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
         spec_sql = """
@@ -20,36 +22,47 @@ class MH(ModelSeries):
             FROM mh_pallet_weight_height
             WHERE "SC_1" = :slab;
         """
-        specs = ADP_DB.execute(
-            session=self.session,
-            sql=spec_sql,
-            params=dict(slab=self.attributes['scode'])
-        ).mappings().one()
+        specs = (
+            ADP_DB.execute(
+                session=self.session,
+                sql=spec_sql,
+                params=dict(slab=self.attributes["scode"]),
+            )
+            .mappings()
+            .one()
+        )
         self.cabinet_config = Cabinet.UNCASED
-        self.metering = self.metering_mapping[int(self.attributes['meter'])]
-        self.material = 'Copper'
+        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        self.material = "Copper"
         self.width = 18
         self.depth = 19.5
-        self.height = specs['HEIGHT']
-        self.pallet_qty = specs['PALLET_QTY']
-        self.weight = specs['WEIGHT']
+        self.height = specs["HEIGHT"]
+        self.pallet_qty = specs["PALLET_QTY"]
+        self.weight = specs["WEIGHT"]
         self.mat_grp = self.mat_grps.loc[
-            (self.mat_grps['series'] == self.__series_name__()),
-            'mat_grp'].item()
-        self.tonnage = int(self.attributes['ton'])
-        self.ratings_ac_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
-            fr"{self.attributes['scode']}\(6,9\)"
-        self.ratings_hp_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
-            fr"{self.attributes['scode']}9"
-        self.ratings_piston = fr"M{self.tonnage}{self.attributes['mat']}"\
-            fr"{self.attributes['scode']}\(1,2\)"
-        self.ratings_field_txv = fr"M{self.tonnage}{self.attributes['mat']}"\
-            fr"{self.attributes['scode']}\(1,2\)\+TXV"
-        self.is_flex_coil = True if self.attributes.get('rds') else False
+            (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
+        ].item()
+        self.tonnage = int(self.attributes["ton"])
+        self.ratings_ac_txv = (
+            rf"M{self.tonnage}{self.attributes['mat']}"
+            rf"{self.attributes['scode']}\(6,9\)"
+        )
+        self.ratings_hp_txv = (
+            rf"M{self.tonnage}{self.attributes['mat']}" rf"{self.attributes['scode']}9"
+        )
+        self.ratings_piston = (
+            rf"M{self.tonnage}{self.attributes['mat']}"
+            rf"{self.attributes['scode']}\(1,2\)"
+        )
+        self.ratings_field_txv = (
+            rf"M{self.tonnage}{self.attributes['mat']}"
+            rf"{self.attributes['scode']}\(1,2\)\+TXV"
+        )
+        self.is_flex_coil = True if self.attributes.get("rds") else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
-        value = "Manufactured Housing Coils" 
+        value = "Manufactured Housing Coils"
         if self.is_flex_coil:
             value += " - FlexCoil"
         return value
@@ -57,10 +70,10 @@ class MH(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = load_pricing(
             session=self.session,
-            slab=self.attributes['scode'],
-            series=self.__series_name__()
+            slab=self.attributes["scode"],
+            series=self.__series_name__(),
         )
-        result = pricing_ + adders_.get(self.attributes['meter'], 0)
+        result = pricing_ + adders_.get(self.attributes["meter"], 0)
         if self.is_flex_coil:
             result += 10
         return result

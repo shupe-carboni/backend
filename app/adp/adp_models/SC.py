@@ -3,60 +3,63 @@ from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.pricing.sc.pricing import load_pricing
 from app.db import ADP_DB, Session
 
+
 class SC(ModelSeries):
     text_len = (7,)
-    regex = r'''
+    regex = r"""
         (?P<series>S)
         (?P<ton>\d{2})
         (?P<mat>[R|L|H|S])
         (?P<width_height>\d{3})
-        '''
+        """
     configs = {
-        'R': ('Right Hand Upflow','Copper'),
-        'L': ('Left Hand Upflow','Copper'),
-        'H': ('Horizontal','Aluminum'),
-        'S': ('Horizontal Slab','Copper')
+        "R": ("Right Hand Upflow", "Copper"),
+        "L": ("Left Hand Upflow", "Copper"),
+        "H": ("Horizontal", "Aluminum"),
+        "S": ("Horizontal Slab", "Copper"),
     }
+
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
-        self.tonnage = int(self.attributes['ton'])
+        self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT cased, width, depth, height, weight, pallet_qty
             FROM sc_all_features
             WHERE ton = :ton
             AND :model ~ regex;
         """
-        params = dict(ton=self.tonnage/12, model=str(self))
-        specs = ADP_DB.execute(
-            session=session,
-            sql=specs_sql,
-            params=params
-        ).mappings().one()
-        self.metering = 'Piston (R-410a or R-22)'
-        width_height: int = int(self.attributes['width_height'])
-        if width_height % 10 in (2,7):
+        params = dict(ton=self.tonnage / 12, model=str(self))
+        specs = (
+            ADP_DB.execute(session=session, sql=specs_sql, params=params)
+            .mappings()
+            .one()
+        )
+        self.metering = "Piston (R-410a or R-22)"
+        width_height: int = int(self.attributes["width_height"])
+        if width_height % 10 in (2, 7):
             self.width_height = width_height / 10 + 0.05
         else:
             self.width_height = width_height / 10
-        config = self.configs[self.attributes['mat']]
+        config = self.configs[self.attributes["mat"]]
         self.config = config[0]
         self.material = config[1]
-        self.pallet_qty = specs['pallet_qty']
-        self.depth = specs['depth']
-        self.width = specs['width']
-        self.height = specs['height']
-        self.cased = specs['cased']
+        self.pallet_qty = specs["pallet_qty"]
+        self.depth = specs["depth"]
+        self.width = specs["width"]
+        self.height = specs["height"]
+        self.cased = specs["cased"]
         self.cabinet_config: Cabinet = (
             Cabinet.EMBOSSED if self.cased else Cabinet.UNCASED
         )
-        self.weight = specs['weight']
+        self.weight = specs["weight"]
         self.mat_grp = self.mat_grps.loc[
-            (self.mat_grps['series'] == self.__series_name__())
-            & (self.mat_grps['mat'].str.contains(self.attributes['mat']))
+            (self.mat_grps["series"] == self.__series_name__())
+            & (self.mat_grps["mat"].str.contains(self.attributes["mat"]))
             # self.cased is bool - the config column has bool only sometimes
             # so pandas keeps bools as literal strings of 'TRUE' and 'FALSE'
-            & (self.mat_grps['config'] == str(self.cased).upper()),
-            'mat_grp'].item()
+            & (self.mat_grps["config"] == str(self.cased).upper()),
+            "mat_grp",
+        ].item()
         self.ratings_ac_txv = None
         self.ratings_hp_txv = None
         self.ratings_piston = None
@@ -64,26 +67,22 @@ class SC(ModelSeries):
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
-        seer = '10 SEER'
-        cased = 'Uncased' if not self.cased else 'Cased'
+        seer = "10 SEER"
+        cased = "Uncased" if not self.cased else "Cased"
         config = self.config
-        return f'{seer} {config} Service Coils - {cased}'
+        return f"{seer} {config} Service Coils - {cased}"
 
     def calc_zero_disc_price(self) -> int:
-        match self.attributes['mat']:
-            case 'R'|'L':
+        match self.attributes["mat"]:
+            case "R" | "L":
                 column = int(self.cased)
-            case 'S':
+            case "S":
                 column = int(self.height > 19)
-            case 'H':
+            case "H":
                 column = int(True)
             case _:
                 raise Exception("Invalid model configuration")
-        return load_pricing(
-                session=self.session,
-                model=str(self),
-                col=column
-            )
+        return load_pricing(session=self.session, model=str(self), col=column)
 
     def record(self) -> dict:
         model_record = super().record()

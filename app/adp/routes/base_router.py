@@ -128,13 +128,16 @@ def customer_program_dl_file(
 def parse_model_and_pricing(
     session: NewSession, token: Token, adp_customer_id: int, model_num: str
 ) -> ProgAttrs:
-    """Used for feature extraction parsed from the model number and price check based on the permissions
+    """Used for feature extraction parsed from the model number and price check
+    based on the permissions.
 
-    if adp_customer_id is 0 AND permitted as an sca employee or above, base price is calculated and shown,
-    alternatively if an id is given, that customer's pricing is calculated
+    if adp_customer_id is 0 AND permitted as an sca employee or above,
+    base price is calculated and shown, alternatively if an id is given,
+    that customer's pricing is calculated
 
-    if the requester is permitted under a customer type, a check is done to see if the customer is
-    associated with the adp_customer_id provided in the request.
+    if the requester is permitted under a customer type,
+    a check is done to see if the customer is associated with the adp_customer_id
+    provided in the request.
 
     """
     adp_perm = token.permissions
