@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import HTTPException, Depends
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 from app import auth
@@ -13,10 +13,6 @@ from app.vendors.models import (
     VendorInfoQuery,
     VendorInfoQueryJSONAPI,
     RelatedVendorResponse,
-)
-from app.vendors.utils import (
-    modify_existing_vendor_info,
-    delete_vendor_info,
 )
 
 INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
@@ -38,12 +34,12 @@ async def all_info(
     token: VendorsPerm, session: NewSession, query: VendorInfoQuery = Depends()
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, INFO_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session=session, resource=INFO_RESOURCE, query=converter(query))
+        .get(session=session, query=converter(query))
     )
 
 
@@ -60,14 +56,13 @@ async def one_info(
     query: VendorInfoQuery = Depends(),
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, INFO_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=INFO_RESOURCE,
             query=converter(query),
             obj_id=info_id,
         )
@@ -87,17 +82,15 @@ async def info_related_vendor(
     query: VendorInfoQuery = Depends(),
 ) -> RelatedVendorResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, INFO_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=INFO_RESOURCE,
             query=converter(query),
             obj_id=info_id,
-            relationship=False,
             related_resource=VENDOR_RESOURCE,
         )
     )
@@ -116,14 +109,13 @@ async def info_vendors_relationships(
     query: VendorInfoQuery = Depends(),
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token)
+        auth.VendorOperations(token, INFO_RESOURCE)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
-            resource=INFO_RESOURCE,
             query=converter(query),
             obj_id=info_id,
             relationship=True,
@@ -168,19 +160,32 @@ async def modify_info(
     info_id: int,
     body: VendorInfoModification,
 ) -> VendorInfoResponse:
-    if token.permissions >= auth.Permissions.sca_employee:
-        return modify_existing_vendor_info(
-            session=session, payload=body, obj_id=info_id
+    return (
+        auth.VendorOperations(token, INFO_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session=session,
+            data=body.model_dump(exclude_none=True, by_alias=True),
+            primary_id=body.data.relationships.vendors.data.id,
+            obj_id=info_id,
         )
-    raise HTTPException(status_code=401)
+    )
 
 
 @vendors_info.delete("/{info_id}", tags=["jsonapi"])
 async def delete_info(
-    token: VendorsPerm,
-    session: NewSession,
-    info_id: int,
+    token: VendorsPerm, session: NewSession, info_id: int, vendor_id: int
 ) -> None:
-    if token.permissions >= auth.Permissions.sca_employee:
-        return delete_vendor_info(session=session, obj_id=info_id)
-    raise HTTPException(status_code=401)
+    return (
+        auth.VendorOperations(token, INFO_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(
+            session=session,
+            primary_id=vendor_id,
+            obj_id=info_id,
+        )
+    )

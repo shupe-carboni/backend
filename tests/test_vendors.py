@@ -10,9 +10,10 @@ from pathlib import Path
 
 test_client = TestClient(app)
 
-INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
 VENDOR_RESOURCE = SCAVendor.__jsonapi_type_override__
-PATH_PREFIX = Path(f"/{VENDOR_RESOURCE}")
+VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
+INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
+INFO_PREFIX = Path(f"/{INFO_RESOURCE}")
 
 SCA_PERMS = (
     auth_overrides.AdminToken,
@@ -42,7 +43,7 @@ SCA_ONLY = list(
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_vendors_collection(perm, response_code):
-    url = str(PATH_PREFIX)
+    url = str(VENDORS_PREFIX)
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code, pprint(resp.json())
@@ -50,7 +51,7 @@ def test_vendors_collection(perm, response_code):
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_vendor_resource(perm, response_code):
-    url = str(PATH_PREFIX / "1")
+    url = str(VENDORS_PREFIX / "1")
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code, pprint(resp.json())
@@ -58,7 +59,7 @@ def test_vendor_resource(perm, response_code):
 
 @mark.parametrize("perm,response_code", SCA_ONLY)
 def test_new_vendor(perm, response_code):
-    url = str(PATH_PREFIX)
+    url = str(VENDORS_PREFIX)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_vendor = {
         "type": VENDOR_RESOURCE,
@@ -75,7 +76,7 @@ def test_new_vendor(perm, response_code):
 
 @mark.parametrize("perm,response_code", SCA_ONLY)
 def test_mod_vendor(perm, response_code):
-    url = str(PATH_PREFIX)
+    url = str(VENDORS_PREFIX)
     app.dependency_overrides[authenticate_auth0_token] = perm
     pre_mod = test_client.get(url)
     rand_i, rand_id = choice(
@@ -96,6 +97,145 @@ def test_mod_vendor(perm, response_code):
             "phone": new_number,
         },
     }
-    url = str(PATH_PREFIX / str(rand_id))
+    url = str(VENDORS_PREFIX / str(rand_id))
     resp = test_client.patch(url, json=dict(data=mod_vendor))
     assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_del_vendor(perm, response_code):
+    # new vendor
+    url = str(VENDORS_PREFIX)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    new_vendor = {
+        "type": VENDOR_RESOURCE,
+        "attributes": {
+            "name": f"RANDOM VENDOR {randint(1000,9999)}",
+            "headquarters": "my backyard",
+            "description": "test vendor automatically generated",
+            "phone": randint(1000000000, 9999999999),
+        },
+    }
+    resp = test_client.post(url, json=dict(data=new_vendor))
+    if resp.status_code == 401:
+        return
+    new_vendor_id = resp.json()["data"]["id"]
+    # make info for the vendor
+    url = str(INFO_PREFIX)
+    data = {
+        "type": SCAVendorInfo.__jsonapi_type_override__,
+        "attributes": {
+            "category": "New category",
+            "content": "more and more content. so much content.",
+        },
+        "relationships": {
+            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+        },
+    }
+    resp = test_client.post(url, json=dict(data=data))
+    # delete
+    url = str(VENDORS_PREFIX / str(new_vendor_id))
+    resp = test_client.delete(url)
+    assert resp.status_code == 204, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_vendor_info_collection(perm, response_code):
+    url = str(INFO_PREFIX)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_vendor_info_resource(perm, response_code):
+    url = str(INFO_PREFIX / "1")
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_vendor_info_related_vendor(perm, response_code):
+    url = str(INFO_PREFIX / "1" / SCAVendor.__jsonapi_type_override__)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_vendor_info_vendor_relationships(perm, response_code):
+    url = str(INFO_PREFIX / "1" / "relationships" / SCAVendor.__jsonapi_type_override__)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_new_vendor_info(perm, response_code):
+    url = str(INFO_PREFIX)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    data = {
+        "type": SCAVendorInfo.__jsonapi_type_override__,
+        "attributes": {
+            "category": "New category",
+            "content": "more and more content. so much content.",
+        },
+        "relationships": {
+            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+        },
+    }
+    resp = test_client.post(url, json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+mark.parametrize("perm,response_code", SCA_ONLY)
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_mod_vendor_info(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = str(INFO_PREFIX / "7")
+    pre_mod = test_client.get(url).json()
+    data = {
+        "id": 7,
+        "type": SCAVendorInfo.__jsonapi_type_override__,
+        "attributes": {
+            "category": f"New category {randint(10000,99999)}",
+        },
+        "relationships": {
+            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+        },
+    }
+    resp = test_client.patch(url, json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())
+    if resp.status_code == 200:
+        assert (
+            resp.json()["data"]["attributes"]["category"]
+            != pre_mod["data"]["attributes"]["category"]
+        )
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY)
+def test_del_vendor_info(perm, response_code):
+    url = str(INFO_PREFIX)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    data = {
+        "type": SCAVendorInfo.__jsonapi_type_override__,
+        "attributes": {
+            "category": "New category",
+            "content": "more and more content. so much content.",
+        },
+        "relationships": {
+            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+        },
+    }
+    resp = test_client.post(url, json=dict(data=data))
+    assert resp.status_code == response_code, pprint(resp.json())
+    if resp.status_code == 200:
+        url = str(INFO_PREFIX / (str(resp.json()["data"]["id"]) + "?vendor_id=6"))
+        resp = test_client.delete(url)
+        assert resp.status_code == 204
+
+
+mark.parametrize("perm,response_code", SCA_ONLY)

@@ -15,10 +15,7 @@ from app.vendors.models import (
     NewVendor,
     VendorModification,
 )
-from app.vendors.utils import (
-    delete_vendor,
-    delete_vendor_info,
-)
+from app.vendors.vendors_info import delete_info
 
 VENDORS_RESOURCE = SCAVendor.__jsonapi_type_override__
 vendors = APIRouter(prefix=f"/{VENDORS_RESOURCE}", tags=["vendors"])
@@ -180,12 +177,19 @@ async def modify_vendor(
 @vendors.delete("/{vendor_id}", tags=["jsonapi"])
 async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: int) -> None:
     """Delete a Vendor as well as all accompanying vendor information"""
-    if token.permissions >= auth.Permissions.sca_admin:
-        related_info = await info_relationships(
-            token, session, vendor_id, VendorQuery()
+    related_info = await info_relationships(token, session, vendor_id, VendorQuery())
+    related_info_ids: list[int] = [record["id"] for record in related_info["data"]]
+    for rec_id in related_info_ids:
+        # will raise an error if the action is not permitted, an all or nothing setup
+        # so it should fail on the first record or not at all
+        await delete_info(token, session, rec_id, vendor_id)
+    return (
+        auth.VendorOperations(token, VENDORS_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(
+            session=session,
+            obj_id=vendor_id,
         )
-        related_info_ids: list[int] = [record["id"] for record in related_info["data"]]
-        for rec_id in related_info_ids:
-            delete_vendor_info(session, rec_id)
-        return delete_vendor(session, vendor_id)
-    raise HTTPException(status_code=401)
+    )
