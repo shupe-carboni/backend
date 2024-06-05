@@ -237,12 +237,12 @@ def standard_error_handler(func):
         except IDNotAssociatedWithUser:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                detail="Customer ID is not associated with the user",
+                detail="Primary ID is not associated with the user",
             )
         except IDsNotAssociated:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                detail="Object ID not associated with the ADP Customer ID",
+                detail="Object ID not associated with the Primary ID",
             )
         except HTTPException as e:
             raise e
@@ -696,8 +696,16 @@ class VendorOperations(SecOp):
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """The Vendors resource does not have underlying resources that need to
         be gated by user. Customers can only view the info, and only SCA is allowed
-        to add, edit, or delete any vendor and its associated information."""
-        return []
+        to add, edit, or delete any vendor and its associated information.
+
+        The ids returned are strictly for the developer role, which still gets checked
+        for id association to the primary resource (Vendors)"""
+        dev_vendor_ids = f"""
+            SELECT id
+            FROM {SCAVendor.__tablename__}
+            WHERE name LIKE 'RANDOM VENDOR%';
+        """
+        return session.execute(text(dev_vendor_ids)).scalars().all()
 
     def post(
         self,
