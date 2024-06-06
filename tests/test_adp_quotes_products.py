@@ -73,7 +73,7 @@ def test_quote_products_resource(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_new_quote_product(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -94,7 +94,7 @@ def test_new_quote_product(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_mod_quote_product(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -122,7 +122,7 @@ def test_mod_quote_product(perm, response_code):
         assert resp.json()["data"]["attributes"]["comp-model"] == new_comp_model
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_del_quote_product(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
