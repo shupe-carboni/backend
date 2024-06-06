@@ -237,18 +237,7 @@ async def modify_quote_with_new_file_upload(
             "either a new plans document or a new quote document are required for "
             "this operation",
         )
-    current_quote = QuoteResponse(
-        auth.ADPOperations(token, QUOTES_RESOURCE)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(
-            session=session,
-            query=converter(QuoteQuery()),
-            obj_id=quote_id,
-        )
-    )
+    current_quote = await one_quote(token, quote_id, session, QuoteQuery())
     attrs = {}
     documents_strs = [
         current_quote.data.attributes.quote_doc,
