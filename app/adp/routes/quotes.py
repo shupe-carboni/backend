@@ -1,9 +1,9 @@
 import os
 from typing import Annotated, Optional
 from time import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, Depends, Form, UploadFile
+from fastapi import HTTPException, Depends, Form, UploadFile, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import ADP_DB, Stage, File, S3
@@ -82,39 +82,81 @@ async def one_quote(
     "",
     response_model=QuoteResponse,
     response_model_exclude_none=True,
-    tags=["jsonapi"],
+    tags=["jsonapi", "form"],
 )
 async def new_quote(
     token: Token,
     session: NewSession,
-    adp_customer_id: int = Form(),
-    adp_quote_id: str = Form(default=None),
+    adp_customer_id: int,
     job_name: str = Form(),
-    expires_at: date = Form(),
-    status: Stage = Form(),
-    quote_doc: Optional[UploadFile] = None,
-    plans_doc: Optional[UploadFile] = None,
     place_id: int = Form(),
     customer_location_id: int = Form(),
+    status: Stage = Form(default=Stage.PROPOSED),
+    adp_quote_id: str = Form(default=None),
+    expires_at: date = Form(default=datetime.today().date() + timedelta(days=90)),
+    quote_doc: Optional[UploadFile] = None,
+    plans_doc: Optional[UploadFile] = None,
 ) -> QuoteResponse:
     """Create a new quote.
-    - ADP Quote ID, quote documents and plan documents are not required for creation.
-    - ADP Quote ID comes from ADP and ought to be added in later if not supplied on creation.
-    - Create timestamp is auto-generated and stuffed into the JSONAPI request
-    - Expiration date is determined by rules associated with quote creation (i.e. +90 days).
-    - Stage should defualt to 'proposed', but ought to be selectable."""
-    created_at: datetime = datetime.today().date()
+
+    If a customer is filling out the form, they won't have the quote document from ADP
+    nor expires_at.
+
+    If an sca employee is filling out this form, they may have all of the info but may
+    not.
+    """
     time_id: int = int(time())
     s3_quote_path = S3_DIR + f"/{adp_customer_id}/{time_id}"
+    created_at: date = datetime.today().date()
+    attrs = {
+        "job-name": job_name,
+        "created-at": created_at,
+        "expires-at": expires_at,
+        "status": status,
+    }
+    s3_quote_path = S3_DIR + f"/{adp_customer_id}/{time_id}"
+    if plans_doc:
+        plans_file = File(
+            file_name=S3_DIR + plans_doc.filename,
+            file_mime=plans_doc.content_type,
+            file_content=await plans_doc.read(),
+        )
+        s3_path = f"{s3_quote_path}/{plans_file.file_name}"
+        await S3.upload_file(quote_file, s3_path)
+        attrs["plans-doc"] = s3_path
+
+    new_quote_obj = {
+        "type": QUOTES_RESOURCE,
+        "attributes": attrs,
+        "relationships": {
+            "places": {"data": {"id": place_id, "type": "places"}},
+            "customer-locations": {
+                "data": {"id": customer_location_id, "type": "customer-locations"}
+            },
+            "adp-customers": {"data": {"id": adp_customer_id, "type": "adp-customers"}},
+        },
+    }
+    new_quote = NewQuote(data=new_quote_obj)
+    # will bubble up an error if user is not authorized in some way
+    quote_resource = QuoteResponse(
+        **auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .post(
+            session=session,
+            data=new_quote.model_dump(exclude_none=True, by_alias=True),
+            primary_id=adp_customer_id,
+        )
+    )
+    # Assuming customers wont have this information when requesting a quote
     if token.permissions >= auth.Permissions.developer:
-        attrs = {
-            "job_name": job_name,
-            "created_at": created_at,
-            "expires_at": expires_at,
-            "status": status,
-        }
+        additional_attrs = {}
+
         if adp_quote_id:
-            attrs["adp_quote_id"] = adp_quote_id
+            additional_attrs["adp_quote_id"] = adp_quote_id
+
         if quote_doc:
             quote_file = File(
                 file_name=S3_DIR + quote_doc.filename,
@@ -123,45 +165,29 @@ async def new_quote(
             )
             s3_path = f"{s3_quote_path}/{quote_file.file_name}"
             await S3.upload_file(quote_file, s3_path)
-            attrs["quote_doc"] = s3_path
+            additional_attrs["quote-doc"] = s3_path
 
-        if plans_doc:
-            plans_file = File(
-                file_name=S3_DIR + plans_doc.filename,
-                file_mime=plans_doc.content_type,
-                file_content=await plans_doc.read(),
-            )
-            s3_path = f"{s3_quote_path}/{plans_file.file_name}"
-            await S3.upload_file(quote_file, s3_path)
-            attrs["plans_doc"] = s3_path
-
-        new_quote_obj = {
+        updated_quote_obj = {
+            "id": quote_resource.data.id,
             "type": QUOTES_RESOURCE,
-            "attributes": attrs,
+            "attributes": additional_attrs,
             "relationships": {
-                "places": {"data": {"id": place_id, "type": "places"}},
-                "customer-locations": {
-                    "data": {"id": customer_location_id, "type": "customer-locations"}
-                },
                 "adp-customers": {
                     "data": {"id": adp_customer_id, "type": "adp-customers"}
                 },
             },
         }
-        new_quote = NewQuote(data=new_quote_obj)
         return (
-            auth.ADPOperations(token, QUOTES_RESOURCE)
-            .allow_admin()
-            .allow_sca()
-            .allow_dev()
-            .post(
-                session=session,
-                data=new_quote.model_dump(exclude_none=True, by_alias=True),
-                primary_id=adp_customer_id,
+            await modify_quote(
+                token,
+                session,
+                quote_resource.data.id,
+                ExistingQuoteRequest(data=updated_quote_obj),
             )
+            if additional_attrs
+            else quote_resource
         )
-
-    raise HTTPException(status_code=401)
+    return quote_resource
 
 
 @quotes.patch(
@@ -191,6 +217,88 @@ async def modify_quote(
     )
 
 
+@quotes.patch(
+    "/{quote_id}/new-file",
+    response_model=QuoteResponse,
+    response_model_exclude_none=True,
+    tags=["jsonapi", "form"],
+)
+async def modify_quote_with_new_file_upload(
+    token: Token,
+    session: NewSession,
+    quote_id: int,
+    adp_customer_id: int,
+    quote_doc: Optional[UploadFile] = None,
+    plans_doc: Optional[UploadFile] = None,
+) -> QuoteResponse:
+    if not any(quote_doc, plans_doc):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "either a new plans document or a new quote document are required for "
+            "this operation",
+        )
+    current_quote = QuoteResponse(
+        auth.ADPOperations(token, QUOTES_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            query=converter(QuoteQuery()),
+            obj_id=quote_id,
+        )
+    )
+    attrs = {}
+    documents_strs = [
+        current_quote.data.attributes.quote_doc,
+        current_quote.data.attributes.plans_doc,
+    ]
+    if not any(documents_strs):
+        time_id: int = int(time())
+        s3_quote_path = S3_DIR + f"/{adp_customer_id}/{time_id}"
+    else:
+        # lop off the filename from the s3 path, dedup, and extract
+        document_dir = set(
+            [doc[::-1][doc[::-1].find("/") :][::-1] for doc in documents_strs if doc]
+        ).pop()
+        s3_quote_path = document_dir
+    if token.permissions >= auth.Permissions.developer:
+        if quote_doc:
+            quote_file = File(
+                file_name=S3_DIR + quote_doc.filename,
+                file_mime=quote_doc.content_type,
+                file_content=await quote_doc.read(),
+            )
+            s3_path = f"{s3_quote_path}/{quote_file.file_name}"
+            await S3.upload_file(quote_file, s3_path)
+            attrs["quote-doc"] = s3_path
+    if token.permissions >= auth.Permissions.customer_std and plans_doc:
+        plans_file = File(
+            file_name=S3_DIR + plans_doc.filename,
+            file_mime=plans_doc.content_type,
+            file_content=await plans_doc.read(),
+        )
+        s3_path = f"{s3_quote_path}/{plans_file.file_name}"
+        await S3.upload_file(quote_file, s3_path)
+        attrs["plans-doc"] = s3_path
+
+    updated_quote_obj = {
+        "id": quote_id,
+        "type": QUOTES_RESOURCE,
+        "attributes": attrs,
+        "relationships": {
+            "adp-customers": {"data": {"id": adp_customer_id, "type": "adp-customers"}},
+        },
+    }
+    return await modify_quote(
+        token,
+        session,
+        quote_id,
+        ExistingQuoteRequest(data=updated_quote_obj),
+    )
+
+
 @quotes.delete("/{quote_id}", tags=["jsonapi"])
 async def delete_quote(
     token: Token, session: NewSession, quote_id: int, adp_customer_id: int
@@ -200,6 +308,7 @@ async def delete_quote(
         .allow_admin()
         .allow_sca()
         .allow_dev()
+        .allow_customer("std")
         .delete(session=session, obj_id=quote_id, primary_id=adp_customer_id)
     )
 

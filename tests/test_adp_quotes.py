@@ -58,22 +58,20 @@ def test_quote_resource(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_new_quote_no_files(perm, response_code):
-    url = PATH_PREFIX
+    url = PATH_PREFIX + f"?adp_customer_id={ADP_TEST_CUSTOMER_ID}"
     QN = randint(1000, 9999)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_quote = {
-        "adp_customer_id": ADP_TEST_CUSTOMER_ID,
         "adp_quote_id": f"QN-{QN}",
         "job_name": "Test Job",
-        "expires_at": (datetime.today().date() + timedelta(days=90)),
         "status": Stage("proposed"),
         "place_id": TEST_CUSTOMER_PLACE,
         "customer_location_id": TEST_CUSTOMER_LOCATION,
     }
     resp = test_client.post(url, data=new_quote)
-    assert resp.status_code == response_code
+    assert resp.status_code == response_code, pprint(resp.json())
 
 
 @mark.parametrize("perm,response_code", SCA_ONLY)
@@ -98,13 +96,12 @@ def test_patch_quote(perm, response_code):
     assert resp.status_code == response_code, resp.text
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_delete_quote(perm, response_code):
     url = PATH_PREFIX
     QN = randint(1000, 9999)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_quote = {
-        "adp_customer_id": ADP_TEST_CUSTOMER_ID,
         "adp_quote_id": f"QN-{QN}",
         "job_name": "Test Job",
         "expires_at": (datetime.today().date() + timedelta(days=90)),
@@ -112,7 +109,9 @@ def test_delete_quote(perm, response_code):
         "place_id": TEST_CUSTOMER_PLACE,
         "customer_location_id": TEST_CUSTOMER_LOCATION,
     }
-    resp = test_client.post(url, data=new_quote)
+    resp = test_client.post(
+        url + f"?adp_customer_id={ADP_TEST_CUSTOMER_ID}", data=new_quote
+    )
     assert resp.status_code == response_code, pprint(resp.json())
     if resp.status_code == 200:
         resp = test_client.delete(

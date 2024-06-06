@@ -25,12 +25,12 @@ class QuoteRelationshipsResponse(JSONAPIRelationshipsResponse):
 class QuoteAttributes(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_quote_id: Optional[str] = Field(default=None, alias="adp-quote-id")
-    job_name: str = Field(alias="job-name")
-    created_at: datetime = Field(alias="created-at")
-    expires_at: datetime = Field(alias="expires-at")
-    status: Stage
-    quote_doc: Optional[str | bytes] = Field(None, alias="quote-document")
-    plans_doc: Optional[str | bytes] = Field(None, alias="plans-document")
+    job_name: Optional[str] = Field(default=None, alias="job-name")
+    created_at: Optional[datetime] = Field(default=None, alias="created-at")
+    expires_at: Optional[datetime] = Field(default=None, alias="expires-at")
+    status: Optional[Stage] = Stage.PROPOSED
+    quote_doc: Optional[str] = Field(None, alias="quote-doc")
+    plans_doc: Optional[str] = Field(None, alias="plans-doc")
 
     @field_validator("status", mode="before")
     def validate_status(cls, status: str):
