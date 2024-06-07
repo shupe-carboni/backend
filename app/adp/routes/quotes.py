@@ -1,10 +1,9 @@
-import os
-from typing import Annotated, Optional
 from time import time
+from typing import Annotated, Optional
 from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, Depends, Form, UploadFile, status
 from fastapi.routing import APIRouter
+from fastapi import HTTPException, Depends, Form, UploadFile, status
 from app import auth
 from app.db import ADP_DB, Stage, File, S3
 from app.jsonapi.core_models import convert_query
@@ -28,7 +27,7 @@ from app.adp.quotes.products.models import (
 from app.jsonapi.sqla_models import ADPQuote
 
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
-S3_DIR = os.getenv("S3_BUCKET") + "/adp/quotes"
+S3_DIR = "/adp/quotes"
 quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp quotes"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -36,9 +35,7 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 converter = convert_query(QuoteQueryJSONAPI)
 
 
-@quotes.get(
-    "", response_model=QuoteResponse, response_model_exclude_none=True, tags=["jsonapi"]
-)
+@quotes.get("", response_model=QuoteResponse, tags=["jsonapi"])
 async def quote_collection(
     token: Token, session: NewSession, query: QuoteQuery = Depends()
 ) -> QuoteResponse:
@@ -55,7 +52,6 @@ async def quote_collection(
 @quotes.get(
     "/{quote_id}",
     response_model=QuoteResponse,
-    response_model_exclude_none=True,
     tags=["jsonapi"],
 )
 async def one_quote(
@@ -87,6 +83,7 @@ async def one_quote(
 async def new_quote(
     token: Token,
     session: NewSession,
+    S3: Annotated[S3, Depends()],
     adp_customer_id: int,
     job_name: str = Form(),
     place_id: int = Form(),
@@ -122,7 +119,7 @@ async def new_quote(
             file_content=await plans_doc.read(),
         )
         s3_path = f"{s3_quote_path}/{plans_file.file_name}"
-        await S3.upload_file(quote_file, s3_path)
+        await S3.upload_file(plans_file, s3_path)
         attrs["plans-doc"] = s3_path
 
     new_quote_obj = {
@@ -150,12 +147,12 @@ async def new_quote(
             primary_id=adp_customer_id,
         )
     )
-    # Assuming customers wont have this information when requesting a quote
+    # Assuming customers won't have this information when requesting a quote
     if token.permissions >= auth.Permissions.developer:
         additional_attrs = {}
 
         if adp_quote_id:
-            additional_attrs["adp_quote_id"] = adp_quote_id
+            additional_attrs["adp-quote-id"] = adp_quote_id
 
         if quote_doc:
             quote_file = File(
@@ -167,26 +164,23 @@ async def new_quote(
             await S3.upload_file(quote_file, s3_path)
             additional_attrs["quote-doc"] = s3_path
 
-        updated_quote_obj = {
-            "id": quote_resource.data.id,
-            "type": QUOTES_RESOURCE,
-            "attributes": additional_attrs,
-            "relationships": {
-                "adp-customers": {
-                    "data": {"id": adp_customer_id, "type": "adp-customers"}
+        if additional_attrs:
+            updated_quote_obj = {
+                "id": quote_resource.data.id,
+                "type": QUOTES_RESOURCE,
+                "attributes": additional_attrs,
+                "relationships": {
+                    "adp-customers": {
+                        "data": {"id": adp_customer_id, "type": "adp-customers"}
+                    },
                 },
-            },
-        }
-        return (
-            await modify_quote(
+            }
+            return await modify_quote(
                 token,
                 session,
                 quote_resource.data.id,
                 ExistingQuoteRequest(data=updated_quote_obj),
             )
-            if additional_attrs
-            else quote_resource
-        )
     return quote_resource
 
 
@@ -252,16 +246,15 @@ async def modify_quote_with_new_file_upload(
             [doc[::-1][doc[::-1].find("/") :][::-1] for doc in documents_strs if doc]
         ).pop()
         s3_quote_path = document_dir
-    if token.permissions >= auth.Permissions.developer:
-        if quote_doc:
-            quote_file = File(
-                file_name=S3_DIR + quote_doc.filename,
-                file_mime=quote_doc.content_type,
-                file_content=await quote_doc.read(),
-            )
-            s3_path = f"{s3_quote_path}/{quote_file.file_name}"
-            await S3.upload_file(quote_file, s3_path)
-            attrs["quote-doc"] = s3_path
+    if token.permissions >= auth.Permissions.developer and quote_doc:
+        quote_file = File(
+            file_name=S3_DIR + quote_doc.filename,
+            file_mime=quote_doc.content_type,
+            file_content=await quote_doc.read(),
+        )
+        s3_path = f"{s3_quote_path}/{quote_file.file_name}"
+        await S3.upload_file(quote_file, s3_path)
+        attrs["quote-doc"] = s3_path
     if token.permissions >= auth.Permissions.customer_std and plans_doc:
         plans_file = File(
             file_name=S3_DIR + plans_doc.filename,
@@ -269,7 +262,7 @@ async def modify_quote_with_new_file_upload(
             file_content=await plans_doc.read(),
         )
         s3_path = f"{s3_quote_path}/{plans_file.file_name}"
-        await S3.upload_file(quote_file, s3_path)
+        await S3.upload_file(plans_file, s3_path)
         attrs["plans-doc"] = s3_path
 
     updated_quote_obj = {
