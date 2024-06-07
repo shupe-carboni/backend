@@ -6,6 +6,7 @@ from pytest import mark
 from random import randint
 from datetime import datetime, timedelta
 from app.db import Stage
+from app.db import S3 as real_S3
 from pprint import pprint
 
 test_client = TestClient(app)
@@ -42,6 +43,14 @@ SCA_ONLY = list(
 )
 
 
+class mock_S3:
+    async def upload_file(cls, file, destination):
+        return
+
+
+app.dependency_overrides[real_S3] = mock_S3
+
+
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_quotes_collection(perm, response_code):
     url = PATH_PREFIX
@@ -61,7 +70,7 @@ def test_quote_resource(perm, response_code):
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_new_quote_no_files(perm, response_code):
     url = PATH_PREFIX + f"?adp_customer_id={ADP_TEST_CUSTOMER_ID}"
-    QN = randint(1000, 9999)
+    QN = randint(10000000, 99999999)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_quote = {
         "adp_quote_id": f"QN-{QN}",
@@ -71,6 +80,31 @@ def test_new_quote_no_files(perm, response_code):
         "customer_location_id": TEST_CUSTOMER_LOCATION,
     }
     resp = test_client.post(url, data=new_quote)
+    assert resp.status_code == response_code, pprint(resp.json())
+    if perm.permissions >= auth_overrides.DeveloperToken.permissions:
+        assert resp.json()["data"]["attributes"].get("adp-quote-id") is not None
+    else:
+        assert resp.json()["data"]["attributes"].get("adp-quote-id") is None
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_new_quote_w_plans_file(perm, response_code):
+    url = PATH_PREFIX + f"?adp_customer_id={ADP_TEST_CUSTOMER_ID}"
+    QN = randint(10000000, 99999999)
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    new_quote = {
+        "adp_quote_id": f"QN-{QN}",
+        "job_name": "Test Job",
+        "status": Stage("proposed"),
+        "place_id": TEST_CUSTOMER_PLACE,
+        "customer_location_id": TEST_CUSTOMER_LOCATION,
+    }
+    plans_doc = (
+        "job job job job at job, jb.pdf",
+        bytes("hello world", encoding="utf-8"),
+        "application/pdf",
+    )
+    resp = test_client.post(url, data=new_quote, files={"plans_doc": plans_doc})
     assert resp.status_code == response_code, pprint(resp.json())
 
 
