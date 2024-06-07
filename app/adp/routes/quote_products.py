@@ -72,6 +72,17 @@ async def mod_quote_product(
     mod_quote_prod: ExistingProductRequest,
     product_id: int,
 ) -> ProductResponse:
+    data = mod_quote_prod.model_dump(exclude_none=True, by_alias=True)
+    if token.permissions < auth.Permissions.developer:
+        attributes = mod_quote_prod.data.attributes
+        forbidden_to_change = (
+            attributes.price,
+            attributes.model_number,
+        )
+        if any(forbidden_to_change):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+        if attributes.comp_model:
+            data["data"]["attributes"]["model-number"] = None
     return (
         auth.ADPQuoteOperations(token, API_TYPE)
         .allow_admin()
@@ -80,7 +91,7 @@ async def mod_quote_product(
         .allow_customer("std")
         .patch(
             session=session,
-            data=mod_quote_prod.model_dump(exclude_none=True, by_alias=True),
+            data=data,
             primary_id=mod_quote_prod.data.relationships.adp_quotes.data.id,
             obj_id=product_id,
         )
