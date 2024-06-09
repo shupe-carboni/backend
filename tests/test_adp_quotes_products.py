@@ -117,9 +117,16 @@ def test_mod_quote_product(perm, response_code):
         "relationships": {"adp-quotes": {"data": {"type": "adp-quotes", "id": 1}}},
     }
     resp = test_client.patch(url + f"/{rand_obj_id}", json=dict(data=data))
-    assert resp.status_code == response_code, pprint(resp.json())
-    if resp.status_code == 200:
+    try:
+        assert resp.status_code == response_code, pprint(resp.json())
         assert resp.json()["data"]["attributes"]["comp-model"] == new_comp_model
+        if perm.permissions < auth_overrides.DeveloperToken.permissions:
+            assert resp.json()["data"]["attributes"].get("model-number") is None
+    finally:
+        del data["attributes"]["comp-model"]
+        data["attributes"]["model-number"] = TEST_COIL_MODEL
+        app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
+        test_client.patch(url + f"/{rand_obj_id}", json=dict(data=data))
 
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
