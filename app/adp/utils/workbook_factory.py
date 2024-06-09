@@ -16,7 +16,7 @@ from app.adp.utils.programs import (
     EmptyProgram,
 )
 from app.adp.utils.pricebook import PriceBook
-from app.db import Session, ADP_DB, SCA_DB, Stage, S3
+from app.db import Session, ADP_DB, SCA_DB, Stage
 
 
 logger = logging.getLogger("uvicorn.info")
