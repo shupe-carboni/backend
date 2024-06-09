@@ -211,7 +211,11 @@ async def new_customer(
     tags=["file-upload"],
 )
 async def upload_customer_logo_file(
-    session: NewSession, token: Token, customer_id: int, file: UploadFile
+    session: NewSession,
+    token: Token,
+    S3: Annotated[S3, Depends()],
+    customer_id: int,
+    file: UploadFile,
 ) -> CustomerResponse:
     """
     Special path with the same structure as a related object query

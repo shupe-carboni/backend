@@ -220,6 +220,7 @@ async def modify_quote(
 async def modify_quote_with_new_file_upload(
     token: Token,
     session: NewSession,
+    S3: Annotated[S3, Depends()],
     quote_id: int,
     adp_customer_id: int,
     quote_doc: Optional[UploadFile] = None,
