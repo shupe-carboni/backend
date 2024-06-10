@@ -1,5 +1,7 @@
 from pytest import mark
+from pathlib import Path
 from fastapi.testclient import TestClient
+from fastapi import Response
 from app.main import app
 from app.adp.models import (
     CoilProgResp,
@@ -45,6 +47,39 @@ AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 TEST_AH_MODEL = "SM312500"
+
+SCA_PERMS = (
+    auth_overrides.AdminToken,
+    auth_overrides.SCAEmployeeToken,
+)
+CUSTOMER_PERMS = (
+    auth_overrides.CustomerAdminToken,
+    auth_overrides.CustomerManagerToken,
+    auth_overrides.CustomerStandardToken,
+)
+DEV_PERM = auth_overrides.DeveloperToken
+
+ALL_ALLOWED = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [200] * (len(SCA_PERMS) + len(CUSTOMER_PERMS) + 1),
+    )
+)
+
+SCA_ONLY_INCLUDING_DEV = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [200, 200, 401, 401, 401, 200],
+    )
+)
+
+SCA_ONLY_EXCLUDING_DEV = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [200, 200, 401, 401, 401, 401],
+    )
+)
+
 
 # AH Change Requests
 VALID_AH_CHANGE_REQ = TestRequest(
@@ -171,41 +206,31 @@ PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL = TestRequest(
 )
 
 
-def test_prog_dl_link():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_valid_dl_link_reqs_for_everyone(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = str(
+        Path(PATH_PREFIX)
+        / "programs"
+        / str(ADP_CUSTOMER_ID)
+        / "get-download?stage=active"
     )
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-        auth_overrides.DeveloperToken,
+    response = test_client.post(url)
+    assert response.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
+def test_valid_dl_link_reqs_for_sca_only(perm, response_code):
+    """change the id number to ensure SCA can do it, and customers cannot"""
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = str(
+        Path(PATH_PREFIX)
+        / "programs"
+        / str(ADP_CUSTOMER_ID + 1)
+        / "get-download?stage=active"
     )
-    ## valid requests
-    for perm in *sca_perms, *customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID}/get-download?stage=active"
-        response = test_client.post(url)
-        assert response.status_code == 200
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        # changed id number
-        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID + 1}/get-download?stage=active"
-        response = test_client.post(url)
-        assert response.status_code == 200
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-    ## invalid requests
-    for perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        # changed id number
-        url = f"{PATH_PREFIX}/programs/{ADP_CUSTOMER_ID + 1}/get-download?stage=active"
-        response = test_client.post(url)
-        assert response.status_code == 401
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    response = test_client.post(url)
+    assert response.status_code == response_code
 
 
 def test_collection_filtering():
@@ -303,187 +328,149 @@ def test_model_lookup():
         app.dependency_overrides[authenticate_auth0_token] = {}
 
 
-## SCA
-
-
-def test_new_coil_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_coil = {
-            "data": {
-                "type": "adp-coil-programs",
-                "attributes": {"model-number": TEST_COIL_MODEL},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_new_coil(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = Path(PATH_PREFIX) / COIL_PROGS
+    new_coil = {
+        "data": {
+            "type": "adp-coil-programs",
+            "attributes": {"model-number": TEST_COIL_MODEL},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                }
+            },
         }
-        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
-        assert response.status_code == 200, response.json()
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    }
+    response = test_client.post(str(url), json=new_coil)
+    assert response.status_code == response_code, pprint(response.json())
 
 
-def test_new_ah_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_ah = {
-            "data": {
-                "type": "adp-ah-programs",
-                "attributes": {"model-number": TEST_AH_MODEL},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_new_ah(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = Path(PATH_PREFIX) / AH_PROGS
+    new_ah = {
+        "data": {
+            "type": "adp-ah-programs",
+            "attributes": {"model-number": TEST_AH_MODEL},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                }
+            },
         }
-        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
-        assert response.status_code == 200, response.json()
-        assert AirHandlerProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    }
+    response = test_client.post(str(url), json=new_ah)
+    assert response.status_code == response_code, pprint(response.json())
 
 
-def test_new_part_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_ah = {
-            "data": {
-                "type": "adp-program-parts",
-                "attributes": {"part-number": "165616601A"},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_new_part(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    url = Path(PATH_PREFIX) / "adp-program-parts"
+    new_part = {
+        "data": {
+            "type": "adp-program-parts",
+            "attributes": {"part-number": "165616601A"},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                }
+            },
         }
-        response = test_client.post(f"{PATH_PREFIX}/adp-program-parts", json=new_ah)
-        assert response.status_code == 200, response.json()
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    }
+    response = test_client.post(str(url), json=new_part)
+    assert response.status_code == response_code, response.json()
 
 
-def test_customer_coil_program_collection_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}")
-        assert response.status_code == 200, response.json()
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_coil_program_collection(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}")
+    assert response.status_code == response_code, pprint(response.json())
 
 
-def test_customer_coil_program_resource_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_ah_program_collection(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}")
+    assert response.status_code == response_code, pprint(response.json())
 
 
-def test_customer_coil_program_modification_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-    )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        pre_mod_response = test_client.get(VALID_COIL_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
-        try:
-            # good request
-            response = test_client.patch(**VALID_COIL_CHANGE_REQ)
-            assert response.status_code == 200
-            assert AirHandlerProgResp(**response.json())
-            assert response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
-
-            # bad request - product ID is not associated with the customer
-            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL)
-            assert response.status_code == 401
-        finally:
-            test_client.patch(**RESET_COIL_STATUS)
-            app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_coil_program_resource_for_everyone(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}")
+    assert response.status_code == response_code
 
 
-def test_customer_ah_program_collection_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-    )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}")
-        assert response.status_code == 200
-        assert AirHandlerProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
+def test_customer_coil_program_resource_for_sca(perm, response_code):
+    # this resource just returns no content (204) if a customer gives an invalid id
+    if response_code == 401:
+        response_code = 204
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}")
+    assert response.status_code == response_code
 
 
-def test_customer_ah_program_resource_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-    )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}")
-        assert response.status_code == 200
-        assert AirHandlerProgResp(**response.json())
-        assert isinstance(
-            AirHandlerProgResp(**response.json()).data, AirHandlerProgRObj
-        )
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{INVALID_AH_PRODUCT_ID}")
-        assert response.status_code == 200
-        assert AirHandlerProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_coil_program_modification(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    pre_mod_response = test_client.get(VALID_COIL_CHANGE_REQ.url)
+    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
+    try:
+        # good request
+        response = test_client.patch(**VALID_COIL_CHANGE_REQ)
+        assert response.status_code == response_code
+        assert response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+
+        # bad request - product ID is not associated with the customer
+        response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL)
+        assert response.status_code == 401
+    finally:
+        test_client.patch(**RESET_COIL_STATUS)
 
 
-def test_customer_ah_program_modification_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-    )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        pre_mod_response = test_client.get(VALID_AH_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
-        try:
-            # good request
-            response = test_client.patch(**VALID_AH_CHANGE_REQ)
-            assert response.status_code == 200
-            assert AirHandlerProgResp(**response.json())
-            assert response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
-
-            # bad request - product ID is not associated with the customer
-            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_AH)
-            assert response.status_code == 401
-        finally:
-            test_client.patch(**RESET_AH_STATUS)
-            app.dependency_overrides[authenticate_auth0_token] = {}
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_ah_program_resource_for_everyone(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}")
+    assert response.status_code == response_code
 
 
-def test_customer_program_resource_delete():
-    perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
+def test_customer_ah_program_resource_for_sca(perm, response_code):
+    # get resource returns no content (204) for id mismatch
+    if response_code == 401:
+        response_code = 204
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{INVALID_AH_PRODUCT_ID}")
+    assert response.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_ah_program_modification(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    pre_mod_response = test_client.get(VALID_AH_CHANGE_REQ.url)
+    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
+    try:
+        # good request
+        response = test_client.patch(**VALID_AH_CHANGE_REQ)
+        assert response.status_code == response_code
+        assert response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
+
+        # bad request - product ID is not associated with the customer
+        response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_AH)
+        assert response.status_code == 401
+    finally:
+        test_client.patch(**RESET_AH_STATUS)
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_customer_program_resource_delete(perm, response_code):
     new_ah = {
         "data": {
             "type": "adp-ah-programs",
@@ -506,283 +493,47 @@ def test_customer_program_resource_delete():
             },
         }
     }
-    for perm in perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        # Make a new AH
-        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
-        new_id = response.json()["data"]["id"]
-        response = test_client.delete(
-            f"{PATH_PREFIX}/{AH_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
-        )
-        assert response.status_code == 204, pprint(response.json())
-        # Make a new Coil
-        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
-        new_id = response.json()["data"]["id"]
-        response = test_client.delete(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
-        )
-        assert response.status_code == 204, pprint(response.json())
-
-
-## CUSTOMER
-
-
-def test_new_coil_as_customer():
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
+    if response_code == 200:
+        response_code = 204
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    # Make a new AH
+    response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
+    new_id = response.json()["data"]["id"]
+    response = test_client.delete(
+        f"{PATH_PREFIX}/{AH_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
     )
-    for perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_coil = {
-            "data": {
-                "type": "adp-coil-programs",
-                "attributes": {"model-number": TEST_COIL_MODEL},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
-        }
-        response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
-        assert response.status_code == 200, response.json()
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_new_ah_as_customer():
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
+    assert response.status_code == 204, pprint(response.json())
+    # Make a new Coil
+    response = test_client.post(f"{PATH_PREFIX}/{COIL_PROGS}", json=new_coil)
+    new_id = response.json()["data"]["id"]
+    response = test_client.delete(
+        f"{PATH_PREFIX}/{COIL_PROGS}/{new_id}" f"?adp_customer_id={ADP_CUSTOMER_ID}"
     )
-    for perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_ah = {
-            "data": {
-                "type": "adp-ah-programs",
-                "attributes": {"model-number": TEST_AH_MODEL},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
-        }
-        response = test_client.post(f"{PATH_PREFIX}/{AH_PROGS}", json=new_ah)
-        assert response.status_code == 200, response.json()
-        assert AirHandlerProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    assert response.status_code == 204, pprint(response.json())
 
 
-def test_new_part_as_customer():
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_related_mat_grp_disc(perm, response_code):
+    url = (
+        Path(PATH_PREFIX)
+        / "adp-customers"
+        / str(ADP_CUSTOMER_ID)
+        / "adp-material-group-discounts"
     )
-    for perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        new_ah = {
-            "data": {
-                "type": "adp-program-parts",
-                "attributes": {"part-number": "165616601A"},
-                "relationships": {
-                    "adp-customers": {
-                        "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
-                    }
-                },
-            }
-        }
-        response = test_client.post(f"{PATH_PREFIX}/adp-program-parts", json=new_ah)
-        assert response.status_code == 200, response.json()
-        app.dependency_overrides[authenticate_auth0_token] = {}
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(str(url))
+    assert resp.status_code == response_code
 
 
-def test_customer_coil_program_collection_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}")
-        assert response.status_code == 200, response.json()
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_coil_program_resource_as_sca():
-    sca_perms = (auth_overrides.AdminToken, auth_overrides.SCAEmployeeToken)
-    for perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_coil_program_modification_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_mat_grp_disc_relationships(perm, response_code):
+    url = (
+        Path(PATH_PREFIX)
+        / "adp-customers"
+        / str(ADP_CUSTOMER_ID)
+        / "relationships"
+        / "adp-material-group-discounts"
     )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        pre_mod_response = test_client.get(VALID_COIL_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
-        try:
-            # good request
-            response = test_client.patch(**VALID_COIL_CHANGE_REQ)
-            assert response.status_code == 200
-            assert AirHandlerProgResp(**response.json())
-            assert response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
-
-            # bad request - product ID is not associated with the customer
-            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL)
-            assert response.status_code == 401
-        finally:
-            test_client.patch(**RESET_COIL_STATUS)
-            app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_ah_program_collection_as_sca():
-    sca_perms = (
-        auth_overrides.AdminToken,
-        auth_overrides.SCAEmployeeToken,
-    )
-    for sca_perm in sca_perms:
-        app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}")
-        assert response.status_code == 200
-        assert AirHandlerProgResp(**response.json())
-
-
-def test_customer_coil_program_collection_as_customer():
-    perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for perm in perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(f"{PATH_PREFIX}/{COIL_PROGS}")
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_coil_program_resource_as_customer():
-    perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for perm in perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{VALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 200
-        assert CoilProgResp(**response.json())
-        assert isinstance(CoilProgResp(**response.json()).data, CoilProgRObj)
-        response = test_client.get(
-            f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}"
-        )
-        assert response.status_code == 204
-        assert response.content == str("").encode()
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_ah_program_collection_as_customer():
-    perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for perm in perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}")
-        assert response.status_code == 200, response.text
-        assert AirHandlerProgResp(**response.json())
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_ah_program_resource_as_customer():
-    perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for perm in perms:
-        app.dependency_overrides[authenticate_auth0_token] = perm
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{VALID_AH_PRODUCT_ID}")
-        assert response.status_code == 200
-        assert AirHandlerProgResp(**response.json())
-        response = test_client.get(f"{PATH_PREFIX}/{AH_PROGS}/{INVALID_AH_PRODUCT_ID}")
-        assert response.status_code == 204
-        assert response.content == str("").encode()
-        app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_ah_program_modification_as_customer():
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for customer_perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = customer_perm
-        pre_mod_response = test_client.get(VALID_AH_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
-        try:
-            # good request
-            response = test_client.patch(**VALID_AH_CHANGE_REQ)
-            assert response.status_code == 200
-            assert AirHandlerProgResp(**response.json())
-            assert response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
-
-            # bad request - invalid customer_id - do not reassign your product to someone else
-            response = test_client.patch(**CUSTOMER_ID_WRONG_AH)
-            assert response.status_code == 401
-            # bad request - invalid product_id - do not allow reassignment of other's product
-            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_AH)
-            assert response.status_code == 401
-        finally:
-            test_client.patch(**RESET_AH_STATUS)
-            app.dependency_overrides[authenticate_auth0_token] = {}
-
-
-def test_customer_coil_program_modification_as_customer():
-    customer_perms = (
-        auth_overrides.CustomerAdminToken,
-        auth_overrides.CustomerManagerToken,
-        auth_overrides.CustomerStandardToken,
-    )
-    for customer_perm in customer_perms:
-        app.dependency_overrides[authenticate_auth0_token] = customer_perm
-        pre_mod_response = test_client.get(VALID_COIL_CHANGE_REQ.url)
-        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.ACTIVE
-        try:
-            # good request
-            response = test_client.patch(**VALID_COIL_CHANGE_REQ)
-            assert response.status_code == 200
-            assert AirHandlerProgResp(**response.json())
-            assert response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
-
-            # bad request - invalid customer_id - do not reassign your product to someone else
-            response = test_client.patch(**CUSTOMER_ID_WRONG_COIL)
-            assert response.status_code == 401
-            # bad request - invalid product_id - do not allow reassignment of other's product
-            response = test_client.patch(**PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL)
-            assert response.status_code == 401
-        finally:
-            test_client.patch(**RESET_COIL_STATUS)
-            app.dependency_overrides[authenticate_auth0_token] = {}
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(str(url))
+    assert resp.status_code == response_code
