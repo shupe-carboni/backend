@@ -248,6 +248,22 @@ class ADPMaterialGroupDiscount(Base):
         return q.where(exists_subquery)
 
 
+class ADPMaterialGroup(Base):
+    __tablename__ = "adp_material_groups"
+    __jsonapi_type_override__ = "adp-material-groups"
+    ## fields
+    id = Column(Integer, primary_key=True)
+    mat_grp = Column(String(2))
+    series = Column(String(2))
+    mat = Column(TEXT)
+    config = Column(TEXT)
+    description = Column(TEXT)
+    ## relationships
+    # None
+    ## filtering
+    # None
+
+
 class ADPProgramRating(Base):
     __tablename__ = "adp_program_ratings"
     __jsonapi_type_override__ = "adp-program-ratings"
