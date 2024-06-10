@@ -135,6 +135,9 @@ class ModelSeries:
 
     def __init__(self, session: Session, re_match: re.Match):
         self.mat_grps = ADP_DB.load_df(session=session, table_name="material_groups")
+        self.mat_grps.rename(
+            columns={"id": "mat_grp"}, inplace=True
+        )  # HOT FIX FOR COLUMN NAME CHANGE IN DB
         self.attributes = re_match.groupdict()
         self.session = session
 
