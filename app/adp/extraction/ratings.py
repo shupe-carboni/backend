@@ -257,8 +257,7 @@ def download_and_process_ratings_data():
             )
             ratings["AHRI Ref Number"] = ratings["AHRI Ref Number"].astype(int)
     except Exception as e:
-        logger.info("Update Failed")
-        logger.info(e)
+        logger.critical(f"Update Failed \n {e}")
     else:
         logger.info("Data Formatted")
         return ratings
@@ -288,8 +287,7 @@ def upload_ratings_data(session: Session, ratings: pd.DataFrame):
                     sql=f"""CREATE INDEX ON adp_all_ratings("{ind_col}");""",
                 )
     except Exception as e:
-        logger.info("Update Failed")
-        logger.info(e)
+        logger.critical(f"Update Failed \n {e}")
     else:
         logger.info("Update Complete")
     finally:
