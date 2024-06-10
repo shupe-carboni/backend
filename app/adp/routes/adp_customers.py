@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import HTTPException, Depends, status
+from fastapi import Depends
 from fastapi.routing import APIRouter
 
 from app import auth
@@ -36,7 +36,7 @@ ADP_PROG_PARTS = ADPProgramPart.__jsonapi_type_override__
 ADP_MAT_GRP_DISC = ADPMaterialGroupDiscount.__jsonapi_type_override__
 ADP_SNP = ADPSNP.__jsonapi_type_override__
 
-adp_customers = APIRouter(prefix=f"/{ADP_CUSTOMERS}", tags=["customers"])
+adp_customers = APIRouter(prefix=f"/{ADP_CUSTOMERS}", tags=["adp", "customers"])
 
 ADPPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
