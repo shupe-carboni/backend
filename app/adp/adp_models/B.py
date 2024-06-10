@@ -1,5 +1,4 @@
 import re
-from app.adp.pricing.b.pricing import load_pricing
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.db import ADP_DB, Session
 
@@ -91,13 +90,37 @@ class B(ModelSeries):
             value += " - FlexCoil"
         return value
 
-    def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(
-            session=self.session,
-            series=self.__series_name__(),
-            tonnage=str(self.tonnage),
-            slab=self.attributes["scode"],
+    def load_pricing(self) -> tuple[dict[str, int], dict[str, str | int]]:
+        pricing_sql = """
+            SELECT base, "2", "3", "4"
+            FROM pricing_b_series
+            WHERE tonnage = :tonnage
+            AND slab = :slab;
+        """
+        params = dict(tonnage=str(self.tonnage), slab=self.attributes["scode"])
+        pricing = (
+            ADP_DB.execute(session=self.session, sql=pricing_sql, params=params)
+            .mappings()
+            .one_or_none()
         )
+        price_adders_sql = """
+            SELECT key, price
+            FROM price_adders
+            WHERE series = :series;
+        """
+        params = dict(series=self.__series_name__())
+        adders_ = (
+            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
+            .mappings()
+            .all()
+        )
+        adders = dict()
+        for adder in adders_:
+            adders |= {adder["key"]: adder["price"]}
+        return pricing, adders
+
+    def calc_zero_disc_price(self) -> int:
+        pricing_, adders_ = self.load_pricing()
         heat: str = self.attributes["heat"]
         if not pricing_:
             raise self.NoBasePrice

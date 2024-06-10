@@ -1,6 +1,5 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
-from app.adp.pricing.f.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 
@@ -67,6 +66,39 @@ class F(ModelSeries):
         self.is_flex_coil = True if self.attributes.get("rds") else False
         self.zero_disc_price = self.calc_zero_disc_price()
 
+    def load_pricing(self) -> tuple[dict[str, int], dict[str, int]]:
+
+        pricing_sql = """
+            SELECT base, "05", "07", "10", "15", "20"
+            FROM pricing_f_series
+            WHERE :slab ~ slab
+            AND tonnage = :ton;
+        """
+        # NOTE the ~ operator in Postgres checks that :slab matches regex
+        # values contained in the column "slab"
+        params = dict(slab=self.attributes["scode"], ton=self.tonnage)
+        pricing = (
+            ADP_DB.execute(session=self.session, sql=pricing_sql, params=params)
+            .mappings()
+            .one_or_none()
+        )
+
+        price_adders_sql = """
+            SELECT key, price
+            FROM price_adders
+            WHERE series = :series;
+        """
+        params = dict(series=self.__series_name__())
+        adders_ = (
+            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
+            .mappings()
+            .all()
+        )
+        adders = dict()
+        for adder in adders_:
+            adders |= {adder["key"]: adder["price"]}
+        return pricing, adders
+
     def category(self) -> str:
         orientation = "Multiposition"
         motor = self.motor
@@ -76,12 +108,7 @@ class F(ModelSeries):
         return value
 
     def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(
-            session=self.session,
-            slab=self.attributes["scode"],
-            series=self.__series_name__(),
-            ton=self.tonnage,
-        )
+        pricing_, adders_ = self.load_pricing()
         heat: str = self.attributes["heat"]
         if heat != "00":
             try:

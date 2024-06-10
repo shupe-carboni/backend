@@ -1,7 +1,9 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
-from app.adp.pricing.cp.pricing import load_pricing
 from app.db import ADP_DB, Session
+
+
+class NoBasePrice(Exception): ...
 
 
 class CP(ModelSeries):
@@ -85,18 +87,27 @@ class CP(ModelSeries):
         cased = "Uncased" if not self.cased else "Cased"
         return f"Soffit Mount {cased} Air Handlers - {material} - {motor}"
 
-    def get_zero_disc_price(self) -> int:
+    def load_pricing(self) -> int:
+        sql = f"""
+            SELECT price
+            FROM pricing_cp_series
+            WHERE "{self.attributes['mat']}" = :model ;
+        """
         model = str(self)
         if self.is_flexcoil:
             model = model[:-1]
-            base_price = load_pricing(
-                session=self.session, material=self.attributes["mat"], model=model
-            )
+        params = dict(model=model)
+        result = ADP_DB.execute(
+            session=self.session, sql=sql, params=params
+        ).scalar_one_or_none()
+        if not result:
+            raise NoBasePrice
+        return int(result)
+
+    def get_zero_disc_price(self) -> int:
+        base_price = self.load_pricing()
+        if self.is_flexcoil:
             base_price += 10
-        else:
-            base_price = load_pricing(
-                session=self.session, material=self.attributes["mat"], model=model
-            )
         return base_price
 
     def record(self) -> dict:

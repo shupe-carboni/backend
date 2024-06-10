@@ -1,6 +1,5 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.adp.pricing.mh.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 
@@ -67,12 +66,35 @@ class MH(ModelSeries):
             value += " - FlexCoil"
         return value
 
-    def calc_zero_disc_price(self) -> int:
-        pricing_, adders_ = load_pricing(
-            session=self.session,
-            slab=self.attributes["scode"],
-            series=self.__series_name__(),
+    def load_pricing(self) -> tuple[int, dict[str, int]]:
+        pricing_sql = """
+            SELECT price
+            FROM pricing_mh_series
+            WHERE slab = :slab;
+        """
+        params = dict(slab=self.attributes["scode"])
+        pricing = ADP_DB.execute(
+            session=self.session, sql=pricing_sql, params=params
+        ).scalar_one()
+
+        price_adders_sql = """
+            SELECT key, price
+            FROM price_adders
+            WHERE series = :series;
+        """
+        params = dict(series=self.__series_name__())
+        adders_ = (
+            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
+            .mappings()
+            .all()
         )
+        adders = dict()
+        for adder in adders_:
+            adders |= {adder["key"]: adder["price"]}
+        return pricing, adders
+
+    def calc_zero_disc_price(self) -> int:
+        pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
         if self.is_flex_coil:
             result += 10

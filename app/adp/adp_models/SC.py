@@ -1,6 +1,5 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.adp.pricing.sc.pricing import load_pricing
 from app.db import ADP_DB, Session
 
 
@@ -72,6 +71,16 @@ class SC(ModelSeries):
         config = self.config
         return f"{seer} {config} Service Coils - {cased}"
 
+    def load_pricing(self, col: int) -> int:
+        pricing_sql = f"""
+            SELECT "{col}"
+            FROM pricing_sc_series
+            WHERE :model ~ model;
+        """
+        return ADP_DB.execute(
+            session=self.session, sql=pricing_sql, params=dict(model=str(self))
+        ).scalar_one()
+
     def calc_zero_disc_price(self) -> int:
         match self.attributes["mat"]:
             case "R" | "L":
@@ -82,7 +91,7 @@ class SC(ModelSeries):
                 column = int(True)
             case _:
                 raise Exception("Invalid model configuration")
-        return load_pricing(session=self.session, model=str(self), col=column)
+        return self.load_pricing(col=column)
 
     def record(self) -> dict:
         model_record = super().record()
