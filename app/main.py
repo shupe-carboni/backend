@@ -25,6 +25,7 @@ from app.adp import (
     prog_ratings,
     ratings_admin,
     adp_customers,
+    adp_mat_grp_discs,
 )
 
 logger = logging.getLogger("uvicorn.info")
@@ -90,6 +91,7 @@ adp.include_router(ah_progs)
 adp.include_router(prog_parts)
 adp.include_router(prog_ratings)
 adp.include_router(ratings_admin)
+adp.include_router(adp_mat_grp_discs)
 # combine
 app.include_router(vendors)
 app.include_router(vendors_info)

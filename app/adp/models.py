@@ -19,6 +19,8 @@ from app.jsonapi.sqla_models import (
     ADPProgramRating,
     ADPProgramPart,
     ADPPricingPart,
+    ADPMaterialGroupDiscount,
+    ADPMaterialGroup,
 )
 
 
@@ -678,3 +680,86 @@ class ADPCustomerTermsResp(BaseModel):
 class RelatedADPCustomerTermsResp(ADPCustomerTermsResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
+
+
+## ADP MATERIAL GROUP DISCOUNTS
+class ADPMatGrpsRID(JSONAPIResourceIdentifier):
+    type: str = ADPMaterialGroupDiscount.__jsonapi_type_override__
+
+
+class ADPMatGrpsRelationshipsResp(JSONAPIRelationshipsResponse):
+    data: list[ADPMatGrpsRID] | ADPMatGrpsRID
+
+
+class MatGrpAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    mat_grp: str = Field(alias="mat-grp")
+    discount: float
+    stage: Stage
+    effective_date: datetime = Field(alias="effective-date")
+
+
+class MatGrpFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_mat_grp: str = Field(default=None, alias="filter[mat-grp]")
+
+
+class MatGrpRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
+
+
+class MatGrpFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_adp_customers: str = Field(
+        default=None, alias=f"fields[{ADPCustomer.__jsonapi_type_override__}]"
+    )
+
+
+class MatGrpRObj(ADPMatGrpsRID):
+    attributes: MatGrpAttrs
+    relationships: MatGrpRels
+
+
+class ADPMatGrpsResp(BaseModel):
+    jsonapi: Optional[JSONAPIVersion] = None
+    meta: Optional[dict] = {}
+    data: Optional[list[MatGrpRObj] | MatGrpRObj]
+    included: Optional[list[JSONAPIResourceObject]] = None
+    links: Optional[Pagination] = None
+
+
+class RelatedADPCustomerTermsResp(ADPMatGrpsResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_MatGrpsQuery: type[BaseModel] = create_model(
+    "MatGrpsQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f'fields_{ADPMatGrpsRID.model_fields["type"].default.replace("-","_")}': (
+            Optional[str],
+            None,
+        )
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in MatGrpRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in MatGrpAttrs.model_fields.keys()
+    },
+)
+
+
+class MatGrpsQuery(_MatGrpsQuery, BaseModel): ...
+
+
+class MatGrpsQueryJSONAPI(MatGrpFields, MatGrpFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")

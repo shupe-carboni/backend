@@ -514,20 +514,20 @@ def test_customer_program_resource_delete(perm, response_code):
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_related_mat_grp_disc(perm, response_code):
-    url = (
+    url = str(
         Path(PATH_PREFIX)
         / "adp-customers"
         / str(ADP_CUSTOMER_ID)
         / "adp-material-group-discounts"
     )
     app.dependency_overrides[authenticate_auth0_token] = perm
-    resp = test_client.get(str(url))
+    resp = test_client.get(url)
     assert resp.status_code == response_code
 
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_mat_grp_disc_relationships(perm, response_code):
-    url = (
+    url = str(
         Path(PATH_PREFIX)
         / "adp-customers"
         / str(ADP_CUSTOMER_ID)
@@ -535,5 +535,13 @@ def test_mat_grp_disc_relationships(perm, response_code):
         / "adp-material-group-discounts"
     )
     app.dependency_overrides[authenticate_auth0_token] = perm
-    resp = test_client.get(str(url))
+    resp = test_client.get(url)
     assert resp.status_code == response_code
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_mat_grp_disc_collection(perm, response_code):
+    url = str(Path(PATH_PREFIX) / "adp-material-group-discounts")
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
