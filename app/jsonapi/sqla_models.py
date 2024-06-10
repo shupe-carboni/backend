@@ -10,7 +10,6 @@ from sqlalchemy import (
     DateTime,
     TEXT,
     ForeignKey,
-    Enum,
     ARRAY,
     BigInteger,
     exists,
@@ -27,7 +26,6 @@ from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
 from app.db import Stage
 
 Base = declarative_base()
-STAGE_ENUM = Enum("PROPOSED", "ACTIVE", "REJECTED", "REMOVED", name="stage")
 
 
 class ADPAHProgram(Base):
@@ -227,11 +225,12 @@ class SCACustomer(Base):
 
 class ADPMaterialGroupDiscount(Base):
     __tablename__ = "adp_material_group_discounts"
+    __jsonapi_type_override__ = "adp-material-group-discounts"
     ## fields
+    id = Column(Integer, primary_key=True)
     mat_grp = Column(TEXT)
     discount = Column(Float)
-    id = Column(Integer, primary_key=True)
-    stage = Column(STAGE_ENUM)
+    stage: Mapped[Stage] = mapped_column()
     effective_date = Column(DateTime)
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
@@ -414,7 +413,7 @@ class ADPSNP(Base):
     id = Column(Integer, primary_key=True)
     model = Column(TEXT)
     price = Column(Float)
-    stage = Column(STAGE_ENUM)
+    stage: Mapped[Stage] = mapped_column()
     effective_date = Column(DateTime)
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
