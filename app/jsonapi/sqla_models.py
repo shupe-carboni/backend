@@ -228,13 +228,14 @@ class ADPMaterialGroupDiscount(Base):
     __jsonapi_type_override__ = "adp-material-group-discounts"
     ## fields
     id = Column(Integer, primary_key=True)
-    mat_grp = Column(TEXT)
+    mat_grp = Column(TEXT, ForeignKey("adp_material_groups.id"))
     discount = Column(Float)
     stage: Mapped[Stage] = mapped_column()
     effective_date = Column(DateTime)
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    adp_material_groups = relationship("ADPMaterialGroup", back_populates=__tablename__)
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -252,16 +253,19 @@ class ADPMaterialGroup(Base):
     __tablename__ = "adp_material_groups"
     __jsonapi_type_override__ = "adp-material-groups"
     ## fields
-    id = Column(Integer, primary_key=True)
-    mat_grp = Column(String(2))
+    id = Column(String(2), primary_key=True)
     series = Column(String(2))
     mat = Column(TEXT)
     config = Column(TEXT)
     description = Column(TEXT)
     ## relationships
-    # None
+    adp_material_group_discounts = relationship(
+        "ADPMaterialGroupDiscount", back_populates=__tablename__
+    )
+
     ## filtering
-    # None
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
 
 
 class ADPProgramRating(Base):
