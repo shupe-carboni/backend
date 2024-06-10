@@ -23,6 +23,8 @@ from app.jsonapi.sqla_models import (
     ADPAHProgram,
     ADPProgramRating,
     ADPProgramPart,
+    ADPMaterialGroupDiscount,
+    ADPSNP,
 )
 from app.jsonapi.core_models import convert_query
 
@@ -31,6 +33,8 @@ ADP_COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 ADP_AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 ADP_PROG_RATINGS = ADPProgramRating.__jsonapi_type_override__
 ADP_PROG_PARTS = ADPProgramPart.__jsonapi_type_override__
+ADP_MAT_GRP_DISC = ADPMaterialGroupDiscount.__jsonapi_type_override__
+ADP_SNP = ADPSNP.__jsonapi_type_override__
 
 adp_customers = APIRouter(prefix=f"/{ADP_CUSTOMERS}", tags=["customers"])
 
@@ -277,5 +281,105 @@ async def ratings_relationships(
             obj_id=customer_id,
             relationship=True,
             related_resource=ADP_PROG_PARTS,
+        )
+    )
+
+
+@adp_customers.get(
+    "/{customer_id}/" + ADP_MAT_GRP_DISC,
+    response_model=RelatedPartsResponse,
+    response_model_exclude_none=True,
+)
+async def related_discounts(
+    session: NewSession,
+    customer_id: int,
+    token: ADPPerm,
+) -> RelatedPartsResponse:
+    return (
+        auth.ADPOperations(token, ADP_CUSTOMERS)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=customer_id,
+            relationship=False,
+            related_resource=ADP_MAT_GRP_DISC,
+        )
+    )
+
+
+@adp_customers.get(
+    "/{customer_id}/relationships/" + ADP_MAT_GRP_DISC,
+    response_model=PartsRelResp,
+    response_model_exclude_none=True,
+)
+async def discounts_relationships(
+    session: NewSession,
+    customer_id: int,
+    token: ADPPerm,
+) -> PartsRelResp:
+    return (
+        auth.ADPOperations(token, ADP_CUSTOMERS)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=customer_id,
+            relationship=True,
+            related_resource=ADP_MAT_GRP_DISC,
+        )
+    )
+
+
+@adp_customers.get(
+    "/{customer_id}/" + ADP_SNP,
+    response_model=RelatedPartsResponse,
+    response_model_exclude_none=True,
+)
+async def related_ratings(
+    session: NewSession,
+    customer_id: int,
+    token: ADPPerm,
+) -> RelatedPartsResponse:
+    return (
+        auth.ADPOperations(token, ADP_CUSTOMERS)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=customer_id,
+            relationship=False,
+            related_resource=ADP_SNP,
+        )
+    )
+
+
+@adp_customers.get(
+    "/{customer_id}/relationships/" + ADP_SNP,
+    response_model=PartsRelResp,
+    response_model_exclude_none=True,
+)
+async def ratings_relationships(
+    session: NewSession,
+    customer_id: int,
+    token: ADPPerm,
+) -> PartsRelResp:
+    return (
+        auth.ADPOperations(token, ADP_CUSTOMERS)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            obj_id=customer_id,
+            relationship=True,
+            related_resource=ADP_SNP,
         )
     )
