@@ -1,14 +1,7 @@
 from pytest import mark
 from pathlib import Path
 from fastapi.testclient import TestClient
-from fastapi import Response
 from app.main import app
-from app.adp.models import (
-    CoilProgResp,
-    AirHandlerProgResp,
-    CoilProgRObj,
-    AirHandlerProgRObj,
-)
 from app.db import Stage
 from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
 from app.auth import authenticate_auth0_token
@@ -40,6 +33,7 @@ VALID_COIL_PRODUCT_ID = 483
 INVALID_COIL_PRODUCT_ID = 1  # invalid for the customer but not SCA
 VALID_AH_PRODUCT_ID = 293
 INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
+MAT_GRP_DISC_ID = 836
 
 PATH_PREFIX = "/adp"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
@@ -542,6 +536,14 @@ def test_mat_grp_disc_relationships(perm, response_code):
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_mat_grp_disc_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-material-group-discounts")
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_mat_grp_disc_resource(perm, response_code):
+    url = str(Path(PATH_PREFIX) / "adp-material-group-discounts" / str(MAT_GRP_DISC_ID))
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code, pprint(resp.json())
