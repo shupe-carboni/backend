@@ -24,6 +24,10 @@ from app.jsonapi.sqla_models import (
 )
 
 
+class NewStage(BaseModel):
+    stage: Stage
+
+
 class CoilProgRID(JSONAPIResourceIdentifier):
     type: str = ADPCoilProgram.__jsonapi_type_override__
 
@@ -289,8 +293,6 @@ class NewPartRequest(BaseModel):
 
 
 ## Modifications to products in a Program
-class NewStage(BaseModel):
-    stage: Stage
 
 
 class ModStageCoil(BaseModel):
@@ -693,26 +695,26 @@ class ADPMatGrpsRelationshipsResp(JSONAPIRelationshipsResponse):
 
 class MatGrpAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    mat_grp: str = Field(alias="mat-grp")
     discount: float
     stage: Stage
     effective_date: datetime = Field(alias="effective-date")
 
 
-class MatGrpFilters(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-    filter_mat_grp: str = Field(default=None, alias="filter[mat-grp]")
-
-
 class MatGrpRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
+    adp_material_groups: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-material-groups"
+    )
 
 
 class MatGrpFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_adp_customers: str = Field(
         default=None, alias=f"fields[{ADPCustomer.__jsonapi_type_override__}]"
+    )
+    fields_adp_material_groups: str = Field(
+        default=None, alias=f"fields[{ADPMaterialGroup.__jsonapi_type_override__}]"
     )
 
 
@@ -750,16 +752,27 @@ _MatGrpsQuery: type[BaseModel] = create_model(
         f"fields_{field}": (Optional[str], None)
         for field in MatGrpRels.model_fields.keys()
     },
-    **{
-        f"filter_{field}": (Optional[str], None)
-        for field in MatGrpAttrs.model_fields.keys()
-    },
+    # **{
+    #     f"filter_{field}": (Optional[str], None)
+    #     for field in MatGrpAttrs.model_fields.keys()
+    # },
 )
 
 
 class MatGrpsQuery(_MatGrpsQuery, BaseModel): ...
 
 
-class MatGrpsQueryJSONAPI(MatGrpFields, MatGrpFilters, Query):
+class MatGrpsQueryJSONAPI(MatGrpFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class ModStageMatGrpDisc(BaseModel):
+    id: int
+    type: ADPMaterialGroupDiscount.__jsonapi_type_override__
+    attributes: NewStage
+    relationships: MatGrpRels
+
+
+class ModStageMatGrpDiscReq(BaseModel):
+    data: None
