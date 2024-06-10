@@ -35,3 +35,25 @@ def mat_grp_disc_collection(
         .allow_customer("std")
         .get(session, converter(query))
     )
+
+
+@adp_mat_grp_discs.get(
+    "/{mat_grp_id}",
+    response_model=ADPMatGrpsResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def mat_grp_disc_resource(
+    token: Token,
+    session: NewSession,
+    mat_grp_id: int,
+    query: MatGrpsQuery = Depends(),
+) -> ADPMatGrpsResp:
+    return (
+        auth.ADPOperations(token, API_TYPE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session, converter(query), obj_id=mat_grp_id)
+    )
