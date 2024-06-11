@@ -2,21 +2,16 @@ from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-import functools
 import re
 import warnings
 from typing import Any
-from pydantic import BaseModel
 from sqlalchemy_jsonapi import JSONAPI
-from starlette.requests import QueryParams
-from starlette.datastructures import QueryParams
 from fastapi import HTTPException
 from sqlalchemy import or_, func, inspect
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import (
     NotSortableError,
     PermissionDeniedError,
-    BaseError,
     ResourceTypeNotFoundError,
     ResourceNotFoundError,
     RelationshipNotFoundError,
@@ -52,37 +47,6 @@ MAX_RECORDS: int = 15000
 CONTACT_EMAIL: str = getenv("ADMIN_EMAIL")
 
 
-def convert_query(model: BaseModel) -> dict[str, str | int]:
-    """custom conversion from explicitly definied snake case parameters
-    to the JSON:API syntax, including compound documents"""
-    jsonapi_query = {}
-    bracketed_params = {"fields", "page", "filter"}
-    for param, val in model.model_dump(exclude_none=True).items():
-        param: str
-        val: str
-        if b_param := set(param.split("_")) & bracketed_params:
-            b_param_val = b_param.pop()
-            new_key = (
-                f"{b_param_val}"
-                f"[{param.removeprefix(b_param_val+'_').replace('_','-')}]"
-            )
-            jsonapi_query.update({new_key: val})
-        else:
-            jsonapi_query.update({param: val})
-    return jsonapi_query
-
-
-def format_error(error: BaseError, tb: str) -> dict:
-    """format the error for raises an HTTPException
-    so FastAPI can handle it properly"""
-    data: dict = error.data
-    # subclass of BaseError actually raised will have this attr
-    status_code: int = error.status_code
-    data["errors"][0]["id"] = str(data["errors"][0]["id"])
-    data["errors"][0]["traceback"] = tb
-    return {"status_code": status_code, "detail": data}
-
-
 class JSONAPI_(JSONAPI):
     """
     Custom fixes applied to the JSONAPI object
@@ -110,17 +74,6 @@ class JSONAPI_(JSONAPI):
         # JSONAPI's constructor is broken for SQLAchelmy 1.4.x
         setattr(base, "_decl_class_registry", base.registry._class_registry)
         super().__init__(base, prefix)
-
-    @staticmethod
-    def hyphenate_name(table_name: str) -> str:
-        return table_name.replace("_", "-")
-
-    @staticmethod
-    def _coerce_dict(query_params: QueryParams | dict) -> dict:
-        if isinstance(query_params, QueryParams):
-            return query_params._dict
-        else:
-            return query_params
 
     @staticmethod
     def _apply_filter(
@@ -609,31 +562,3 @@ class JSONAPI_(JSONAPI):
             raise ResourceNotFoundError(model, obj_id)
         check_permission(obj, None, permission)
         return obj
-
-
-def jsonapi_error_handling(route_function):
-    @functools.wraps(route_function)
-    def error_handling(*args, **kwargs):
-        try:
-            return route_function(*args, **kwargs)
-        except BaseError as err:
-            import traceback
-
-            raise HTTPException(**format_error(err, traceback.format_exc()))
-        except HTTPException as http_e:
-            raise http_e
-        except Exception as err:
-            import traceback
-
-            detail_obj = {
-                "errors": [
-                    {
-                        "traceback": traceback.format_exc(),
-                        "detail": "An error occurred. "
-                        f"Contact {CONTACT_EMAIL} with the id number",
-                    }
-                ]
-            }
-            raise HTTPException(status_code=400, detail=detail_obj)
-
-    return error_handling
