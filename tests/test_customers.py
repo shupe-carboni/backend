@@ -15,6 +15,7 @@ from app.auth import authenticate_auth0_token
 from app.customers.customers import get_new_cmmssns_customer_method
 from tests import auth_overrides
 from random import randint
+from pprint import pprint
 
 test_client = TestClient(app)
 CUSTOMER_ID = 999999  # NOTE associated with TEST CUSTOMER
@@ -46,7 +47,7 @@ def test_new_customer():
             }
         ).model_dump()
         response = method(ROUTE, json=payload)
-        assert response.status_code == rc
+        assert response.status_code == rc, pprint(response.json())
         app.dependency_overrides[authenticate_auth0_token] = {}
 
 

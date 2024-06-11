@@ -24,6 +24,7 @@ from sqlalchemy.orm import (
 )
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
 from app.db import Stage
+from functools import partial
 
 Base = declarative_base()
 
@@ -567,3 +568,4 @@ class SCAVendorInfo(Base):
 
 
 serializer = JSONAPI_(Base)
+serializer_partial = partial(JSONAPI_, Base)

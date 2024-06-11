@@ -15,7 +15,7 @@ from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
 
-from typing import Optional, Callable, Literal
+from typing import Optional, Callable, Literal, TYPE_CHECKING
 import collections.abc as collections
 from functools import partial
 from sqlalchemy import text
@@ -24,12 +24,17 @@ from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session
 from app.jsonapi.sqla_models import (
     serializer,
+    serializer_partial,
     ADPCustomer,
     ADPQuote,
     SCACustomer,
     SCAVendor,
 )
 from app.jsonapi.sqla_jsonapi_ext import GenericData
+
+if TYPE_CHECKING:
+    from app.jsonapi.sqla_models import JSONAPI_
+
 
 token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
@@ -308,6 +313,7 @@ class SecOp(ABC):
         self._resource = resource
         self._primary_resource: str
         self._associated_resource: bool
+        self._serializer: JSONAPI_
 
     @abstractmethod
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
@@ -467,14 +473,14 @@ class SecOp(ABC):
         match optional_arguments:
             case None, False, None:
                 result_query = partial(
-                    serializer.get_collection,
+                    self._serializer.get_collection,
                     session=session,
                     query=query,
                     api_type=resource,
                 )
             case int(), False, None:
                 result_query = partial(
-                    serializer.get_resource,
+                    self._serializer.get_resource,
                     session=session,
                     query=query,
                     api_type=resource,
@@ -483,7 +489,7 @@ class SecOp(ABC):
                 )
             case int(), False, str():
                 result_query = partial(
-                    serializer.get_related,
+                    self._serializer.get_related,
                     session=session,
                     query=query,
                     api_type=resource,
@@ -492,7 +498,7 @@ class SecOp(ABC):
                 )
             case int(), True, str():
                 result_query = partial(
-                    serializer.get_relationship,
+                    self._serializer.get_relationship,
                     session=session,
                     query=query,
                     api_type=resource,
@@ -536,14 +542,14 @@ class SecOp(ABC):
         match optional_arguments:
             case None, None:
                 operation = partial(
-                    serializer.post_collection,
+                    self._serializer.post_collection,
                     session=session,
                     data=data,
                     api_type=self._resource,
                 )
             case int(), str():
                 operation = partial(
-                    serializer.post_relationship,
+                    self._serializer.post_relationship,
                     session=session,
                     json_data=data,
                     api_type=self._resource,
@@ -586,7 +592,7 @@ class SecOp(ABC):
 
         if related_resource:
             operation = partial(
-                serializer.patch_relationship,
+                self._serializer.patch_relationship,
                 session=session,
                 json_data=data,
                 api_type=self._resource,
@@ -595,7 +601,7 @@ class SecOp(ABC):
             )
         else:
             operation = partial(
-                serializer.patch_resource,
+                self._serializer.patch_resource,
                 session=session,
                 json_data=data,
                 api_type=self._resource,
@@ -612,7 +618,7 @@ class SecOp(ABC):
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
         self.gate(session, primary_id, obj_id)
-        serializer.delete_resource(
+        self._serializer.delete_resource(
             session=session, data={}, api_type=self._resource, obj_id=obj_id
         )
         return JSONResponse({}, status_code=204)
@@ -624,6 +630,7 @@ class CustomersOperations(SecOp):
         super().__init__(token, resource)
         self._primary_resource = SCACustomer.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial()
 
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """Using select statements, get the sca customer ids that
@@ -692,6 +699,7 @@ class VendorOperations(SecOp):
         super().__init__(token, resource)
         self._primary_resource = SCAVendor.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial()
 
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """The Vendors resource does not have underlying resources that need to
@@ -745,10 +753,11 @@ class VendorOperations(SecOp):
 
 class ADPOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
         super().__init__(token, resource)
         self._primary_resource = ADPCustomer.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
 
     def permitted_primary_resource_ids(
         self,
@@ -822,10 +831,11 @@ class ADPOperations(SecOp):
 
 class ADPQuoteOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
         super().__init__(token, resource)
         self._primary_resource = ADPQuote.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
 
     def permitted_primary_resource_ids(
         self,

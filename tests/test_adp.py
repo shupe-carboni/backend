@@ -41,7 +41,7 @@ INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
 MAT_GRP_DISC_ID = 836
 MAT_GRP_ID = "CA"
 
-PATH_PREFIX = "/adp"
+PATH_PREFIX = "/vendors/1"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 ADP_MAT_GROUP_DISCOUNTS = ADPMaterialGroupDiscount.__jsonapi_type_override__
@@ -269,7 +269,7 @@ def test_collection_filtering():
     ## coil programs is the example
     ## I care only about the id numbers in "included", no other data
     trimmed_data_req = (
-        "/adp/adp-coil-programs"
+        f"{PATH_PREFIX}/adp-coil-programs"
         "?fields_adp_customers=id"
         "&include=adp-customers"
         "&fields_adp_coil_programs=id"
@@ -306,7 +306,7 @@ def test_model_zero_discount_pricing(model, price):
     """make sure all reference models are priced correctly by the parsers on zero_discount_price"""
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
     # id zero with sca employee perms or above triggers zero discount price-only, ignores the id for customer pricing
-    url = "/adp/model-lookup/0?model_num="
+    url = f"{PATH_PREFIX}/model-lookup/0?model_num="
     resp = test_client.get(url + str(model))
     assert resp.status_code == 200
     assert resp.json()["zero-discount-price"] == price

@@ -83,21 +83,39 @@ app.add_middleware(
 # customers
 customers.include_router(customer_rel)
 # adp
-adp.include_router(adp_quotes)
-adp.include_router(adp_quote_products)
-adp.include_router(adp_customers)
-adp.include_router(coil_progs)
-adp.include_router(ah_progs)
-adp.include_router(prog_parts)
-adp.include_router(prog_ratings)
-adp.include_router(ratings_admin)
-adp.include_router(adp_mat_grp_discs)
+for resource in (
+    adp_quotes,
+    adp_quote_products,
+    adp_customers,
+    coil_progs,
+    ah_progs,
+    prog_parts,
+    prog_ratings,
+    ratings_admin,
+    adp_mat_grp_discs,
+):
+    try:
+        if isinstance(resource, tuple):
+            route, prefix = resource
+            adp.include_router(route, prefix=prefix)
+        else:
+            adp.include_router(resource)
+    except Exception:
+        logger.critical(
+            f"resource {resource} encountered an error when attempting to register"
+        )
 # combine
-app.include_router(vendors)
-app.include_router(vendors_info)
-app.include_router(customers)
-app.include_router(places)
-app.include_router(adp)
+for resource in (vendors, vendors_info, customers, places, (adp, "/vendors")):
+    try:
+        if isinstance(resource, tuple):
+            route, prefix = resource
+            app.include_router(route, prefix=prefix)
+        else:
+            app.include_router(resource)
+    except Exception:
+        logger.critical(
+            f"resource {resource} encountered an error when attempting to register"
+        )
 
 
 @app.get("/")
