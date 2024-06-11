@@ -3,11 +3,16 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db import Stage
-from app.jsonapi.sqla_models import ADPCoilProgram, ADPAHProgram
+from app.jsonapi.sqla_models import (
+    ADPCoilProgram,
+    ADPAHProgram,
+    ADPMaterialGroupDiscount,
+)
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 import pandas as pd
 from pprint import pprint
+from random import randint
 
 test_client = TestClient(app)
 
@@ -34,10 +39,12 @@ INVALID_COIL_PRODUCT_ID = 1  # invalid for the customer but not SCA
 VALID_AH_PRODUCT_ID = 293
 INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
 MAT_GRP_DISC_ID = 836
+MAT_GRP_ID = "CA"
 
 PATH_PREFIX = "/adp"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
+ADP_MAT_GROUP_DISCOUNTS = ADPMaterialGroupDiscount.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 TEST_AH_MODEL = "SM312500"
@@ -197,6 +204,37 @@ PRODUCT_NOT_ASSOC_W_CUSTOMER_COIL = TestRequest(
         }
     },
     url=f"{PATH_PREFIX}/{COIL_PROGS}/{INVALID_COIL_PRODUCT_ID}",
+)
+
+VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ = TestRequest(
+    json={
+        "data": {
+            "id": MAT_GRP_DISC_ID,
+            "type": "adp-material-group-discounts",
+            "attributes": {"stage": Stage.REJECTED},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"id": ADP_CUSTOMER_ID, "type": "adp-customers"}
+                }
+            },
+        }
+    },
+    url=f"{PATH_PREFIX}/{ADP_MAT_GROUP_DISCOUNTS}/{MAT_GRP_DISC_ID}",
+)
+RESET_MAT_GRP_DISC_STAGE_CHANGE_REQ = TestRequest(
+    json={
+        "data": {
+            "id": MAT_GRP_DISC_ID,
+            "type": "adp-material-group-discounts",
+            "attributes": {"stage": Stage.PROPOSED},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"id": ADP_CUSTOMER_ID, "type": "adp-customers"}
+                }
+            },
+        }
+    },
+    url=f"{PATH_PREFIX}/{ADP_MAT_GROUP_DISCOUNTS}/{MAT_GRP_DISC_ID}",
 )
 
 
@@ -547,3 +585,74 @@ def test_mat_grp_disc_resource(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_mat_grp_disc_related_mat_grp(perm, response_code):
+    url = str(
+        Path(PATH_PREFIX)
+        / "adp-material-group-discounts"
+        / str(MAT_GRP_DISC_ID)
+        / "adp-material-groups"
+    )
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_mat_grp_disc_mat_grp_relationships(perm, response_code):
+    url = str(
+        Path(PATH_PREFIX)
+        / "adp-material-group-discounts"
+        / str(MAT_GRP_DISC_ID)
+        / "relationships"
+        / "adp-material-groups"
+    )
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+def test_customer_mat_grp_disc_stage_modification(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    pre_mod_response = test_client.get(VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ.url)
+    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
+    try:
+        # good request
+        response = test_client.patch(**VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ)
+        assert response.status_code == response_code
+        if response_code == 200:
+            assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
+    finally:
+        test_client.patch(**RESET_MAT_GRP_DISC_STAGE_CHANGE_REQ)
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+def test_create_and_del_mat_grp_disc(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    # make a new record to delete
+    url = Path(PATH_PREFIX) / "adp-material-group-discounts"
+    new_mat_grp_disc = {
+        "data": {
+            "type": "adp-material-group-discounts",
+            "attributes": {"discount": randint(1, 99)},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                },
+                "adp-material-groups": {
+                    "data": {"type": "adp-material-groups", "id": MAT_GRP_ID}
+                },
+            },
+        }
+    }
+    response = test_client.post(str(url), json=new_mat_grp_disc)
+    assert response.status_code == response_code, pprint(response.json())
+    if response_code != 200:
+        return
+    new_id = response.json()["data"]["id"]
+    url /= str(str(new_id) + f"?adp_customer_id={ADP_CUSTOMER_ID}")
+    response = test_client.delete(str(url))
+    assert response.status_code == 204
