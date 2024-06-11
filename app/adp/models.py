@@ -685,22 +685,24 @@ class RelatedADPCustomerTermsResp(ADPCustomerTermsResp):
 
 
 ## ADP MATERIAL GROUP DISCOUNTS
-class ADPMatGrpsRID(JSONAPIResourceIdentifier):
+class ADPMatGrpDiscRID(JSONAPIResourceIdentifier):
     type: str = ADPMaterialGroupDiscount.__jsonapi_type_override__
 
 
-class ADPMatGrpsRelationshipsResp(JSONAPIRelationshipsResponse):
-    data: list[ADPMatGrpsRID] | ADPMatGrpsRID
+class ADPMatGrpDiscRelationshipsResp(JSONAPIRelationshipsResponse):
+    data: list[ADPMatGrpDiscRID] | ADPMatGrpDiscRID
 
 
-class MatGrpAttrs(BaseModel):
+class MatGrpDiscAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     discount: float
-    stage: Stage
-    effective_date: datetime = Field(alias="effective-date")
+    stage: Stage = Stage.PROPOSED
+    effective_date: datetime = Field(
+        default_factory=datetime.today, alias="effective-date"
+    )
 
 
-class MatGrpRels(BaseModel):
+class MatGrpDiscRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
     adp_material_groups: Optional[JSONAPIRelationships] = Field(
@@ -708,7 +710,7 @@ class MatGrpRels(BaseModel):
     )
 
 
-class MatGrpFields(BaseModel):
+class MatGrpDiscFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_adp_customers: str = Field(
         default=None, alias=f"fields[{ADPCustomer.__jsonapi_type_override__}]"
@@ -718,61 +720,114 @@ class MatGrpFields(BaseModel):
     )
 
 
-class MatGrpRObj(ADPMatGrpsRID):
-    attributes: MatGrpAttrs
-    relationships: MatGrpRels
+class MatGrpDiscRObj(ADPMatGrpDiscRID):
+    attributes: MatGrpDiscAttrs
+    relationships: MatGrpDiscRels
 
 
-class ADPMatGrpsResp(BaseModel):
+class ADPMatGrpDiscResp(BaseModel):
     jsonapi: Optional[JSONAPIVersion] = None
     meta: Optional[dict] = {}
-    data: Optional[list[MatGrpRObj] | MatGrpRObj]
+    data: Optional[list[MatGrpDiscRObj] | MatGrpDiscRObj]
     included: Optional[list[JSONAPIResourceObject]] = None
     links: Optional[Pagination] = None
 
 
-class RelatedADPCustomerTermsResp(ADPMatGrpsResp):
+class RelatedADPMatGrpDiscResp(ADPMatGrpDiscResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
 
-_MatGrpsQuery: type[BaseModel] = create_model(
-    "MatGrpsQuery",
+_MatGrpDiscQuery: type[BaseModel] = create_model(
+    "MatGrpDiscQuery",
     **{
         field: (field_info.annotation, field_info)
         for field, field_info in Query.model_fields.items()
     },
     **{
-        f'fields_{ADPMatGrpsRID.model_fields["type"].default.replace("-","_")}': (
+        f'fields_{ADPMatGrpDiscRID.model_fields["type"].default.replace("-","_")}': (
             Optional[str],
             None,
         )
     },
     **{
         f"fields_{field}": (Optional[str], None)
-        for field in MatGrpRels.model_fields.keys()
+        for field in MatGrpDiscRels.model_fields.keys()
     },
     # **{
     #     f"filter_{field}": (Optional[str], None)
-    #     for field in MatGrpAttrs.model_fields.keys()
+    #     for field in MatGrpDiscAttrs.model_fields.keys()
     # },
 )
 
 
-class MatGrpsQuery(_MatGrpsQuery, BaseModel): ...
+class MatGrpDiscQuery(_MatGrpDiscQuery, BaseModel): ...
 
 
-class MatGrpsQueryJSONAPI(MatGrpFields, Query):
+class MatGrpDiscQueryJSONAPI(MatGrpDiscFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 
-class ModStageMatGrpDisc(BaseModel):
+class ModStageMatGrpDiscDisc(BaseModel):
     id: int
-    type: ADPMaterialGroupDiscount.__jsonapi_type_override__
+    type: str = ADPMaterialGroupDiscount.__jsonapi_type_override__
     attributes: NewStage
-    relationships: MatGrpRels
+    relationships: MatGrpDiscRels
 
 
-class ModStageMatGrpDiscReq(BaseModel):
-    data: None
+class ModStageMatGrpDiscDiscReq(BaseModel):
+    data: ModStageMatGrpDiscDisc
+
+
+class NewMatGrpDisc(BaseModel):
+    type: str = ADPMaterialGroupDiscount.__jsonapi_type_override__
+    attributes: MatGrpDiscAttrs
+    relationships: MatGrpDiscRels
+
+
+class NewMatGrpDiscReq(BaseModel):
+    data: NewMatGrpDisc
+
+
+## ADP MATERIAL GROUPS
+
+
+class ADPMatGrpRID(JSONAPIResourceIdentifier):
+    type: str = ADPMaterialGroup.__jsonapi_type_override__
+
+
+class ADPMatGrpRelationshipResp(JSONAPIRelationshipsResponse):
+    data: list[ADPMatGrpRID] | ADPMatGrpRID
+
+
+class ADPMatGrpAttrs(BaseModel):
+    series: str
+    mat: Optional[str] = None
+    config: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ADPMatGrpRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    adp_material_group_discounts: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-material-group-discounts"
+    )
+
+
+class ADPMatGrpRObj(ADPMatGrpRID):
+    attributes: ADPMatGrpAttrs
+    relationships: ADPMatGrpRels
+
+
+class ADPMatGrpResp(BaseModel):
+    jsonapi: Optional[JSONAPIVersion] = None
+    meta: Optional[dict] = {}
+    data: Optional[list[ADPMatGrpRObj] | ADPMatGrpRObj]
+    included: Optional[list[JSONAPIResourceObject]] = None
+    links: Optional[Pagination] = None
+
+
+class ADPRelatedMatGrpResp(ADPMatGrpResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
