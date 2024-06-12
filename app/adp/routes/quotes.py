@@ -303,7 +303,7 @@ async def delete_quote(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_customers(
+def related_quote_customers(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedCustomerResponse:
     return (
@@ -322,7 +322,7 @@ def quote_customers(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_products(
+def related_quote_products(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedProductResponse:
     return (
@@ -341,7 +341,7 @@ def quote_products(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_place(
+def related_quote_place(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedPlaceResponse:
     return (
@@ -360,7 +360,7 @@ def quote_place(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def quote_customer_location(
+def related_quote_customer_location(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedLocationResponse:
     return (

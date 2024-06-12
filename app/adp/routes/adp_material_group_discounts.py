@@ -102,7 +102,7 @@ def mat_grp_disc_related_mat_grp(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def mat_grp_disc_related_mat_grp(
+def mat_grp_disc_mat_grp_relationship(
     token: Token,
     session: NewSession,
     mat_grp_id: int,
@@ -130,7 +130,7 @@ def mat_grp_disc_related_mat_grp(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def mat_grp_disc_related_mat_grp(
+def new_mat_grp_disc(
     token: Token,
     session: NewSession,
     new_discount: NewMatGrpDiscReq,
@@ -159,7 +159,7 @@ def mat_grp_disc_related_mat_grp(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-def mat_grp_disc_related_mat_grp(
+def mat_grp_disc_modification(
     token: Token,
     session: NewSession,
     mat_grp_id: int,
@@ -183,7 +183,7 @@ def mat_grp_disc_related_mat_grp(
     "/{mat_grp_id}",
     tags=["jsonapi"],
 )
-def mat_grp_disc_related_mat_grp(
+def disc_mat_grp_disc(
     token: Token, session: NewSession, mat_grp_id: int, adp_customer_id: int
 ) -> None:
     return (
