@@ -13,6 +13,7 @@ from app.adp.quotes.products.models import (
 )
 from app.jsonapi.sqla_models import ADPQuoteProduct
 
+PARENT_PREFIX = "/vendors/adp"
 API_TYPE = ADPQuoteProduct.__jsonapi_type_override__
 adp_quote_products = APIRouter(
     prefix=f"/{API_TYPE}", tags=["adp quotes", "quote products"]
@@ -47,7 +48,7 @@ async def new_quote_product(
     token: Token, session: NewSession, new_quote_product: NewProductRequest
 ) -> ProductResponse:
     return (
-        auth.ADPQuoteOperations(token, API_TYPE)
+        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -84,7 +85,7 @@ async def mod_quote_product(
         if attributes.comp_model:
             data["data"]["attributes"]["model-number"] = None
     return (
-        auth.ADPQuoteOperations(token, API_TYPE)
+        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -103,7 +104,7 @@ async def delete_quote_product(
     token: Token, session: NewSession, product_id: int, quote_id: int
 ) -> None:
     return (
-        auth.ADPQuoteOperations(token, API_TYPE)
+        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

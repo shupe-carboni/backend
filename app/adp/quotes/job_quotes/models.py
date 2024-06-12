@@ -5,11 +5,10 @@ from app.db import Stage
 from app.jsonapi.sqla_models import ADPQuote
 from app.jsonapi.core_models import (
     JSONAPIRelationships,
-    JSONAPIResourceObject,
-    Pagination,
     JSONAPIResourceIdentifier,
-    Query,
     JSONAPIRelationshipsResponse,
+    JSONAPIResponse,
+    Query,
 )
 
 
@@ -71,13 +70,10 @@ class QuoteResourceObject(JSONAPIResourceIdentifier):
     relationships: QuoteRelationships
 
 
-class QuoteResponse(BaseModel):
+class QuoteResponse(JSONAPIResponse):
     """High-Level quote details unique by-quote"""
 
-    meta: Optional[dict] = {}
     data: Optional[list[QuoteResourceObject] | QuoteResourceObject] = []
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class RelatedQuoteResponse(QuoteResponse):

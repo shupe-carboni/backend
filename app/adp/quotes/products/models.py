@@ -5,8 +5,7 @@ from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
-    JSONAPIResourceObject,
-    Pagination,
+    JSONAPIResponse,
     Query,
 )
 
@@ -51,11 +50,8 @@ class ProductResourceObject(ProductResourceIdentifier):
     relationships: ProductRelationships
 
 
-class ProductResponse(BaseModel):
-    meta: Optional[dict] = {}
+class ProductResponse(JSONAPIResponse):
     data: Optional[list[ProductResourceObject] | ProductResourceObject]
-    included: Optional[list[JSONAPIResourceObject]] = []
-    links: Optional[Pagination] = None
 
 
 class NewProductResourceObject(BaseModel):

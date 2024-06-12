@@ -15,7 +15,7 @@ TEST_CUSTOMER_LOCATION = 5
 TEST_CUSTOMER_PLACE = 4644585
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 
-PATH_PREFIX = f"/vendors/1/{ADPQuoteProduct.__jsonapi_type_override__}"
+PATH_PREFIX = f"/vendors/adp/{ADPQuoteProduct.__jsonapi_type_override__}"
 
 SCA_PERMS = (
     auth_overrides.AdminToken,
@@ -98,7 +98,7 @@ def test_new_quote_product(perm, response_code):
 def test_mod_quote_product(perm, response_code):
     url = PATH_PREFIX
     app.dependency_overrides[authenticate_auth0_token] = perm
-    pre_mod = test_client.get("/vendors/1/adp-quotes/1/adp-quote-products").json()
+    pre_mod = test_client.get("/vendors/adp/adp-quotes/1/adp-quote-products").json()
     rand_obj_i, rand_obj_id = choice(
         [(i, obj["id"]) for i, obj in enumerate(pre_mod["data"])]
     )

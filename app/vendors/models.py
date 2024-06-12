@@ -3,11 +3,9 @@ from typing import Optional
 from app.jsonapi.sqla_models import SCAVendor, SCAVendorInfo
 from app.jsonapi.core_models import (
     JSONAPIRelationships,
-    JSONAPIVersion,
-    JSONAPIResourceObject,
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
-    Pagination,
+    JSONAPIResponse,
     Query,
 )
 
@@ -54,11 +52,8 @@ class VendorRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[VendorResourceIdentifier] | VendorResourceIdentifier
 
 
-class VendorResponse(BaseModel):
-    meta: Optional[dict] = {}
+class VendorResponse(JSONAPIResponse):
     data: Optional[list[VendorResourceObject] | VendorResourceObject]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = None
 
 
 class RelatedVendorResponse(VendorResponse):
@@ -70,6 +65,7 @@ class RelatedVendorResponse(VendorResponse):
 
 
 class NewVendorResource(BaseModel):
+    id: str
     type: str = TYPE
     attributes: Optional[VendorAttributes] = None
     relationships: Optional[VendorRelationships] = None
@@ -103,12 +99,8 @@ class VendorInfoResourceObject(JSONAPIResourceIdentifier):
     relationships: Optional[VendorInfoRelationships] = None
 
 
-class VendorInfoResponse(BaseModel):
-    jsonapi: JSONAPIVersion
-    meta: Optional[dict] = {}
+class VendorInfoResponse(JSONAPIResponse):
     data: Optional[list[VendorInfoResourceObject] | VendorInfoResourceObject]
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class RelatedVendorInfoResponse(VendorInfoResponse):

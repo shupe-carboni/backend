@@ -6,19 +6,14 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRouter
 
 from app import auth, downloads
-from app.db import Session, ADP_DB, SCA_DB, Stage
+from app.db import Session, ADP_DB, Stage
 from app.adp.extraction.models import parse_model_string, ParsingModes
 from app.adp.utils.workbook_factory import generate_program
 from app.adp.utils.programs import EmptyProgram
 from app.adp.models import DownloadLink, ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
 
-ADP_VENDOR_ID = SCA_DB.execute(
-    next(SCA_DB.get_db()),
-    "SELECT id FROM vendors WHERE name = 'Advanced Distributor Products';",
-).scalar_one()
-
-adp = APIRouter(prefix=f"/{ADP_VENDOR_ID}", tags=["adp"])
+adp = APIRouter(prefix=f"/adp", tags=["adp"])
 logger = logging.getLogger("uvicorn.info")
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]

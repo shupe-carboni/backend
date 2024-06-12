@@ -26,6 +26,7 @@ from app.adp.quotes.products.models import (
 )
 from app.jsonapi.sqla_models import ADPQuote
 
+PARENT_PREFIX = "/vendors/adp"
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
 S3_DIR = "/adp/quotes"
 quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp quotes"])
@@ -40,7 +41,7 @@ async def quote_collection(
     token: Token, session: NewSession, query: QuoteQuery = Depends()
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -61,7 +62,7 @@ async def one_quote(
     query: QuoteQuery = Depends(),
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -198,7 +199,7 @@ async def modify_quote(
 ) -> QuoteResponse:
     customer_id = body.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -287,7 +288,7 @@ async def delete_quote(
     token: Token, session: NewSession, quote_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -306,7 +307,7 @@ def quote_customers(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedCustomerResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -325,7 +326,7 @@ def quote_products(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedProductResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -344,7 +345,7 @@ def quote_place(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedPlaceResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -363,7 +364,7 @@ def quote_customer_location(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedLocationResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -382,7 +383,7 @@ def quote_customers_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> CustomersRelResp:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -406,7 +407,7 @@ def quote_products_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> ProductRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -430,7 +431,7 @@ def quote_place_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> PlaceRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -454,7 +455,7 @@ def quote_customer_location_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> LocationRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE)
+        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

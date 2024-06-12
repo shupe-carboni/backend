@@ -51,7 +51,7 @@ def test_vendors_collection(perm, response_code):
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_vendor_resource(perm, response_code):
-    url = str(VENDORS_PREFIX / "1")
+    url = str(VENDORS_PREFIX / "adp")
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(url)
     assert resp.status_code == response_code, pprint(resp.json())
@@ -62,6 +62,7 @@ def test_new_vendor(perm, response_code):
     url = str(VENDORS_PREFIX)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_vendor = {
+        "id": f"rand vend {randint(1000,9999)}",
         "type": VENDOR_RESOURCE,
         "attributes": {
             "name": f"RANDOM VENDOR {randint(1000,9999)}",
@@ -108,6 +109,7 @@ def test_del_vendor(perm, response_code):
     url = str(VENDORS_PREFIX)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_vendor = {
+        "id": f"rand ven {randint(1000,9999)}",
         "type": VENDOR_RESOURCE,
         "attributes": {
             "name": f"RANDOM VENDOR {randint(1000,9999)}",
@@ -129,7 +131,9 @@ def test_del_vendor(perm, response_code):
             "content": "more and more content. so much content.",
         },
         "relationships": {
-            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+            "vendors": {
+                "data": {"id": str(6), "type": SCAVendor.__jsonapi_type_override__}
+            }
         },
     }
     resp = test_client.post(url, json=dict(data=data))
@@ -182,7 +186,9 @@ def test_new_vendor_info(perm, response_code):
             "content": "more and more content. so much content.",
         },
         "relationships": {
-            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+            "vendors": {
+                "data": {"id": str(6), "type": SCAVendor.__jsonapi_type_override__}
+            }
         },
     }
     resp = test_client.post(url, json=dict(data=data))
@@ -204,7 +210,9 @@ def test_mod_vendor_info(perm, response_code):
             "category": f"New category {randint(10000,99999)}",
         },
         "relationships": {
-            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+            "vendors": {
+                "data": {"id": str(6), "type": SCAVendor.__jsonapi_type_override__}
+            }
         },
     }
     resp = test_client.patch(url, json=dict(data=data))
@@ -227,7 +235,9 @@ def test_del_vendor_info(perm, response_code):
             "content": "more and more content. so much content.",
         },
         "relationships": {
-            "vendors": {"data": {"id": 6, "type": SCAVendor.__jsonapi_type_override__}}
+            "vendors": {
+                "data": {"id": str(6), "type": SCAVendor.__jsonapi_type_override__}
+            }
         },
     }
     resp = test_client.post(url, json=dict(data=data))

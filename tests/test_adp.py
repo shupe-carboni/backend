@@ -41,7 +41,7 @@ INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
 MAT_GRP_DISC_ID = 836
 MAT_GRP_ID = "CA"
 
-PATH_PREFIX = "/vendors/1"
+PATH_PREFIX = "/vendors/adp"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 ADP_MAT_GROUP_DISCOUNTS = ADPMaterialGroupDiscount.__jsonapi_type_override__

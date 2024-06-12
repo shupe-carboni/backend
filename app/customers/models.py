@@ -1,12 +1,10 @@
 from pydantic import BaseModel, Field, create_model, ConfigDict, StringConstraints
 from typing import Optional, Annotated
 from app.jsonapi.core_models import (
-    JSONAPIVersion,
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
-    JSONAPIResourceObject,
-    Pagination,
+    JSONAPIResponse,
     Query,
 )
 from app.jsonapi.sqla_models import SCACustomer
@@ -63,12 +61,8 @@ class CustomerResourceObject(CustomerResourceIdentifier):
     relationships: CustomerRelationships
 
 
-class CustomerResponse(BaseModel):
-    jsonapi: JSONAPIVersion
-    meta: Optional[dict] = {}
+class CustomerResponse(JSONAPIResponse):
     data: Optional[list[CustomerResourceObject] | CustomerResourceObject]
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class RelatedCustomerResponse(CustomerResponse):

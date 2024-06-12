@@ -176,7 +176,7 @@ async def modify_info(
 
 @vendors_info.delete("/{info_id}", tags=["jsonapi"])
 async def delete_info(
-    token: VendorsPerm, session: NewSession, info_id: int, vendor_id: int
+    token: VendorsPerm, session: NewSession, info_id: int, vendor_id: str
 ) -> None:
     return (
         auth.VendorOperations(token, INFO_RESOURCE)

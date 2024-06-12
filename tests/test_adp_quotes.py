@@ -15,7 +15,7 @@ ADP_TEST_CUSTOMER_ID = 59
 TEST_CUSTOMER_LOCATION = 5
 TEST_CUSTOMER_PLACE = 4644585
 
-PATH_PREFIX = "/vendors/1/adp-quotes"
+PATH_PREFIX = "/vendors/adp/adp-quotes"
 
 SCA_PERMS = (
     auth_overrides.AdminToken,

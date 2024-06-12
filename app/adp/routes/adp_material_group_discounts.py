@@ -17,6 +17,7 @@ from app.adp.models import (
 )
 from app.jsonapi.core_models import Query
 
+PARENT_PREFIX = "/vendors/adp"
 API_TYPE = ADPMaterialGroupDiscount.__jsonapi_type_override__
 MATERIAL_GROUPS = ADPMaterialGroup.__jsonapi_type_override__
 
@@ -37,7 +38,7 @@ def mat_grp_disc_collection(
     token: Token, session: NewSession, query: MatGrpDiscQuery = Depends()
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -59,7 +60,7 @@ def mat_grp_disc_resource(
     query: MatGrpDiscQuery = Depends(),
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -81,7 +82,7 @@ def mat_grp_disc_related_mat_grp(
     query: Query = Depends(),
 ) -> ADPRelatedMatGrpResp:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -108,7 +109,7 @@ def mat_grp_disc_related_mat_grp(
     query: Query = Depends(),
 ) -> ADPMatGrpRelationshipResp:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -136,7 +137,7 @@ def mat_grp_disc_related_mat_grp(
 ) -> ADPMatGrpDiscResp:
     if 0 < new_discount.data.attributes.discount < 100:
         return (
-            auth.ADPOperations(token, API_TYPE)
+            auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
             .allow_admin()
             .allow_sca()
             .allow_dev()
@@ -165,7 +166,7 @@ def mat_grp_disc_related_mat_grp(
     new_stage: ModStageMatGrpDiscDiscReq,
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -186,7 +187,7 @@ def mat_grp_disc_related_mat_grp(
     token: Token, session: NewSession, mat_grp_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, API_TYPE)
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

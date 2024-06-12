@@ -33,10 +33,20 @@ class JSONAPIErrorResponse(BaseModel):
     errors: list[JSONAPIErrorObject]
 
 
+class Pagination(BaseModel):
+    # self: str
+    first: str
+    # prev: str
+    next: Optional[str] = None
+    last: str
+
+
 class JSONAPIResponse(BaseModel):
+    jsonapi: Optional[JSONAPIVersion] = None
     meta: Optional[dict] = {}
     data: Optional[JSONAPIResourceObject]
     included: Optional[list[JSONAPIResourceObject]] = []
+    links: Optional[Pagination] = None
 
 
 class JSONAPIResourceIdentifier(BaseModel):
@@ -66,14 +76,6 @@ class JSONAPIRequestData(BaseModel):
 class JSONAPIRequest(BaseModel):
     data: JSONAPIRequestData
     included: Optional[list[JSONAPIResourceObject]] = None
-
-
-class Pagination(BaseModel):
-    # self: str
-    first: str
-    # prev: str
-    next: Optional[str] = None
-    last: str
 
 
 class Query(BaseModel):

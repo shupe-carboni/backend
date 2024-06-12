@@ -53,7 +53,7 @@ async def vendor_collection(
 async def vendor(
     token: VendorsPerm,
     session: NewSession,
-    vendor_id: int,
+    vendor_id: str,
     query: VendorQuery = Depends(),
 ) -> VendorResponse:
     return (
@@ -79,7 +79,7 @@ async def vendor(
 async def related_info(
     token: VendorsPerm,
     session: NewSession,
-    vendor_id: int,
+    vendor_id: str,
     query: VendorQuery = Depends(),
 ) -> RelatedVendorInfoResponse:
     return (
@@ -107,7 +107,7 @@ async def related_info(
 async def info_relationships(
     token: VendorsPerm,
     session: NewSession,
-    vendor_id: int,
+    vendor_id: str,
     query: VendorQuery = Depends(),
 ) -> VendorRelationshipsResponse:
     return (
@@ -158,7 +158,7 @@ async def new_vendor(
 async def modify_vendor(
     token: VendorsPerm,
     session: NewSession,
-    vendor_id: int,
+    vendor_id: str,
     body: VendorModification,
 ) -> VendorResponse:
     return (
@@ -175,7 +175,7 @@ async def modify_vendor(
 
 
 @vendors.delete("/{vendor_id}", tags=["jsonapi"])
-async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: int) -> None:
+async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) -> None:
     """Delete a Vendor as well as all accompanying vendor information"""
     related_info = await info_relationships(token, session, vendor_id, VendorQuery())
     related_info_ids: list[int] = [record["id"] for record in related_info["data"]]

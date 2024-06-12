@@ -5,9 +5,8 @@ from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
-    JSONAPIResourceObject,
     JSONAPIVersion,
-    Pagination,
+    JSONAPIResponse,
     Query,
 )
 from app.db import Stage
@@ -159,18 +158,12 @@ class AirHandlerProgRObj(AirHandlerProgRID):
     relationships: ProgRels
 
 
-class CoilProgResp(BaseModel):
-    meta: Optional[dict] = {}
+class CoilProgResp(JSONAPIResponse):
     data: Optional[list[CoilProgRObj] | CoilProgRObj]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = None
 
 
-class AirHandlerProgResp(BaseModel):
-    meta: Optional[dict] = {}
+class AirHandlerProgResp(JSONAPIResponse):
     data: Optional[list[AirHandlerProgRObj] | AirHandlerProgRObj]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = None
 
 
 class RelatedCoilProgResp(CoilProgResp):
@@ -410,14 +403,12 @@ class RatingsExpandedRObj(RatingsRID):
     relationships: RatingsRels
 
 
-class RatingsResp(BaseModel):
-    meta: Optional[dict] = {}
+class RatingsResp(JSONAPIResponse):
     data: Optional[list[RatingsRObj] | RatingsRObj]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = {}
 
 
 class RelatedRatingsResponse(RatingsResp):
+    jsonapi: Optional[JSONAPIVersion] = None
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
     data: Optional[list[RatingsExpandedRObj] | RatingsExpandedRObj]
@@ -483,11 +474,8 @@ class PartsRObj(PartsRID):
     relationships: PartsRels
 
 
-class PartsResp(BaseModel):
-    meta: Optional[dict] = {}
+class PartsResp(JSONAPIResponse):
     data: Optional[list[PartsRObj] | PartsRObj]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = None
 
 
 _PartsQuery: type[BaseModel] = create_model(
@@ -603,11 +591,8 @@ class CustomersRObj(CustomersRID):
     relationships: Optional[CustomersRels] = {}
 
 
-class CustomersResp(BaseModel):
-    meta: Optional[dict] = {}
+class CustomersResp(JSONAPIResponse):
     data: Optional[list[CustomersRObj] | CustomersRObj]
-    included: Optional[list[JSONAPIResourceObject]]
-    links: Optional[Pagination] = {}
 
 
 class RelatedCustomerResponse(CustomersResp):
@@ -671,12 +656,8 @@ class ADPCustomerTermsRObj(ADPCustomerTermsRID):
     relationships: ADPCustomerTermsRels
 
 
-class ADPCustomerTermsResp(BaseModel):
-    jsonapi: Optional[JSONAPIVersion] = None
-    meta: Optional[dict] = {}
+class ADPCustomerTermsResp(JSONAPIResponse):
     data: Optional[list[ADPCustomerTermsRObj] | ADPCustomerTermsRObj]
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class RelatedADPCustomerTermsResp(ADPCustomerTermsResp):
@@ -725,12 +706,8 @@ class MatGrpDiscRObj(ADPMatGrpDiscRID):
     relationships: MatGrpDiscRels
 
 
-class ADPMatGrpDiscResp(BaseModel):
-    jsonapi: Optional[JSONAPIVersion] = None
-    meta: Optional[dict] = {}
+class ADPMatGrpDiscResp(JSONAPIResponse):
     data: Optional[list[MatGrpDiscRObj] | MatGrpDiscRObj]
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class RelatedADPMatGrpDiscResp(ADPMatGrpDiscResp):
@@ -820,12 +797,8 @@ class ADPMatGrpRObj(ADPMatGrpRID):
     relationships: ADPMatGrpRels
 
 
-class ADPMatGrpResp(BaseModel):
-    jsonapi: Optional[JSONAPIVersion] = None
-    meta: Optional[dict] = {}
+class ADPMatGrpResp(JSONAPIResponse):
     data: Optional[list[ADPMatGrpRObj] | ADPMatGrpRObj]
-    included: Optional[list[JSONAPIResourceObject]] = None
-    links: Optional[Pagination] = None
 
 
 class ADPRelatedMatGrpResp(ADPMatGrpResp):

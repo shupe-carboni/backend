@@ -266,7 +266,7 @@ def check_object_id_association(
     primary_reference_resource: str,
     primary_reference_id: int,
     resource: str,
-    obj_id: int | None,
+    obj_id: int | str | None,
 ) -> None:
     """Make sure the oject id passed in is associated with the the id of the primary
     reference, usually pulled from the payload of a POST, PATCH, or DELETE request,
@@ -432,8 +432,8 @@ class SecOp(ABC):
     def gate(
         self,
         session: Session,
-        primary_id: Optional[int] = None,
-        obj_id: Optional[int] = None,
+        primary_id: Optional[int | str] = None,
+        obj_id: Optional[int | str] = None,
     ) -> None:
         if self._associated_resource:
             if not primary_id:
@@ -464,7 +464,7 @@ class SecOp(ABC):
         self,
         session: Session,
         query: dict = {},
-        obj_id: Optional[int] = None,
+        obj_id: Optional[int | str] = None,
         related_resource: Optional[str] = None,
         relationship: bool = False,
     ):
@@ -478,7 +478,7 @@ class SecOp(ABC):
                     query=query,
                     api_type=resource,
                 )
-            case int(), False, None:
+            case int() | str(), False, None:
                 result_query = partial(
                     self._serializer.get_resource,
                     session=session,
@@ -487,7 +487,7 @@ class SecOp(ABC):
                     obj_id=obj_id,
                     obj_only=True,
                 )
-            case int(), False, str():
+            case int() | str(), False, str():
                 result_query = partial(
                     self._serializer.get_related,
                     session=session,
@@ -496,7 +496,7 @@ class SecOp(ABC):
                     obj_id=obj_id,
                     rel_key=related_resource,
                 )
-            case int(), True, str():
+            case int() | str(), True, str():
                 result_query = partial(
                     self._serializer.get_relationship,
                     session=session,

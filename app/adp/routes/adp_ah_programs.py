@@ -18,6 +18,7 @@ from app.jsonapi.sqla_models import ADPAHProgram, ADPCustomer
 from app.jsonapi.core_models import convert_query
 from app.jsonapi.sqla_jsonapi_ext import MAX_PAGE_SIZE
 
+PARENT_PREFIX = "/vendors/adp"
 ADP_AIR_HANDLERS_RESOURCE = ADPAHProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
 ah_progs = APIRouter(
@@ -70,7 +71,7 @@ def all_ah_programs(
     An SCA admin or employee will see all programs that exist.
     A customer will see only their own programs"""
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -94,7 +95,7 @@ def ah_program_product(
 ) -> AirHandlerProgResp:
     """get a specific product from the ah programs"""
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -138,7 +139,7 @@ def add_to_ah_program(
     json_api_data = partial(build_full_model_obj, session, new_ah)
     adp_customer_id = new_ah.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -166,7 +167,7 @@ def change_product_status(
 ) -> AirHandlerProgResp:
     adp_customer_id = new_stage.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -185,7 +186,7 @@ def delete_ah_program_product(
     token: Token, session: NewSession, program_product_id: int, adp_customer_id: int
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -201,7 +202,7 @@ def get_related_customer(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -222,7 +223,7 @@ def get_customer_relationship(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE)
+        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
