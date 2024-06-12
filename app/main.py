@@ -80,42 +80,32 @@ app.add_middleware(
 )
 
 ## NOTE: order really, really matters
-# customers
-customers.include_router(customer_rel)
-# adp
-for resource in (
-    adp_quotes,
-    adp_quote_products,
-    adp_customers,
-    coil_progs,
-    ah_progs,
-    prog_parts,
-    prog_ratings,
-    ratings_admin,
-    adp_mat_grp_discs,
+for route, prefix, target in (
+    (customer_rel, "", customers),
+    (adp_quotes, "", adp),
+    (adp_quote_products, "", adp),
+    (adp_customers, "", adp),
+    (coil_progs, "", adp),
+    (ah_progs, "", adp),
+    (prog_parts, "", adp),
+    (prog_ratings, "", adp),
+    (ratings_admin, "", adp),
+    (adp_mat_grp_discs, "", adp),
+    (vendors, "", app),
+    (vendors_info, "", app),
+    (customers, "", app),
+    (places, "", app),
+    (adp, "/vendors", app),
 ):
+    resource_path = f"{prefix}{route.prefix}"
     try:
-        if isinstance(resource, tuple):
-            route, prefix = resource
-            adp.include_router(route, prefix=prefix)
-        else:
-            adp.include_router(resource)
+        app.include_router(route, prefix=prefix)
     except Exception:
         logger.critical(
-            f"resource {resource} encountered an error when attempting to register"
+            f"resource {resource_path} encountered an error when attempting to register"
         )
-# combine
-for resource in (vendors, vendors_info, customers, places, (adp, "/vendors")):
-    try:
-        if isinstance(resource, tuple):
-            route, prefix = resource
-            app.include_router(route, prefix=prefix)
-        else:
-            app.include_router(resource)
-    except Exception:
-        logger.critical(
-            f"resource {resource} encountered an error when attempting to register"
-        )
+    else:
+        logger.info(f"registered {resource_path} to {target}")
 
 
 @app.get("/")
