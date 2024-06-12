@@ -26,6 +26,7 @@ from app.adp import (
     ratings_admin,
     adp_customers,
     adp_mat_grp_discs,
+    adp_snps,
 )
 
 logger = logging.getLogger("uvicorn.info")
@@ -91,6 +92,7 @@ for route, prefix, target in (
     (prog_ratings, "", adp),
     (ratings_admin, "", adp),
     (adp_mat_grp_discs, "", adp),
+    (adp_snps, "", adp),
     (vendors, "", app),
     (vendors_info, "", app),
     (customers, "", app),
@@ -99,13 +101,13 @@ for route, prefix, target in (
 ):
     resource_path = f"{prefix}{route.prefix}"
     try:
-        app.include_router(route, prefix=prefix)
+        target.include_router(route, prefix=prefix)
     except Exception:
         logger.critical(
             f"resource {resource_path} encountered an error when attempting to register"
         )
     else:
-        logger.info(f"registered {resource_path} to {target}")
+        logger.info(f"registered {resource_path} to {id(target)}")
 
 
 @app.get("/")

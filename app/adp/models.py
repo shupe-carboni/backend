@@ -20,6 +20,7 @@ from app.jsonapi.sqla_models import (
     ADPPricingPart,
     ADPMaterialGroupDiscount,
     ADPMaterialGroup,
+    ADPSNP,
 )
 
 
@@ -804,3 +805,85 @@ class ADPMatGrpResp(JSONAPIResponse):
 class ADPRelatedMatGrpResp(ADPMatGrpResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
+
+
+## ADP SNPS
+
+
+class ADPSNPRID(JSONAPIResourceIdentifier):
+    type: str = ADPSNP.__jsonapi_type_override__
+
+
+class ADPSNPRelationshipResp(JSONAPIRelationshipsResponse):
+    data: list[ADPSNPRID] | ADPSNPRID
+
+
+class ADPSNPAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    model: str
+    price: float
+    stage: Stage = Stage.PROPOSED
+    effective_date: datetime = Field(default=None, alias="effective-date")
+
+
+class ADPSNPRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
+
+
+class ADPSNPRObj(ADPSNPRID):
+    attributes: ADPSNPAttrs
+    relationships: ADPSNPRels
+
+
+class ADPSNPResp(JSONAPIResponse):
+    data: Optional[list[ADPSNPRObj] | ADPSNPRObj]
+
+
+class ADPRelatedSNPResp(ADPSNPResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+class ADPSNPFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_adp_customers: str = Field(
+        default=None, alias=f"fields[{ADPCustomer.__jsonapi_type_override__}]"
+    )
+
+
+class ADPSNPFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_model: str = Field(default=None, alias="filter[model]")
+    filter_stage: str = Field(default=None, alias="filter[stage]")
+
+
+_ADPSNPQuery: type[BaseModel] = create_model(
+    "ADPSNPQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f'fields_{ADPSNPRID.model_fields["type"].default.replace("-","_")}': (
+            Optional[str],
+            None,
+        )
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in ADPSNPRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in ADPSNPAttrs.model_fields.keys()
+    },
+)
+
+
+class ADPSNPQuery(_ADPSNPQuery, BaseModel): ...
+
+
+class ADPSNPQueryJSONAPI(ADPSNPFilters, ADPSNPFields, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")

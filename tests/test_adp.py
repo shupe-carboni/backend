@@ -656,3 +656,11 @@ def test_create_and_del_mat_grp_disc(perm, response_code):
     url /= str(str(new_id) + f"?adp_customer_id={ADP_CUSTOMER_ID}")
     response = test_client.delete(str(url))
     assert response.status_code == 204
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_snp_collection(perm, response_code):
+    url = str(Path(PATH_PREFIX) / "adp-snps")
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
