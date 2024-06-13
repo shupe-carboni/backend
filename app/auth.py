@@ -19,7 +19,7 @@ from typing import Optional, Callable, Literal, TYPE_CHECKING
 import collections.abc as collections
 from functools import partial
 from sqlalchemy import text
-from sqlalchemy_jsonapi.errors import ResourceNotFoundError
+from sqlalchemy_jsonapi.errors import ResourceNotFoundError, BadRequestError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.db.db import Session
 from app.jsonapi.sqla_models import (
@@ -251,6 +251,8 @@ def standard_error_handler(func):
             )
         except HTTPException as e:
             raise e
+        except BadRequestError as e:
+            raise HTTPException(e.status_code, e.detail)
         except:
             import traceback as tb
 
