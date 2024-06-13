@@ -24,7 +24,7 @@ logger = getLogger("uvicorn.info")
 PARENT_PREFIX = "/vendors/adp"
 ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
-coil_progs = APIRouter(prefix=f"/{ADP_COILS_RESOURCE}", tags=["coils", "programs"])
+coil_progs = APIRouter(prefix=f"/{ADP_COILS_RESOURCE}", tags=["coils", "adp"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]

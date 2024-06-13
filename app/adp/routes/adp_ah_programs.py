@@ -25,7 +25,7 @@ PARENT_PREFIX = "/vendors/adp"
 ADP_AIR_HANDLERS_RESOURCE = ADPAHProgram.__jsonapi_type_override__
 ADP_CUSTOMERS_RESOURCE = ADPCustomer.__jsonapi_type_override__
 ah_progs = APIRouter(
-    prefix=f"/{ADP_AIR_HANDLERS_RESOURCE}", tags=["air handlers", "programs"]
+    prefix=f"/{ADP_AIR_HANDLERS_RESOURCE}", tags=["air handlers", "adp"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
