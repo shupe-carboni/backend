@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
 from dotenv import load_dotenv
+from pprint import pprint
 
 load_dotenv()
 from pydantic import BaseModel, field_validator
@@ -257,7 +258,7 @@ def standard_error_handler(func):
             import traceback as tb
 
             raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc()
+                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=pprint(tb.format_exc())
             )
 
     return wrapper
