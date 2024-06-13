@@ -699,6 +699,24 @@ def test_an_snp(perm, response_code):
 
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_snp_related_adp_customers(perm, response_code):
+    url = str(Path(PATH_PREFIX) / "adp-snps" / str(417) / "adp-customers")
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
+def test_snp_adp_customer_relationships(perm, response_code):
+    url = str(
+        Path(PATH_PREFIX) / "adp-snps" / str(417) / "relationships" / "adp-customers"
+    )
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    resp = test_client.get(url)
+    assert resp.status_code == response_code, pprint(resp.json())
+
+
+@mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_quotes_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
     app.dependency_overrides[authenticate_auth0_token] = perm
