@@ -183,7 +183,7 @@ def mat_grp_disc_modification(
     "/{mat_grp_id}",
     tags=["jsonapi"],
 )
-def disc_mat_grp_disc(
+def del_mat_grp_disc(
     token: Token, session: NewSession, mat_grp_id: int, adp_customer_id: int
 ) -> None:
     return (
