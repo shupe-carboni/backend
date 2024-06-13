@@ -230,6 +230,9 @@ class IDsNotAssociated(Exception): ...
 class IDNotAssociatedWithUser(Exception): ...
 
 
+class InvalidArguments(Exception): ...
+
+
 def standard_error_handler(func):
     def wrapper(*args, **kwargs):
         try:
@@ -250,6 +253,8 @@ def standard_error_handler(func):
                 status.HTTP_401_UNAUTHORIZED,
                 detail="Object ID not associated with the Primary ID",
             )
+        except InvalidArguments as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
         except HTTPException as e:
             raise e
         except BadRequestError as e:
@@ -509,7 +514,7 @@ class SecOp(ABC):
                     rel_key=related_resource,
                 )
             case _:
-                raise Exception(
+                raise InvalidArguments(
                     "Invalid argument set supplied to auth.secured_get_query"
                 )
         if self._admin or self._sca:
@@ -560,11 +565,13 @@ class SecOp(ABC):
                     rel_key=related_resource,
                 )
             case int(), _:
-                raise Exception("The related resource name is missing")
+                raise InvalidArguments("The related resource name is missing")
             case _, str():
-                raise Exception("the object id for the primary resource is missing")
+                raise InvalidArguments(
+                    "the object id for the primary resource is missing"
+                )
             case _:
-                raise Exception(
+                raise InvalidArguments(
                     "Invalid argument set. Provide either an object id and related "
                     "object for a relationship or neither to create a new instance of "
                     "the primary reseource."
