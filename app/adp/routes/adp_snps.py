@@ -41,3 +41,22 @@ def snps_collection(
         .allow_customer("std")
         .get(session, query=converter(query))
     )
+
+
+@adp_snps.get(
+    "/{snp_id}",
+    response_model=ADPSNPResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def an_snp(
+    token: Token, session: NewSession, snp_id: int, query: ADPSNPQuery = Depends()
+) -> ADPSNPResp:
+    return (
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session, query=converter(query), obj_id=snp_id)
+    )
