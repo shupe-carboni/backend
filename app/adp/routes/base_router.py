@@ -43,7 +43,7 @@ class XLSXFileResponse(StreamingResponse):
 
 def generate_dl_link(adp_customer_id: int, download_id: int) -> DownloadLink:
     link = DownloadLink(
-        downloadLink=f"/adp/programs/{adp_customer_id}"
+        downloadLink=f"/vendors/adp/programs/{adp_customer_id}"
         f"/download?download_id={download_id}"
     )
     return link
