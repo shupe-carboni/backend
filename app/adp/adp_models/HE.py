@@ -144,7 +144,7 @@ class HE(ModelSeries):
         )
         connections, orientation = self.orientations[self.attributes["config"]]
         additional = "Cased Coils"
-        value = f"{orientation} {material} {additional} - {color}"
+        value = f"{orientation} {material} {connections} {additional} - {color}"
         if self.is_flex_coil:
             value += " - FlexCoil"
         return value
