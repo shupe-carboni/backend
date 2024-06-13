@@ -887,3 +887,24 @@ class ADPSNPQuery(_ADPSNPQuery, BaseModel): ...
 class ADPSNPQueryJSONAPI(ADPSNPFilters, ADPSNPFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class NewADPSNP(BaseModel):
+    type: str = ADPSNP.__jsonapi_type_override__
+    attributes: ADPSNPAttrs
+    relationships: ADPSNPRels
+
+
+class NewADPSNPReq(BaseModel):
+    data: NewADPSNP
+
+
+class ModStageSNP(BaseModel):
+    id: int
+    type: str = ADPSNP.__jsonapi_type_override__
+    attributes: NewStage
+    relationships: ADPSNPRels
+
+
+class ModStageSNPReq(BaseModel):
+    data: ModStageSNP

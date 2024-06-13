@@ -10,8 +10,8 @@ from app.adp.models import (
     ADPSNPQueryJSONAPI,
     ADPSNPResp,
     ADPSNPQuery,
-    # NewADPSNPReq,
-    # ModStageADPSNPDiscReq,
+    NewADPSNPReq,
+    ModStageSNPReq,
     RelatedCustomerResponse,
     CustomersRelResp,
 )
@@ -107,5 +107,80 @@ def snp_adp_customer_relationships(
             obj_id=snp_id,
             related_resource=ADPCustomer.__jsonapi_type_override__,
             relationship=True,
+        )
+    )
+
+
+@adp_snps.post(
+    "",
+    response_model=ADPSNPResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def new_snp(
+    token: Token,
+    session: NewSession,
+    new_snp: NewADPSNPReq,
+) -> ADPSNPResp:
+    if 0 < new_snp.data.attributes.price:
+        return (
+            auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session,
+                data=new_snp.model_dump(exclude_none=True, by_alias=True),
+                primary_id=new_snp.data.relationships.adp_customers.data.id,
+            )
+        )
+    raise HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        "a special net price must be greater than 0",
+    )
+
+
+@adp_snps.patch(
+    "/{snp_id}",
+    response_model=ADPSNPResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+def snp_modification(
+    token: Token,
+    session: NewSession,
+    snp_id: int,
+    new_stage: ModStageSNPReq,
+) -> ADPSNPResp:
+    return (
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session,
+            data=new_stage.model_dump(exclude_none=True, by_alias=True),
+            obj_id=snp_id,
+            primary_id=new_stage.data.relationships.adp_customers.data.id,
+        )
+    )
+
+
+@adp_snps.delete(
+    "/{snp_id}",
+    tags=["jsonapi"],
+)
+def del_snp(
+    token: Token, session: NewSession, snp_id: int, adp_customer_id: int
+) -> None:
+    return (
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(
+            session,
+            obj_id=snp_id,
+            primary_id=adp_customer_id,
         )
     )
