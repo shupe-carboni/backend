@@ -1,10 +1,11 @@
 from typing import Annotated
 from functools import partial
-from fastapi import Depends
+from fastapi import Depends, BackgroundTasks
 from fastapi.routing import APIRouter
+from logging import getLogger
 
 from app import auth
-from app.db import Session, ADP_DB
+from app.db import Session, ADP_DB, Stage
 from app.adp.extraction.models import build_model_attributes
 from app.adp.models import (
     CoilProgQuery,
@@ -17,6 +18,8 @@ from app.adp.models import (
 from app.jsonapi.sqla_models import ADPCoilProgram, ADPCustomer
 from app.jsonapi.core_models import convert_query
 from app.jsonapi.sqla_jsonapi_ext import MAX_PAGE_SIZE
+
+logger = getLogger("uvicorn.info")
 
 PARENT_PREFIX = "/vendors/adp"
 ADP_COILS_RESOURCE = ADPCoilProgram.__jsonapi_type_override__
@@ -51,6 +54,70 @@ COLLECTION_EXCLUSIONS = {
         for i in range(MAX_PAGE_SIZE)
     }
 }
+
+
+def background_stage_update(
+    token: auth.VerifiedToken,
+    session: Session,
+    updated_model: CoilProgResp,
+    adp_customer_id: int,
+) -> None:
+    """when a coil is set to ACTIVE stage, any other record for the customer
+    with the same model number and ACTIVE is updated to REMOVED"""
+    model_number_updated = updated_model.data.attributes.model_number
+
+    other_ids_to_update = [
+        resource_obj["id"]
+        for resource_obj in all_coil_programs(
+            token,
+            session,
+            CoilProgQuery(
+                filter_model_number=model_number_updated, include="adp-customers"
+            ),
+        )["data"]
+        if (
+            resource_obj["relationships"]["adp-customers"]["data"]["id"]
+            == adp_customer_id
+        )
+        and (resource_obj["attributes"]["stage"] == "active")
+        and (resource_obj["id"] != updated_model.data.id)
+    ]
+    if not other_ids_to_update:
+        logger.info("No coil status to update")
+    for id_ in other_ids_to_update:
+        new_stage = ModStageCoilReq(
+            data={
+                "id": id_,
+                "type": ADP_COILS_RESOURCE,
+                "attributes": {"stage": Stage.REMOVED},
+                "relationships": {
+                    "adp-customers": {
+                        "data": {
+                            "id": adp_customer_id,
+                            "type": ADP_CUSTOMERS_RESOURCE,
+                        }
+                    }
+                },
+            }
+        )
+        try:
+            (
+                auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+                .allow_admin()
+                .allow_sca()
+                .allow_dev()
+                .allow_customer("std")
+                .patch(
+                    session=session,
+                    data=new_stage.model_dump(exclude_none=True, by_alias=True),
+                    primary_id=adp_customer_id,
+                    obj_id=id_,
+                )
+            )
+        except Exception:
+            logger.info(f"Failed to update status of coil with id {id_}")
+        else:
+            logger.info(f"Successfully updated coil with {id_} to stage = 'REMOVED'")
 
 
 @coil_progs.get(
@@ -157,6 +224,7 @@ def change_product_status(
     session: NewSession,
     program_product_id: int,
     new_stage: ModStageCoilReq,
+    bg_tasks: BackgroundTasks,
 ) -> CoilProgResp:
     """change the stage of a program coil
     Stage: ACITVE, PROPOSED, REJECTED, REMOVED
@@ -165,8 +233,9 @@ def change_product_status(
         ACTIVE -> REMOVED
     """
     adp_customer_id = new_stage.data.relationships.adp_customers.data.id
-    return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+    set_other_active_models_to_removed = new_stage.data.attributes.stage == Stage.ACTIVE
+    updated_model = CoilProgResp(
+        **auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -178,6 +247,11 @@ def change_product_status(
             obj_id=program_product_id,
         )
     )
+    if set_other_active_models_to_removed:
+        bg_tasks.add_task(
+            background_stage_update, token, session, updated_model, adp_customer_id
+        )
+    return updated_model
 
 
 @coil_progs.delete("/{program_product_id}", tags=["jsonapi"])
