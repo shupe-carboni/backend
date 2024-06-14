@@ -823,7 +823,9 @@ class ADPSNPAttrs(BaseModel):
     model: str
     price: float
     stage: Stage = Stage.PROPOSED
-    effective_date: datetime = Field(default=None, alias="effective-date")
+    effective_date: datetime = Field(
+        default_factory=datetime.today, alias="effective-date"
+    )
 
 
 class ADPSNPRels(BaseModel):
