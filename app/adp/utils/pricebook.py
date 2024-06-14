@@ -622,7 +622,7 @@ class PriceBook:
         def set_series_name(oemseries: str) -> str:
             if any([val in oemseries for val in ("4AC", "4HP")]):
                 start, end = (0, 5)
-            elif oemseries.startswith("YHE") or oemseries.startswith("AC0"):
+            elif oemseries.startswith("YH") or oemseries.startswith("AC0"):
                 start, end = (0, 3)
             else:
                 start, end = (0, 4)
