@@ -7,6 +7,7 @@ from app.jsonapi.sqla_models import (
     ADPCoilProgram,
     ADPAHProgram,
     ADPMaterialGroupDiscount,
+    ADPSNP,
 )
 from app.auth import authenticate_auth0_token
 from app.db import S3 as real_S3
@@ -15,6 +16,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 from pprint import pprint
 from random import randint
+
+# pytest doesn't like putting this under TYPE_CHECKING
+from app.auth import VerifiedToken
 
 test_client = TestClient(app)
 
@@ -45,11 +49,13 @@ VALID_AH_PRODUCT_ID = 293
 INVALID_AH_PRODUCT_ID = 1  # invalid for the customer but not SCA
 MAT_GRP_DISC_ID = 836
 MAT_GRP_ID = "CA"
+SNP_ID = 365
 
 PATH_PREFIX = "/vendors/adp"
 COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
 AH_PROGS = ADPAHProgram.__jsonapi_type_override__
 ADP_MAT_GROUP_DISCOUNTS = ADPMaterialGroupDiscount.__jsonapi_type_override__
+ADP_SNPS = ADPSNP.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 TEST_AH_MODEL = "SM312500"
@@ -258,6 +264,37 @@ RESET_MAT_GRP_DISC_STAGE_CHANGE_REQ = TestRequest(
         }
     },
     url=f"{PATH_PREFIX}/{ADP_MAT_GROUP_DISCOUNTS}/{MAT_GRP_DISC_ID}",
+)
+
+VALID_SNP_STAGE_CHANGE_REQ = TestRequest(
+    json={
+        "data": {
+            "id": SNP_ID,
+            "type": "adp-snps",
+            "attributes": {"stage": Stage.REJECTED},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"id": ADP_CUSTOMER_ID, "type": "adp-customers"}
+                }
+            },
+        }
+    },
+    url=f"{PATH_PREFIX}/{ADP_SNPS}/{SNP_ID}",
+)
+RESET_SNP_STAGE_CHANGE_REQ = TestRequest(
+    json={
+        "data": {
+            "id": SNP_ID,
+            "type": "adp-snps",
+            "attributes": {"stage": Stage.REMOVED},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"id": ADP_CUSTOMER_ID, "type": "adp-customers"}
+                }
+            },
+        }
+    },
+    url=f"{PATH_PREFIX}/{ADP_SNPS}/{SNP_ID}",
 )
 
 
@@ -716,6 +753,48 @@ def test_snp_adp_customer_relationships(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
+@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+def test_create_and_del_snp(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    # make a new record to delete
+    url = Path(PATH_PREFIX) / "adp-snps"
+    new_snp = {
+        "data": {
+            "type": "adp-snps",
+            "attributes": {"model": str(randint(1, 99)), "price": randint(1, 99)},
+            "relationships": {
+                "adp-customers": {
+                    "data": {"type": "adp-customers", "id": ADP_CUSTOMER_ID}
+                },
+            },
+        }
+    }
+    response = test_client.post(str(url), json=new_snp)
+    assert response.status_code == response_code, pprint(response.json())
+    if response_code != 200:
+        return
+    new_id = response.json()["data"]["id"]
+    url /= str(new_id) + f"?adp_customer_id={ADP_CUSTOMER_ID}"
+    response = test_client.delete(str(url))
+    assert response.status_code == 204
+
+
+@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+def test_customer_snp_stage_modification(perm, response_code):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    pre_mod_response = test_client.get(VALID_SNP_STAGE_CHANGE_REQ.url)
+    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+    try:
+        # good request
+        response = test_client.patch(**VALID_SNP_STAGE_CHANGE_REQ)
+        assert response.status_code == response_code
+        if response_code == 200:
+            assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
+    finally:
+        test_client.patch(**RESET_SNP_STAGE_CHANGE_REQ)
+
+
+## ADP QUOTES
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_quotes_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
@@ -733,7 +812,7 @@ def test_quote_resource(perm, response_code):
 
 
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
-def test_new_quote_no_files(perm, response_code):
+def test_new_quote_no_files(perm: VerifiedToken, response_code):
     url = (
         str(Path(PATH_PREFIX) / "adp-quotes")
         + f"?adp_customer_id={ADP_TEST_CUSTOMER_ID}"
