@@ -43,6 +43,9 @@ class ProductRelationships(BaseModel):
 class ProductQuoteFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_adp_quotes: str = Field(default=None, alias="fields[adp-quotes]")
+    fields_adp_quote_products: str = Field(
+        default=None, alias="fields[adp-quote-products]"
+    )
 
 
 class ProductResourceObject(ProductResourceIdentifier):
@@ -98,6 +101,7 @@ _QuoteProductQuery: type[BaseModel] = create_model(
         f"filter_{field}": (Optional[str], None)
         for field in ProductAttributes.model_fields.keys()
     },
+    **{f"fields_{ADPQuoteProduct.__tablename__}": (Optional[str], None)},
 )
 
 
