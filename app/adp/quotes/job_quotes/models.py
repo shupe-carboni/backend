@@ -55,6 +55,7 @@ class QuoteRelationships(BaseModel):
 
 
 class QuoteFields(BaseModel):
+    fields_adp_quotes: str = Field(default=None, alias="fields[adp-quotes]")
     fields_places: str = Field(default=None, alias="fields[places]")
     fields_customer_locations: str = Field(
         default=None, alias="fields[customer-locations]"
@@ -121,6 +122,12 @@ _QuoteQuery: type[BaseModel] = create_model(
     **{
         f"filter_{field}": (Optional[str], None)
         for field in QuoteAttributes.model_fields.keys()
+    },
+    **{
+        f"fields_{ADPQuote.__tablename__}": (
+            Optional[str],
+            None,
+        )
     },
 )
 
