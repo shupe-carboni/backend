@@ -99,41 +99,41 @@ class HE(ModelSeries):
             self.ratings_piston = (
                 rf"H(,.){{1,2}}"
                 rf"{self.attributes['mat']}{self.attributes['scode']}"
-                rf"\(1,2\){self.tonnage}"
+                rf"[\(1,2\)|\*]{self.tonnage}"
             )
             self.ratings_field_txv = (
                 rf"H(,.){{1,2}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
+                rf"{self.attributes['scode']}[\(1,2\)|\*]{self.tonnage}\+TXV"
             )
             self.ratings_hp_txv = (
                 rf"H(,.){{1,2}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}9{self.tonnage}"
+                rf"{self.attributes['scode']}[9|\*]{self.tonnage}"
             )
             self.ratings_ac_txv = (
                 rf"H(,.){{1,2}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\(6,9\){self.tonnage}"
+                rf"{self.attributes['scode']}[\(6,9\)|\*]{self.tonnage}"
             )
         else:
             self.ratings_piston = (
                 rf"H(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\(1,2\){self.tonnage}"
+                rf"{self.attributes['scode']}[\(1,2\)|\*]{self.tonnage}"
             )
             self.ratings_field_txv = (
                 rf"H(,.){{0,2}},"
                 rf"{self.attributes['paint']}(,.){{0,1}}"
                 rf"{self.attributes['mat']}{self.attributes['scode']}"
-                rf"\(1,2\){self.tonnage}\+TXV"
+                rf"[\(1,2\)|\*]{self.tonnage}\+TXV"
             )
             self.ratings_hp_txv = (
                 rf"H(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}9{self.tonnage}"
+                rf"{self.attributes['scode']}[9|\*]{self.tonnage}"
             )
             self.ratings_ac_txv = (
                 rf"H(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\(6,9\){self.tonnage}"
+                rf"{self.attributes['scode']}[\(6,9\)|\*]{self.tonnage}"
             )
         self.zero_disc_price = self.calc_zero_disc_price()
 

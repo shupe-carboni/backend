@@ -89,7 +89,7 @@ class CE(ModelSeries):
             rf"CE\(([P|V|S|H|M],){{1:4}}[P|V|S|H|M]\)"
             rf"{self.tonnage}{self.attributes['width_height']}"
             rf"{self.attributes['mat']}{self.attributes['scode']}"
-            rf"{self.metering}"
+            rf"[{self.metering}|\*]"
         )
         self.ratings_hp_txv = self.ratings_ac_txv
         self.ratings_piston = None

@@ -61,42 +61,42 @@ class V(ModelSeries):
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_ac_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[\(6,9\)|\*]"
             )
             self.ratings_hp_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}9"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[9|\*]"
             )
             self.ratings_piston = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[\(1,2\)|\*]"
             )
             self.ratings_field_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[\(1,2\)|\*]"
                 rf"\+TXV"
             )
         else:
             self.ratings_ac_txv = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}\(6,9\)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[\(6,9\)|\*]"
             )
             self.ratings_hp_txv = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}9"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[9|\*]"
             )
             self.ratings_piston = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}\(1,2\)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}[\(1,2\)|\*]"
             )
             self.ratings_field_txv = (
                 rf"V(,.){{0,2}},"
                 rf"{self.attributes['paint']}(,.){{0,1}}{self.tonnage}"
                 rf"H{height_str}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\(1,2\)\+TXV"
+                rf"{self.attributes['scode']}[\(1,2\)|\*]\+TXV"
             )
         self.zero_disc_price = self.calc_zero_disc_price()
 
