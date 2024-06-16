@@ -242,7 +242,9 @@ def test_related_adp_customer_terms():
         response = method(ROUTE)
         assert response.status_code == rc
         if rc == 200:
-            assert RelatedADPCustomerTermsResp(**response.json())
+            assert RelatedADPCustomerTermsResp(**response.json()), pprint(
+                response.json()
+            )
         app.dependency_overrides[authenticate_auth0_token] = {}
 
 
