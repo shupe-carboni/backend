@@ -367,7 +367,7 @@ def test_model_zero_discount_pricing(model, price):
     """make sure all reference models are priced correctly by the parsers on zero_discount_price"""
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
     # id zero with sca employee perms or above triggers zero discount price-only, ignores the id for customer pricing
-    url = f"{PATH_PREFIX}/model-lookup/0?model_num="
+    url = f"{PATH_PREFIX}/model-lookup?customer_id=0&model_num="
     resp = test_client.get(url + str(model))
     assert resp.status_code == 200
     assert resp.json()["zero-discount-price"] == price
@@ -378,16 +378,15 @@ def test_model_lookup():
         auth_overrides.AdminToken,
         auth_overrides.SCAEmployeeToken,
     )
+    real_id = f"customer_id={ADP_CUSTOMER_ID}"
+    base_url = f"{PATH_PREFIX}/model-lookup"
     for sca_perm in sca_perms:
         app.dependency_overrides[authenticate_auth0_token] = sca_perm
-        base_url = f"{PATH_PREFIX}/model-lookup/"
-        zero_id = base_url + "0"
-        real_id = base_url + f"{ADP_CUSTOMER_ID}"
-        response = test_client.get(zero_id + f"?model_num={TEST_COIL_MODEL}")
+        response = test_client.get(base_url + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 200
         assert "zero-discount-price" in response.json().keys()
         assert "net-price" not in response.json().keys()
-        response = test_client.get(real_id + f"?model_num={TEST_COIL_MODEL}")
+        response = test_client.get(base_url + f"?model_num={TEST_COIL_MODEL}&{real_id}")
         assert response.status_code == 200
         assert "zero-discount-price" in response.json().keys()
         assert "net-price" in response.json().keys()
@@ -400,13 +399,10 @@ def test_model_lookup():
     pricing = (True, True, False)
     for customer_perm, show_pricing in zip(customer_perms, pricing):
         app.dependency_overrides[authenticate_auth0_token] = customer_perm
-        base_url = f"{PATH_PREFIX}/model-lookup/"
-        zero_id = base_url + "0"
-        real_id = base_url + f"{ADP_CUSTOMER_ID}"
-        invalid_id = base_url + f"{ADP_CUSTOMER_ID+1}"
-        response = test_client.get(zero_id + f"?model_num={TEST_COIL_MODEL}")
+        invalid_id = f"customer_id={ADP_CUSTOMER_ID+1}"
+        response = test_client.get(base_url + f"?model_num={TEST_COIL_MODEL}")
         assert response.status_code == 401
-        response = test_client.get(real_id + f"?model_num={TEST_COIL_MODEL}")
+        response = test_client.get(base_url + f"?model_num={TEST_COIL_MODEL}&{real_id}")
         assert response.status_code == 200
         if show_pricing:
             zero_discount_price = "zero-discount-price" in response.json().keys()
@@ -416,7 +412,9 @@ def test_model_lookup():
             net_price = "net-price" not in response.json().keys()
         assert zero_discount_price
         assert net_price
-        response = test_client.get(invalid_id + f"?model_num={TEST_COIL_MODEL}")
+        response = test_client.get(
+            base_url + f"?model_num={TEST_COIL_MODEL}&{invalid_id}"
+        )
         assert response.status_code == 401
         app.dependency_overrides[authenticate_auth0_token] = {}
 
@@ -883,7 +881,7 @@ def test_patch_quote(perm, response_code):
 @mark.parametrize("perm,response_code", ALL_ALLOWED)
 def test_delete_quote(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
-    QN = randint(1000, 9999)
+    QN = randint(1000000, 9999999)
     app.dependency_overrides[authenticate_auth0_token] = perm
     new_quote = {
         "adp_quote_id": f"QN-{QN}",
