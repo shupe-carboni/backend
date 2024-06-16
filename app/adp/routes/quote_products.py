@@ -12,6 +12,9 @@ from app.adp.quotes.products.models import (
     QuoteProductQueryJSONAPI,
 )
 from app.jsonapi.sqla_models import ADPQuoteProduct
+from logging import getLogger
+
+logger = getLogger("uvicorn.info")
 
 PARENT_PREFIX = "/vendors/adp"
 API_TYPE = ADPQuoteProduct.__jsonapi_type_override__
@@ -28,14 +31,14 @@ converter = convert_query(QuoteProductQueryJSONAPI)
 async def quote_products(token: Token):
     """Intentionally not implemented. Quote products ought to be retreived
     only in the context of the associated quote"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, quote_products.__doc__)
 
 
 @adp_quote_products.get("/{product_id}", tags=["jsonapi"])
 async def quote_product(token: Token, product_id: int):
     """Intentionally not implemented. Quote products ought to be retreived
     only in the context of the associated quote"""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, quote_product.__doc__)
 
 
 @adp_quote_products.post(
@@ -52,7 +55,11 @@ async def new_quote_product(
         model_number = new_quote_product.data.attributes.model_number
         forbidden_to_add = (price, model_number)
         if any(forbidden_to_add):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "adding a new quote product with a quoted model number and/or a price "
+                "is reserved for SCA only",
+            )
     return (
         auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
@@ -87,10 +94,18 @@ async def mod_quote_product(
             attributes.model_number,
         )
         if any(forbidden_to_change):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "modifying a quote product's quoted model number and/or a price "
+                "is reserved for SCA only",
+            )
     if attributes.comp_model:
         data["data"]["attributes"]["model-number"] = None
         data["data"]["attributes"]["price"] = None
+        logger.warning(
+            "Model Number and Price have been nulled due to the presence of "
+            "a comp-model in the PATCH request"
+        )
     return (
         auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
