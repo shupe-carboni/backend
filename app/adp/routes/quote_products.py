@@ -47,6 +47,12 @@ async def quote_product(token: Token, product_id: int):
 async def new_quote_product(
     token: Token, session: NewSession, new_quote_product: NewProductRequest
 ) -> ProductResponse:
+    if token.permissions < auth.Permissions.developer:
+        price = new_quote_product.data.attributes.price
+        model_number = new_quote_product.data.attributes.model_number
+        forbidden_to_add = (price, model_number)
+        if any(forbidden_to_add):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED)
     return (
         auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
@@ -82,8 +88,9 @@ async def mod_quote_product(
         )
         if any(forbidden_to_change):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-        if attributes.comp_model:
-            data["data"]["attributes"]["model-number"] = None
+    if attributes.comp_model:
+        data["data"]["attributes"]["model-number"] = None
+        data["data"]["attributes"]["price"] = None
     return (
         auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
