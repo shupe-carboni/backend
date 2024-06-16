@@ -121,12 +121,12 @@ def customer_program_dl_file(
 
 
 @adp.get(
-    "/model-lookup/{adp_customer_id}",
+    "/model-lookup",
     response_model=ProgAttrs,
     response_model_exclude_none=True,
 )
 def parse_model_and_pricing(
-    session: NewSession, token: Token, adp_customer_id: int, model_num: str
+    session: NewSession, token: Token, model_num: str, customer_id: int = 0
 ) -> ProgAttrs:
     """Used for feature extraction parsed from the model number and price check
     based on the permissions.
@@ -141,22 +141,19 @@ def parse_model_and_pricing(
 
     """
     adp_perm = token.permissions
-
     if adp_perm >= auth.Permissions.sca_employee:
-        if not adp_customer_id:
+        if not customer_id:
             parse_mode = ParsingModes.BASE_PRICE
         else:
             parse_mode = ParsingModes.CUSTOMER_PRICING
-    elif adp_customer_id:
+    elif customer_id:
         try:
             resp = (
                 auth.ADPOperations(token, ADPCustomer.__jsonapi_type_override__)
                 .allow_customer("std")
                 .allow_dev()
-                .get(session, obj_id=adp_customer_id)
+                .get(session, obj_id=customer_id)
             )
-            if not resp["data"]:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         except HTTPException as e:
             if e.status_code < 500:
                 raise HTTPException(
@@ -169,7 +166,7 @@ def parse_model_and_pricing(
             if adp_perm >= auth.Permissions.customer_manager:
                 parse_mode = ParsingModes.CUSTOMER_PRICING
                 return parse_model_string(
-                    session, adp_customer_id, model_num, ParsingModes.CUSTOMER_PRICING
+                    session, customer_id, model_num, ParsingModes.CUSTOMER_PRICING
                 )
             elif adp_perm >= auth.Permissions.customer_std:
                 parse_mode = ParsingModes.ATTRS_ONLY
@@ -177,4 +174,4 @@ def parse_model_and_pricing(
                 raise HTTPException(status.HTTP_401_UNAUTHORIZED)
     else:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-    return parse_model_string(session, adp_customer_id, model_num, parse_mode)
+    return parse_model_string(session, customer_id, model_num, parse_mode)
