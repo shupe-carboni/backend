@@ -103,7 +103,7 @@ class JSONAPI_(JSONAPI):
                 filter_query_args.append(or_(model_attr.like("%" + value + "%")))
             else:
                 warnings.warn(
-                    f"Warning: filter field {field} " "with value {value} was ignored."
+                    f"Warning: filter field {field} with value {value} was ignored."
                 )
         return (
             sqla_query_obj.filter(*filter_query_args)
