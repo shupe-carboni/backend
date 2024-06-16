@@ -526,9 +526,10 @@ class SecOp(ABC):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         match result:
             case JSONAPIResponse():
-                return result.data
-            case dict():
-                return result
+                result = result.data
+        if not result["data"]:
+            raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
+        return result
 
     @standard_error_handler
     def post(
@@ -636,11 +637,11 @@ class SecOp(ABC):
 
 class CustomersOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
         super().__init__(token, resource)
         self._primary_resource = SCACustomer.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial()
+        self._serializer = serializer_partial(prefix=prefix)
 
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """Using select statements, get the sca customer ids that
@@ -705,11 +706,11 @@ class CustomersOperations(SecOp):
 
 class VendorOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
         super().__init__(token, resource)
         self._primary_resource = SCAVendor.__jsonapi_type_override__
         self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial()
+        self._serializer = serializer_partial(prefix=prefix)
 
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """The Vendors resource does not have underlying resources that need to
