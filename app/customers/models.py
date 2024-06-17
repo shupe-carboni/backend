@@ -18,7 +18,7 @@ class CustomerRelationshipsResponse(JSONAPIRelationshipsResponse):
     data: list[CustomerResourceIdentifier] | CustomerResourceIdentifier
 
 
-## Customer
+## Customers
 # Schema
 class CustomerAttributes(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -126,6 +126,7 @@ class ModCustomer(BaseModel):
     data: ModCustomerRObj
 
 
+## CMMSSNS Customer
 class CMMSSNSCustomerSearchResult(BaseModel):
     id: int
     name: str
