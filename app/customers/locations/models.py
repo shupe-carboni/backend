@@ -1,12 +1,10 @@
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
 from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
     JSONAPIRelationships,
-    JSONAPIResourceObject,
     JSONAPIResponse,
-    Pagination,
     Query,
 )
 from app.jsonapi.sqla_models import (
@@ -30,18 +28,20 @@ class LocationRelationshipsResponse(JSONAPIRelationshipsResponse):
 
 ## Location
 class LocationAttrs(BaseModel):
-    hq: bool
-    dc: bool
+    hq: Optional[bool] = None
+    dc: Optional[bool] = None
 
 
 class LocationFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     filter_hq: str = Field(default=None, alias="filter[hq]")
     filter_dc: str = Field(default=None, alias="filter[dc]")
 
 
 class LocationRelationships(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     customers: JSONAPIRelationships
-    places: JSONAPIRelationships
+    places: Optional[JSONAPIRelationships] = None
     # users: JSONAPIRelationships = Field(alias=SCAUser.__jsonapi_type_override__)
     # manager_map: JSONAPIRelationships = Field(alias=SCAManagerMap.__jsonapi_type_override__)
     adp_alias_to_sca_customer_locations: Optional[JSONAPIRelationships] = Field(
@@ -53,6 +53,7 @@ class LocationRelationships(BaseModel):
 
 
 class LocationFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     fields_customers: str = Field(default=None, alias="fields[customers]")
     jields_places: str = Field(default=None, alias="fields[places]")
     fields_adp_alias_to_sca_customer_locations: str = Field(
@@ -100,6 +101,7 @@ class LocationQuery(_LocationQuery, BaseModel): ...
 
 
 class LocationQueryJSONAPI(LocationFilters, LocationFields, Query):
+    model_config = ConfigDict(populate_by_name=True)
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
@@ -116,3 +118,24 @@ class NewLocation(BaseModel):
 
 class ModLocation(BaseModel):
     data: LocationResourceObject
+
+
+## ADP
+class ADPATSLRID(JSONAPIResourceIdentifier):
+    type: str = ADPAliasToSCACustomerLocation.__jsonapi_type_override__
+
+
+class ADPATSLRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
+
+
+class ADPATSLRObj(ADPATSLRID):
+    attributes: Optional[dict]
+    relationships: ADPATSLRels
+
+
+class RelatedADPAliasToSCACustomerLocation(JSONAPIResponse):
+    data: list[ADPATSLRObj] | ADPATSLRObj
+    included: dict = {}
+    links: Optional[dict] = Field(exclude=True, default=None)
