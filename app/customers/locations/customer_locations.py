@@ -3,8 +3,8 @@ Customer Locations Routes
 """
 
 import logging
-from typing import Annotated, Callable
-from fastapi import Depends, HTTPException, status
+from typing import Annotated
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.customers.locations.models import (
     LocationQuery,
     NewLocation,
     ModLocation,
+    RelatedADPAliasToSCACustomerLocation,
 )
 from app.db.db import SCA_DB
 from app.jsonapi.sqla_models import SCACustomer, SCACustomerLocation
@@ -78,16 +79,16 @@ async def customer_location(
 
 @customer_locations.get(
     "/{customer_location_id}/adp-alias-to-sca-customer-locations",
-    # response_model=CustomerResponse,
+    response_model=RelatedADPAliasToSCACustomerLocation,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def customer_location(
+async def customer_location_adp_alias(
     session: NewSession,
     token: Token,
     customer_location_id: int,
     query: LocationQuery = Depends(),
-) -> LocationResponse:
+) -> RelatedADPAliasToSCACustomerLocation:
     return (
         auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
@@ -98,6 +99,7 @@ async def customer_location(
             session=session,
             query=converter(query),
             obj_id=customer_location_id,
+            related_resource="adp-alias-to-sca-customer-locations",
         )
     )
 
@@ -141,6 +143,7 @@ async def mod_customer_location(
         auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
+        .allow_dev()
         .allow_customer("admin")
         .patch(
             session=session,
@@ -159,6 +162,7 @@ async def del_customer_location(
         auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
+        .allow_dev()
         .allow_customer("admin")
         .delete(
             session=session,
