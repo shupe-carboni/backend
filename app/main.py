@@ -13,7 +13,7 @@ from starlette.routing import Match
 
 ## Routers ##
 from app.vendors import vendors, vendors_info
-from app.customers import customers, customer_rel
+from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import (
     adp,
@@ -81,6 +81,9 @@ app.add_middleware(
 )
 
 ## NOTE: order really, really matters
+## NOTE: prefixing instead of registering sub-resources with
+##          their parent resources helps with
+##          ordering paths correctly
 for route, prefix, target in (
     (customer_rel, "", customers),
     (adp_quotes, "", adp),
@@ -95,6 +98,7 @@ for route, prefix, target in (
     (adp_snps, "", adp),
     (vendors, "", app),
     (vendors_info, "", app),
+    (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
