@@ -29,7 +29,7 @@ from app.jsonapi.sqla_models import ADPQuote
 PARENT_PREFIX = "/vendors/adp"
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
 S3_DIR = "/adp/quotes"
-quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp quotes"])
+quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp", "quotes"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
