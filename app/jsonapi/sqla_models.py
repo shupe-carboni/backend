@@ -124,6 +124,7 @@ class ADPCoilProgram(Base):
 
 class ADPAliasToSCACustomerLocation(Base):
     __tablename__ = "adp_alias_to_sca_customer_locations"
+    __jsonapi_type_override__ = "adp-alias-to-sca-customer-locations"
     ## fields
     id = Column(Integer, primary_key=True)
     adp_customer_id = Column(Integer, ForeignKey("adp_customers.id"))
