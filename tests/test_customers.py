@@ -99,7 +99,7 @@ def test_new_customer_and_delete(perm, response_code):
     assert response.status_code == 204, pprint(response.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
+@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
 def test_modify_customer(perm, response_code):
     ROUTE = Path("/customers") / str(CUSTOMER_ID)
     app.dependency_overrides[authenticate_auth0_token] = perm

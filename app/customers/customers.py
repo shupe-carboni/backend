@@ -266,6 +266,7 @@ async def mod_customer(
         auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
+        .allow_dev()
         .patch(
             session=session,
             data=mod_customer.model_dump(exclude_none=True, by_alias=True),
