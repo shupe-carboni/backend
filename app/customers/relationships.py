@@ -44,6 +44,7 @@ async def related_location(
         .allow_admin()
         .allow_dev()
         .allow_sca()
+        .allow_customer("admin")
         .get(
             session=session,
             obj_id=customer_id,
@@ -68,6 +69,7 @@ async def customer_location_relationships(
         .allow_admin()
         .allow_dev()
         .allow_sca()
+        .allow_customer("admin")
         .get(
             session=session,
             obj_id=customer_id,

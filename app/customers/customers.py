@@ -86,6 +86,8 @@ async def customer_collection(
         auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
+        .allow_dev()
+        .allow_customer("admin")
         .get(session=session, query=converter(query))
     )
 
@@ -129,6 +131,8 @@ async def customer(
         auth.CustomersOperations(token, API_TYPE)
         .allow_admin()
         .allow_sca()
+        .allow_dev()
+        .allow_customer("admin")
         .get(
             session=session,
             query=converter(query),
@@ -195,7 +199,6 @@ async def new_customer(
         return (
             auth.CustomersOperations(token, API_TYPE)
             .allow_admin()
-            .allow_sca()
             .post(
                 session=session,
                 data=new_customer.model_dump(by_alias=True),
