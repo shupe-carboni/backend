@@ -82,8 +82,6 @@ def test_new_quote_product(perm, response_code):
         "attributes": {
             "tag": "PRODUCT-1",
             "qty": randint(1, 100),
-            "price": randint(100, 1500),
-            "model-number": TEST_COIL_MODEL,
             "comp-model": "".join(
                 choice(string.ascii_uppercase + string.digits) for _ in range(10)
             ),
@@ -139,8 +137,6 @@ def test_del_quote_product(perm, response_code):
         "attributes": {
             "tag": "PRODUCT-1",
             "qty": randint(1, 100),
-            "price": randint(100, 1500),
-            "model-number": TEST_COIL_MODEL,
             "comp-model": "".join(
                 choice(string.ascii_uppercase + string.digits) for _ in range(10)
             ),
