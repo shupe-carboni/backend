@@ -693,7 +693,7 @@ class CustomersOperations(SecOp):
                 JOIN {SCACustomer.__tablename__} c_2
                 ON c_2.id = scl.customer_id
                 WHERE u.email = :user_email
-                AND ac_2.id = ac.id
+                AND c_2.id = c.id
             );
         """
         return self.get_result_from_id_association_queries(
