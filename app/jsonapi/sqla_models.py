@@ -547,6 +547,9 @@ class SCAVendor(Base):
     logo_path = Column(String)
     # relationships
     info = relationship("SCAVendorInfo", back_populates=__jsonapi_type_override__)
+    vendor_resource_mapping = relationship(
+        "SCAVendorResourceMap", back_populates=__jsonapi_type_override__
+    )
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -562,6 +565,23 @@ class SCAVendorInfo(Base):
     content = Column(TEXT)
     # relationships
     vendors = relationship("SCAVendor", back_populates=__jsonapi_type_override__)
+
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
+
+
+class SCAVendorResourceMap(Base):
+    __tablename__ = "sca_vendor_resource_mapping"
+    __tablename_alt__ = "vendor_resource_mapping"
+    __jsonapi_type_override__ = "vendor-resource-mapping"
+    id = Column(Integer, primary_key=True)
+    vendor_id = Column(String, ForeignKey("sca_vendors.id"), nullable=False)
+    resource_type = Column(String, nullable=False)
+    resource = Column(String, nullable=False)
+    category_name = Column(String)
+    # relationships
+    vendors = relationship("SCAVendor", back_populates=__tablename_alt__)
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:

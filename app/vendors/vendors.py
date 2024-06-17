@@ -14,6 +14,7 @@ from app.vendors.models import (
     VendorRelationshipsResponse,
     NewVendor,
     VendorModification,
+    VendorResourceResp,
 )
 from app.vendors.vendors_info import delete_info
 
@@ -122,6 +123,34 @@ async def info_relationships(
             obj_id=vendor_id,
             relationship=True,
             related_resource="info",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-resource-mapping",
+    response_model=VendorResourceResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def related_info(
+    token: VendorsPerm,
+    session: NewSession,
+    vendor_id: str,
+    query: VendorQuery = Depends(),
+) -> VendorResourceResp:
+    return (
+        auth.VendorOperations(token, VENDORS_RESOURCE)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session=session,
+            query=converter(query),
+            obj_id=vendor_id,
+            relationship=False,
+            related_resource="vendor-resource-mapping",
         )
     )
 

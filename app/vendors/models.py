@@ -1,6 +1,6 @@
-from pydantic import BaseModel, create_model, Field
+from pydantic import BaseModel, create_model, Field, ConfigDict
 from typing import Optional
-from app.jsonapi.sqla_models import SCAVendor, SCAVendorInfo
+from app.jsonapi.sqla_models import SCAVendor, SCAVendorInfo, SCAVendorResourceMap
 from app.jsonapi.core_models import (
     JSONAPIRelationships,
     JSONAPIResourceIdentifier,
@@ -31,12 +31,19 @@ class VendorFilters(BaseModel):
 
 
 class VendorRelationships(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     info: JSONAPIRelationships
+    vendor_resource_mapping: JSONAPIRelationships = Field(
+        alias="vendor-resource-mapping"
+    )
 
 
 class VendorFields(BaseModel):
     fields_vendors: str = Field(default=None, alias="fields[vendors]")
     fields_info: str = Field(default=None, alias="fields[info]")
+    fields_vendor_resource_mapping: str = Field(
+        default=None, alias="fields[vendor-resource-mapping]"
+    )
 
 
 class VendorResourceIdentifier(JSONAPIResourceIdentifier):
@@ -182,3 +189,27 @@ class VendorQueryJSONAPI(VendorFilters, VendorFields, Query):
 class VendorInfoQueryJSONAPI(VendorInfoFilters, VendorInfoFields, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class VendorRelatedResourceRID(JSONAPIResourceIdentifier):
+    type: str = SCAVendorResourceMap.__jsonapi_type_override__
+
+
+class VendorResourceAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    resource_type: str = Field(default=None, alias="resource-type")
+    resource: str
+    category_name: str = Field(default=None, alias="category-name")
+
+
+class VendorResourceRels(BaseModel):
+    vendors: JSONAPIRelationships
+
+
+class VendorResources(VendorRelatedResourceRID):
+    attributes: VendorResourceAttrs
+    relationships: VendorResourceRels
+
+
+class VendorResourceResp(JSONAPIResponse):
+    data: list[VendorResources] | VendorResources
