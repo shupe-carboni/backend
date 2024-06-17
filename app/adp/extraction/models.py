@@ -2,6 +2,7 @@ import math
 import copy
 import pandas as pd
 import openpyxl as opxl
+from fastapi import HTTPException
 from enum import Enum, auto
 from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
@@ -25,6 +26,9 @@ class ParsingModes(Enum):
 class InvalidParsingMode(Exception): ...
 
 
+class InvalidModelNumber(Exception): ...
+
+
 def build_model_attributes(
     session: Session, adp_customer_id: int, model: str
 ) -> pd.Series:
@@ -45,7 +49,9 @@ def parse_model_string(
         if matched_model := Validator(session, model, m).is_model():
             model_obj = matched_model
     if not model_obj:
-        raise Exception(f"No match found for model number {model}")
+        raise HTTPException(
+            400, f"Model number {model} is not a valid ADP model number"
+        )
     record = model_obj.record()
     record_series = pd.Series(record)
     match mode:
