@@ -87,8 +87,8 @@ async def mod_quote_product(
     product_id: int,
 ) -> ProductResponse:
     data = mod_quote_prod.model_dump(exclude_none=True, by_alias=True)
+    attributes = mod_quote_prod.data.attributes
     if token.permissions < auth.Permissions.developer:
-        attributes = mod_quote_prod.data.attributes
         forbidden_to_change = (
             attributes.price,
             attributes.model_number,
