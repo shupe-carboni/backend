@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from enum import StrEnum, auto
 from typing import Iterable
+from fastapi import HTTPException
 from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
 from pandas import DataFrame, read_sql
@@ -63,7 +64,7 @@ class S3:
                 ContentType=file.file_mime,
             )
         except Exception as e:
-            raise Exception(f"upload failed: {e}")
+            raise HTTPException(status_code=500, detail=f"upload failed: {e}")
 
     @classmethod
     async def upload_file(cls, file: File, destination: str) -> None:
@@ -74,7 +75,7 @@ class S3:
         try:
             response: dict = cls.client.get_object(Bucket=cls.bucket, Key=key)
         except Exception as e:
-            raise Exception(f"File Not Found: {e}")
+            raise HTTPException(status_code=404, detail=f"File Not Found: {e}")
         else:
             status_code: int = response["ResponseMetadata"]["HTTPStatusCode"]
             if status_code == 200:
