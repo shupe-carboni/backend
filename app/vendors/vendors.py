@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 from app import auth
 from app.db import SCA_DB
-from app.jsonapi.sqla_models import SCAVendor
+from app.jsonapi.sqla_models import SCAVendor, SCAVendorResourceMap
 from app.jsonapi.core_models import convert_query
 from app.vendors.models import (
     VendorResponse,
@@ -133,7 +133,7 @@ async def info_relationships(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def related_info(
+async def related_resources(
     token: VendorsPerm,
     session: NewSession,
     vendor_id: str,
@@ -152,6 +152,22 @@ async def related_info(
             relationship=False,
             related_resource="vendor-resource-mapping",
         )
+    )
+
+
+@vendors.delete("vendor-resource-mapping/{resource_mapping_id}")
+async def delete_related_resource(
+    token: VendorsPerm,
+    session: NewSession,
+    resource_mapping_id: int,
+    vendor_id: str,
+) -> None:
+    return (
+        auth.VendorOperations(token, SCAVendorResourceMap.__jsonapi_type_override__)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .delete(session=session, obj_id=resource_mapping_id, primary_id=vendor_id)
     )
 
 
@@ -208,10 +224,20 @@ async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) ->
     """Delete a Vendor as well as all accompanying vendor information"""
     related_info = await info_relationships(token, session, vendor_id, VendorQuery())
     related_info_ids: list[int] = [record["id"] for record in related_info["data"]]
+    related_resource_data = await related_resources(
+        token=token, session=session, vendor_id=vendor_id, query=VendorQuery()
+    )
+    related_resource_ids: list[int] = [
+        record["id"] for record in related_resource_data["data"]
+    ]
     for rec_id in related_info_ids:
         # will raise an error if the action is not permitted, an all or nothing setup
         # so it should fail on the first record or not at all
         await delete_info(token, session, rec_id, vendor_id)
+    for rec_id in related_resource_ids:
+        # will raise an error if the action is not permitted, an all or nothing setup
+        # so it should fail on the first record or not at all
+        await delete_related_resource(token, session, rec_id, vendor_id)
     return (
         auth.VendorOperations(token, VENDORS_RESOURCE)
         .allow_admin()
