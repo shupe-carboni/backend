@@ -6,39 +6,18 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRouter
 
 from app import auth, downloads
+from app.downloads import DownloadLink, XLSXFileResponse
 from app.db import Session, ADP_DB, Stage
 from app.adp.extraction.models import parse_model_string, ParsingModes
 from app.adp.utils.workbook_factory import generate_program
 from app.adp.utils.programs import EmptyProgram
-from app.adp.models import DownloadLink, ProgAttrs
+from app.adp.models import ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
 
 adp = APIRouter(prefix=f"/adp", tags=["adp"])
 logger = logging.getLogger("uvicorn.info")
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
-
-
-class XLSXFileResponse(StreamingResponse):
-    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-    def __init__(
-        self,
-        content: Any,
-        status_code: int = 200,
-        headers: Optional[Mapping[str, str]] = None,
-        media_type: Optional[str] = None,
-        background: Optional[BackgroundTask] = None,
-        filename: str = "download",
-    ) -> None:
-        super().__init__(content, status_code, headers, media_type, background)
-        # NOTE escaped quotes are needed for filenames with spaces
-        self.raw_headers.append(
-            (
-                b"Content-Disposition",
-                f'attachment; filename="{filename}.xlsx"'.encode("latin-1"),
-            )
-        )
 
 
 def generate_dl_link(adp_customer_id: int, download_id: int) -> DownloadLink:

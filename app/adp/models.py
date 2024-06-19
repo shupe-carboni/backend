@@ -524,11 +524,6 @@ class RelatedPartsResponse(PartsResp):
     links: Optional[dict] = Field(default=None, exclude=True)
 
 
-## Downloads
-class DownloadLink(BaseModel):
-    downloadLink: str
-
-
 ## ADP Customers
 class CustomersRID(JSONAPIResourceIdentifier):
     type: str = ADPCustomer.__jsonapi_type_override__
