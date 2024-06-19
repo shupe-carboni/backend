@@ -65,6 +65,9 @@ class ADPAHProgram(Base):
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    adp_ah_programs_changelog = relationship(
+        "ADPAHProgramChangelog", back_populates=__tablename__
+    )
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -74,6 +77,25 @@ class ADPAHProgram(Base):
             adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
+
+
+class ADPAHProgramChangelog(Base):
+    __tablename__ = "adp_ah_programs_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    ## fields
+    id = Column(Integer, primary_key=True)
+    record_id = Column(Integer, ForeignKey("adp_ah_programs.id"))
+    prior_status: Mapped[Stage] = mapped_column()
+    new_status: Mapped[Stage] = mapped_column()
+    date = Column(DateTime)
+    username = Column(String)
+    comment = Column(TEXT)
+    ## relationships
+    adp_ah_programs = relationship("ADPAHProgram", back_populates=__tablename__)
+
+    ## filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
 
 
 class ADPCoilProgram(Base):
@@ -111,6 +133,9 @@ class ADPCoilProgram(Base):
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    adp_coil_programs_changelog = relationship(
+        "ADPCoilProgramChangelog", back_populates=__tablename__
+    )
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -120,6 +145,25 @@ class ADPCoilProgram(Base):
             adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
+
+
+class ADPCoilProgramChangelog(Base):
+    __tablename__ = "adp_coil_programs_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    ## fields
+    id = Column(Integer, primary_key=True)
+    record_id = Column(Integer, ForeignKey("adp_coil_programs.id"))
+    prior_status: Mapped[Stage] = mapped_column()
+    new_status: Mapped[Stage] = mapped_column()
+    date = Column(DateTime)
+    username = Column(String)
+    comment = Column(TEXT)
+    ## relationships
+    adp_coil_programs = relationship("ADPCoilProgram", back_populates=__tablename__)
+
+    ## filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
 
 
 class ADPAliasToSCACustomerLocation(Base):
@@ -238,6 +282,9 @@ class ADPMaterialGroupDiscount(Base):
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
     adp_material_groups = relationship("ADPMaterialGroup", back_populates=__tablename__)
+    adp_material_group_discounts_changelog = relationship(
+        "ADPMaterialGroupDiscountChangelog", back_populates=__tablename__
+    )
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -249,6 +296,27 @@ class ADPMaterialGroupDiscount(Base):
             adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
+
+
+class ADPMaterialGroupDiscountChangelog(Base):
+    __tablename__ = "adp_material_group_discounts_changelog"
+    __jsonapi_type_override__ = "adp-material-group-discounts-changelog"
+    ## fields
+    id = Column(Integer, primary_key=True)
+    record_id = Column(Integer, ForeignKey("adp_material_group_discounts.id"))
+    prior_status: Mapped[Stage] = mapped_column()
+    new_status: Mapped[Stage] = mapped_column()
+    date = Column(DateTime)
+    username = Column(String)
+    comment = Column(TEXT)
+    ## relationships
+    adp_material_group_discounts = relationship(
+        "ADPMaterialGroupDiscount", back_populates=__tablename__
+    )
+
+    ## filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
 
 
 class ADPMaterialGroup(Base):
@@ -440,6 +508,7 @@ class ADPSNP(Base):
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
+    adp_snps_changelog = relationship("ADPSNPChangelog", back_populates=__tablename__)
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
@@ -451,6 +520,25 @@ class ADPSNP(Base):
             adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
+
+
+class ADPSNPChangelog(Base):
+    __tablename__ = "adp_snps_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    ## fields
+    id = Column(Integer, primary_key=True)
+    record_id = Column(Integer, ForeignKey("adp_snps.id"))
+    prior_status: Mapped[Stage] = mapped_column()
+    new_status: Mapped[Stage] = mapped_column()
+    date = Column(DateTime)
+    username = Column(String)
+    comment = Column(TEXT)
+    ## relationships
+    adp_snps = relationship("ADPSNP", back_populates=__tablename__)
+
+    ## filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
 
 
 class ADPQuoteProduct(Base):

@@ -135,6 +135,18 @@ class ProgRels(BaseModel):
     )
 
 
+class CoilRels(ProgRels):
+    adp_coil_programs_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-coil-programs-changelog"
+    )
+
+
+class AHRels(ProgRels):
+    adp_ah_programs_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-ah-programs-changelog"
+    )
+
+
 class ProgFields(BaseModel):
     fields_adp_customers: str = Field(default=None, alias="fields[adp-customers]")
 
@@ -151,12 +163,12 @@ class AHProgFields(ProgFields):
 
 class CoilProgRObj(CoilProgRID):
     attributes: ProgAttrs
-    relationships: ProgRels
+    relationships: CoilRels
 
 
 class AirHandlerProgRObj(AirHandlerProgRID):
     attributes: ProgAttrs
-    relationships: ProgRels
+    relationships: AHRels
 
 
 class CoilProgResp(JSONAPIResponse):
@@ -690,6 +702,9 @@ class MatGrpDiscRels(BaseModel):
     adp_material_groups: Optional[JSONAPIRelationships] = Field(
         default=None, alias="adp-material-groups"
     )
+    adp_material_group_discounts_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-material-group-discounts-changelog"
+    )
 
 
 class MatGrpDiscFields(BaseModel):
@@ -831,6 +846,7 @@ class ADPSNPAttrs(BaseModel):
 class ADPSNPRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
+    adp_snps_changelog: JSONAPIRelationships = Field(alias="adp-snps-changelog")
 
 
 class ADPSNPRObj(ADPSNPRID):
