@@ -6,10 +6,10 @@ from os import getenv
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from uuid import uuid4, UUID  # uuid4 is for random generation
-from typing import Optional, Mapping, Any, Annotated
+from typing import Optional, Mapping, Any
 from starlette.background import BackgroundTask
 from fastapi.responses import StreamingResponse
-import mimetypes
+from fastapi import HTTPException, status
 
 from app.db import Stage
 
@@ -56,13 +56,24 @@ class FileResponse(StreamingResponse):
         )
 
 
-class NonExistant(Exception): ...
+class NonExistant(HTTPException):
+    def __init__(self) -> None:
+        status_code = status.HTTP_404_NOT_FOUND
+        super().__init__(status_code=status_code)
 
 
-class Expired(Exception): ...
+class Expired(HTTPException):
+    def __init__(self) -> None:
+        status_code = status.HTTP_400_BAD_REQUEST
+        msg = "This link has expired"
+        super().__init__(status_code=status_code, detail=msg)
 
 
-class CustomerIDNotMatch(Exception): ...
+class ResourceIDNotMatch(HTTPException):
+    def __init__(self) -> None:
+        status_code = status.HTTP_400_BAD_REQUEST
+        msg = "The resource ID does not match the id associated with this link"
+        super().__init__(status_code=status_code, detail=msg)
 
 
 ## Downloads
@@ -72,54 +83,51 @@ class DownloadLink(BaseModel):
 
 @dataclass
 class DownloadRequest:
-    customer_id: int
-    download_id: UUID
-    expires_at: float
+    resource: str
     stage: Optional[Stage] = None
     s3_path: Optional[str] = None
 
     def __hash__(self) -> int:
         return self.download_id.__hash__()
 
-    def expired(self) -> bool:
-        return datetime.now() > self.expires_at
+    def __post_init__(self) -> None:
+        duration = timedelta(float(getenv("DL_LINK_DURATION")) * 60)
+        self.expires_at = datetime.now() + duration
+        self.download_id = uuid4()
+
+    def __bool__(self) -> bool:
+        return datetime.now() <= self.expires_at
 
     def __eq__(self, other) -> bool:
         return self.download_id == other
 
 
 class DownloadIDs:
-    active_requests: set[DownloadRequest] = set()
+    active_requests: dict[int, DownloadRequest] = dict()
 
     @classmethod
-    def generate_id(
-        cls, customer_id: int, stage: Stage = None, s3_path: str = None
+    def add_request(
+        cls, resource: str, stage: Stage = None, s3_path: str = None
     ) -> str:
-        value = uuid4()
-        duration = timedelta(float(getenv("DL_LINK_DURATION")) * 60)
-        expiry = datetime.now() + duration
         request = DownloadRequest(
-            customer_id=customer_id,
+            resource=resource,
             stage=stage,
-            download_id=value,
-            expires_at=expiry,
             s3_path=s3_path,
         )
-        cls.active_requests.add(request)
+        cls.active_requests.update({hash(request): request})
         return str(request.download_id)
 
     @classmethod
-    def use_download(cls, customer_id: int, id_value: str) -> DownloadRequest:
-        incoming_uuid: UUID = UUID(id_value)
-        if incoming_uuid in cls.active_requests:
-            for stored_request in cls.active_requests:
-                if stored_request == incoming_uuid:
-                    if stored_request.customer_id == customer_id:
-                        if not stored_request.expired():
-                            cls.active_requests.remove(stored_request)
-                            return stored_request
-                        else:
-                            raise Expired
-                    else:
-                        raise CustomerIDNotMatch
-        raise NonExistant
+    def use_download(cls, resource: str, id_value: str) -> DownloadRequest:
+        incoming_uuid: int = hash(UUID(id_value))
+        try:
+            stored_request = cls.active_requests.pop(incoming_uuid)
+        except KeyError:
+            raise NonExistant
+        else:
+            if stored_request and stored_request.resource == resource:
+                return stored_request
+            elif not stored_request:
+                raise Expired
+            else:
+                raise ResourceIDNotMatch
