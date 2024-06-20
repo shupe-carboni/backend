@@ -135,21 +135,21 @@ def new_mat_grp_disc(
     session: NewSession,
     new_discount: NewMatGrpDiscReq,
 ) -> ADPMatGrpDiscResp:
-    if 0 < new_discount.data.attributes.discount < 100:
-        return (
-            auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
-            .allow_admin()
-            .allow_sca()
-            .allow_dev()
-            .post(
-                session,
-                data=new_discount.model_dump(exclude_none=True, by_alias=True),
-                primary_id=new_discount.data.relationships.adp_customers.data.id,
-            )
+    if not (0 < new_discount.data.attributes.discount < 100):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "The discount must fall between 0 and 100",
         )
-    raise HTTPException(
-        status.HTTP_400_BAD_REQUEST,
-        "discount values must be greater than 0 and less than 100",
+    return (
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session,
+            data=new_discount.model_dump(exclude_none=True, by_alias=True),
+            primary_id=new_discount.data.relationships.adp_customers.data.id,
+        )
     )
 
 

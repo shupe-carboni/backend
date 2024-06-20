@@ -122,21 +122,21 @@ def new_snp(
     session: NewSession,
     new_snp: NewADPSNPReq,
 ) -> ADPSNPResp:
-    if 0 < new_snp.data.attributes.price:
-        return (
-            auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
-            .allow_admin()
-            .allow_sca()
-            .allow_dev()
-            .post(
-                session,
-                data=new_snp.model_dump(exclude_none=True, by_alias=True),
-                primary_id=new_snp.data.relationships.adp_customers.data.id,
-            )
+    if 0 >= new_snp.data.attributes.price:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "a special net price must be greater than 0",
         )
-    raise HTTPException(
-        status.HTTP_400_BAD_REQUEST,
-        "a special net price must be greater than 0",
+    return (
+        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session,
+            data=new_snp.model_dump(exclude_none=True, by_alias=True),
+            primary_id=new_snp.data.relationships.adp_customers.data.id,
+        )
     )
 
 
