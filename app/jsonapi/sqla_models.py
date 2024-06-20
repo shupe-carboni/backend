@@ -66,7 +66,9 @@ class ADPAHProgram(Base):
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
     adp_ah_programs_changelog = relationship(
-        "ADPAHProgramChangelog", back_populates=__tablename__
+        "ADPAHProgramChangelog",
+        back_populates=__tablename__,
+        cascade="all,delete",
     )
 
     ## filtering
@@ -134,7 +136,9 @@ class ADPCoilProgram(Base):
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
     adp_coil_programs_changelog = relationship(
-        "ADPCoilProgramChangelog", back_populates=__tablename__
+        "ADPCoilProgramChangelog",
+        back_populates=__tablename__,
+        cascade="all,delete",
     )
 
     ## filtering
@@ -283,7 +287,9 @@ class ADPMaterialGroupDiscount(Base):
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
     adp_material_groups = relationship("ADPMaterialGroup", back_populates=__tablename__)
     adp_material_group_discounts_changelog = relationship(
-        "ADPMaterialGroupDiscountChangelog", back_populates=__tablename__
+        "ADPMaterialGroupDiscountChangelog",
+        back_populates=__tablename__,
+        cascade="all,delete",
     )
 
     ## filtering
@@ -508,7 +514,11 @@ class ADPSNP(Base):
     customer_id = Column(Integer, ForeignKey("adp_customers.id"))
     ## relationships
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    adp_snps_changelog = relationship("ADPSNPChangelog", back_populates=__tablename__)
+    adp_snps_changelog = relationship(
+        "ADPSNPChangelog",
+        back_populates=__tablename__,
+        cascade="all,delete",
+    )
 
     ## filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
