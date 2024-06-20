@@ -131,7 +131,7 @@ class SCALogo(Logo):
 class CustomerLogo(Logo):
     def __init__(self, s3_key: str, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.img = BytesIO(S3.get_file(s3_key).file_content)
+        self.img = S3.get_file(s3_key).file_content
         self.name = "Customer Logo"
 
 

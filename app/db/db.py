@@ -84,11 +84,13 @@ class S3:
                 file = File(
                     os.path.basename(key),
                     file_mime=file_content_type,
-                    file_content=file_data,
+                    file_content=BytesIO(file_data),
                 )
                 return file
             else:
-                raise Exception(f"File Not Found: {response}")
+                raise HTTPException(
+                    status_code=404, detail=f"File Not Found: {response}"
+                )
 
 
 class Database:
