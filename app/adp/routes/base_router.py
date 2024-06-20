@@ -38,13 +38,7 @@ def customer_program_get_dl(
     stage: Stage,
 ) -> DownloadLink:
     """Generate one-time-use hash value for download"""
-    if token.permissions >= auth.Permissions.sca_employee:
-        download_id = downloads.DownloadIDs.generate_id(
-            customer_id=adp_customer_id, stage=Stage(stage)
-        )
-        return generate_dl_link(adp_customer_id, download_id)
-
-    else:
+    if token.permissions < auth.Permissions.sca_employee:
         try:
             auth.ADPOperations(token, "adp-customers").allow_dev().allow_customer(
                 "std"
@@ -54,11 +48,11 @@ def customer_program_get_dl(
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
             else:
                 raise e
-        else:
-            download_id = downloads.DownloadIDs.generate_id(
-                customer_id=adp_customer_id, stage=Stage(stage)
-            )
-            return generate_dl_link(adp_customer_id, download_id)
+
+    download_id = downloads.DownloadIDs.add_request(
+        resource=f"vendors/adp/programs/{adp_customer_id}", stage=Stage(stage)
+    )
+    return generate_dl_link(adp_customer_id, download_id)
 
 
 @adp.get(
@@ -72,31 +66,23 @@ def customer_program_dl_file(
     download_id: str,
 ) -> XLSXFileResponse:
     """Generate a program excel file and return for download"""
+    dl_obj = downloads.DownloadIDs.use_download(
+        resource=f"vendors/adp/programs/{adp_customer_id}", id_value=download_id
+    )
     try:
-        dl_obj = downloads.DownloadIDs.use_download(
-            customer_id=adp_customer_id, id_value=download_id
-        )
         file = generate_program(
             session=session, customer_id=adp_customer_id, stage=dl_obj.stage
         )
-        return XLSXFileResponse(content=file.file_data, filename=file.file_name)
     except EmptyProgram:
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            detail="The file requested does not contain any data",
-        )
-    except (downloads.NonExistant, downloads.Expired):
-        raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail="Download has either been used, expired, or is not valid",
-        )
-    except downloads.CustomerIDNotMatch:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail="Customer ID does not match the id registered with this link",
+            detail="The file requested does not contain any data",
         )
     except Exception as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    else:
+        return XLSXFileResponse(content=file.file_data, filename=file.file_name)
 
 
 @adp.get(

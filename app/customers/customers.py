@@ -312,8 +312,9 @@ async def customer_logo_file_dl_link(
         else:
             raise e
     else:
-        dl_id = downloads.DownloadIDs.generate_id(
-            customer_id=customer_id, s3_path=customer_object.data.attributes.logo
+        dl_id = downloads.DownloadIDs.add_request(
+            resource=f"/customers/{customer_id}/logo",
+            s3_path=customer_object.data.attributes.logo,
         )
         return downloads.DownloadLink(
             downloadLink=f"/customers/{customer_id}/logo?download_id={dl_id}"
@@ -322,27 +323,12 @@ async def customer_logo_file_dl_link(
 
 @customers.get("/{customer_id}/logo", tags=["file-download"])
 async def customer_logo_file(customer_id: int, download_id: str):
-    try:
-        dl_obj = downloads.DownloadIDs.use_download(
-            customer_id=customer_id, id_value=download_id
-        )
-    except (downloads.NonExistant, downloads.Expired):
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            detail="Download has either been used, expired, or is not valid",
-        )
-    except downloads.CustomerIDNotMatch:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail="Customer ID does not match the id registered with this link",
-        )
-    except Exception as e:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    else:
-        file = S3.get_file(dl_obj.s3_path)
-        return downloads.FileResponse(
-            content=BytesIO(file.file_content),
-            media_type=file.file_mime,
-            filename=file.file_name,
-        )
+    dl_obj = downloads.DownloadIDs.use_download(
+        resource=f"/customers/{customer_id}/logo", id_value=download_id
+    )
+    file = S3.get_file(dl_obj.s3_path)
+    return downloads.FileResponse(
+        content=file.file_content,
+        media_type=file.file_mime,
+        filename=file.file_name,
+    )

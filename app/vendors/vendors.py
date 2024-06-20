@@ -1,4 +1,3 @@
-from io import BytesIO
 from typing import Annotated
 from fastapi import HTTPException, Depends, status
 from fastapi.routing import APIRouter
@@ -264,8 +263,9 @@ async def vendor_logo_file_dl_link(
         else:
             raise e
     else:
-        dl_id = downloads.DownloadIDs.generate_id(
-            customer_id=vendor_id, s3_path=vendor_object.data.attributes.logo_path
+        dl_id = downloads.DownloadIDs.add_request(
+            resource=f"vendors/{vendor_id}",
+            s3_path=vendor_object.data.attributes.logo_path,
         )
         return downloads.DownloadLink(
             downloadLink=f"/vendors/{vendor_id}/logo?download_id={dl_id}"
@@ -274,27 +274,12 @@ async def vendor_logo_file_dl_link(
 
 @vendors.get("/{vendor_id}/logo", tags=["file-download"])
 async def vendor_logo_file(vendor_id: str, download_id: str):
-    try:
-        dl_obj = downloads.DownloadIDs.use_download(
-            customer_id=vendor_id, id_value=download_id
-        )
-    except (downloads.NonExistant, downloads.Expired):
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            detail="Download has either been used, expired, or is not valid",
-        )
-    except downloads.CustomerIDNotMatch:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail="vendor ID does not match the id registered with this link",
-        )
-    except Exception as e:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    else:
-        file = S3.get_file(dl_obj.s3_path)
-        return downloads.FileResponse(
-            content=BytesIO(file.file_content),
-            media_type=file.file_mime,
-            filename=file.file_name,
-        )
+    dl_obj = downloads.DownloadIDs.use_download(
+        resource=f"vendors/{vendor_id}", id_value=download_id
+    )
+    file = S3.get_file(dl_obj.s3_path)
+    return downloads.FileResponse(
+        content=file.file_content,
+        media_type=file.file_mime,
+        filename=file.file_name,
+    )
