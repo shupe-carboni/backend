@@ -5,7 +5,6 @@ Customer Routes
 import logging
 from typing import Annotated, Callable
 from os import getenv
-from io import BytesIO
 from time import sleep
 from dataclasses import dataclass
 from requests import get, post
