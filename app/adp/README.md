@@ -1,75 +1,51 @@
-# ADP Program Extraction and Reformatting
-This utility takes any file that contains ADP model numbers and ratings
-and extracts them into a database.
+# Advanced Distributor Products (ADP)
 
-Every Model Number is tagged with
-* the name of the file it came from (or "program")
-* the name of the sheet it was on
-* the universal name of the customer for which the program is for
-
-In addition, reference files are used to generate feature values, a category name, and pricing.
+ADP is the exclusive manufacturer of indoor cooling equipment featuring Microban® antimicrobial product protection. ADP evaporator coils and air handlers are "built" based on a variety of customizible features.
 
 **These include**
-* Material Group
-* Series
+* Product Series
+* Paint Color
 * Tonnage
-* Pallet Qty
-* Minimum Qty
 * Width
 * Depth (or Length)
 * Height
-* Weight
 * Metering Device
-* Cabinet
-* Zero Discount Price
-* Material Group Discount**
-* Material Group Net Price**
-* SNP Discount**
-* SNP Price**
-* Net Price**
-***Customer-specific*
+* kW Heat (Air Handlers)
 
-Ratings are extracted by looking for certain names used as column
-headers, and taking everything underneath it that looks like ratings information.
+The possible combinations of features number in the hundreds of thousands, so there is not a "catalog" of products to choose from. In addition to the model numbers themselves, there are a number of product specifications that lie beneath, not directly exposed in the model number itself.
 
-Using a reference database of registered ratings from ADP, the actual ratings values of the extracted ratings are matched either by AHRI Number or the model numbers (if no AHRI number was present in the document from which the ratings were extracted.)
 
-Once extracted, new program files can be generated programatically using templates.
+Using a variety of reference tables, parts of the model number can be extracted and used to look up feature values and even calculate pricing. This is achieved by comparing a new model number, supplied by the user, and comparing it to regex patterns specific to each product series.
 
-## Extraction
-### Product Models
-Extraction is done file by file, sheet by sheet, iterating through every cell in every row and checking if the contents are a model-like string. This is done with regex contained within an Object representing the ADP product series.
-
-Example of HE Series (i.e. HG30924D145B1205AP)
+### Example of HE Series (i.e. HG30924D145B1205AP)
 ```python
 class HE(ModelSeries):
-    text_len = (18,)
+    text_len = (18, 17)
     regex = r'''
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
-        (?P<mat>[E|G])
+        (?P<mat>[A|E|G])
         (?P<scode>\d{2}|\d\D)
         (?P<meter>\d)
         (?P<ton>\d{2})
         (?P<depth>[A|C|D|E])
         (?P<width>\d{3})
-        (?P<notch>B)
+        (?P<notch>[A|B])
         (?P<height>\d{2})
         (?P<config>\d{2})
-        (?P<AP>AP)
+        (?P<option>(AP)|[R|N])
     '''
     ...
 ```
-The regex in every model series leverages [named capture groups](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_capturing_group) for each component of the model number, as described by the model nomenclature.
+The regex in every model series leverages [named capture groups](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Regular_expressions/Named_capturing_group) for each component of the model number, as described by model nomenclatures.
 
-Named Capture Groups are exported nicely into a dictionary upon instantiation of the ModelSeries object and persisted as `attributes`
+These Named Capture Groups are exported into a dictionary upon instantiation of the ModelSeries object and persisted as `attributes`
 ```python
 # adp-models/model_series.py
 
 class ModelSeries()
-    def __init__(self, re_match: re.Match):
+    def __init__(self, session: Session, re_match: re.Match):
         self.attributes = re_match.groupdict()
-
-    ...
+        ...
 ```
 
 Once a match is made to one of these models, reference files and objects are used to define all features (cabinet color, w/d/h, orientation, etc.) as well as the zero discount price. Some mappings are contained in the parent `ModelSeries` class so that they are available to all series, and some are local to only a particular series.
@@ -80,9 +56,6 @@ Example of some cross references set up for HE Series:
 
 class HE(ModelSeries)
     ...
-    pallet_qtys = pd.read_csv('./specs/he-pallet-qty.csv')
-    weights = pd.read_csv('./specs/he-weights.csv')
-
     mat_config_map = {
         'E': {
             '01': 'CU_VERT',
@@ -113,22 +86,25 @@ And some examples of using the information in `attributes` to start defining fea
 
 class HE(ModelSeries)
     ...
-    def __init__(self, re_match: re.Match):
-        super().__init__(re_match) # initializes attributes
-        if self.attributes['paint'] == 'H':
-            self.cabinet_config = Cabinet.EMBOSSED
-        else:
-            self.cabinet_config = Cabinet.PAINTED
-        width: int = int(self.attributes['width'])
-        height: int = int(self.attributes['height'])
+    def __init__(self, session: Session, re_match: re.Match):
+        super().__init__(session, re_match)  # initializes attributes
+        width: int = int(self.attributes["width"])
         if width % 10 == 2:
-            self.width = width/10 + 0.05
+            self.width = width / 10 + 0.05
         else:
-            self.width = width/10
-        self.depth = self.coil_depth_mapping[self.attributes['depth']]
-        self.height = height + 0.5 if self.depth != 'uncased' else height
-        self.material = self.material_mapping[self.attributes['mat']]
-        self.metering = self.metering_mapping[int(self.attributes['meter'])]
+            self.width = width / 10
+        self.depth = self.coil_depth_mapping[self.attributes["depth"]]
+        height: int = int(self.attributes["height"])
+        self.height = height + 0.5 if self.depth != 19.5 else height
+        pallet_sql = f"""
+            SELECT "{self.height}"
+            FROM he_pallet_qty
+            WHERE width = :width;
+        """
+        pallet_params = dict(width=self.width)
+        self.pallet_qty = ADP_DB.execute(
+            session=session, sql=pallet_sql, params=pallet_params
+        ).scalar_one()
     ...
 ```
 Every `ModelSeries` object implements its own `record` method, which instantiates a standard `dict` object by updating the `ModelSeries` implementation of `record`, in which all possible columns are contained and set to `None`, and updates only relevant values. This method is used later to build a table of all model records.
@@ -143,7 +119,6 @@ class HE(ModelSeries)
     def record(self) -> dict:
         model_record = super().record()
         values = {
-            Fields.SHEET.value: self.sheet,
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.MPG.value: self.mat_grp,
@@ -157,9 +132,14 @@ class HE(ModelSeries)
             Fields.CABINET.value: self.cabinet_config.name.title(),
             Fields.METERING.value: self.metering,
             Fields.ZERO_DISCOUNT_PRICE.value: self.zero_disc_price,
+            Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,
+            Fields.RATINGS_HP_TXV.value: self.ratings_hp_txv,
+            Fields.RATINGS_PISTON.value: self.ratings_piston,
+            Fields.RATINGS_FIELD_TXV.value: self.ratings_field_txv,
         }
         model_record.update(values)
         return model_record
+
     ...
 ```
 All of these `ModelSeries` subclasses are then packaged into a tuple for a convenient import
@@ -171,70 +151,58 @@ A separate `Validator` class is used to compare the value in a cell to the model
 ```python
 # validator.py
 import re
-from adp_models.models import ModelSeries
+from app.db import Session
+from app.adp.adp_models.model_series import ModelSeries
+
 
 class Validator:
-    def __init__(self, raw_text: str, model_series: ModelSeries) -> None:
+    def __init__(
+        self, db_session: Session, raw_text: str, model_series: ModelSeries
+    ) -> None:
         self.raw_text = (
-            str(raw_text)
-                .strip()
-                .upper()
-                .replace(' ','')
-                .replace('-','')
-        ) if raw_text else None
+            (str(raw_text).strip().upper().replace(" ", "").replace("-", ""))
+            if raw_text
+            else None
+        )
         self.text_len = len(self.raw_text) if self.raw_text else 0
         self.model_series = model_series
-    
-    def is_model(self) -> ModelSeries|bool:
+        self.session = db_session
+
+    def is_model(self) -> ModelSeries | bool:
         if self.text_len not in self.model_series.text_len or not self.raw_text:
             return False
         model = re.compile(self.model_series.regex, re.VERBOSE)
         model_parsed = model.match(self.raw_text)
         if model_parsed:
-            return self.model_series(model_parsed)
+            return self.model_series(session=self.session, re_match=model_parsed)
         else:
             return False
+
 ```
-This validator is used in a loop that tries all `ModelSeries` objects contained in `MODELS` against a cell value. The outcome, after bubbling up the model instances is a `set` of `ModelSeries` instances for a each program file.
+This validator is used in a loop that tries all `ModelSeries` objects contained in `MODELS`. When a match is found, the ModelSeries objest is returned. ModelSeries can be converted into a dixt with the `record` method. This is what underlies the `adp-coil-programs`, `adp-ah-programs`, and `model-lookup` resources, which take only a model number to build the product pricing.
 
-The magic happens when utilizing the `record` method on each instance to build a standard `DataFrame` of objects. Note the transformation made in the second loop from `results` to `records` to a `df`.
+## Ratings
 
-Since all of the dfs have the same columns, we can safely concatenate them all into one customer programs `DataFrame`.
-```python
-# extraction/models.py
-def extract_all_programs_from_dir(dir: str) -> pd.DataFrame:
-    data: dict[str, dict[str, set[ModelSeries]]] = dict()
-    for root, _, files in os.walk(dir):
-        for file in files:
-            program: str = os.path.basename(file).replace('.xlsx','')
-            program = re.sub(r'\d{4}-\d{1,2}-\d{1,2}', '', program).strip()
-            # iterates through sheets in the file and each cell in the file
-            results: set[ModelSeries] = extract_models_from_file(os.path.join(root,file))
-            if not data.get(program):
-                data[program] = {'models': set()}
-            data[program]['models'] |= results
-    dfs = []
-    for program in data:
-        records = [record.record() for record in data[program]['models']]
-        df = pd.DataFrame.from_records(data=records).dropna(how="all").drop_duplicates()
-        if df.isna().all().all():
-            pass
-        df['program'] = program
-        dfs.append(df)
-    result = pd.concat(dfs).sort_values(by=['program','category','series','mpg','tonnage','width'])
-    return result
-```
-This data gets additional treatment for customer-specific information (i.e. pricing, past sales) and it is then saved into a database, separating coils from air handlers.
-### Ratings
-Ratings extraction is not as complicated. All cells are iterated through in all sheets in all files, checking for the value: **AHRINumber** , which is a header for tables with ratings in them. Then every value in a few columns in all  rows underneath that encounter are captured, transformed into a table, enriched with a reference of all ADP ratings, and saved to a database.
-## File Generation
-The above approach is agnostic how the original programs were formatted. If a full model number is found anywhere while searching, the value is captured. Once the models and ratings are extracted to the database, new files can be generated from templates using `openpyxl`
+AHRI ratings may be uploaded in a file, using the same output format as ADP's COMPASS tool at `POST /vendors/adp/adp-program-ratings/{adp_customer_id}`
 
-#### template
-Here is a template of the new format
-![snapshot of excel file template for the new program format](./static/template-snapshot.png)
-The formatted section with a light-blue header is where product information will go, and this format is to be copied underneath for each product category contained in the customer program.
+![Example of Compass output](./static/compass-file-example.png "Compass Output")
+*Example output from Compass: Can be uploaded as-is to register ratings with a customer through the API*
 
-#### data
-The data extracted that we'll use is in a structured format in a database. We can separate files by unique customers and product blocks by Category. With respect to the template, the Category will go in the light-blue section, and the product information will be listed below the category (with headers).
-![snapshot of customer program data in a database](./static/programs-db-snap.png)
+## Strategy File
+ADP has traditionally offered "Product Strategies" in the form of stylized Excel documents. This API will procedurally generate such files for download upon request. A link can be requested by requesting a link at `POST /vendors/adp/programs/{adp_customer_id}/download`
+
+The `generate_program` method, defined in `workbook_factory.py`, takes care of collecting the customer's data and feeding it into an excel document generation module that relies on openpyxl, called `pricebook.py`. `generate_program` returns the file, which is packaged in an `XLSXResponse`.
+
+![Example of Product Strategy File](./static/adp-strategy-file-example.png "Strategy File")
+*Example of a downloadble product strategy: First tab - models and pricing, Second tab - nomenclatures, 3rd+ tabs: AHRI ratings associated with models on 1st tab*
+
+## Resource List
+* adp-coil-programs
+* adp-ah-programs
+* adp-customers
+* adp-program-parts
+* adp-program-ratings
+* adp-material-group-discounts
+* adp-snps
+* adp-quotes
+* adp-quote-products

@@ -103,7 +103,7 @@ Admin customers can see all resources associated with their parent customer prof
 
 ### Manager
 #### *customer-manager*
-Manager Customers can see and manage all resources associated with their management group, which are a collection of customer locations.
+Manager Customers can see and manage all resources associated with their management group, more than one customer location.
 
 ### Standard
 #### *customer-std*
