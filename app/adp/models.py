@@ -841,7 +841,9 @@ class ADPSNPAttrs(BaseModel):
 class ADPSNPRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
-    adp_snps_changelog: JSONAPIRelationships = Field(alias="adp-snps-changelog")
+    adp_snps_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="adp-snps-changelog"
+    )
 
 
 class ADPSNPRObj(ADPSNPRID):
