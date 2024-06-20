@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 from fastapi.routing import APIRouter
 from fastapi import HTTPException, Depends, Form, UploadFile, status
-from app import auth
+from app import auth, downloads
 from app.db import ADP_DB, Stage, File, S3
 from app.jsonapi.core_models import convert_query
 from app.adp.quotes.job_quotes.models import (
@@ -28,7 +28,7 @@ from app.jsonapi.sqla_models import ADPQuote
 
 PARENT_PREFIX = "/vendors/adp"
 QUOTES_RESOURCE = ADPQuote.__jsonapi_type_override__
-S3_DIR = "/adp/quotes"
+S3_DIR = "vendors/adp/quotes"
 quotes = APIRouter(prefix=f"/{QUOTES_RESOURCE}", tags=["adp", "quotes"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -57,8 +57,8 @@ async def quote_collection(
 )
 async def one_quote(
     token: Token,
-    quote_id: int,
     session: NewSession,
+    quote_id: int,
     query: QuoteQuery = Depends(),
 ) -> QuoteResponse:
     return (
@@ -466,4 +466,84 @@ def quote_customer_location_rel(
             related_resource="customer-locations",
             relationship=True,
         )
+    )
+
+
+@quotes.post(
+    "/{quote_id}/quote-doc-link",
+    response_model=downloads.DownloadLink,
+    tags=["jsonapi", "file-download"],
+)
+def quote_doc_download_link(
+    token: Token, session: NewSession, quote_id: int
+) -> downloads.DownloadLink:
+    try:
+        quote_obj = one_quote(token, session, quote_id, QuoteQuery())
+        quote_obj = QuoteResponse(**quote_obj)
+    except HTTPException as e:
+        if e.status_code == 204:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        else:
+            raise e
+    else:
+        dl_id = downloads.DownloadIDs.add_request(
+            resource=f"vendors/adp/{quote_id}/quote-doc",
+            s3_path=quote_obj.data.attributes.quote_doc,
+        )
+        return downloads.DownloadLink(
+            downloadLink=f"/vendors/adp/{quote_id}/quote-doc?download_id={dl_id}"
+        )
+
+
+@quotes.get("/{quote_id}/quote-doc", tags=["file-download"])
+async def adp_quote_file(quote_id: int, download_id: str) -> downloads.FileResponse:
+    dl_obj = downloads.DownloadIDs.use_download(
+        resource=f"vendors/adp/{quote_id}/quote-doc", id_value=download_id
+    )
+    file = S3.get_file(dl_obj.s3_path)
+    return downloads.FileResponse(
+        content=file.file_content,
+        media_type=file.file_mime,
+        filename=file.file_name,
+    )
+
+
+@quotes.post(
+    "/{quote_id}/plans-doc-link",
+    response_model=downloads.DownloadLink,
+    tags=["jsonapi", "file-download"],
+)
+def plans_doc_download_link(
+    token: Token, session: NewSession, quote_id: int
+) -> downloads.DownloadLink:
+    try:
+        quote_obj = one_quote(token, session, quote_id, QuoteQuery())
+        quote_obj = QuoteResponse(**quote_obj)
+    except HTTPException as e:
+        if e.status_code == 204:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        else:
+            raise e
+    else:
+        dl_id = downloads.DownloadIDs.add_request(
+            resource=f"vendors/adp/{quote_id}/plans-doc",
+            s3_path=quote_obj.data.attributes.plans_doc,
+        )
+        return downloads.DownloadLink(
+            downloadLink=f"/vendors/adp/{quote_id}/plans-doc?download_id={dl_id}"
+        )
+
+
+@quotes.get("/{quote_id}/plans-doc", tags=["file-download"])
+async def adp_quote_plans_file(
+    quote_id: int, download_id: str
+) -> downloads.FileResponse:
+    dl_obj = downloads.DownloadIDs.use_download(
+        resource=f"vendors/adp/{quote_id}/plans-doc", id_value=download_id
+    )
+    file = S3.get_file(dl_obj.s3_path)
+    return downloads.FileResponse(
+        content=file.file_content,
+        media_type=file.file_mime,
+        filename=file.file_name,
     )
