@@ -250,10 +250,14 @@ async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) ->
     )
 
 
-@vendors.post("/{vendor_id}/logo-link", tags=["file-download"])
+@vendors.post(
+    "/{vendor_id}/logo-link",
+    response_model=downloads.DownloadLink,
+    tags=["file-download"],
+)
 async def vendor_logo_file_dl_link(
     token: VendorsPerm, session: NewSession, vendor_id: str
-):
+) -> downloads.DownloadLink:
     try:
         vendor_object = await vendor(token, session, vendor_id, VendorQuery())
         vendor_object = VendorResponse(**vendor_object)
@@ -273,7 +277,7 @@ async def vendor_logo_file_dl_link(
 
 
 @vendors.get("/{vendor_id}/logo", tags=["file-download"])
-async def vendor_logo_file(vendor_id: str, download_id: str):
+async def vendor_logo_file(vendor_id: str, download_id: str) -> downloads.FileResponse:
     dl_obj = downloads.DownloadIDs.use_download(
         resource=f"vendors/{vendor_id}", id_value=download_id
     )
