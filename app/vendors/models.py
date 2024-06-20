@@ -15,11 +15,12 @@ TYPE_INFO = SCAVendorInfo.__jsonapi_type_override__
 
 ## Vendor
 class VendorAttributes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     name: Optional[str] = None
     headquarters: Optional[str] = None
     description: Optional[str] = None
     phone: Optional[int] = None
-    logo_path: Optional[str] = None
+    logo_path: Optional[str] = Field(default=None, alias="logo-path")
 
 
 class VendorFilters(BaseModel):

@@ -1,9 +1,10 @@
+from io import BytesIO
 from typing import Annotated
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, status
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
-from app import auth
-from app.db import SCA_DB
+from app import auth, downloads
+from app.db import SCA_DB, S3
 from app.jsonapi.sqla_models import SCAVendor, SCAVendorResourceMap
 from app.jsonapi.core_models import convert_query
 from app.vendors.models import (
@@ -248,3 +249,52 @@ async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) ->
             obj_id=vendor_id,
         )
     )
+
+
+@vendors.post("/{vendor_id}/logo-link", tags=["file-download"])
+async def vendor_logo_file_dl_link(
+    token: VendorsPerm, session: NewSession, vendor_id: str
+):
+    try:
+        vendor_object = await vendor(token, session, vendor_id, VendorQuery())
+        vendor_object = VendorResponse(**vendor_object)
+    except HTTPException as e:
+        if e.status_code == 204:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        else:
+            raise e
+    else:
+        dl_id = downloads.DownloadIDs.generate_id(
+            customer_id=vendor_id, s3_path=vendor_object.data.attributes.logo_path
+        )
+        return downloads.DownloadLink(
+            downloadLink=f"/vendors/{vendor_id}/logo?download_id={dl_id}"
+        )
+
+
+@vendors.get("/{vendor_id}/logo", tags=["file-download"])
+async def vendor_logo_file(vendor_id: str, download_id: str):
+    try:
+        dl_obj = downloads.DownloadIDs.use_download(
+            customer_id=vendor_id, id_value=download_id
+        )
+    except (downloads.NonExistant, downloads.Expired):
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail="Download has either been used, expired, or is not valid",
+        )
+    except downloads.CustomerIDNotMatch:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail="vendor ID does not match the id registered with this link",
+        )
+    except Exception as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    else:
+        file = S3.get_file(dl_obj.s3_path)
+        return downloads.FileResponse(
+            content=BytesIO(file.file_content),
+            media_type=file.file_mime,
+            filename=file.file_name,
+        )
