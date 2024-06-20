@@ -251,7 +251,7 @@ async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) ->
 
 
 @vendors.post(
-    "/{vendor_id}/logo-link",
+    "/{vendor_id}/logo",
     response_model=downloads.DownloadLink,
     tags=["file-download"],
 )
@@ -268,7 +268,7 @@ async def vendor_logo_file_dl_link(
             raise e
     else:
         dl_id = downloads.DownloadIDs.add_request(
-            resource=f"vendors/{vendor_id}",
+            resource=f"vendors/{vendor_id}/logo",
             s3_path=vendor_object.data.attributes.logo_path,
         )
         return downloads.DownloadLink(
@@ -279,7 +279,7 @@ async def vendor_logo_file_dl_link(
 @vendors.get("/{vendor_id}/logo", tags=["file-download"])
 async def vendor_logo_file(vendor_id: str, download_id: str) -> downloads.FileResponse:
     dl_obj = downloads.DownloadIDs.use_download(
-        resource=f"vendors/{vendor_id}", id_value=download_id
+        resource=f"vendors/{vendor_id}/logo", id_value=download_id
     )
     file = S3.get_file(dl_obj.s3_path)
     return downloads.FileResponse(

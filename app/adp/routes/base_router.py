@@ -26,9 +26,7 @@ def generate_dl_link(adp_customer_id: int, download_id: int) -> DownloadLink:
     return link
 
 
-@adp.post(
-    "/programs/{adp_customer_id}/get-download", tags=["programs", "file-download"]
-)
+@adp.post("/programs/{adp_customer_id}/download", tags=["programs", "file-download"])
 def customer_program_get_dl(
     token: Token,
     session: NewSession,
@@ -48,7 +46,7 @@ def customer_program_get_dl(
                 raise e
 
     download_id = downloads.DownloadIDs.add_request(
-        resource=f"vendors/adp/programs/{adp_customer_id}", stage=Stage(stage)
+        resource=f"vendors/adp/programs/{adp_customer_id}/download", stage=Stage(stage)
     )
     return generate_dl_link(adp_customer_id, download_id)
 
@@ -65,7 +63,8 @@ def customer_program_dl_file(
 ) -> XLSXFileResponse:
     """Generate a program excel file and return for download"""
     dl_obj = downloads.DownloadIDs.use_download(
-        resource=f"vendors/adp/programs/{adp_customer_id}", id_value=download_id
+        resource=f"vendors/adp/programs/{adp_customer_id}/download",
+        id_value=download_id,
     )
     try:
         file = generate_program(

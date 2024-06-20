@@ -298,7 +298,7 @@ async def del_customer(session: NewSession, token: Token, customer_id: int) -> N
     raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
 
-@customers.post("/{customer_id}/logo-link", tags=["file-download"])
+@customers.post("/{customer_id}/logo", tags=["file-download"])
 async def customer_logo_file_dl_link(
     token: Token, session: NewSession, customer_id: int
 ):
