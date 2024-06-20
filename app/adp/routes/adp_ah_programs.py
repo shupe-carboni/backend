@@ -119,7 +119,7 @@ def background_stage_update(
                 )
             )
         except Exception:
-            logger.info(f"Failed to update status of AH with id {id_}")
+            logger.warning(f"Failed to update status of AH with id {id_}")
         else:
             logger.info(f"Successfully updated AH with {id_} to stage = 'REMOVED'")
 
