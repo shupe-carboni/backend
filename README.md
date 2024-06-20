@@ -70,20 +70,24 @@ top-level
 _
 ```
 > Although the Vendors resource is separated from the specific vendor resources like ADP, url paths are consistent with the expecation that one can view the `info` related a vendor the same way as the vendor resources themselves, i.e. `/vendors/adp/info` and `/vendors/adp/adp-coil-programs` respectively. 
+---
 ## Description of Resources
 
 - **Vendors**
 	- Basic vendor information, such as current lead times, freight policies, and warranty policies.
 	- Not specific to customers
 - **Customers**
-	- Customer profiles include information such as associated users, management groups, locations (sometimes called "braches").
-	- Independent of vendor names and id numbers, specific to SCA's representation of customer entities.
+	- Customer profiles include information such as associated users, management groups, locations (also called "braches").
+	- Independent of vendor names and vendor-specific id numbers, SCA maintains a standardized representation of customer entities.
 - **ADP**
 	- Customer pricing, payment terms, and project quotes.
-	- Requests for new project quotes.
+	- Requests for new project quotes and management of existing quotes.
 	- AHRI ratings associated with product stategies
 	- Download customer product strategy files as stylized Excel documents
 
+**Additional vendors coming soon*
+
+---
 ## Customer Capabilities
 Customers may fall into one of several user types (as defined by authentication token permissions)
 - Admin
@@ -93,7 +97,9 @@ Customers may fall into one of several user types (as defined by authentication 
 ### Admin
 #### *customer-admin*
 Admin customers can see all resources associated with their parent customer profile, regardless of location.  
-Admin customers can manage users associated with their same customer account, such as assigning users to management permissions, assigning branches to their management group, and adding and removing users.
+
+*Coming Soon*
+>Admin customers can manage users associated with their same customer account, such as assigning users to management permissions, assigning branches to their management group, and adding and removing users.
 
 ### Manager
 #### *customer-manager*
@@ -101,4 +107,4 @@ Manager Customers can see and manage all resources associated with their managem
 
 ### Standard
 #### *customer-std*
-Standard customers can see and manage all resources associated with the their location (i.e. their branch).
+Standard customers can see and manage all resources associated with the their location.
