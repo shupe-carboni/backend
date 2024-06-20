@@ -906,49 +906,210 @@ class ADPQuoteOperations(SecOp):
         )
 
 
-class AGasOperations(SecOp): ...
+class AGasOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class AtcoOperations(SecOp): ...
+class AtcoOperations(SecOp):
+
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class BerryOperations(SecOp): ...
+class BerryOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class C_DOperations(SecOp): ...
+class C_DOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class FamcoOperations(SecOp): ...
+class FamcoOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class FriedrichOperations(SecOp): ...
+class FriedrichOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class GeneralAireOperations(SecOp): ...
+class GeneralAireOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class GenesisOperations(SecOp): ...
+class GenesisOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class GlasflossOperations(SecOp): ...
+class GlasflossOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class HardcastOperations(SecOp): ...
+class HardcastOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class JBOperations(SecOp): ...
+class JBOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class MilwaukeeOperations(SecOp): ...
+class MilwaukeeOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class NelcoOperations(SecOp): ...
+class NelcoOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class SuperiorValveOperations(SecOp): ...
+class SuperiorValveOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class TjernlundOperations(SecOp): ...
+class TjernlundOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
 
 
-class TPICorpOperations(SecOp): ...
+class TPICorpOperations(SecOp):
+    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+        super().__init__(token, resource)
+        self._primary_resource = None
+        self._associated_resource = resource != self._primary_resource
+        self._serializer = serializer_partial(prefix)
+
+    def permitted_primary_resource_ids(
+        self,
+        session: Session,
+    ) -> list[int]: ...
