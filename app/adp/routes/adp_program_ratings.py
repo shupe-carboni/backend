@@ -17,9 +17,7 @@ from app.jsonapi.sqla_models import ADPProgramRating
 
 PARENT_PREFIX = "/vendors/adp"
 ADP_RATINGS_RESOURCE = ADPProgramRating.__jsonapi_type_override__
-prog_ratings = APIRouter(
-    prefix=f"/{ADP_RATINGS_RESOURCE}", tags=["ratings", "programs"]
-)
+prog_ratings = APIRouter(prefix=f"/{ADP_RATINGS_RESOURCE}", tags=["ratings", "adp"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]

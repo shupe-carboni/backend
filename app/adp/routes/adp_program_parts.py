@@ -10,7 +10,9 @@ from app.jsonapi.core_models import convert_query
 
 PARENT_PREFIX = "/vendors/adp"
 ADP_PARTS_RESOURCE = ADPProgramPart.__jsonapi_type_override__
-prog_parts = APIRouter(prefix=f"/{ADP_PARTS_RESOURCE}", tags=["parts", "programs"])
+prog_parts = APIRouter(
+    prefix=f"/{ADP_PARTS_RESOURCE}", tags=["parts", "programs", "adp"]
+)
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
@@ -87,7 +89,7 @@ def modify_part(token: Token):
     )
 
 
-@prog_parts.delete("/{part_id}", tags=["jsonapi", "admin"])
+@prog_parts.delete("/{part_id}", tags=["jsonapi"])
 def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id: int):
     return (
         auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
