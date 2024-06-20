@@ -1,18 +1,16 @@
 import logging
-from typing import Optional, Mapping, Any, Annotated
-from fastapi import HTTPException, Depends, status
-from starlette.background import BackgroundTask
-from fastapi.responses import StreamingResponse
+from typing import Annotated
 from fastapi.routing import APIRouter
+from fastapi import HTTPException, Depends, status
 
 from app import auth, downloads
-from app.downloads import DownloadLink, XLSXFileResponse
 from app.db import Session, ADP_DB, Stage
-from app.adp.extraction.models import parse_model_string, ParsingModes
-from app.adp.utils.workbook_factory import generate_program
-from app.adp.utils.programs import EmptyProgram
 from app.adp.models import ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
+from app.adp.utils.programs import EmptyProgram
+from app.adp.extraction.models import parse_model_string, ParsingModes
+from app.adp.utils.workbook_factory import generate_program
+from app.downloads import DownloadLink, XLSXFileResponse
 
 adp = APIRouter(prefix=f"/adp", tags=["adp"])
 logger = logging.getLogger("uvicorn.info")
@@ -113,7 +111,7 @@ def parse_model_and_pricing(
             parse_mode = ParsingModes.CUSTOMER_PRICING
     elif customer_id:
         try:
-            resp = (
+            (
                 auth.ADPOperations(token, ADPCustomer.__jsonapi_type_override__)
                 .allow_customer("std")
                 .allow_dev()
