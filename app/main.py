@@ -57,7 +57,7 @@ class BotTarpit(BaseHTTPMiddleware):
     @staticmethod
     async def trigger_delay(host: str, path: str):
         delay = randint(10, 20)
-        logger.info(f"{host} - {path} -  Honeypot triggered." f" Delaying for {delay}s")
+        logger.info(f"{host} - {path} - Honeypot triggered. Delaying for {delay}s")
         await sleep(delay)
 
 
