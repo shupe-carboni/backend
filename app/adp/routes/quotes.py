@@ -41,7 +41,7 @@ async def quote_collection(
     token: Token, session: NewSession, query: QuoteQuery = Depends()
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -62,7 +62,7 @@ async def one_quote(
     query: QuoteQuery = Depends(),
 ) -> QuoteResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -137,7 +137,7 @@ async def new_quote(
     new_quote = NewQuote(data=new_quote_obj)
     # will bubble up an error if user is not authorized in some way
     quote_resource = QuoteResponse(
-        **auth.ADPOperations(token, QUOTES_RESOURCE)
+        **auth.ADPOperations(token, ADPQuote)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -199,7 +199,7 @@ async def modify_quote(
 ) -> QuoteResponse:
     customer_id = body.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -288,7 +288,7 @@ async def delete_quote(
     token: Token, session: NewSession, quote_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -307,7 +307,7 @@ def related_quote_customers(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedCustomerResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -326,7 +326,7 @@ def related_quote_products(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedProductResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -345,7 +345,7 @@ def related_quote_place(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedPlaceResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -364,7 +364,7 @@ def related_quote_customer_location(
     token: Token, session: NewSession, quote_id: int
 ) -> RelatedLocationResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -383,7 +383,7 @@ def quote_customers_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> CustomersRelResp:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -407,7 +407,7 @@ def quote_products_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> ProductRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -431,7 +431,7 @@ def quote_place_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> PlaceRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -455,7 +455,7 @@ def quote_customer_location_rel(
     token: Token, session: NewSession, quote_id: int
 ) -> LocationRelationshipsResponse:
     return (
-        auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPQuote, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

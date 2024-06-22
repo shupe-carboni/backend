@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import bcrypt
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
 from dotenv import load_dotenv
@@ -22,14 +22,18 @@ from functools import partial
 from sqlalchemy import text
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError, BadRequestError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
+from app.jsonapi.sqla_jsonapi_ext import SQLAlchemyModel
 from app.db.db import Session
 from app.jsonapi.sqla_models import (
     serializer,
     serializer_partial,
-    ADPCustomer,
-    ADPQuote,
     SCACustomer,
     SCAVendor,
+    ADPCustomer,
+    ADPQuote,
+    FriedrichCustomer,
+    FriedrichCustomertoSCACustomerLocation,
+    permitted_customer_location_ids,
 )
 from app.jsonapi.sqla_jsonapi_ext import GenericData
 
@@ -310,29 +314,37 @@ class SecOp(ABC):
 
     """
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(self, token: VerifiedToken, resource: SQLAlchemyModel) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
         self.token = token
+        # for permission whitelisting
         self._admin = False
         self._sca = False
         self._dev = False
         self._customer = False
+        # resource definitions
         self._resource = resource
-        self._primary_resource: str
+        self._primary_resource: SQLAlchemyModel
         self._associated_resource: bool
         self._serializer: JSONAPI_
 
-    @abstractmethod
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
-        pass
+        return self.get_result_from_id_association_queries(
+            session, **self._resource.permitted_primary_resource_ids(self.token.email)
+        )
+
+    def permitted_customer_location_ids(self, session: Session) -> list[int]:
+        return self.get_result_from_id_association_queries(
+            session, **permitted_customer_location_ids(email=self.token.email)
+        )
 
     def get_result_from_id_association_queries(
         self,
         session: Session,
-        sql_admin: str = "",
-        sql_manager: str = "",
-        sql_user_only: str = "",
+        sql_admin: str,
+        sql_manager: str,
+        sql_user_only: str,
     ):
         queries = [sql_admin, sql_manager, sql_user_only]
         if not all(queries):
@@ -349,69 +361,10 @@ class SecOp(ABC):
                 raise Exception("invalid select_type")
 
         for sql in queries:
-            result = session.scalars(
-                text(sql), params={"user_email": self.token.email}
-            ).all()
+            result = session.scalars(text(sql), dict(email_1=self.token.email)).all()
             if result:
                 return result
         return []
-
-    def permitted_customer_location_ids(
-        self,
-        session: Session,
-    ) -> list[int]:
-        """Using select statements, get the customer location ids that
-        will be permitted for view
-        select_type:
-            * user - get only the customer location associated with
-                the user. which ought to be 1 id
-            * manager - get customer locations associated with all
-                mapped branches in the sca_manager_map table
-            * admin - get all customer locations associated with the
-                customer id associated with the location associated
-                to the user.
-            * developer - (same as customer_admin)
-        """
-        sql_user_only = """
-            SELECT cl.id
-            FROM sca_customer_locations cl
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                WHERE u.email = :user_email
-                AND u.customer_location_id = cl.id
-            );
-        """
-        sql_manager = """
-            SELECT cl.id
-            FROM sca_customer_locations cl
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_manager_map mm
-                ON mm.user_id = u.id
-                WHERE u.email = :user_email
-                AND mm.customer_location_id = cl.id
-            );
-        """
-        sql_admin = """
-            SELECT scl.id
-            FROM sca_customer_locations scl
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations customer_loc
-                ON u.customer_location_id = customer_loc.id
-                WHERE u.email = :user_email
-                AND customer_loc.customer_id = scl.customer_id
-            );
-        """
-        return self.get_result_from_id_association_queries(
-            session,
-            sql_admin=sql_admin,
-            sql_manager=sql_manager,
-            sql_user_only=sql_user_only,
-        )
 
     def allow_admin(self) -> "SecOp":
         self._admin = self.token.permissions >= Permissions.sca_admin
@@ -450,7 +403,11 @@ class SecOp(ABC):
                     " resource initialized is not the primary key resource"
                 )
             check_object_id_association(
-                session, self._primary_resource, primary_id, self._resource, obj_id
+                session,
+                self._primary_resource.__jsonapi_type_override__,
+                primary_id,
+                self._resource.__jsonapi_type_override__,
+                obj_id,
             )
             if self._admin or self._sca:
                 return
@@ -476,7 +433,7 @@ class SecOp(ABC):
         related_resource: Optional[str] = None,
         relationship: bool = False,
     ):
-        resource = self._resource
+        resource = self._resource.__jsonapi_type_override__
         optional_arguments = (obj_id, relationship, related_resource)
         match optional_arguments:
             case None, False, None:
@@ -554,14 +511,14 @@ class SecOp(ABC):
                     self._serializer.post_collection,
                     session=session,
                     data=data,
-                    api_type=self._resource,
+                    api_type=self._resource.__jsonapi_type_override__,
                 )
             case int(), str():
                 operation = partial(
                     self._serializer.post_relationship,
                     session=session,
                     json_data=data,
-                    api_type=self._resource,
+                    api_type=self._resource.__jsonapi_type_override__,
                     obj_id=obj_id,
                     rel_key=related_resource,
                 )
@@ -606,7 +563,7 @@ class SecOp(ABC):
                 self._serializer.patch_relationship,
                 session=session,
                 json_data=data,
-                api_type=self._resource,
+                api_type=self._resource.__jsonapi_type_override__,
                 obj_id=obj_id,
                 rel_key=related_resource,
             )
@@ -615,7 +572,7 @@ class SecOp(ABC):
                 self._serializer.patch_resource,
                 session=session,
                 json_data=data,
-                api_type=self._resource,
+                api_type=self._resource.__jsonapi_type_override__,
                 obj_id=obj_id,
             )
         result: GenericData | JSONAPIResponse = operation()
@@ -630,85 +587,32 @@ class SecOp(ABC):
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
         self.gate(session, primary_id, obj_id)
         self._serializer.delete_resource(
-            session=session, data={}, api_type=self._resource, obj_id=obj_id
+            session=session,
+            data={},
+            api_type=self._resource.__jsonapi_type_override__,
+            obj_id=obj_id,
         )
         return JSONResponse({}, status_code=204)
 
 
 class CustomersOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = SCACustomer.__jsonapi_type_override__
+        self._primary_resource = SCACustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix=prefix)
-
-    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
-        """Using select statements, get the sca customer ids that
-        will be permitted for view
-        select_type:
-            * user - get only the customer location associated with
-                the user. which ought to be 1 id
-            * manager - get customer locations associated with all
-                mapped branches in the sca_manager_map table
-            * admin - get all customer locations associated with the
-                customer id associated with the location associated
-                to the user.
-            * developer - (same as customer_admin)
-        """
-        sql_user_only = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                WHERE scl.customer_id = c.id
-                AND u.email = :user_email
-            );
-        """
-        sql_manager = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_manager_map mm
-                ON mm.user_id = u.id
-                JOIN sca_customer_locations AS scl
-                ON scl.id = mm.customer_location_id
-                WHERE u.email = :user_email
-                AND scl.customer_id = c.id
-            );
-        """
-        sql_admin = f"""
-            SELECT c.id
-            FROM {SCACustomer.__tablename__} c
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN {SCACustomer.__tablename__} c_2
-                ON c_2.id = scl.customer_id
-                WHERE u.email = :user_email
-                AND c_2.id = c.id
-            );
-        """
-        return self.get_result_from_id_association_queries(
-            session,
-            sql_admin=sql_admin,
-            sql_manager=sql_manager,
-            sql_user_only=sql_user_only,
-        )
 
 
 class VendorOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = SCAVendor.__jsonapi_type_override__
+        self._primary_resource = SCAVendor
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix=prefix)
 
@@ -721,7 +625,7 @@ class VendorOperations(SecOp):
         for id association to the primary resource (Vendors)"""
         dev_vendor_ids = f"""
             SELECT id
-            FROM {SCAVendor.__tablename__}
+            FROM {self._primary_resource.__tablename__}
             WHERE name LIKE 'RANDOM VENDOR%';
         """
         return session.execute(text(dev_vendor_ids)).scalars().all()
@@ -764,352 +668,182 @@ class VendorOperations(SecOp):
 
 class ADPOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = ADPCustomer.__jsonapi_type_override__
+        self._primary_resource = ADPCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]:
-        """Using select statements, get the adp customer ids that
-        will be permitted for view
-        select_type:
-            * user - get only the customer location associated with
-                the user. which ought to be 1 id
-            * manager - get customer locations associated with all
-                mapped branches in the sca_manager_map table
-            * admin - get all customer locations associated with the
-                customer id associated with the location associated
-                to the user.
-            * developer - (same as customer_admin)
-        """
-        sql_user_only = f"""
-            SELECT ac.id
-            FROM {ADPCustomer.__tablename__} ac
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                WHERE u.email = :user_email
-                AND mapping.adp_customer_id = ac.id
-            );
-        """
-        sql_manager = f"""
-            SELECT ac.id
-            FROM {ADPCustomer.__tablename__} ac
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_manager_map mm
-                ON mm.user_id = u.id
-                JOIN sca_customer_locations AS scl
-                ON scl.id = mm.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                WHERE u.email = :user_email
-                AND mapping.adp_customer_id = ac.id
-            );
-        """
-        sql_admin = f"""
-            SELECT ac.id
-            FROM {ADPCustomer.__tablename__} ac
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                JOIN {ADPCustomer.__tablename__} ac_2
-                ON ac_2.id = mapping.adp_customer_id
-                WHERE u.email = :user_email
-                AND ac_2.sca_id = ac.sca_id
-            );
-        """
-        return self.get_result_from_id_association_queries(
-            session,
-            sql_admin=sql_admin,
-            sql_manager=sql_manager,
-            sql_user_only=sql_user_only,
-        )
 
 
 class ADPQuoteOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = ADPQuote.__jsonapi_type_override__
+        self._primary_resource = ADPQuote
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]:
-        sql_user_only = f"""
-            SELECT aq.id
-            FROM {ADPQuote.__tablename__} aq
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                WHERE u.email = :user_email
-                AND mapping.adp_customer_id = aq.adp_customer_id
-            );
-        """
-        sql_manager = f"""
-            SELECT aq.id
-            FROM {ADPQuote.__tablename__} aq
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_manager_map mm
-                ON mm.user_id = u.id
-                JOIN sca_customer_locations AS scl
-                ON scl.id = mm.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                WHERE u.email = :user_email
-                AND mapping.adp_customer_id = aq.adp_customer_id
-            );
-        """
-        sql_admin = f"""
-            SELECT aq.id
-            FROM {ADPQuote.__tablename__} aq
-            WHERE EXISTS (
-                SELECT 1
-                FROM sca_users u
-                JOIN sca_customer_locations AS scl
-                ON scl.id = u.customer_location_id
-                JOIN adp_alias_to_sca_customer_locations AS mapping
-                ON mapping.sca_customer_location_id = scl.id
-                JOIN {ADPQuote.__tablename__} aq_2
-                ON aq_2.adp_customer_id = mapping.adp_customer_id
-                WHERE u.email = :user_email
-                AND aq_2.id = aq.id
-            );
-        """
-        return self.get_result_from_id_association_queries(
-            session,
-            sql_admin=sql_admin,
-            sql_manager=sql_manager,
-            sql_user_only=sql_user_only,
-        )
-
 
 class AGasOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class AtcoOperations(SecOp):
 
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class BerryOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class C_DOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class FamcoOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class FriedrichOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = FriedrichCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class GeneralAireOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class GenesisOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class GlasflossOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class HardcastOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class JBOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class MilwaukeeOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class NelcoOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class SuperiorValveOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class TjernlundOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...
 
 
 class TPICorpOperations(SecOp):
-    def __init__(self, token: VerifiedToken, resource: str, prefix: str = "") -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+    ) -> None:
         super().__init__(token, resource)
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
-
-    def permitted_primary_resource_ids(
-        self,
-        session: Session,
-    ) -> list[int]: ...

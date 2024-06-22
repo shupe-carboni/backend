@@ -26,7 +26,7 @@ def all_parts(
     token: Token, session: NewSession, query: PartsQuery = Depends()
 ) -> PartsResp:
     return (
-        auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPProgramPart, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -45,7 +45,7 @@ def a_part(
     token: Token, part_id: int, session: NewSession, query: PartsQuery = Depends()
 ) -> PartsResp:
     return (
-        auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPProgramPart, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -68,7 +68,7 @@ async def add_program_parts(
 ) -> PartsResp:
     customer_id = part.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPProgramPart, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -92,7 +92,7 @@ def modify_part(token: Token):
 @prog_parts.delete("/{part_id}", tags=["jsonapi"])
 def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id: int):
     return (
-        auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPProgramPart, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

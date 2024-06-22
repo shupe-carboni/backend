@@ -51,7 +51,7 @@ def all_adp_customers(
     token: ADPPerm, session: NewSession, query: CustomersQuery = Depends()
 ) -> CustomersResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -73,7 +73,7 @@ def adp_customer(
     query: CustomersQuery = Depends(),
 ) -> CustomersResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -97,7 +97,7 @@ async def related_coil_programs(
     token: ADPPerm,
 ) -> RelatedCoilProgResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -122,7 +122,7 @@ async def coil_programs_relationships(
     token: ADPPerm,
 ) -> CoilProgRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -147,7 +147,7 @@ async def related_ah_programs(
     token: ADPPerm,
 ) -> RelatedAirHandlerProgResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -172,7 +172,7 @@ async def ah_programs_relationships(
     token: ADPPerm,
 ) -> AirHandlerProgRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -197,7 +197,7 @@ async def related_ratings(
     token: ADPPerm,
 ) -> RelatedRatingsResponse:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -222,7 +222,7 @@ async def ratings_relationships(
     token: ADPPerm,
 ) -> RatingsRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -247,7 +247,7 @@ async def related_ratings(
     token: ADPPerm,
 ) -> RelatedPartsResponse:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -272,7 +272,7 @@ async def ratings_relationships(
     token: ADPPerm,
 ) -> PartsRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -297,7 +297,7 @@ async def related_discounts(
     token: ADPPerm,
 ) -> RelatedPartsResponse:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -322,7 +322,7 @@ async def discounts_relationships(
     token: ADPPerm,
 ) -> PartsRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -347,7 +347,7 @@ async def related_ratings(
     token: ADPPerm,
 ) -> RelatedPartsResponse:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -372,7 +372,7 @@ async def ratings_relationships(
     token: ADPPerm,
 ) -> PartsRelResp:
     return (
-        auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCustomer, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

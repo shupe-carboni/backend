@@ -83,7 +83,7 @@ async def customer_collection(
 ) -> CustomerResponse:
 
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -128,7 +128,7 @@ async def customer(
     query: CustomerQuery = Depends(),
 ) -> CustomerResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -197,7 +197,7 @@ async def new_customer(
             )
             new_customer.data.id = cmmssns_customer.data.id
         return (
-            auth.CustomersOperations(token, API_TYPE)
+            auth.CustomersOperations(token, SCACustomer)
             .allow_admin()
             .post(
                 session=session,
@@ -263,7 +263,7 @@ async def mod_customer(
     mod_customer: ModCustomer,
 ) -> CustomerResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_sca()
         .allow_dev()

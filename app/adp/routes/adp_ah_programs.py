@@ -104,9 +104,7 @@ def background_stage_update(
         )
         try:
             (
-                auth.ADPOperations(
-                    token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX
-                )
+                auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
                 .allow_admin()
                 .allow_sca()
                 .allow_dev()
@@ -140,7 +138,7 @@ def all_ah_programs(
     An SCA admin or employee will see all programs that exist.
     A customer will see only their own programs"""
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -164,7 +162,7 @@ def ah_program_product(
 ) -> AirHandlerProgResp:
     """get a specific product from the ah programs"""
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -208,7 +206,7 @@ def add_to_ah_program(
     json_api_data = partial(build_full_model_obj, session, new_ah)
     adp_customer_id = new_ah.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -238,7 +236,7 @@ def change_product_status(
     adp_customer_id = new_stage.data.relationships.adp_customers.data.id
     set_other_active_models_to_removed = new_stage.data.attributes.stage == Stage.ACTIVE
     updated_model = AirHandlerProgResp(
-        **auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        **auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -262,7 +260,7 @@ def delete_ah_program_product(
     token: Token, session: NewSession, program_product_id: int, adp_customer_id: int
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -278,7 +276,7 @@ def get_related_customer(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -299,7 +297,7 @@ def get_customer_relationship(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPAHProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

@@ -61,7 +61,7 @@ async def new_quote_product(
                 "is reserved for SCA only",
             )
     return (
-        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -107,7 +107,7 @@ async def mod_quote_product(
             "a comp-model in the PATCH request"
         )
     return (
-        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -126,7 +126,7 @@ async def delete_quote_product(
     token: Token, session: NewSession, product_id: int, quote_id: int
 ) -> None:
     return (
-        auth.ADPQuoteOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

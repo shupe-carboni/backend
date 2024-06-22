@@ -36,7 +36,7 @@ def snps_collection(
     token: Token, session: NewSession, query: ADPSNPQuery = Depends()
 ) -> ADPSNPResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -55,7 +55,7 @@ def an_snp(
     token: Token, session: NewSession, snp_id: int, query: ADPSNPQuery = Depends()
 ) -> ADPSNPResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -74,7 +74,7 @@ def snp_related_adp_customers(
     token: Token, session: NewSession, snp_id: int
 ) -> RelatedCustomerResponse:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -97,7 +97,7 @@ def snp_adp_customer_relationships(
     token: Token, session: NewSession, snp_id: int
 ) -> CustomersRelResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -128,7 +128,7 @@ def new_snp(
             "a special net price must be greater than 0",
         )
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -153,7 +153,7 @@ def snp_modification(
     new_stage: ModStageSNPReq,
 ) -> ADPSNPResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -174,7 +174,7 @@ def del_snp(
     token: Token, session: NewSession, snp_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

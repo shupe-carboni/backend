@@ -302,10 +302,7 @@ RESET_SNP_STAGE_CHANGE_REQ = TestRequest(
 def test_valid_dl_link_reqs_for_everyone(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     url = str(
-        Path(PATH_PREFIX)
-        / "programs"
-        / str(ADP_CUSTOMER_ID)
-        / "get-download?stage=active"
+        Path(PATH_PREFIX) / "programs" / str(ADP_CUSTOMER_ID) / "download?stage=active"
     )
     response = test_client.post(url)
     assert response.status_code == response_code
@@ -319,7 +316,7 @@ def test_valid_dl_link_reqs_for_sca_only(perm, response_code):
         Path(PATH_PREFIX)
         / "programs"
         / str(ADP_CUSTOMER_ID + 1)
-        / "get-download?stage=active"
+        / "download?stage=active"
     )
     response = test_client.post(url)
     assert response.status_code == response_code

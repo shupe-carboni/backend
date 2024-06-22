@@ -7,7 +7,7 @@ import warnings
 from typing import Any
 from sqlalchemy_jsonapi import JSONAPI
 from fastapi import HTTPException
-from sqlalchemy import or_, func, inspect
+from sqlalchemy import or_, func, inspect, Column
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import (
     NotSortableError,
@@ -25,6 +25,9 @@ from sqlalchemy_jsonapi.serializer import (
     MANYTOONE,
 )
 
+QuerySet = dict[str, str]
+GenericData = dict[str, dict[str, Any] | list[dict[str, Any]]]
+
 
 class SQLAlchemyModel:
     """This class is for typing, so that the linter recognizes
@@ -33,13 +36,13 @@ class SQLAlchemyModel:
     __tablename__: str
     __jsonapi_type_override__: str
     __jsonapi_map_to_py__: dict[str, str]
+    id = Column(primary_key=True)
 
     def apply_customer_location_filtering(
         q: sqlQuery, ids: list[int] = None
     ) -> sqlQuery: ...
+    def permitted_primary_resource_ids(email: str) -> QuerySet: ...
 
-
-GenericData = dict[str, dict[str, Any] | list[dict[str, Any]]]
 
 DEFAULT_SORT: str = "id"
 MAX_PAGE_SIZE: int = 300

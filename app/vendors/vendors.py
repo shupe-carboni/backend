@@ -36,7 +36,7 @@ async def vendor_collection(
     token: VendorsPerm, session: NewSession, query: VendorQuery = Depends()
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -58,7 +58,7 @@ async def vendor(
     query: VendorQuery = Depends(),
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -84,7 +84,7 @@ async def related_info(
     query: VendorQuery = Depends(),
 ) -> RelatedVendorInfoResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -112,7 +112,7 @@ async def info_relationships(
     query: VendorQuery = Depends(),
 ) -> VendorRelationshipsResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -140,7 +140,7 @@ async def related_resources(
     query: VendorQuery = Depends(),
 ) -> VendorResourceResp:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -183,7 +183,7 @@ async def new_vendor(
     body: NewVendor,
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -207,7 +207,7 @@ async def modify_vendor(
     body: VendorModification,
 ) -> VendorResponse:
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -239,7 +239,7 @@ async def del_vendor(token: VendorsPerm, session: NewSession, vendor_id: str) ->
         # so it should fail on the first record or not at all
         await delete_related_resource(token, session, rec_id, vendor_id)
     return (
-        auth.VendorOperations(token, VENDORS_RESOURCE)
+        auth.VendorOperations(token, SCAVendor)
         .allow_admin()
         .allow_sca()
         .allow_dev()
