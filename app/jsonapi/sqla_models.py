@@ -937,7 +937,7 @@ def customers_primary_id_queries(email: str) -> QuerySet:
     admin_query = select(customers.id).where(
         exists().where(
             customer_locations.id == users.customer_location_id,
-            customers_2.id == customer_locations.id,
+            customers_2.id == customer_locations.customer_id,
             users.email == email,
             customers_2.id == customers.id,
         )
