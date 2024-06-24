@@ -3,6 +3,12 @@ The pydantic models for primary resoureces are all of the same structure, differ
 only by the names of the attributes and relationships.
 This helper function will take the SQLAlchemy model given to it, and dynamically
 generate the pydantic models from it. The text will be saved as a new .py file.
+
+Likewise, the FastAPI routes, specifically GET routes, are well-structured. This file
+also generates code for those resources.
+
+Some customization is still required after file generation for imports, 
+related resource routes, and POST, PATCH, and DELETE routes.
 """
 
 import re
