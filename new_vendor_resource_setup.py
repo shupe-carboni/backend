@@ -48,7 +48,7 @@ def create_pydantic_models_for_routes(
     )
     filters = "\n    ".join(
         [
-            f"filter_{name}: str = Field(alias=\"filter[{name.replace('_','-')}]\")"
+            f"filter_{name}: str = Field(default=None, alias=\"filter[{name.replace('_','-')}]\")"
             for name, _type in attrs_columns
         ]
     )
@@ -60,11 +60,11 @@ def create_pydantic_models_for_routes(
     )
     fields = "\n    ".join(
         [
-            f'fields_{sc_name}: str = Field(alias="fields[{kc_name}]")'
+            f'fields_{sc_name}: str = Field(default=None, alias="fields[{kc_name}]")'
             for sc_name, kc_name in rels_columns
         ]
     )
-    fields += f"\n    fields_{tablename}: str = Field(alias=\"fields[{tablename.replace('_','-')}]\")"
+    fields += f"\n    fields_{tablename}: str = Field(default=None, alias=\"fields[{tablename.replace('_','-')}]\")"
     imports = """
 from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
@@ -204,7 +204,7 @@ converter = convert_query({sqla_base_model_name}QueryJSONAPI)
     tags=["jsonapi"],
 )
 async def {depluraled}_collection(
-    token: Token, session: NewSession, query: {sqla_base_model_name}Query
+    token: Token, session: NewSession, query: {sqla_base_model_name}Query = Depends()
 ) -> {sqla_base_model_name}Resp:
     return (
         auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
@@ -225,8 +225,8 @@ async def {depluraled}_collection(
 async def {depluraled}_resource(
     token: Token,
     session: NewSession,
-    query: {sqla_base_model_name}Query,
     {depluraled}_id: int,
+    query: {sqla_base_model_name}Query = Depends(),
 ) -> {sqla_base_model_name}Resp:
     return (
         auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
@@ -247,8 +247,8 @@ async def {depluraled}_resource(
 async def {depluraled}_related_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: {sqla_base_model_name}Query,
     {depluraled}_id: int,
+    query: {sqla_base_model_name}Query = Depends(),
 ) -> None:
     return (
         auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
@@ -269,8 +269,8 @@ async def {depluraled}_related_RELATED_RESOURCE(
 async def {depluraled}_relationships_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: {sqla_base_model_name}Query,
     {depluraled}_id: int,
+    query: {sqla_base_model_name}Query = Depends(),
 ) -> None:
     return (
         auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
