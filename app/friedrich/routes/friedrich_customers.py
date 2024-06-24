@@ -32,7 +32,7 @@ converter = convert_query(FriedrichCustomerQueryJSONAPI)
     tags=["jsonapi"],
 )
 async def friedrich_customer_collection(
-    token: Token, session: NewSession, query: FriedrichCustomerQuery
+    token: Token, session: NewSession, query: FriedrichCustomerQuery = Depends()
 ) -> FriedrichCustomerResp:
     return (
         auth.FriedrichOperations(token, FriedrichCustomer, PARENT_PREFIX)
@@ -53,8 +53,8 @@ async def friedrich_customer_collection(
 async def friedrich_customer_resource(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerQuery,
     friedrich_customer_id: int,
+    query: FriedrichCustomerQuery = Depends(),
 ) -> FriedrichCustomerResp:
     return (
         auth.FriedrichOperations(token, FriedrichCustomer, PARENT_PREFIX)
@@ -75,8 +75,8 @@ async def friedrich_customer_resource(
 async def friedrich_customer_related_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerQuery,
     friedrich_customer_id: int,
+    query: FriedrichCustomerQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichCustomer, PARENT_PREFIX)
@@ -97,8 +97,8 @@ async def friedrich_customer_related_RELATED_RESOURCE(
 async def friedrich_customer_relationships_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerQuery,
     friedrich_customer_id: int,
+    query: FriedrichCustomerQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichCustomer, PARENT_PREFIX)

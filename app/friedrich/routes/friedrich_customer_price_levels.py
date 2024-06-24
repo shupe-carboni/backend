@@ -32,7 +32,7 @@ converter = convert_query(FriedrichCustomerPriceLevelQueryJSONAPI)
     tags=["jsonapi"],
 )
 async def friedrich_customer_price_level_collection(
-    token: Token, session: NewSession, query: FriedrichCustomerPriceLevelQuery
+    token: Token, session: NewSession, query: FriedrichCustomerPriceLevelQuery = Depends()
 ) -> FriedrichCustomerPriceLevelResp:
     return (
         auth.FriedrichOperations(token, FriedrichCustomerPriceLevel, PARENT_PREFIX)
@@ -53,8 +53,8 @@ async def friedrich_customer_price_level_collection(
 async def friedrich_customer_price_level_resource(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerPriceLevelQuery,
     friedrich_customer_price_level_id: int,
+    query: FriedrichCustomerPriceLevelQuery = Depends(),
 ) -> FriedrichCustomerPriceLevelResp:
     return (
         auth.FriedrichOperations(token, FriedrichCustomerPriceLevel, PARENT_PREFIX)
@@ -75,8 +75,8 @@ async def friedrich_customer_price_level_resource(
 async def friedrich_customer_price_level_related_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerPriceLevelQuery,
     friedrich_customer_price_level_id: int,
+    query: FriedrichCustomerPriceLevelQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichCustomerPriceLevel, PARENT_PREFIX)
@@ -97,8 +97,8 @@ async def friedrich_customer_price_level_related_RELATED_RESOURCE(
 async def friedrich_customer_price_level_relationships_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichCustomerPriceLevelQuery,
     friedrich_customer_price_level_id: int,
+    query: FriedrichCustomerPriceLevelQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichCustomerPriceLevel, PARENT_PREFIX)

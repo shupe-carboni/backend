@@ -32,7 +32,7 @@ converter = convert_query(FriedrichPricingSpecialQueryJSONAPI)
     tags=["jsonapi"],
 )
 async def friedrich_pricing_special_collection(
-    token: Token, session: NewSession, query: FriedrichPricingSpecialQuery
+    token: Token, session: NewSession, query: FriedrichPricingSpecialQuery = Depends()
 ) -> FriedrichPricingSpecialResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecial, PARENT_PREFIX)
@@ -53,8 +53,8 @@ async def friedrich_pricing_special_collection(
 async def friedrich_pricing_special_resource(
     token: Token,
     session: NewSession,
-    query: FriedrichPricingSpecialQuery,
     friedrich_pricing_special_id: int,
+    query: FriedrichPricingSpecialQuery = Depends(),
 ) -> FriedrichPricingSpecialResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecial, PARENT_PREFIX)
@@ -75,8 +75,8 @@ async def friedrich_pricing_special_resource(
 async def friedrich_pricing_special_related_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichPricingSpecialQuery,
     friedrich_pricing_special_id: int,
+    query: FriedrichPricingSpecialQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecial, PARENT_PREFIX)
@@ -97,8 +97,8 @@ async def friedrich_pricing_special_related_RELATED_RESOURCE(
 async def friedrich_pricing_special_relationships_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichPricingSpecialQuery,
     friedrich_pricing_special_id: int,
+    query: FriedrichPricingSpecialQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecial, PARENT_PREFIX)

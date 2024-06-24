@@ -32,7 +32,7 @@ converter = convert_query(FriedrichProductQueryJSONAPI)
     tags=["jsonapi"],
 )
 async def friedrich_product_collection(
-    token: Token, session: NewSession, query: FriedrichProductQuery
+    token: Token, session: NewSession, query: FriedrichProductQuery = Depends()
 ) -> FriedrichProductResp:
     return (
         auth.FriedrichOperations(token, FriedrichProduct, PARENT_PREFIX)
@@ -53,8 +53,8 @@ async def friedrich_product_collection(
 async def friedrich_product_resource(
     token: Token,
     session: NewSession,
-    query: FriedrichProductQuery,
     friedrich_product_id: int,
+    query: FriedrichProductQuery = Depends(),
 ) -> FriedrichProductResp:
     return (
         auth.FriedrichOperations(token, FriedrichProduct, PARENT_PREFIX)
@@ -75,8 +75,8 @@ async def friedrich_product_resource(
 async def friedrich_product_related_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichProductQuery,
     friedrich_product_id: int,
+    query: FriedrichProductQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichProduct, PARENT_PREFIX)
@@ -97,8 +97,8 @@ async def friedrich_product_related_RELATED_RESOURCE(
 async def friedrich_product_relationships_RELATED_RESOURCE(
     token: Token,
     session: NewSession,
-    query: FriedrichProductQuery,
     friedrich_product_id: int,
+    query: FriedrichProductQuery = Depends(),
 ) -> None:
     return (
         auth.FriedrichOperations(token, FriedrichProduct, PARENT_PREFIX)
