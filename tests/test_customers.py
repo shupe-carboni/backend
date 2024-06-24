@@ -160,7 +160,6 @@ def test_mod_customer_location(perm, response_code):
     pre_mod_body = pre_mod.json()["data"][0]
     pre_mod_hq = pre_mod_body["attributes"]["hq"]
     pre_mod_id = pre_mod_body["id"]
-    print(pre_mod_id)
     mod_loc = {
         "id": pre_mod_id,
         "type": "customer-locations",
