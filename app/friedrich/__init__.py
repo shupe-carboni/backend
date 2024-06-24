@@ -1,0 +1,2 @@
+from app.friedrich.routes.friedrich_customers import friedrich_customers
+from app.friedrich.routes.friedrich_pricing import friedrich_pricing
