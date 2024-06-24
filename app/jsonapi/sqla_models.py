@@ -801,7 +801,14 @@ class FriedrichCustomer(Base):
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
 
 
 class FriedrichCustomertoSCACustomerLocation(Base):
@@ -820,7 +827,18 @@ class FriedrichCustomertoSCACustomerLocation(Base):
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.id == FriedrichCustomertoSCACustomerLocation.id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
 
 
 class FriedrichProduct(Base):
@@ -852,7 +870,16 @@ class FriedrichPricing(Base):
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        price_levels = aliased(FriedrichCustomerPriceLevel)
+        exists_subquery = exists().where(
+            price_levels.price_level == FriedrichPricing.price_level,
+            price_levels.customer_id == friedrichtoloc.friedrich_customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
 
 
 class FriedrichPricingSpecial(Base):
@@ -871,7 +898,18 @@ class FriedrichPricingSpecial(Base):
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id == FriedrichPricingSpecial.customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
 
 
 class FriedrichCustomerPriceLevel(Base):
@@ -887,7 +925,19 @@ class FriedrichCustomerPriceLevel(Base):
 
     # filtering
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id
+            == FriedrichCustomerPriceLevel.customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
 
 
 serializer = JSONAPI_(Base)
@@ -1011,6 +1061,50 @@ def customers_primary_id_queries(email: str) -> QuerySet:
             customers_2.id == customer_locations.customer_id,
             users.email == email,
             customers_2.id == customers.id,
+        )
+    )
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
+def friedrich_customer_primary_id_queries(email: str) -> QuerySet:
+    friedrich_customers_alias = aliased(FriedrichCustomer)
+    friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+    users = aliased(SCAUser)
+    customer_locations = aliased(SCACustomerLocation)
+
+    user_query = select(friedrich_customers_alias.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == friedrichtoloc.sca_customer_location_id,
+            users.email == email,
+            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
+        )
+    )
+
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(friedrich_customers_alias.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == friedrichtoloc.sca_customer_location_id,
+            manager_map.user_id == users.id,
+            users.email == email,
+            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
+        )
+    )
+    customers_2 = aliased(FriedrichCustomer)
+    admin_query = select(friedrich_customers_alias.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == friedrichtoloc.sca_customer_location_id,
+            customers_2.id == friedrichtoloc.friedrich_customer_id,
+            customers_2.sca_id == FriedrichCustomer.sca_id,
+            users.email == email,
+            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
         )
     )
     querys: QuerySet = {
