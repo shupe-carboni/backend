@@ -24,7 +24,7 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
-from app.db import Stage
+from app.db import Stage, FriedrichPriceLevels
 from functools import partial
 
 Base = declarative_base()
@@ -789,14 +789,18 @@ class FriedrichCustomer(Base):
     friedrich_acct_number = Column(String)
     # relationships
     customers = relationship("SCACustomer", back_populates=__tablename__)
+    friedrich_pricing_special = relationship(
+        "FriedrichPricingSpecial", back_populates=__tablename__
+    )
     friedrich_customers_to_sca_customer_locations = relationship(
         "FriedrichCustomertoSCACustomerLocation", back_populates=__tablename__
     )
+    friedrich_customer_price_levels = relationship(
+        "FriedrichCustomerPriceLevel", back_populates=__tablename__
+    )
 
     # filtering
-    def apply_customerLocations_location_filtering(
-        q: Query, ids: list[int] = None
-    ) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
 
@@ -810,6 +814,73 @@ class FriedrichCustomertoSCACustomerLocation(Base):
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__tablename__
     )
+    friedrich_customers = relationship(
+        "FriedrichCustomer", back_populates=__tablename__
+    )
+
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
+
+
+class FriedrichProduct(Base):
+    __tablename__ = "friedrich_products"
+    __jsonapi_type_override__ = "friedrich-products"
+    id = Column(Integer, primary_key=True)
+    model_number = Column(String)
+    description = Column(String)
+    # relationships
+    friedrich_pricing = relationship("FriedrichPricing", back_populates=__tablename__)
+    friedrich_pricing_special = relationship(
+        "FriedrichPricingSpecial", back_populates=__tablename__
+    )
+
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
+
+
+class FriedrichPricing(Base):
+    __tablename__ = "friedrich_pricing"
+    __jsonapi_type_override__ = "friedrich-pricing"
+    id = Column(Integer, primary_key=True)
+    model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
+    price_level: Mapped[FriedrichPriceLevels] = mapped_column()
+    price = Column(Float)
+    # relationships
+    friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
+
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
+
+
+class FriedrichPricingSpecial(Base):
+    __tablename__ = "friedrich_pricing_special"
+    __jsonapi_type_override__ = "friedrich-pricing-special"
+    id = Column(Integer, primary_key=True)
+    model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
+    customer_model_number = Column(String)
+    price = Column(Float)
+    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
+    # relationships
+    friedrich_customers = relationship(
+        "FriedrichCustomer", back_populates=__tablename__
+    )
+    friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
+
+    # filtering
+    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+        return q
+
+
+class FriedrichCustomerPriceLevel(Base):
+    __tablename__ = "friedrich_customer_price_levels"
+    __jsonapi_type_override__ = "friedrich-customer-price-levels"
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
+    price_level: Mapped[FriedrichPriceLevels] = mapped_column()
+    # relationships
     friedrich_customers = relationship(
         "FriedrichCustomer", back_populates=__tablename__
     )
