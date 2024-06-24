@@ -28,6 +28,7 @@ from app.adp import (
     adp_mat_grp_discs,
     adp_snps,
 )
+from app.friedrich import friedrich_pricing, friedrich_customers
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -102,6 +103,8 @@ for route, prefix, target in (
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
+    (friedrich_customers, "/vendors/friedrich", app),
+    (friedrich_pricing, "/vendors/friedrich", app),
 ):
     resource_path = f"{prefix}{route.prefix}"
     try:
