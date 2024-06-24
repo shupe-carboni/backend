@@ -36,24 +36,34 @@ class FriedrichCustomerRels(BaseModel):
     friedrich_customers_to_sca_customer_locations: Optional[JSONAPIRelationships] = (
         Field(default=None, alias="friedrich-customers-to-sca-customer-locations")
     )
+    friedrich_customer_price_levels: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="friedrich-customer-price-levels"
+    )
 
 
 class FriedrichCustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_name: str = Field(alias="filter[name]")
-    filter_friedrich_acct_number: str = Field(alias="filter[friedrich-acct-number]")
+    filter_name: str = Field(default=None, alias="filter[name]")
+    filter_friedrich_acct_number: str = Field(
+        default=None, alias="filter[friedrich-acct-number]"
+    )
 
 
 class FriedrichCustomerFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_customers: str = Field(alias="fields[customers]")
+    fields_customers: str = Field(default=None, alias="fields[customers]")
     fields_friedrich_pricing_special: str = Field(
-        alias="fields[friedrich-pricing-special]"
+        default=None, alias="fields[friedrich-pricing-special]"
     )
     fields_friedrich_customers_to_sca_customer_locations: str = Field(
-        alias="fields[friedrich-customers-to-sca-customer-locations]"
+        default=None, alias="fields[friedrich-customers-to-sca-customer-locations]"
     )
-    fields_friedrich_customers: str = Field(alias="fields[friedrich-customers]")
+    fields_friedrich_customer_price_levels: str = Field(
+        default=None, alias="fields[friedrich-customer-price-levels]"
+    )
+    fields_friedrich_customers: str = Field(
+        default=None, alias="fields[friedrich-customers]"
+    )
 
 
 class FriedrichCustomerRObj(FriedrichCustomerRID):
@@ -132,17 +142,21 @@ class FriedrichProductRels(BaseModel):
 
 class FriedrichProductFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_model_number: str = Field(alias="filter[model-number]")
-    filter_description: str = Field(alias="filter[description]")
+    filter_model_number: str = Field(default=None, alias="filter[model-number]")
+    filter_description: str = Field(default=None, alias="filter[description]")
 
 
 class FriedrichProductFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_friedrich_pricing: str = Field(alias="fields[friedrich-pricing]")
-    fields_friedrich_pricing_special: str = Field(
-        alias="fields[friedrich-pricing-special]"
+    fields_friedrich_pricing: str = Field(
+        default=None, alias="fields[friedrich-pricing]"
     )
-    fields_friedrich_products: str = Field(alias="fields[friedrich-products]")
+    fields_friedrich_pricing_special: str = Field(
+        default=None, alias="fields[friedrich-pricing-special]"
+    )
+    fields_friedrich_products: str = Field(
+        default=None, alias="fields[friedrich-products]"
+    )
 
 
 class FriedrichProductRObj(FriedrichProductRID):
@@ -221,14 +235,18 @@ class FriedrichPricingRels(BaseModel):
 
 class FriedrichPricingFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_price_level: str = Field(alias="filter[price-level]")
-    filter_price: str = Field(alias="filter[price]")
+    filter_price_level: str = Field(default=None, alias="filter[price-level]")
+    filter_price: str = Field(default=None, alias="filter[price]")
 
 
 class FriedrichPricingFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_friedrich_products: str = Field(alias="fields[friedrich-products]")
-    fields_friedrich_pricing: str = Field(alias="fields[friedrich-pricing]")
+    fields_friedrich_products: str = Field(
+        default=None, alias="fields[friedrich-products]"
+    )
+    fields_friedrich_pricing: str = Field(
+        default=None, alias="fields[friedrich-pricing]"
+    )
 
 
 class FriedrichPricingRObj(FriedrichPricingRID):
@@ -309,16 +327,22 @@ class FriedrichPricingSpecialRels(BaseModel):
 
 class FriedrichPricingSpecialFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_customer_model_number: str = Field(alias="filter[customer-model-number]")
-    filter_price: str = Field(alias="filter[price]")
+    filter_customer_model_number: str = Field(
+        default=None, alias="filter[customer-model-number]"
+    )
+    filter_price: str = Field(default=None, alias="filter[price]")
 
 
 class FriedrichPricingSpecialFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_friedrich_customers: str = Field(alias="fields[friedrich-customers]")
-    fields_friedrich_products: str = Field(alias="fields[friedrich-products]")
+    fields_friedrich_customers: str = Field(
+        default=None, alias="fields[friedrich-customers]"
+    )
+    fields_friedrich_products: str = Field(
+        default=None, alias="fields[friedrich-products]"
+    )
     fields_friedrich_pricing_special: str = Field(
-        alias="fields[friedrich-pricing-special]"
+        default=None, alias="fields[friedrich-pricing-special]"
     )
 
 
@@ -368,6 +392,7 @@ class FriedrichPricingSpecialQueryJSONAPI(
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
+
 from app.jsonapi.sqla_models import FriedrichCustomerPriceLevel
 
 
@@ -381,23 +406,31 @@ class CudtomerRelResp(JSONAPIRelationshipsResponse):
 
 class FriedrichCustomerPriceLevelAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    price_level: Optional[FriedrichPriceLevels] = Field(default=None, alias="price-level")
+    price_level: Optional[FriedrichPriceLevels] = Field(
+        default=None, alias="price-level"
+    )
 
 
 class FriedrichCustomerPriceLevelRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    friedrich_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-customers")
+    friedrich_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="friedrich-customers"
+    )
 
 
 class FriedrichCustomerPriceLevelFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_price_level: str = Field(alias="filter[price-level]")
+    filter_price_level: str = Field(default=None, alias="filter[price-level]")
 
 
 class FriedrichCustomerPriceLevelFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_friedrich_customers: str = Field(alias="fields[friedrich-customers]")
-    fields_friedrich_customer_price_levels: str = Field(alias="fields[friedrich-customer-price-levels]")
+    fields_friedrich_customers: str = Field(
+        default=None, alias="fields[friedrich-customers]"
+    )
+    fields_friedrich_customer_price_levels: str = Field(
+        default=None, alias="fields[friedrich-customer-price-levels]"
+    )
 
 
 class FriedrichCustomerPriceLevelRObj(FriedrichCustomerPriceLevelRID):
@@ -429,7 +462,7 @@ _FriedrichCustomerPriceLevelQuery: type[BaseModel] = create_model(
         for field in FriedrichCustomerPriceLevelAttrs.model_fields.keys()
     },
     **{
-        f'fields_friedrich_customer_price_levels': (
+        f"fields_friedrich_customer_price_levels": (
             Optional[str],
             None,
         )
@@ -437,9 +470,13 @@ _FriedrichCustomerPriceLevelQuery: type[BaseModel] = create_model(
 )
 
 
-class FriedrichCustomerPriceLevelQuery(_FriedrichCustomerPriceLevelQuery, BaseModel): ...
+class FriedrichCustomerPriceLevelQuery(
+    _FriedrichCustomerPriceLevelQuery, BaseModel
+): ...
 
 
-class FriedrichCustomerPriceLevelQueryJSONAPI(FriedrichCustomerPriceLevelFields, FriedrichCustomerPriceLevelFilters, Query):
+class FriedrichCustomerPriceLevelQueryJSONAPI(
+    FriedrichCustomerPriceLevelFields, FriedrichCustomerPriceLevelFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
