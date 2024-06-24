@@ -46,6 +46,13 @@ class UserTypes(StrEnum):
     view_only = auto()
 
 
+class FriedrichPriceLevels(StrEnum):
+
+    NON_STOCKING = auto()
+    STOCKING = auto()
+    STANDARD = auto()
+
+
 class S3:
     bucket = os.getenv("S3_BUCKET")
     client = boto3.client(
