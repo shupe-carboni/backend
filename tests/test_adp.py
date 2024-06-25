@@ -337,23 +337,27 @@ def test_collection_filtering(resource: str):
     )
     response = test_client.get(trimmed_data_req)
     ## if filtering is working, only 1 customer id should be represented in the results
+    # for a standard customer
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
     assert len(customer_ids_in_result) == 1
     assert customer_ids_in_result.pop() == ADP_CUSTOMER_ID
 
-    ## now check that an admin gets more than one customer's data
-    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
+    ## now check that an admin gets more than one customer's data, in this case, 2
+    app.dependency_overrides[authenticate_auth0_token] = (
+        auth_overrides.CustomerAdminToken
+    )
     response = test_client.get(trimmed_data_req)
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
-    assert len(customer_ids_in_result) > 1
+    assert len(customer_ids_in_result) == 2
+    assert customer_ids_in_result == {ADP_CUSTOMER_ID, 64}
 
-    ## check that a developer sees only the test customer as well
+    ## check that a developer sees the same result as customer admin
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.DeveloperToken
     response = test_client.get(trimmed_data_req)
     ## if filtering is working, only 1 customer id should be represented in the results
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
-    assert len(customer_ids_in_result) == 1
-    assert customer_ids_in_result.pop() == ADP_CUSTOMER_ID
+    assert len(customer_ids_in_result) == 2
+    assert customer_ids_in_result == {ADP_CUSTOMER_ID, 64}
 
 
 @mark.parametrize(
