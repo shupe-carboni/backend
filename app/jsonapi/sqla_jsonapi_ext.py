@@ -7,7 +7,7 @@ import warnings
 from typing import Any
 from sqlalchemy_jsonapi import JSONAPI
 from fastapi import HTTPException
-from sqlalchemy import or_, func, inspect, Column
+from sqlalchemy import or_, func, inspect, Column, select
 from sqlalchemy.orm import Session, Query as sqlQuery
 from sqlalchemy_jsonapi.errors import (
     NotSortableError,
@@ -23,6 +23,9 @@ from sqlalchemy_jsonapi.serializer import (
     get_rel_desc,
     RelationshipActions,
     MANYTOONE,
+    get_permission_test,
+    get_attr_desc,
+    AttributeActions,
 )
 
 QuerySet = dict[str, str]
@@ -372,7 +375,9 @@ class JSONAPI_(JSONAPI):
             if end is not None and (pos < start or pos > end):
                 continue
 
-            built = self._render_full_resource(instance, include, fields)
+            built = self._render_full_resource(
+                instance, include, fields, session, permitted_ids
+            )
             included.update(built.pop("included"))
             response.data["data"].append(built)
             num_records += 1
@@ -408,10 +413,11 @@ class JSONAPI_(JSONAPI):
         )
         include = self._parse_include(query.get("include", "").split(","))
         fields = self._parse_fields(query)
-
         response = JSONAPIResponse()
 
-        built = self._render_full_resource(resource, include, fields)
+        built = self._render_full_resource(
+            resource, include, fields, session, permitted_ids
+        )
 
         response.data["included"] = list(built.pop("included").values())
         response.data["data"] = built
@@ -457,7 +463,9 @@ class JSONAPI_(JSONAPI):
                 if related is None:
                     response.data["data"] = None
                 else:
-                    response.data["data"] = self._render_full_resource(related, {}, {})
+                    response.data["data"] = self._render_full_resource(
+                        related, {}, {}, session, permitted_ids
+                    )
             except PermissionDeniedError:
                 response.data["data"] = None
         else:
@@ -465,7 +473,7 @@ class JSONAPI_(JSONAPI):
             for item in related:
                 try:
                     response.data["data"].append(
-                        self._render_full_resource(item, {}, {})
+                        self._render_full_resource(item, {}, {}, session, permitted_ids)
                     )
                 except PermissionDeniedError:
                     continue
@@ -565,3 +573,138 @@ class JSONAPI_(JSONAPI):
             raise ResourceNotFoundError(model, obj_id)
         check_permission(obj, None, permission)
         return obj
+
+    def _render_full_resource(
+        self,
+        instance: SQLAlchemyModel,
+        include,
+        fields,
+        session: Session,
+        permitted_ids: list[int],
+    ):
+        """
+        Generate a representation of a full resource to match JSON API spec.
+
+        :param instance: The instance to serialize
+        :param include: Dictionary of relationships to include
+        :param fields: Dictionary of fields to filter
+        """
+        api_type = instance.__jsonapi_type__
+        orm_desc_keys = instance.__mapper__.all_orm_descriptors.keys()
+        to_ret = {
+            "id": instance.id,
+            "type": api_type,
+            "attributes": {},
+            "relationships": {},
+            "included": {},
+        }
+        attrs_to_ignore = {"__mapper__", "id"}
+        if api_type in fields.keys():
+            local_fields = list(
+                map((lambda x: instance.__jsonapi_map_to_py__[x]), fields[api_type])
+            )
+        else:
+            local_fields = orm_desc_keys
+
+        for key, relationship in instance.__mapper__.relationships.items():
+            attrs_to_ignore |= set([c.name for c in relationship.local_columns]) | {key}
+
+            api_key = instance.__jsonapi_map_to_api__[key]
+
+            try:
+                desc = get_rel_desc(instance, key, RelationshipActions.GET)
+            except PermissionDeniedError:
+                continue
+
+            if relationship.direction == MANYTOONE:
+                if key in local_fields:
+                    to_ret["relationships"][api_key] = {
+                        "links": self._lazy_relationship(api_type, instance.id, api_key)
+                    }
+
+                if api_key in include.keys():
+                    related = desc(instance)
+                    if related is not None:
+                        perm = get_permission_test(related, None, Permissions.VIEW)
+                    if key in local_fields and (related is None or not perm(related)):
+                        to_ret["relationships"][api_key]["data"] = None
+                        continue
+                    if key in local_fields:
+                        to_ret["relationships"][api_key]["data"] = (
+                            self._render_short_instance(related)
+                        )  # NOQA
+                    new_include = self._parse_include(include[api_key])
+                    built = self._render_full_resource(
+                        related, new_include, fields, session, permitted_ids
+                    )
+                    included = built.pop("included")
+                    to_ret["included"].update(included)
+                    to_ret["included"][
+                        (related.__jsonapi_type__, related.id)
+                    ] = built  # NOQA
+
+            else:
+
+                if key in local_fields:
+                    to_ret["relationships"][api_key] = {
+                        "links": self._lazy_relationship(
+                            api_type, instance.id, api_key
+                        ),
+                    }
+
+                if api_key not in include.keys():
+                    continue
+
+                if key in local_fields:
+                    to_ret["relationships"][api_key]["data"] = []
+
+                related: list[SQLAlchemyModel] = desc(instance)
+
+                ## reapply filtering if filtering was used for the query on the
+                ## primary resource
+                if permitted_ids:
+                    first = related[0]
+                    related_sqla_model = first.__class__.__mro__[0]
+                    new_check_query = select(related_sqla_model.id)
+                    new_check_query = (
+                        related_sqla_model.apply_customer_location_filtering(
+                            new_check_query, permitted_ids
+                        )
+                    )
+                    related = [
+                        item
+                        for item in related
+                        if item.id in session.scalars(new_check_query).all()
+                    ]
+
+                for item in related:
+                    # print(instance.__jsonapi_type__, ' -> related item ', item.per)
+                    try:
+                        check_permission(item, None, Permissions.VIEW)
+                    except PermissionDeniedError:
+                        continue
+
+                    if key in local_fields:
+                        to_ret["relationships"][api_key]["data"].append(
+                            self._render_short_instance(item)
+                        )
+
+                    new_include = self._parse_include(include[api_key])
+                    built = self._render_full_resource(
+                        item, new_include, fields, session, permitted_ids
+                    )
+                    included = built.pop("included")
+                    to_ret["included"].update(included)
+                    to_ret["included"][(item.__jsonapi_type__, item.id)] = built  # NOQA
+
+        for key in set(orm_desc_keys) - attrs_to_ignore:
+            try:
+                desc = get_attr_desc(instance, key, AttributeActions.GET)
+                if key in local_fields:
+                    to_ret["attributes"][instance.__jsonapi_map_to_api__[key]] = desc(
+                        instance
+                    )  # NOQA
+            except PermissionDeniedError:
+                continue
+
+        return to_ret
