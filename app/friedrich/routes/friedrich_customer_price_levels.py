@@ -101,7 +101,7 @@ async def friedrich_customer_price_level_related_friedrich_customers(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def friedrich_customer_price_level_relationships_RELATED_RESOURCE(
+async def friedrich_customer_price_level_relationships_freidrich_customers(
     token: Token,
     session: NewSession,
     friedrich_customer_price_level_id: int,
