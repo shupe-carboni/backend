@@ -44,19 +44,19 @@ class MH(ModelSeries):
         self.tonnage = int(self.attributes["ton"])
         self.ratings_ac_txv = (
             rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}[\(6,9\)|\*]"
+            rf"{self.attributes['scode']}(\(6,9\)|\*)"
         )
         self.ratings_hp_txv = (
             rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}[9|\*]"
+            rf"{self.attributes['scode']}(9|\*)"
         )
         self.ratings_piston = (
             rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}[\(1,2\)|\*]"
+            rf"{self.attributes['scode']}(\(1,2\)|\*)"
         )
         self.ratings_field_txv = (
             rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}[\(1,2\)|\*]\+TXV"
+            rf"{self.attributes['scode']}(\(1,2\)|\*)\+TXV"
         )
         self.is_flex_coil = True if self.attributes.get("rds") else False
         self.zero_disc_price = self.calc_zero_disc_price()
