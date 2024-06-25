@@ -83,7 +83,6 @@ async def friedrich_product_related_friedrich_pricing(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query), friedrich_product_id, "friedrich-pricing")
     )
 
@@ -105,7 +104,6 @@ async def friedrich_product_relationships_friedrich_pricing(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query), friedrich_product_id, "friedrich-pricing", True)
     )
 
@@ -127,7 +125,6 @@ async def friedrich_product_related_friedrich_pricing_special(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(
             session, converter(query), friedrich_product_id, "friedrich-pricing-special"
         )
@@ -151,7 +148,6 @@ async def friedrich_product_relationships_friedrich_pricing_special(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(
             session,
             converter(query),
