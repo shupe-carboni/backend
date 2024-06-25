@@ -29,7 +29,13 @@ from app.adp import (
     adp_mat_grp_discs,
     adp_snps,
 )
-from app.friedrich import friedrich_pricing, friedrich_customers
+from app.friedrich import (
+    friedrich_pricing,
+    friedrich_customers,
+    friedrich_products,
+    friedrich_pricing_special,
+    friedrich_customer_price_levels,
+)
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -106,6 +112,9 @@ for route, prefix, target in (
     (adp, "/vendors", app),
     (friedrich_customers, "/vendors/friedrich", app),
     (friedrich_pricing, "/vendors/friedrich", app),
+    (friedrich_products, "/vendors/friedrich", app),
+    (friedrich_pricing_special, "/vendors/friedrich", app),
+    (friedrich_customer_price_levels, "/vendors/friedrich", app),
 ):
     resource_path = f"{prefix}{route.prefix}"
     try:
