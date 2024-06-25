@@ -863,6 +863,10 @@ class FriedrichProduct(Base):
     def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> None:
+        """SCA only for modifications and deletions"""
+
 
 class FriedrichPricing(Base):
     __tablename__ = "friedrich_pricing"
@@ -889,6 +893,10 @@ class FriedrichPricing(Base):
             friedrichtoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> None:
+        """SCA only for modifications and deletions"""
 
 
 class FriedrichPricingSpecial(Base):
