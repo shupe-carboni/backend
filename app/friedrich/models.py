@@ -546,6 +546,7 @@ class FriedrichProductQuery(_FriedrichProductQuery, BaseModel): ...
 class FriedrichProductQueryJSONAPI(
     FriedrichProductFields, FriedrichProductFilters, Query
 ):
+    include: Optional[str] = Field(default=None, exclude=True)
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
