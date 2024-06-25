@@ -678,7 +678,6 @@ class JSONAPI_(JSONAPI):
                     ]
 
                 for item in related:
-                    # print(instance.__jsonapi_type__, ' -> related item ', item.per)
                     try:
                         check_permission(item, None, Permissions.VIEW)
                     except PermissionDeniedError:
