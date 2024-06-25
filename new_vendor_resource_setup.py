@@ -84,7 +84,7 @@ class {sqla_base_model_name}RID(JSONAPIResourceIdentifier):
     type: str = {sqla_base_model_name}.__jsonapi_type_override__
 
 
-class CudtomerRelResp(JSONAPIRelationshipsResponse):
+class {sqla_base_model_name}RelResp(JSONAPIRelationshipsResponse):
     data: list[{sqla_base_model_name}RID] | {sqla_base_model_name}RID
 
 
@@ -154,6 +154,34 @@ class {sqla_base_model_name}QueryJSONAPI({sqla_base_model_name}Fields, {sqla_bas
 """
     if not os.path.exists(f"./app/{vendor_id}/models.py"):
         template = imports + template
+    if fields := sqla_model.__modifiable_fields__:
+        mod_attrs_columns = [
+            (col.name, col.type.python_type.__name__)
+            for col in columns
+            if not col.foreign_keys and not col.primary_key and col.name in fields
+        ]
+        mod_attrs = "\n    ".join(
+            [
+                f"{name}: Optional[{_type}] = Field(default=None, alias=\"{name.replace('_','-')}\")"
+                for name, _type in mod_attrs_columns
+            ]
+        )
+        mod = f"""
+
+class Mod{sqla_base_model_name}Attrs(BaseModel):
+    {mod_attrs}
+     
+class Mod{sqla_base_model_name}RObj(BaseModel):
+    id: int
+    type: str = {sqla_base_model_name}.__jsonapi_type_override__
+    attributes: Mod{sqla_base_model_name}Attrs
+    relationships: {sqla_base_model_name}Rels
+    
+class Mod{sqla_base_model_name}(BaseModel):
+    data: Mod{sqla_base_model_name}RObj
+        """
+        template += mod
+
     return "models.py", template
 
 
@@ -165,6 +193,11 @@ def create_fastapi_routes(vendor_id: str, sqla_base_model_name: str) -> str:
         tablename = tn
     else:
         tablename = sqla_model.__tablename__
+
+    model = inspect(sqla_model)
+    relationships = model.relationships
+    # snake case and kebab case respectively
+    rels_columns = [(rel, rel.replace("_", "-")) for rel in relationships.keys()]
 
     depluraled = tablename[:-1] if tablename.endswith("s") else tablename
     # make camelcase
@@ -237,14 +270,16 @@ async def {depluraled}_resource(
         .get(session, converter(query), {depluraled}_id)
     )
 
-
+"""
+    for sc_name, kc_name in rels_columns:
+        related_resource = f"""
 @{tablename}.get(
-    "/{{{depluraled}_id}}/RELATED_RESOURCE",
+    "/{{{depluraled}_id}}/{kc_name}",
     response_model=None,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def {depluraled}_related_RELATED_RESOURCE(
+async def {depluraled}_related_{sc_name}(
     token: Token,
     session: NewSession,
     {depluraled}_id: int,
@@ -256,17 +291,16 @@ async def {depluraled}_related_RELATED_RESOURCE(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), {depluraled}_id, "RELATED_RESOURCE")
+        .get(session, converter(query), {depluraled}_id, "{kc_name}")
     )
 
-
 @{tablename}.get(
-    "/{{{depluraled}_id}}/relationships/RELATED_RESOURCE",
+    "/{{{depluraled}_id}}/relationships/{kc_name}",
     response_model=None,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def {depluraled}_relationships_RELATED_RESOURCE(
+async def {depluraled}_relationships_{sc_name}(
     token: Token,
     session: NewSession,
     {depluraled}_id: int,
@@ -278,10 +312,86 @@ async def {depluraled}_relationships_RELATED_RESOURCE(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), {depluraled}_id, "RELATED_RESOURCE", True)
+        .get(session, converter(query), {depluraled}_id, "{kc_name}", True)
     )
 
     """
+        template += related_resource
+
+    if sqla_model.__modifiable_fields__:
+        primary_id_ref_plural: str = sqla_model.__primary_ref__
+        primary_id_ref = (
+            primary_id_ref_plural[:-1]
+            if primary_id_ref_plural and primary_id_ref_plural.endswith("s")
+            else primary_id_ref_plural
+        )
+        patch = f"""
+
+from app.{vendor_id}.models import Mod{sqla_base_model_name}
+
+@{tablename}.patch(
+    "/{{{depluraled}_id}}",
+    response_model={sqla_base_model_name}Resp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def mod_{depluraled}(
+    token: Token,
+    session: NewSession,
+    {depluraled}_id: int,
+    mod_data: Mod{sqla_base_model_name},
+) -> {sqla_base_model_name}Resp:
+    return (
+        auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .patch(
+            session=session,
+            data=mod_data.model_dump(exclude_none=True, by_alias=True),
+            obj_id={depluraled}_id,
+    """
+        if primary_id_ref:
+            patch += (
+                " " * 3 * 4
+                + f"""primary_id=mod_data.data.relationships.{primary_id_ref_plural}.data.id
+            )
+        )
+
+        """
+            )
+        else:
+            patch += f"""
+            )
+        )
+
+        """
+        template += patch
+    delete = f"""
+@{tablename}.delete(
+    "/{{{depluraled}_id}}",
+    tags=["jsonapi"],
+)
+async def del_{depluraled}(
+    token: Token,
+    session: NewSession,
+    {depluraled}_id: int,
+    {primary_id_ref}_id: int,
+) -> None:
+    return (
+        auth.{ops_name_prefix}Operations(token, {sqla_base_model_name}, PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .delete(session, obj_id={depluraled}_id, primary_id={primary_id_ref}_id)
+    )
+    """
+    delete = delete.replace("None_id: int,", "")
+    delete = delete.replace(", primary_id=None_id)", ")")
+    template += delete
+
     return f"{tablename}.py", template
 
 
