@@ -783,6 +783,9 @@ class SCAVendorResourceMap(Base):
 class FriedrichCustomer(Base):
     __tablename__ = "friedrich_customers"
     __jsonapi_type_override__ = "friedrich-customers"
+    __modifiable_fields__ = ["name", "friedrich_acct_number"]
+    __primary_ref__ = None
+
     id = Column(Integer, primary_key=True)
     sca_id = Column(Integer, ForeignKey("sca_customers.id"))
     name = Column(String)
@@ -844,6 +847,9 @@ class FriedrichCustomertoSCACustomerLocation(Base):
 class FriedrichProduct(Base):
     __tablename__ = "friedrich_products"
     __jsonapi_type_override__ = "friedrich-products"
+    __modifiable_fields__ = ["description"]
+    __primary_ref__ = None
+
     id = Column(Integer, primary_key=True)
     model_number = Column(String)
     description = Column(String)
@@ -861,6 +867,9 @@ class FriedrichProduct(Base):
 class FriedrichPricing(Base):
     __tablename__ = "friedrich_pricing"
     __jsonapi_type_override__ = "friedrich-pricing"
+    __modifiable_fields__ = ["price"]
+    __primary_ref__ = None
+
     id = Column(Integer, primary_key=True)
     model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
     price_level: Mapped[FriedrichPriceLevels] = mapped_column()
@@ -885,6 +894,9 @@ class FriedrichPricing(Base):
 class FriedrichPricingSpecial(Base):
     __tablename__ = "friedrich_pricing_special"
     __jsonapi_type_override__ = "friedrich-pricing-special"
+    __modifiable_fields__ = ["price", "customer_model_number"]
+    __primary_ref__ = "friedrich_customers"
+
     id = Column(Integer, primary_key=True)
     model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
     customer_model_number = Column(String)
@@ -915,6 +927,9 @@ class FriedrichPricingSpecial(Base):
 class FriedrichCustomerPriceLevel(Base):
     __tablename__ = "friedrich_customer_price_levels"
     __jsonapi_type_override__ = "friedrich-customer-price-levels"
+    __modifiable_fields__ = ["price_level"]
+    __primary_ref__ = "friedrich_customers"
+
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
     price_level: Mapped[FriedrichPriceLevels] = mapped_column()
