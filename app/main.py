@@ -1,3 +1,4 @@
+__version__ = "1.0.1"
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -66,7 +67,7 @@ with open("README.md", "r") as read_me:
     description = read_me.read()
 
 app = FastAPI(
-    title="Shupe Carboni Backend API", version="1.0.0", description=description
+    title="Shupe Carboni Backend API", version=__version__, description=description
 )
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
