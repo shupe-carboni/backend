@@ -813,6 +813,10 @@ class FriedrichCustomer(Base):
         )
         return q.where(exists_subquery)
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        """Friedrich Customers is the main primary for Friedrivh"""
+
 
 class FriedrichCustomertoSCACustomerLocation(Base):
     __tablename__ = "friedrich_customers_to_sca_customer_locations"
@@ -865,7 +869,7 @@ class FriedrichProduct(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> None:
-        """SCA only for modifications and deletions"""
+        """Products table is a reference table"""
 
 
 class FriedrichPricing(Base):
@@ -896,7 +900,7 @@ class FriedrichPricing(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> None:
-        """SCA only for modifications and deletions"""
+        """Pricing table is a reference table"""
 
 
 class FriedrichPricingSpecial(Base):
