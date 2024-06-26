@@ -292,7 +292,14 @@ class JSONAPI_(JSONAPI):
             session.query on the 'model'
         """
         model: SQLAlchemyModel = self._fetch_model(api_type=api_type)
-        include = self._parse_include(query.get("include", "").split(","))
+        includes_statements = query.get("include", "").split(",")
+        includes_models: dict[str, SQLAlchemyModel] = {
+            m: self._fetch_model(m)
+            for statement in includes_statements
+            for m in statement.split(".")
+            if statement
+        }
+        include = self._parse_include(includes_statements)
         fields = self._parse_fields(query)
         included = {}
         sorts = query.get("sort", "").split(",")
@@ -365,6 +372,18 @@ class JSONAPI_(JSONAPI):
         response.data["data"] = []
         num_records = 0
 
+        if includes_models:
+            includes_permitted_ids = {
+                api_type: session.scalars(
+                    inc_model.apply_customer_location_filtering(
+                        select(inc_model.id), permitted_ids
+                    )
+                ).all()
+                for api_type, inc_model in includes_models.items()
+            }
+        else:
+            includes_permitted_ids = dict()
+
         for instance in collection:
             try:
                 check_permission(instance, None, Permissions.VIEW)
@@ -376,7 +395,7 @@ class JSONAPI_(JSONAPI):
                 continue
 
             built = self._render_full_resource(
-                instance, include, fields, session, permitted_ids
+                instance, include, fields, includes_permitted_ids
             )
             included.update(built.pop("included"))
             response.data["data"].append(built)
@@ -411,12 +430,30 @@ class JSONAPI_(JSONAPI):
         resource = self._fetch_resource(
             session, api_type, obj_id, Permissions.VIEW, permitted_ids
         )
-        include = self._parse_include(query.get("include", "").split(","))
+        includes_statements = query.get("include", "").split(",")
+        includes_models: dict[str, SQLAlchemyModel] = {
+            m: self._fetch_model(m)
+            for statement in includes_statements
+            for m in statement.split(".")
+            if statement
+        }
+        include = self._parse_include(includes_statements)
         fields = self._parse_fields(query)
         response = JSONAPIResponse()
+        if includes_models:
+            includes_permitted_ids = {
+                api_type: session.scalars(
+                    inc_model.apply_customer_location_filtering(
+                        select(inc_model.id), permitted_ids
+                    )
+                ).all()
+                for api_type, inc_model in includes_models.items()
+            }
+        else:
+            includes_permitted_ids = dict()
 
         built = self._render_full_resource(
-            resource, include, fields, session, permitted_ids
+            resource, include, fields, includes_permitted_ids
         )
 
         response.data["included"] = list(built.pop("included").values())
@@ -464,7 +501,7 @@ class JSONAPI_(JSONAPI):
                     response.data["data"] = None
                 else:
                     response.data["data"] = self._render_full_resource(
-                        related, {}, {}, session, permitted_ids
+                        related, {}, {}, dict()
                     )
             except PermissionDeniedError:
                 response.data["data"] = None
@@ -473,7 +510,7 @@ class JSONAPI_(JSONAPI):
             for item in related:
                 try:
                     response.data["data"].append(
-                        self._render_full_resource(item, {}, {}, session, permitted_ids)
+                        self._render_full_resource(item, {}, {}, dict())
                     )
                 except PermissionDeniedError:
                     continue
@@ -579,8 +616,7 @@ class JSONAPI_(JSONAPI):
         instance: SQLAlchemyModel,
         include,
         fields,
-        session: Session,
-        permitted_ids: list[int],
+        permitted_ids: dict[str, list[int]],
     ):
         """
         Generate a representation of a full resource to match JSON API spec.
@@ -635,7 +671,7 @@ class JSONAPI_(JSONAPI):
                         )  # NOQA
                     new_include = self._parse_include(include[api_key])
                     built = self._render_full_resource(
-                        related, new_include, fields, session, permitted_ids
+                        related, new_include, fields, permitted_ids
                     )
                     included = built.pop("included")
                     to_ret["included"].update(included)
@@ -663,18 +699,10 @@ class JSONAPI_(JSONAPI):
                 ## reapply filtering if filtering was used for the query on the
                 ## primary resource
                 if permitted_ids:
-                    first = related[0]
-                    related_sqla_model = first.__class__.__mro__[0]
-                    new_check_query = select(related_sqla_model.id)
-                    new_check_query = (
-                        related_sqla_model.apply_customer_location_filtering(
-                            new_check_query, permitted_ids
-                        )
-                    )
                     related = [
                         item
                         for item in related
-                        if item.id in session.scalars(new_check_query).all()
+                        if item.id in permitted_ids[item.__jsonapi_type__]
                     ]
 
                 for item in related:
@@ -690,7 +718,7 @@ class JSONAPI_(JSONAPI):
 
                     new_include = self._parse_include(include[api_key])
                     built = self._render_full_resource(
-                        item, new_include, fields, session, permitted_ids
+                        item, new_include, fields, permitted_ids
                     )
                     included = built.pop("included")
                     to_ret["included"].update(included)
