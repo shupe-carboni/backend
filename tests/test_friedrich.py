@@ -16,6 +16,12 @@ from app.auth import VerifiedToken
 
 test_client = TestClient(app)
 
+TEST_CUSTOMER_ID = 50
+TEST_PRICE_LEVEL_ID = 38
+TEST_PRICING_ID = 1
+TEST_PRICE_SPECIAL_ID = 1856
+TEST_PRODUCT_ID = 1
+
 SCA_PERMS = (
     auth_overrides.AdminToken,
     auth_overrides.SCAEmployeeToken,
@@ -63,6 +69,55 @@ COLLECTION_FILTERING = list(
     )
 )
 
+resources = [
+    "friedrich-customers",
+    "friedrich-products",
+    "friedrich-pricing",
+    "friedrich-pricing-special",
+    "friedrich-customer-price-levels",
+]
+
+
+related_by_resource = {
+    "friedrich-customers": [
+        f"{TEST_CUSTOMER_ID}/customers",
+        f"{TEST_CUSTOMER_ID}/friedrich-pricing-special",
+        f"{TEST_CUSTOMER_ID}/friedrich-customer-price-levels",
+        f"{TEST_CUSTOMER_ID}/relationships/customers",
+        f"{TEST_CUSTOMER_ID}/relationships/friedrich-pricing-special",
+        f"{TEST_CUSTOMER_ID}/relationships/friedrich-customer-price-levels",
+    ],
+    "friedrich-products": [
+        f"{TEST_PRODUCT_ID}/friedrich-pricing",
+        f"{TEST_PRODUCT_ID}/friedrich-pricing-special",
+        f"{TEST_PRODUCT_ID}/relationships/friedrich-pricing",
+        f"{TEST_PRODUCT_ID}/relationships/friedrich-pricing-special",
+    ],
+    "friedrich-pricing": [
+        f"{TEST_PRICING_ID}/friedrich-products",
+        f"{TEST_PRICING_ID}/relationships/friedrich-products",
+    ],
+    "friedrich-pricing-special": [
+        f"{TEST_PRICE_SPECIAL_ID}/friedrich-customers",
+        f"{TEST_PRICE_SPECIAL_ID}/friedrich-products",
+        f"{TEST_PRICE_SPECIAL_ID}/relationships/friedrich-customers",
+        f"{TEST_PRICE_SPECIAL_ID}/relationships/friedrich-products",
+    ],
+    "friedrich-customer-price-levels": [
+        f"{TEST_PRICE_LEVEL_ID}/friedrich-customers",
+        f"{TEST_PRICE_LEVEL_ID}/relationships/friedrich-customers",
+    ],
+}
+
+resources += [
+    f"{primary}/{secondary}"
+    for primary, routes in related_by_resource.items()
+    for secondary in routes
+]
+GET_PATHS = [
+    (*perm_and_code, path) for path in resources for perm_and_code in ALL_ALLOWED
+]
+
 
 @mark.parametrize("perm,count,ids", COLLECTION_FILTERING)
 def test_collection_filtering(perm, count, ids):
@@ -91,3 +146,10 @@ def test_collection_filtering(perm, count, ids):
     )
     assert len(customer_ids_in_included) == count
     assert customer_ids_in_included == ids
+
+
+@mark.parametrize("perm,response_code,path", GET_PATHS)
+def test_gets(perm, response_code, path):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    response = test_client.get("/vendors/friedrich/" + path)
+    assert response.status_code == response_code
