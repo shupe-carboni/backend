@@ -329,12 +329,12 @@ class SecOp(ABC):
         self._associated_resource: bool
         self._serializer: JSONAPI_
 
-    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
+    def permitted_primary_resource_ids(self, session: Session) -> set[int]:
         return self.get_result_from_id_association_queries(
             session, **self._resource.permitted_primary_resource_ids(self.token.email)
         )
 
-    def permitted_customer_location_ids(self, session: Session) -> list[int]:
+    def permitted_customer_location_ids(self, session: Session) -> set[int]:
         return self.get_result_from_id_association_queries(
             session, **permitted_customer_location_ids(email=self.token.email)
         )
@@ -345,7 +345,7 @@ class SecOp(ABC):
         sql_admin: str,
         sql_manager: str,
         sql_user_only: str,
-    ):
+    ) -> set[int]:
         queries = [sql_admin, sql_manager, sql_user_only]
         if not all(queries):
             raise Exception("all user type sql queries must be defined")
@@ -363,8 +363,8 @@ class SecOp(ABC):
         for sql in queries:
             result = session.scalars(text(sql), dict(email_1=self.token.email)).all()
             if result:
-                return result
-        return []
+                return set(result)
+        return set()
 
     def allow_admin(self) -> "SecOp":
         self._admin = self.token.permissions >= Permissions.sca_admin
