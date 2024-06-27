@@ -564,3 +564,159 @@ class ModFriedrichProductRObj(BaseModel):
 
 class ModFriedrichProduct(BaseModel):
     data: ModFriedrichProductRObj
+
+from app.jsonapi.sqla_models import FriedrichPricingCustomer
+
+
+class FriedrichPricingCustomerRID(JSONAPIResourceIdentifier):
+    type: str = FriedrichPricingCustomer.__jsonapi_type_override__
+
+
+class FriedrichPricingCustomerRelResp(JSONAPIRelationshipsResponse):
+    data: list[FriedrichPricingCustomerRID] | FriedrichPricingCustomerRID
+
+
+class FriedrichPricingCustomerAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
+
+
+class FriedrichPricingCustomerRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    friedrich_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-customers")
+    friedrich_pricing: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-pricing")
+
+
+class FriedrichPricingCustomerFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
+
+
+class FriedrichPricingCustomerFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_friedrich_customers: str = Field(default=None, alias="fields[friedrich-customers]")
+    fields_friedrich_pricing: str = Field(default=None, alias="fields[friedrich-pricing]")
+    fields_friedrich_pricing_customers: str = Field(default=None, alias="fields[friedrich-pricing-customers]")
+
+
+class FriedrichPricingCustomerRObj(FriedrichPricingCustomerRID):
+    attributes: FriedrichPricingCustomerAttrs
+    relationships: FriedrichPricingCustomerRels
+
+
+class FriedrichPricingCustomerResp(JSONAPIResponse):
+    data: list[FriedrichPricingCustomerRObj] | FriedrichPricingCustomerRObj
+
+
+class RelatedFriedrichPricingCustomerResp(FriedrichPricingCustomerResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_FriedrichPricingCustomerQuery: type[BaseModel] = create_model(
+    "FriedrichPricingCustomerQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in FriedrichPricingCustomerRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in FriedrichPricingCustomerAttrs.model_fields.keys()
+    },
+    **{
+        f'fields_friedrich_pricing_customers': (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class FriedrichPricingCustomerQuery(_FriedrichPricingCustomerQuery, BaseModel): ...
+
+
+class FriedrichPricingCustomerQueryJSONAPI(FriedrichPricingCustomerFields, FriedrichPricingCustomerFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+from app.jsonapi.sqla_models import FriedrichPricingSpecialCustomer
+
+
+class FriedrichPricingSpecialCustomerRID(JSONAPIResourceIdentifier):
+    type: str = FriedrichPricingSpecialCustomer.__jsonapi_type_override__
+
+
+class FriedrichPricingSpecialCustomerRelResp(JSONAPIRelationshipsResponse):
+    data: list[FriedrichPricingSpecialCustomerRID] | FriedrichPricingSpecialCustomerRID
+
+
+class FriedrichPricingSpecialCustomerAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
+
+
+class FriedrichPricingSpecialCustomerRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    friedrich_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-customers")
+    friedrich_pricing_special: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-pricing-special")
+
+
+class FriedrichPricingSpecialCustomerFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    
+
+
+class FriedrichPricingSpecialCustomerFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_friedrich_customers: str = Field(default=None, alias="fields[friedrich-customers]")
+    fields_friedrich_pricing_special: str = Field(default=None, alias="fields[friedrich-pricing-special]")
+    fields_friedrich_pricing_special_customers: str = Field(default=None, alias="fields[friedrich-pricing-special-customers]")
+
+
+class FriedrichPricingSpecialCustomerRObj(FriedrichPricingSpecialCustomerRID):
+    attributes: FriedrichPricingSpecialCustomerAttrs
+    relationships: FriedrichPricingSpecialCustomerRels
+
+
+class FriedrichPricingSpecialCustomerResp(JSONAPIResponse):
+    data: list[FriedrichPricingSpecialCustomerRObj] | FriedrichPricingSpecialCustomerRObj
+
+
+class RelatedFriedrichPricingSpecialCustomerResp(FriedrichPricingSpecialCustomerResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_FriedrichPricingSpecialCustomerQuery: type[BaseModel] = create_model(
+    "FriedrichPricingSpecialCustomerQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in FriedrichPricingSpecialCustomerRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in FriedrichPricingSpecialCustomerAttrs.model_fields.keys()
+    },
+    **{
+        f'fields_friedrich_pricing_special_customers': (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class FriedrichPricingSpecialCustomerQuery(_FriedrichPricingSpecialCustomerQuery, BaseModel): ...
+
+
+class FriedrichPricingSpecialCustomerQueryJSONAPI(FriedrichPricingSpecialCustomerFields, FriedrichPricingSpecialCustomerFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")

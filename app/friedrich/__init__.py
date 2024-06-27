@@ -5,3 +5,4 @@ from app.friedrich.routes.friedrich_pricing_special import friedrich_pricing_spe
 from app.friedrich.routes.friedrich_customer_price_levels import (
     friedrich_customer_price_levels,
 )
+from app.friedrich.routes.friedrich_pricing_customers import friedrich_pricing_customers

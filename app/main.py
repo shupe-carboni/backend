@@ -35,6 +35,7 @@ from app.friedrich import (
     friedrich_products,
     friedrich_pricing_special,
     friedrich_customer_price_levels,
+    friedrich_pricing_customers,
 )
 
 logger = logging.getLogger("uvicorn.info")
@@ -115,6 +116,7 @@ for route, prefix, target in (
     (friedrich_products, "/vendors/friedrich", app),
     (friedrich_pricing_special, "/vendors/friedrich", app),
     (friedrich_customer_price_levels, "/vendors/friedrich", app),
+    (friedrich_pricing_customers, "/vendors/friedrich", app),
 ):
     resource_path = f"{prefix}{route.prefix}"
     try:

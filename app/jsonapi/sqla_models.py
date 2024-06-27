@@ -107,7 +107,7 @@ class ADPAHProgram(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPAHProgram.customer_id,
@@ -135,7 +135,7 @@ class ADPAHProgramChangelog(Base):
     adp_ah_programs = relationship("ADPAHProgram", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
     ## primary id lookup
@@ -185,7 +185,7 @@ class ADPCoilProgram(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPCoilProgram.customer_id,
@@ -213,7 +213,7 @@ class ADPCoilProgramChangelog(Base):
     adp_coil_programs = relationship("ADPCoilProgram", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -231,7 +231,7 @@ class ADPAliasToSCACustomerLocation(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -260,7 +260,7 @@ class ADPCustomer(Base):
     adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -284,12 +284,14 @@ class ADPCustomerTerms(Base):
     customers = relationship("SCACustomer", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        customer_locations = aliased(SCACustomerLocation)
         exists_subquery = exists().where(
-            adptoloc.sca_customer_location_id == ADPCustomerTerms.sca_id,
+            customer_locations.customer_id == ADPCustomerTerms.sca_id,
+            adptoloc.sca_customer_location_id == customer_locations.id,
             adptoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
@@ -319,7 +321,7 @@ class SCACustomer(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         customerloc = aliased(SCACustomerLocation)
@@ -349,7 +351,7 @@ class ADPMaterialGroupDiscount(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -381,7 +383,7 @@ class ADPMaterialGroupDiscountChangelog(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
     ## primary id lookup
@@ -404,7 +406,7 @@ class ADPMaterialGroup(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -450,7 +452,7 @@ class ADPProgramRating(Base):
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -479,7 +481,7 @@ class ADPPricingPart(Base):
     adp_program_parts = relationship("ADPProgramPart", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -495,7 +497,7 @@ class ADPProgramPart(Base):
     adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -534,7 +536,7 @@ class ADPQuote(Base):
     adp_quote_products = relationship("ADPQuoteProduct", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -578,9 +580,9 @@ class SCACustomerLocation(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
-            ids = list()
+            return q
         return q.where(SCACustomerLocation.id.in_(ids))
 
     ## primary id lookup
@@ -607,7 +609,7 @@ class ADPSNP(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
@@ -637,7 +639,7 @@ class ADPSNPChangelog(Base):
     adp_snps = relationship("ADPSNP", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -656,7 +658,7 @@ class ADPQuoteProduct(Base):
     adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
     ## primary id lookup
@@ -680,7 +682,7 @@ class SCAPlace(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -699,7 +701,7 @@ class SCAManagerMap(Base):
     users = relationship("SCAUser", back_populates=__tablename_alt__)
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         return q.where(SCAManagerMap.customer_location_id.in_(ids))
@@ -722,7 +724,7 @@ class SCAUser(Base):
     )
 
     ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         return q.where(SCAUser.customer_location_id.in_(ids))
@@ -744,7 +746,7 @@ class SCAVendor(Base):
     )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -759,7 +761,7 @@ class SCAVendorInfo(Base):
     vendors = relationship("SCAVendor", back_populates=__jsonapi_type_override__)
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -776,7 +778,7 @@ class SCAVendorResourceMap(Base):
     vendors = relationship("SCAVendor", back_populates=__tablename_alt__)
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
@@ -801,9 +803,15 @@ class FriedrichCustomer(Base):
     friedrich_customer_price_levels = relationship(
         "FriedrichCustomerPriceLevel", back_populates=__tablename__
     )
+    friedrich_pricing_customers = relationship(
+        "FriedrichPricingCustomer", back_populates=__tablename__
+    )
+    friedrich_pricing_special_customers = relationship(
+        "FriedrichPricingSpecialCustomer", back_populates=__tablename__
+    )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
@@ -833,7 +841,7 @@ class FriedrichCustomertoSCACustomerLocation(Base):
     )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
@@ -864,7 +872,7 @@ class FriedrichProduct(Base):
     )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
     ## primary id lookup
@@ -884,9 +892,12 @@ class FriedrichPricing(Base):
     price = Column(Float)
     # relationships
     friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
+    friedrich_pricing_customers = relationship(
+        "FriedrichPricingCustomer", back_populates=__tablename__
+    )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
@@ -919,9 +930,12 @@ class FriedrichPricingSpecial(Base):
         "FriedrichCustomer", back_populates=__tablename__
     )
     friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
+    friedrich_pricing_special_customers = relationship(
+        "FriedrichPricingSpecialCustomer", back_populates=__tablename__
+    )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
@@ -951,13 +965,83 @@ class FriedrichCustomerPriceLevel(Base):
     )
 
     # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: list[int] = None) -> Query:
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
         friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
         exists_subquery = exists().where(
             friedrichtoloc.friedrich_customer_id
             == FriedrichCustomerPriceLevel.customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
+
+
+class FriedrichPricingCustomer(Base):
+    """mapping of curated pricing from FriedrichPricing. Like a favorites list"""
+
+    __tablename__ = "friedrich_pricing_customers"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "friedrich_customers"
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
+    price_id = Column(Integer, ForeignKey("friedrich_pricing.id"))
+    # relationships
+    friedrich_customers = relationship(
+        "FriedrichCustomer", back_populates=__tablename__
+    )
+    friedrich_pricing = relationship("FriedrichPricing", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id
+            == FriedrichPricingCustomer.customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
+
+
+class FriedrichPricingSpecialCustomer(Base):
+    """mapping of curated pricing from FriedrichPricingSpecial. Like a favorites list"""
+
+    __tablename__ = "friedrich_pricing_special_customers"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "friedrich_customers"
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
+    price_id = Column(Integer, ForeignKey("friedrich_pricing_special.id"))
+    # relationships
+    friedrich_customers = relationship(
+        "FriedrichCustomer", back_populates=__tablename__
+    )
+    friedrich_pricing_special = relationship(
+        "FriedrichPricingSpecial", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id
+            == FriedrichPricingSpecialCustomer.customer_id,
             friedrichtoloc.sca_customer_location_id.in_(ids),
         )
         return q.where(exists_subquery)
