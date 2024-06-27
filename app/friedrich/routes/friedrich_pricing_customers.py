@@ -1,11 +1,11 @@
-
 from typing import Annotated
 from fastapi import Depends
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
 from app.jsonapi.core_models import convert_query
-#from app.RELATED_RESOURCE.models import 
+
+# from app.RELATED_RESOURCE.models import
 from app.friedrich.models import (
     FriedrichPricingCustomerResp,
     FriedrichPricingCustomerQuery,
@@ -84,8 +84,14 @@ async def friedrich_pricing_customer_related_friedrich_customers(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), friedrich_pricing_customer_id, "friedrich-customers")
+        .get(
+            session,
+            converter(query),
+            friedrich_pricing_customer_id,
+            "friedrich-customers",
+        )
     )
+
 
 @friedrich_pricing_customers.get(
     "/{friedrich_pricing_customer_id}/relationships/friedrich-customers",
@@ -105,10 +111,16 @@ async def friedrich_pricing_customer_relationships_friedrich_customers(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), friedrich_pricing_customer_id, "friedrich-customers", True)
+        .get(
+            session,
+            converter(query),
+            friedrich_pricing_customer_id,
+            "friedrich-customers",
+            True,
+        )
     )
 
-    
+
 @friedrich_pricing_customers.get(
     "/{friedrich_pricing_customer_id}/friedrich-pricing",
     response_model=None,
@@ -127,8 +139,14 @@ async def friedrich_pricing_customer_related_friedrich_pricing(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), friedrich_pricing_customer_id, "friedrich-pricing")
+        .get(
+            session,
+            converter(query),
+            friedrich_pricing_customer_id,
+            "friedrich-pricing",
+        )
     )
+
 
 @friedrich_pricing_customers.get(
     "/{friedrich_pricing_customer_id}/relationships/friedrich-pricing",
@@ -148,10 +166,16 @@ async def friedrich_pricing_customer_relationships_friedrich_pricing(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query), friedrich_pricing_customer_id, "friedrich-pricing", True)
+        .get(
+            session,
+            converter(query),
+            friedrich_pricing_customer_id,
+            "friedrich-pricing",
+            True,
+        )
     )
 
-    
+
 @friedrich_pricing_customers.delete(
     "/{friedrich_pricing_customer_id}",
     tags=["jsonapi"],
@@ -168,6 +192,9 @@ async def del_friedrich_pricing_customer(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, obj_id=friedrich_pricing_customer_id, primary_id=friedrich_customer_id)
+        .delete(
+            session,
+            obj_id=friedrich_pricing_customer_id,
+            primary_id=friedrich_customer_id,
+        )
     )
-    
