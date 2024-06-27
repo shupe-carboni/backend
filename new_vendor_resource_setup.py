@@ -318,13 +318,13 @@ async def {depluraled}_relationships_{sc_name}(
     """
         template += related_resource
 
+    primary_id_ref_plural: str = sqla_model.__primary_ref__
+    primary_id_ref = (
+        primary_id_ref_plural[:-1]
+        if primary_id_ref_plural and primary_id_ref_plural.endswith("s")
+        else primary_id_ref_plural
+    )
     if sqla_model.__modifiable_fields__:
-        primary_id_ref_plural: str = sqla_model.__primary_ref__
-        primary_id_ref = (
-            primary_id_ref_plural[:-1]
-            if primary_id_ref_plural and primary_id_ref_plural.endswith("s")
-            else primary_id_ref_plural
-        )
         patch = f"""
 
 from app.{vendor_id}.models import Mod{sqla_base_model_name}
