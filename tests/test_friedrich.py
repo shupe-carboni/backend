@@ -153,3 +153,20 @@ def test_gets(perm, response_code, path):
     app.dependency_overrides[authenticate_auth0_token] = perm
     response = test_client.get("/vendors/friedrich/" + path)
     assert response.status_code == response_code
+
+
+@mark.parametrize("perm", CUSTOMER_PERMS)
+def test_misassigned_price_id_to_customer(perm):
+    app.dependency_overrides[authenticate_auth0_token] = perm
+
+    url = "/vendors/friedrich/friedrich-pricing-customers/1/friedrich-pricing"
+    resp = test_client.get(url)
+    assert resp.status_code == 204, pprint(resp.json())
+
+    url = "/vendors/friedrich/friedrich-pricing-customers/1/relationships/friedrich-pricing"
+    resp = test_client.get(url)
+    assert resp.status_code == 204, pprint(resp.json())
+
+    url = "/vendors/friedrich/friedrich-pricing-customers/1?include=friedrich-pricing"
+    resp = test_client.get(url)
+    assert not resp.json()["included"], pprint(resp.json())

@@ -42,7 +42,7 @@ class SQLAlchemyModel:
     id = Column(primary_key=True)
 
     def apply_customer_location_filtering(
-        q: sqlQuery, ids: list[int] = None
+        q: sqlQuery, ids: set[int] = None
     ) -> sqlQuery: ...
     def permitted_primary_resource_ids(email: str) -> QuerySet: ...
 
@@ -278,7 +278,7 @@ class JSONAPI_(JSONAPI):
         session: Session,
         query: dict[str, str],
         api_type: str,
-        permitted_ids: list[int] = None,
+        permitted_ids: set[int] = None,
     ) -> GenericData:
         """
         Fetch a collection of resources of a specified type.
@@ -414,7 +414,7 @@ class JSONAPI_(JSONAPI):
         api_type: str,
         obj_id: int,
         obj_only: bool = False,
-        permitted_ids: list[int] = None,
+        permitted_ids: set[int] = None,
     ) -> JSONAPIResponse | GenericData:
         """
         Fetch a resource.
@@ -442,11 +442,13 @@ class JSONAPI_(JSONAPI):
         response = JSONAPIResponse()
         if includes_models:
             includes_permitted_ids = {
-                api_type: session.scalars(
-                    inc_model.apply_customer_location_filtering(
-                        select(inc_model.id), permitted_ids
-                    )
-                ).all()
+                api_type: set(
+                    session.scalars(
+                        inc_model.apply_customer_location_filtering(
+                            select(inc_model.id), permitted_ids
+                        )
+                    ).all()
+                )
                 for api_type, inc_model in includes_models.items()
             }
         else:
@@ -470,7 +472,7 @@ class JSONAPI_(JSONAPI):
         api_type: str,
         obj_id: int,
         rel_key: str,
-        permitted_ids: list[int] = None,
+        permitted_ids: set[int] = None,
     ) -> JSONAPIResponse:
         """
         Fetch a collection of related resources.
@@ -495,22 +497,35 @@ class JSONAPI_(JSONAPI):
         related = get_rel_desc(resource, relationship.key, RelationshipActions.GET)(
             resource
         )
+        # apply model filtering to the related resource
+        rel_key_model: SQLAlchemyModel = self._fetch_model(rel_key)
+        rel_key_id_query = select(rel_key_model.id)
+        rel_key_permitted_ids = session.scalars(
+            rel_key_model.apply_customer_location_filtering(
+                rel_key_id_query, permitted_ids
+            )
+        ).all()
+        permitted_ids_obj = {rel_key: set(rel_key_permitted_ids)}
         if relationship.direction == MANYTOONE:
             try:
                 if related is None:
                     response.data["data"] = None
+                elif related.id not in permitted_ids_obj[related.__jsonapi_type__]:
+                    response.data["data"] = None
                 else:
                     response.data["data"] = self._render_full_resource(
-                        related, {}, {}, dict()
+                        related, {}, {}, permitted_ids_obj
                     )
             except PermissionDeniedError:
                 response.data["data"] = None
         else:
             response.data["data"] = []
             for item in related:
+                if item.id not in permitted_ids_obj[item.__jsonapi_type__]:
+                    continue
                 try:
                     response.data["data"].append(
-                        self._render_full_resource(item, {}, {}, dict())
+                        self._render_full_resource(item, {}, {}, permitted_ids_obj)
                     )
                 except PermissionDeniedError:
                     continue
@@ -523,7 +538,7 @@ class JSONAPI_(JSONAPI):
         api_type: str,
         obj_id: int,
         rel_key: str,
-        permitted_ids: list[int] = None,
+        permitted_ids: set[int] = None,
     ) -> JSONAPIResponse:
         """
         Fetch a collection of related resource types and ids.
@@ -550,8 +565,21 @@ class JSONAPI_(JSONAPI):
             resource
         )
 
+        # apply filtering to the related model as well
+        rel_key_model: SQLAlchemyModel = self._fetch_model(rel_key)
+        rel_key_id_query = select(rel_key_model.id)
+        rel_key_permitted_ids = set(
+            session.scalars(
+                rel_key_model.apply_customer_location_filtering(
+                    rel_key_id_query, permitted_ids
+                )
+            ).all()
+        )
+
         if relationship.direction == MANYTOONE:
             if related is None:
+                response.data["data"] = None
+            elif related.id not in rel_key_permitted_ids:
                 response.data["data"] = None
             else:
                 try:
@@ -561,6 +589,8 @@ class JSONAPI_(JSONAPI):
         else:
             response.data["data"] = []
             for item in related:
+                if item.id not in rel_key_permitted_ids:
+                    continue
                 try:
                     response.data["data"].append(self._render_short_instance(item))
                 except PermissionDeniedError:
@@ -574,7 +604,7 @@ class JSONAPI_(JSONAPI):
         api_type: str,
         obj_id: int,
         permission,
-        permitted_ids: list[int] = None,
+        permitted_ids: set[int] = None,
     ) -> SQLAlchemyModel | None:
         """
         Fetch a resource by type and id, also doing a permission check.
@@ -592,7 +622,7 @@ class JSONAPI_(JSONAPI):
         if api_type not in self.models.keys():
             raise ResourceTypeNotFoundError(api_type)
         model: SQLAlchemyModel = self.models[api_type]
-        if permitted_ids is not None:
+        if permitted_ids:
             preflight = session.query(model)
             preflight: sqlQuery = model.apply_customer_location_filtering(
                 preflight, permitted_ids
@@ -616,7 +646,7 @@ class JSONAPI_(JSONAPI):
         instance: SQLAlchemyModel,
         include,
         fields,
-        permitted_ids: dict[str, list[int]],
+        permitted_ids: dict[str, set[int]],
     ):
         """
         Generate a representation of a full resource to match JSON API spec.
@@ -659,7 +689,11 @@ class JSONAPI_(JSONAPI):
                     }
 
                 if api_key in include.keys():
-                    related = desc(instance)
+                    related: SQLAlchemyModel = desc(instance)
+                    if permitted_ids and related:
+                        if related.id not in permitted_ids[related.__jsonapi_type__]:
+                            to_ret["relationships"][api_key]["data"] = None
+                            continue
                     if related is not None:
                         perm = get_permission_test(related, None, Permissions.VIEW)
                     if key in local_fields and (related is None or not perm(related)):
@@ -695,7 +729,6 @@ class JSONAPI_(JSONAPI):
                     to_ret["relationships"][api_key]["data"] = []
 
                 related: list[SQLAlchemyModel] = desc(instance)
-
                 ## reapply filtering if filtering was used for the query on the
                 ## primary resource
                 if permitted_ids:
