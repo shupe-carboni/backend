@@ -16,7 +16,9 @@ from app.jsonapi.sqla_models import FriedrichPricing
 PARENT_PREFIX = "/vendors/friedrich"
 FRIEDRICH_PRICING = FriedrichPricing.__jsonapi_type_override__
 
-friedrich_pricing = APIRouter(prefix=f"/{FRIEDRICH_PRICING}", tags=["friedrich", ""])
+friedrich_pricing = APIRouter(
+    prefix=f"/{FRIEDRICH_PRICING}", tags=["friedrich", "pricing-reference"]
+)
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]

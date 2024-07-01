@@ -18,7 +18,9 @@ from app.jsonapi.sqla_models import FriedrichProduct
 PARENT_PREFIX = "/vendors/friedrich"
 FRIEDRICH_PRODUCTS = FriedrichProduct.__jsonapi_type_override__
 
-friedrich_products = APIRouter(prefix=f"/{FRIEDRICH_PRODUCTS}", tags=["friedrich", ""])
+friedrich_products = APIRouter(
+    prefix=f"/{FRIEDRICH_PRODUCTS}", tags=["friedrich", "products"]
+)
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]

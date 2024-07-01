@@ -20,7 +20,7 @@ PARENT_PREFIX = "/vendors/friedrich"
 FRIEDRICH_CUSTOMERS = FriedrichCustomer.__jsonapi_type_override__
 
 friedrich_customers = APIRouter(
-    prefix=f"/{FRIEDRICH_CUSTOMERS}", tags=["friedrich", ""]
+    prefix=f"/{FRIEDRICH_CUSTOMERS}", tags=["friedrich", "customers"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]

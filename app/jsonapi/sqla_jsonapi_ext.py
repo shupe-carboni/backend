@@ -63,17 +63,19 @@ class JSONAPI_(JSONAPI):
     _add_pagination adds pagination metadata totalPages and currentPage
         as well as pagination links
 
-    get_collection is a copy of JSONAPI's same method, but with new
-        logic spliced in to handle filtering arguments,
-        add pagination metadata and links, and apply a default
-        sorting pattern if a sort argument is not applied.
-
     _filter_deleted filters for null values in
         a hard-coded "deleted" column
 
     __init__  copies the base.registry._class_registry
         attribute under a new attribute named _decl_class_registry
         so that the underlying constructor will work
+
+    get_collection, get_resource, get_related, get_relationship have been overridden
+        in order to add unsupported functionality, such as filtering params, sorting,
+        pagination, and the ability to work with authentication.
+
+    _fetch_resource and _render_full_resource have also been overridden in support of
+        authentication-based filtering of data
     """
 
     def __init__(self, base, prefix=""):

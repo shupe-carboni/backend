@@ -299,7 +299,7 @@ def check_object_id_association(
 class SecOp(ABC):
     """Abstract Base Class for vendor specific routes for handiling HTTP requests.
 
-    Each route type implements this class and calls the alllow-listing methods
+    Each route type implements this class and calls the allow-listing methods
     in each route.
 
     allow_* methods are called explicitly in each route implementation to allow-list

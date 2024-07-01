@@ -17,7 +17,8 @@ PARENT_PREFIX = "/vendors/friedrich"
 FRIEDRICH_CUSTOMER_PRICE_LEVELS = FriedrichCustomerPriceLevel.__jsonapi_type_override__
 
 friedrich_customer_price_levels = APIRouter(
-    prefix=f"/{FRIEDRICH_CUSTOMER_PRICE_LEVELS}", tags=["friedrich", ""]
+    prefix=f"/{FRIEDRICH_CUSTOMER_PRICE_LEVELS}",
+    tags=["friedrich", "pricing-reference"],
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]

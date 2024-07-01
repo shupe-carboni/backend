@@ -4,12 +4,14 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
 from app.jsonapi.core_models import convert_query
-
-# from app.RELATED_RESOURCE.models import
 from app.friedrich.models import (
     FriedrichPricingSpecialCustomerResp,
     FriedrichPricingSpecialCustomerQuery,
     FriedrichPricingSpecialCustomerQueryJSONAPI,
+    FriedrichCustomerRelResp,
+    RelatedFriedrichCustomerResp,
+    FriedrichPricingSpecialRelResp,
+    RelatedFriedrichPricingSpecialResp,
 )
 from app.jsonapi.sqla_models import FriedrichPricingSpecialCustomer
 
@@ -19,7 +21,8 @@ FRIEDRICH_PRICING_SPECIAL_CUSTOMERS = (
 )
 
 friedrich_pricing_special_customers = APIRouter(
-    prefix=f"/{FRIEDRICH_PRICING_SPECIAL_CUSTOMERS}", tags=["friedrich", ""]
+    prefix=f"/{FRIEDRICH_PRICING_SPECIAL_CUSTOMERS}",
+    tags=["friedrich", "pricing-customer"],
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -72,7 +75,7 @@ async def friedrich_pricing_special_customer_resource(
 
 @friedrich_pricing_special_customers.get(
     "/{friedrich_pricing_special_customer_id}/friedrich-customers",
-    response_model=None,
+    response_model=RelatedFriedrichCustomerResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -81,7 +84,7 @@ async def friedrich_pricing_special_customer_related_friedrich_customers(
     session: NewSession,
     friedrich_pricing_special_customer_id: int,
     query: FriedrichPricingSpecialCustomerQuery = Depends(),
-) -> None:
+) -> RelatedFriedrichCustomerResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecialCustomer, PARENT_PREFIX)
         .allow_admin()
@@ -99,7 +102,7 @@ async def friedrich_pricing_special_customer_related_friedrich_customers(
 
 @friedrich_pricing_special_customers.get(
     "/{friedrich_pricing_special_customer_id}/relationships/friedrich-customers",
-    response_model=None,
+    response_model=FriedrichCustomerRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -108,7 +111,7 @@ async def friedrich_pricing_special_customer_relationships_friedrich_customers(
     session: NewSession,
     friedrich_pricing_special_customer_id: int,
     query: FriedrichPricingSpecialCustomerQuery = Depends(),
-) -> None:
+) -> FriedrichCustomerRelResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecialCustomer, PARENT_PREFIX)
         .allow_admin()
@@ -127,7 +130,7 @@ async def friedrich_pricing_special_customer_relationships_friedrich_customers(
 
 @friedrich_pricing_special_customers.get(
     "/{friedrich_pricing_special_customer_id}/friedrich-pricing-special",
-    response_model=None,
+    response_model=RelatedFriedrichPricingSpecialResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -136,7 +139,7 @@ async def friedrich_pricing_special_customer_related_friedrich_pricing_special(
     session: NewSession,
     friedrich_pricing_special_customer_id: int,
     query: FriedrichPricingSpecialCustomerQuery = Depends(),
-) -> None:
+) -> RelatedFriedrichPricingSpecialResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecialCustomer, PARENT_PREFIX)
         .allow_admin()
@@ -154,7 +157,7 @@ async def friedrich_pricing_special_customer_related_friedrich_pricing_special(
 
 @friedrich_pricing_special_customers.get(
     "/{friedrich_pricing_special_customer_id}/relationships/friedrich-pricing-special",
-    response_model=None,
+    response_model=FriedrichPricingSpecialRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -163,7 +166,7 @@ async def friedrich_pricing_special_customer_relationships_friedrich_pricing_spe
     session: NewSession,
     friedrich_pricing_special_customer_id: int,
     query: FriedrichPricingSpecialCustomerQuery = Depends(),
-) -> None:
+) -> FriedrichPricingSpecialRelResp:
     return (
         auth.FriedrichOperations(token, FriedrichPricingSpecialCustomer, PARENT_PREFIX)
         .allow_admin()
