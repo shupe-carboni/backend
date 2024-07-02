@@ -96,7 +96,7 @@ app.add_middleware(
 ## NOTE: prefixing instead of registering sub-resources with
 ##          their parent resources helps with
 ##          ordering paths correctly
-for route, prefix, target in (
+routes = (
     (customer_rel, "", customers),
     (adp_quotes, "", adp),
     (adp_quote_products, "", adp),
@@ -123,7 +123,9 @@ for route, prefix, target in (
     (friedrich_pricing_special_customers, "/vendors/friedrich", app),
     (friedrich_quotes, "/vendors/friedrich", app),
     (friedrich_quote_products, "/vendors/friedrich", app),
-):
+)
+## register all of the routes and avoid crashing due to a registration issue
+for route, prefix, target in routes:
     resource_path = f"{prefix}{route.prefix}"
     try:
         target.include_router(route, prefix=prefix)
