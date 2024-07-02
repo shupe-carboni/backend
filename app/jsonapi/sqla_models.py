@@ -1051,6 +1051,58 @@ class FriedrichPricingSpecialCustomer(Base):
         return friedrich_customer_primary_id_queries(email=email)
 
 
+class FriedrichQuote(Base):
+
+    __tablename__ = "friedrich_quotes"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = [
+        "friedrich_quote_id",
+        "job_name",
+        "status",
+        "plan_doc",
+        "quote_doc",
+    ]
+    __primary_ref__ = "friedrich_customers"
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
+    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
+    place_id = Column(Integer, ForeignKey("sca_places.id"))
+    friedrich_quote_id = Column(Integer)
+    job_name = Column(String)
+    status: Mapped[Stage] = mapped_column()
+    plans_doc = Column(String)
+    quote_doc = Column(String)
+
+    # relationships
+    friedrich_customers = relationship(
+        "FriedrichCustomer", back_populates=__tablename__
+    )
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__tablename__
+    )
+    places = relationship("SCAPlace", back_populates=__tablename__)
+    friedrich_quote_products = relationship(
+        "FriedrichQuoteProduct", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
+        exists_subquery = exists().where(
+            friedrichtoloc.friedrich_customer_id
+            == FriedrichQuote.customer_id,
+            friedrichtoloc.sca_customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        return friedrich_customer_primary_id_queries(email=email)
+
+
 serializer = JSONAPI_(Base)
 serializer_partial = partial(JSONAPI_, Base)
 
