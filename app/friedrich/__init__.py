@@ -9,3 +9,5 @@ from app.friedrich.routes.friedrich_pricing_customers import friedrich_pricing_c
 from app.friedrich.routes.friedrich_pricing_special_customers import (
     friedrich_pricing_special_customers,
 )
+from app.friedrich.routes.friedrich_quotes import friedrich_quotes
+from app.friedrich.routes.friedrich_quote_products import friedrich_quote_products

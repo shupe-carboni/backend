@@ -756,3 +756,237 @@ class FriedrichPricingSpecialCustomerQueryJSONAPI(
 ):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+from app.jsonapi.sqla_models import FriedrichQuote
+from datetime import datetime
+from app.db import Stage, FriedrichMarketType
+
+
+class FriedrichQuoteRID(JSONAPIResourceIdentifier):
+    type: str = FriedrichQuote.__jsonapi_type_override__
+
+
+class FriedrichQuoteRelResp(JSONAPIRelationshipsResponse):
+    data: list[FriedrichQuoteRID] | FriedrichQuoteRID
+
+
+class FriedrichQuoteAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    friedrich_quote_id: Optional[int] = Field(default=None, alias="friedrich-quote-id")
+    job_name: Optional[str] = Field(default=None, alias="job-name")
+    status: Optional[Stage] = Field(default=None, alias="status")
+    new_construction: Optional[bool] = Field(default=None, alias="new-construction")
+    market_type: Optional[FriedrichMarketType] = Field(
+        default=None, alias="market-type"
+    )
+    plans_doc: Optional[str] = Field(default=None, alias="plans-doc")
+    quote_doc: Optional[str] = Field(default=None, alias="quote-doc")
+    created_at: Optional[datetime] = Field(default=None, alias="created-at")
+    expires_at: Optional[datetime] = Field(default=None, alias="expires-at")
+
+
+class FriedrichQuoteRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    friedrich_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="friedrich-customers"
+    )
+    customer_locations: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="customer-locations"
+    )
+    places: Optional[JSONAPIRelationships] = Field(default=None, alias="places")
+    friedrich_quote_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="friedrich-quote-products"
+    )
+
+
+class FriedrichQuoteFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_friedrich_quote_id: str = Field(
+        default=None, alias="filter[friedrich-quote-id]"
+    )
+    filter_job_name: str = Field(default=None, alias="filter[job-name]")
+    filter_status: str = Field(default=None, alias="filter[status]")
+    filter_new_construction: str = Field(default=None, alias="filter[new-construction]")
+    filter_market_type: str = Field(default=None, alias="filter[market-type]")
+    filter_plans_doc: str = Field(default=None, alias="filter[plans-doc]")
+    filter_quote_doc: str = Field(default=None, alias="filter[quote-doc]")
+    filter_created_at: str = Field(default=None, alias="filter[created-at]")
+    filter_expires_at: str = Field(default=None, alias="filter[expires-at]")
+
+
+class FriedrichQuoteFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_friedrich_customers: str = Field(
+        default=None, alias="fields[friedrich-customers]"
+    )
+    fields_customer_locations: str = Field(
+        default=None, alias="fields[customer-locations]"
+    )
+    fields_places: str = Field(default=None, alias="fields[places]")
+    fields_friedrich_quote_products: str = Field(
+        default=None, alias="fields[friedrich-quote-products]"
+    )
+    fields_friedrich_quotes: str = Field(default=None, alias="fields[friedrich-quotes]")
+
+
+class FriedrichQuoteRObj(FriedrichQuoteRID):
+    attributes: FriedrichQuoteAttrs
+    relationships: FriedrichQuoteRels
+
+
+class FriedrichQuoteResp(JSONAPIResponse):
+    data: list[FriedrichQuoteRObj] | FriedrichQuoteRObj
+
+
+class RelatedFriedrichQuoteResp(FriedrichQuoteResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_FriedrichQuoteQuery: type[BaseModel] = create_model(
+    "FriedrichQuoteQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in FriedrichQuoteRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in FriedrichQuoteAttrs.model_fields.keys()
+    },
+    **{
+        f"fields_friedrich_quotes": (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class FriedrichQuoteQuery(_FriedrichQuoteQuery, BaseModel): ...
+
+
+class FriedrichQuoteQueryJSONAPI(FriedrichQuoteFields, FriedrichQuoteFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class ModFriedrichQuoteAttrs(BaseModel):
+    friedrich_quote_id: Optional[int] = Field(default=None, alias="friedrich-quote-id")
+    job_name: Optional[str] = Field(default=None, alias="job-name")
+    status: Optional[Stage] = Field(default=None, alias="status")
+    plans_doc: Optional[str] = Field(default=None, alias="plans-doc")
+    quote_doc: Optional[str] = Field(default=None, alias="quote-doc")
+
+
+class ModFriedrichQuoteRObj(BaseModel):
+    id: int
+    type: str = FriedrichQuote.__jsonapi_type_override__
+    attributes: ModFriedrichQuoteAttrs
+    relationships: FriedrichQuoteRels
+
+
+class ModFriedrichQuote(BaseModel):
+    data: ModFriedrichQuoteRObj
+
+from app.jsonapi.sqla_models import FriedrichQuoteProduct
+
+
+class FriedrichQuoteProductRID(JSONAPIResourceIdentifier):
+    type: str = FriedrichQuoteProduct.__jsonapi_type_override__
+
+
+class FriedrichQuoteProductRelResp(JSONAPIRelationshipsResponse):
+    data: list[FriedrichQuoteProductRID] | FriedrichQuoteProductRID
+
+
+class FriedrichQuoteProductAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    tag: Optional[str] = Field(default=None, alias="tag")
+    qty: Optional[int] = Field(default=None, alias="qty")
+    price: Optional[float] = Field(default=None, alias="price")
+
+
+class FriedrichQuoteProductRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    friedrich_quotes: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-quotes")
+    friedrich_products: Optional[JSONAPIRelationships] = Field(default=None, alias="friedrich-products")
+
+
+class FriedrichQuoteProductFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_tag: str = Field(default=None, alias="filter[tag]")
+    filter_qty: str = Field(default=None, alias="filter[qty]")
+    filter_price: str = Field(default=None, alias="filter[price]")
+
+
+class FriedrichQuoteProductFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_friedrich_quotes: str = Field(default=None, alias="fields[friedrich-quotes]")
+    fields_friedrich_products: str = Field(default=None, alias="fields[friedrich-products]")
+    fields_friedrich_quote_products: str = Field(default=None, alias="fields[friedrich-quote-products]")
+
+
+class FriedrichQuoteProductRObj(FriedrichQuoteProductRID):
+    attributes: FriedrichQuoteProductAttrs
+    relationships: FriedrichQuoteProductRels
+
+
+class FriedrichQuoteProductResp(JSONAPIResponse):
+    data: list[FriedrichQuoteProductRObj] | FriedrichQuoteProductRObj
+
+
+class RelatedFriedrichQuoteProductResp(FriedrichQuoteProductResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_FriedrichQuoteProductQuery: type[BaseModel] = create_model(
+    "FriedrichQuoteProductQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in FriedrichQuoteProductRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in FriedrichQuoteProductAttrs.model_fields.keys()
+    },
+    **{
+        f'fields_friedrich_quote_products': (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class FriedrichQuoteProductQuery(_FriedrichQuoteProductQuery, BaseModel): ...
+
+
+class FriedrichQuoteProductQueryJSONAPI(FriedrichQuoteProductFields, FriedrichQuoteProductFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class ModFriedrichQuoteProductAttrs(BaseModel):
+    tag: Optional[str] = Field(default=None, alias="tag")
+    qty: Optional[int] = Field(default=None, alias="qty")
+    price: Optional[float] = Field(default=None, alias="price")
+     
+class ModFriedrichQuoteProductRObj(BaseModel):
+    id: int
+    type: str = FriedrichQuoteProduct.__jsonapi_type_override__
+    attributes: ModFriedrichQuoteProductAttrs
+    relationships: FriedrichQuoteProductRels
+    
+class ModFriedrichQuoteProduct(BaseModel):
+    data: ModFriedrichQuoteProductRObj
+        
