@@ -96,8 +96,8 @@ app.add_middleware(
 ## NOTE: prefixing instead of registering sub-resources with
 ##          their parent resources helps with
 ##          ordering paths correctly
-routes = (
-    (customer_rel, "", customers),
+customer_sub_routes = [(customer_rel, "", customers)]
+adp_sub_routes = [
     (adp_quotes, "", adp),
     (adp_quote_products, "", adp),
     (adp_customers, "", adp),
@@ -108,12 +108,8 @@ routes = (
     (ratings_admin, "", adp),
     (adp_mat_grp_discs, "", adp),
     (adp_snps, "", adp),
-    (vendors, "", app),
-    (vendors_info, "", app),
-    (customer_locations, "/customers", app),
-    (customers, "", app),
-    (places, "", app),
-    (adp, "/vendors", app),
+]
+friedrich_routes = [
     (friedrich_customers, "/vendors/friedrich", app),
     (friedrich_pricing, "/vendors/friedrich", app),
     (friedrich_products, "/vendors/friedrich", app),
@@ -123,7 +119,17 @@ routes = (
     (friedrich_pricing_special_customers, "/vendors/friedrich", app),
     (friedrich_quotes, "/vendors/friedrich", app),
     (friedrich_quote_products, "/vendors/friedrich", app),
-)
+]
+app_base_routes = [
+    (vendors, "", app),
+    (vendors_info, "", app),
+    (customer_locations, "/customers", app),
+    (customers, "", app),
+    (places, "", app),
+    (adp, "/vendors", app),
+    *friedrich_routes,
+]
+routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
 ## register all of the routes and avoid crashing due to a registration issue
 for route, prefix, target in routes:
     resource_path = f"{prefix}{route.prefix}"
@@ -134,7 +140,8 @@ for route, prefix, target in routes:
             f"resource {resource_path} encountered an error when attempting to register"
         )
     else:
-        logger.info(f"registered {resource_path} to {id(target)}")
+        name = target.prefix if hasattr(target, "prefix") else target.__class__.__name__
+        logger.info(f"registered {resource_path} to {name}")
 
 
 @app.get("/")
