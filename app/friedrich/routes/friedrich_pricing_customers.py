@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
@@ -177,6 +177,16 @@ async def friedrich_pricing_customer_relationships_friedrich_pricing(
             True,
         )
     )
+
+
+@friedrich_pricing_customers.post("", response_model=None, tags=["jsonapi"])
+async def new_friedrich_pricing_customer(token: Token) -> None:
+    raise HTTPException(status_code=501)
+
+
+@friedrich_pricing_customers.patch("", response_model=None, tags=["jsonapi"])
+async def mod_friedrich_pricing_customer(token: Token) -> None:
+    raise HTTPException(status_code=501)
 
 
 @friedrich_pricing_customers.delete(

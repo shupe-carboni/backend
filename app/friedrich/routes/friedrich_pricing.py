@@ -132,7 +132,6 @@ async def mod_friedrich_pricing(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .patch(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
@@ -155,6 +154,5 @@ async def del_friedrich_pricing(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .delete(session, obj_id=friedrich_pricing_id)
     )
