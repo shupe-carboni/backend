@@ -53,6 +53,15 @@ class FriedrichPriceLevels(StrEnum):
     STANDARD = auto()
 
 
+class FriedrichMarketType(StrEnum):
+
+    HOTEL_LODGING = auto()
+    MULTI_FAMILY = auto()
+    HOSPITAL_ASSISTED_LIVING = auto()
+    SCHOOL = auto()
+    GOVERNMENT = auto()
+
+
 class S3:
     bucket = os.getenv("S3_BUCKET")
     client = boto3.client(
