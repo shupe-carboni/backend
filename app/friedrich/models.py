@@ -457,6 +457,16 @@ class ModFriedrichCustomerPriceLevel(BaseModel):
     data: ModFriedrichCustomerPriceLevelRObj
 
 
+class NewFriedrichCustomerPriceLevelRObj(BaseModel):
+    type: str = FriedrichCustomerPriceLevel.__jsonapi_type_override__
+    attributes: FriedrichCustomerPriceLevelAttrs
+    relationships: FriedrichCustomerPriceLevelRels
+
+
+class NewFriedrichCustomerPriceLevel(BaseModel):
+    data: NewFriedrichCustomerPriceLevelRObj
+
+
 from app.jsonapi.sqla_models import FriedrichProduct
 
 
