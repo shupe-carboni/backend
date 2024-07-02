@@ -10,6 +10,7 @@ from app.friedrich.models import (
     FriedrichCustomerPriceLevelQueryJSONAPI,
     RelatedFriedrichCustomerResp,
     FriedrichCustomerRelResp,
+    NewFriedrichCustomerPriceLevel,
 )
 from app.jsonapi.sqla_models import FriedrichCustomerPriceLevel
 
@@ -120,6 +121,30 @@ async def friedrich_customer_price_level_relationships_freidrich_customers(
             friedrich_customer_price_level_id,
             "friedrich-customers",
             True,
+        )
+    )
+
+
+@friedrich_customer_price_levels.post(
+    "",
+    response_model=FriedrichCustomerPriceLevelResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def new_friedrich_customer_price_level(
+    token: Token,
+    session: NewSession,
+    mod_data: NewFriedrichCustomerPriceLevel,
+) -> FriedrichCustomerPriceLevelResp:
+    return (
+        auth.FriedrichOperations(token, FriedrichCustomerPriceLevel, PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(
+            session=session,
+            data=mod_data.model_dump(exclude_none=True, by_alias=True),
+            primary_id=mod_data.data.relationships.friedrich_customers.data.id,
         )
     )
 
