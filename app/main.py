@@ -122,7 +122,7 @@ friedrich_routes = [
 ]
 app_base_routes = [
     (vendors, "", app),
-    (vendors_info, "", app),
+    (vendors_info, "/vendors", app),
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
