@@ -864,7 +864,7 @@ def test_patch_quote(perm, response_code):
     sample_quote = test_client.get(
         url + "?page_size=1&page_number=1&include=adp-customers"
     ).json()["data"][0]
-    QN = randint(1000, 9999)
+    QN = randint(10000000, 99999999)
     sample_quote["attributes"]["adp-quote-id"] = f"QN-{QN}"
     rel_keys_to_delete = list()
     for other_rel in sample_quote["relationships"]:
