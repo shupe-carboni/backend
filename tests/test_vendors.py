@@ -13,7 +13,7 @@ test_client = TestClient(app)
 VENDOR_RESOURCE = SCAVendor.__jsonapi_type_override__
 VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
 INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
-INFO_PREFIX = Path(f"/{INFO_RESOURCE}")
+INFO_PREFIX = VENDORS_PREFIX / INFO_RESOURCE
 
 SCA_PERMS = (
     auth_overrides.AdminToken,
