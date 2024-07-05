@@ -142,7 +142,7 @@ def test_new_customer_location_and_delete(perm, response_code):
     response = test_client.post(
         "/customers/customer-locations", json=dict(data=new_loc)
     )
-    assert response.status_code == response_code
+    assert response.status_code == response_code, pprint(response.json())
     if response_code != 200:
         return
     response = test_client.delete(
