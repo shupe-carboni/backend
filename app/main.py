@@ -26,6 +26,7 @@ from app.adp import (
     prog_ratings,
     ratings_admin,
     adp_customers,
+    adp_material_groups,
     adp_mat_grp_discs,
     adp_snps,
 )
@@ -106,6 +107,7 @@ adp_sub_routes = [
     (prog_parts, "", adp),
     (prog_ratings, "", adp),
     (ratings_admin, "", adp),
+    (adp_material_groups, "", adp),
     (adp_mat_grp_discs, "", adp),
     (adp_snps, "", adp),
 ]
@@ -121,8 +123,8 @@ friedrich_routes = [
     (friedrich_quote_products, "/vendors/friedrich", app),
 ]
 app_base_routes = [
-    (vendors, "", app),
     (vendors_info, "/vendors", app),
+    (vendors, "", app),
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
