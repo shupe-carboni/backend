@@ -926,3 +926,85 @@ class ModStageSNP(BaseModel):
 
 class ModStageSNPReq(BaseModel):
     data: ModStageSNP
+
+from app.jsonapi.sqla_models import ADPMaterialGroup
+
+
+class ADPMaterialGroupRID(JSONAPIResourceIdentifier):
+    type: str = ADPMaterialGroup.__jsonapi_type_override__
+
+
+class ADPMaterialGroupRelResp(JSONAPIRelationshipsResponse):
+    data: list[ADPMaterialGroupRID] | ADPMaterialGroupRID
+
+
+class ADPMaterialGroupAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    series: Optional[str] = Field(default=None, alias="series")
+    mat: Optional[str] = Field(default=None, alias="mat")
+    config: Optional[str] = Field(default=None, alias="config")
+    description: Optional[str] = Field(default=None, alias="description")
+
+
+class ADPMaterialGroupRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    adp_material_group_discounts: Optional[JSONAPIRelationships] = Field(default=None, alias="adp-material-group-discounts")
+
+
+class ADPMaterialGroupFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_series: str = Field(default=None, alias="filter[series]")
+    filter_mat: str = Field(default=None, alias="filter[mat]")
+    filter_config: str = Field(default=None, alias="filter[config]")
+    filter_description: str = Field(default=None, alias="filter[description]")
+
+
+class ADPMaterialGroupFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_adp_material_group_discounts: str = Field(default=None, alias="fields[adp-material-group-discounts]")
+    fields_adp_material_groups: str = Field(default=None, alias="fields[adp-material-groups]")
+
+
+class ADPMaterialGroupRObj(ADPMaterialGroupRID):
+    attributes: ADPMaterialGroupAttrs
+    relationships: ADPMaterialGroupRels
+
+
+class ADPMaterialGroupResp(JSONAPIResponse):
+    data: list[ADPMaterialGroupRObj] | ADPMaterialGroupRObj
+
+
+class RelatedADPMaterialGroupResp(ADPMaterialGroupResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_ADPMaterialGroupQuery: type[BaseModel] = create_model(
+    "ADPMaterialGroupQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in ADPMaterialGroupRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in ADPMaterialGroupAttrs.model_fields.keys()
+    },
+    **{
+        f'fields_adp_material_groups': (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class ADPMaterialGroupQuery(_ADPMaterialGroupQuery, BaseModel): ...
+
+
+class ADPMaterialGroupQueryJSONAPI(ADPMaterialGroupFields, ADPMaterialGroupFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")

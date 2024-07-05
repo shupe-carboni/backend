@@ -394,6 +394,8 @@ class ADPMaterialGroupDiscountChangelog(Base):
 class ADPMaterialGroup(Base):
     __tablename__ = "adp_material_groups"
     __jsonapi_type_override__ = "adp-material-groups"
+    __modifiable_fields__ = None
+    __primary_ref__ = None
     ## fields
     id = Column(String(2), primary_key=True)
     series = Column(String(2))
@@ -409,6 +411,9 @@ class ADPMaterialGroup(Base):
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str) -> QuerySet:
+        """This is a reference table, istelf a primary resource"""
 
 class ADPProgramRating(Base):
     __tablename__ = "adp_program_ratings"
