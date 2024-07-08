@@ -415,6 +415,7 @@ class ADPMaterialGroup(Base):
     def permitted_primary_resource_ids(email: str) -> QuerySet:
         """This is a reference table, istelf a primary resource"""
 
+
 class ADPProgramRating(Base):
     __tablename__ = "adp_program_ratings"
     __jsonapi_type_override__ = "adp-program-ratings"
@@ -1158,6 +1159,60 @@ class FriedrichQuoteProduct(Base):
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
         return friedrich_quote_primary_id_queries(email=email)
+
+
+class HardcastProduct(Base):
+    __tablename__ = "hardcast_products"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+
+
+class HardcastPrice(Base):
+    __tablename__ = "hardcast_pricing"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+
+
+class HardcastPriceSpecial(Base):
+    __tablename__ = "hardcast_pricing_specials"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+
+
+class HardcastCustomer(Base):
+    __tablename__ = "hardcast_customers"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+
+
+class HardcastPriceCustomer(Base):
+    __tablename__ = "hardcast_pricing_customers"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+
+
+class HardcastPriceSpecialCustomer(Base):
+    __tablename__ = "hardcast_pricing_specials_customers"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
 
 
 serializer = JSONAPI_(Base)
