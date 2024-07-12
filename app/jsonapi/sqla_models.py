@@ -1168,6 +1168,29 @@ class HardcastProduct(Base):
     __primary_ref__ = None
 
     id = Column(Integer, primary_key=True)
+    product_number = Column(Integer)
+    category_id = Column(Integer, ForeignKey("hardcast_product_categories.id"))
+    description = Column(String)
+    code = Column(String)
+    upc = Column(BigInteger)
+    haz_mat = Column(Boolean)
+    freight_class = Column(Float)
+    stock = Column(ARRAY(String))
+    weight = Column(Integer)
+    case_qty = Column(Integer)
+    case_price = Column(Float)
+
+
+class HardcastProductCategory(Base):
+    __tablename__ = "hardcast_product_categories"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+    category_l1 = Column(String)
+    category_l2 = Column(String)
+    category_l3 = Column(String)
 
 
 class HardcastPrice(Base):
