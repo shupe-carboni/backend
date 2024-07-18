@@ -14,7 +14,6 @@ import warnings
 warnings.simplefilter("ignore")
 
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
-TODAY = datetime.today().date()
 
 
 class ParsingModes(Enum):
@@ -36,7 +35,7 @@ def build_model_attributes(
         session, adp_customer_id, model, ParsingModes.CUSTOMER_PRICING
     )
     record_series["stage"] = Stage.PROPOSED.name
-    record_series["effective_date"] = TODAY
+    record_series["effective_date"] = datetime.today().date()
     record_series = record_series.dropna()
     return record_series
 
