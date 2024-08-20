@@ -423,7 +423,7 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
 	JOIN vendors v ON v.id = p.vendor_id
 	JOIN vendor_pricing_classes vpc ON vpc.vendor_id = v.id AND vpc.name = a.price_level
-	WHERE v.id = 'friedrich'
+	WHERE v.id = 'friedrich';
 
 -- pricing by customer (using pricing class as a tag)
 -- adp snps
@@ -486,6 +486,14 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 	JOIN vendor_pricing_classes vpc ON v.id = vpc.vendor_id
 	WHERE v.id = 'adp'
 	AND vpc.name = 'STRATEGY_PRICING';
+-- friedrich
+INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_id)
+	SELECT DISTINCT vpc.id, vc.id
+	FROM friedrich_customers a
+	JOIN vendor_customers vc ON vc.name = a.name
+	JOIN friedrich_customer_price_levels c ON c.customer_id = a.id
+	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level
+	WHERE vc.vendor_id = 'friedrich';
 
 -- TRIGGERS
 CREATE TRIGGER ensure_vendor_consistency_pricing
