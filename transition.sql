@@ -6,6 +6,13 @@ CREATE TABLE vendors (
 	phone BIGINT,
 	logo_path VARCHAR,
 	id VARCHAR PRIMARY KEY);
+
+CREATE TABLE vendors_attrs (
+	id SERIAL PRIMARY KEY,
+	vendor_id VARCHAR REFERENCES vendors(id),
+	attr VARCHAR,
+	type VARCHAR,
+	value VARCHAR);
 -- customers
 CREATE TABLE vendor_customers (
 	id SERIAL PRIMARY KEY,
@@ -118,7 +125,8 @@ CREATE TABLE customer_location_mapping (
 	customer_location_id INT REFERENCES sca_customer_locations(id));
 
 -- TRIGGERS
--- vendor consistency
+-- VENDOR CONSISTENCY
+
 -- pricing by customer
 CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_consistency_fn()
 RETURNS TRIGGER AS $$
@@ -305,6 +313,8 @@ BEFORE INSERT ON vendor_quote_products
 FOR EACH ROW
 EXECUTE FUNCTION vendor_quote_product_consistency_fn();
 
+-- CHANGELOGS
+
 -- MOVE DATA
 -- vendors
 INSERT INTO vendors
@@ -327,8 +337,16 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	AND b.vendor_id = 'friedrich';
 
 -- customer location mapping
--- ADP is the only one with data, so we can start with just them 
--- and keep id numbers consistent
+-- adp
+INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
+	SELECT DISTINCT vc.id, a.sca_customer_location_id
+	FROM adp_alias_to_sca_customer_locations AS a
+	JOIN adp_customers AS ac
+	ON ac.id = a.adp_customer_id
+	JOIN vendor_customers AS vc
+	ON vc.name = ac.adp_alias;
+
+-- friedrich
 INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
 	SELECT DISTINCT vc.id, a.sca_customer_location_id
 	FROM adp_alias_to_sca_customer_locations AS a
@@ -648,6 +666,30 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	AND v.id = 'adp'
 	AND a.material_group_net_price IS NOT NULL
 	AND a.snp_price IS NULL;
+-- friedrich special pricing
+INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
+	SELECT DISTINCT p.id, pc.id, vc.id, true, (price*100)::INT
+	FROM friedrich_pricing_special a
+	JOIN friedrich_customers fc ON fc.id = a.customer_id
+	JOIN vendor_customers vc ON vc.name = fc.name
+	JOIN friedrich_products b ON a.model_number_id = b.id
+	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
+	JOIN vendors v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id 
+	WHERE v.id = 'friedrich'
+	AND pc.name = 'STOCKING';
+-- customer-specific model numbers associated with products
+INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type, value)
+	SELECT DISTINCT vpbc.id, 'customer_model_number', 'STRING', customer_model_number
+	FROM friedrich_pricing_special a
+	JOIN friedrich_customers fc ON fc.id = a.customer_id
+	JOIN vendor_customers vc ON vc.name = fc.name
+	JOIN friedrich_products b ON a.model_number_id = b.id
+	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
+	JOIN vendors v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id
+	JOIN vendor_pricing_by_customer vpbc ON vpbc.product_id = p.id AND vpbc.pricing_class_id = pc.id AND vpbc.vendor_customer_id = vc.id
+	WHERE customer_model_number IS NOT NULL;
 
 -- customer pricing classes
 -- adp preferred parts
@@ -696,3 +738,8 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 	JOIN friedrich_customer_price_levels c ON c.customer_id = a.id
 	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level::VARCHAR
 	WHERE vc.vendor_id = 'friedrich';
+
+-- vendor info to attributes
+INSERT INTO vendors_attrs (vendor_id, attr, type, value)
+	SELECT DISTINCT vendor_id, category, 'STRING', content
+	FROM sca_vendors_info;
