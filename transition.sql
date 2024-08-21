@@ -143,7 +143,7 @@ BEGIN
 	WHERE vendor_customers.id = NEW.vendor_customer_id;
     
     -- Ensure they match
-    IF NOT (vp_vendor_id IS DISTINCT NOT FROM vpc_vendor_id AND vp_vendor_id IS DISTINCT NOT FROM vc_vendor_id) THEN
+    IF NOT (vp_vendor_id IS NOT DISTINCT FROM vpc_vendor_id AND vp_vendor_id IS NOT DISTINCT FROM vc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product, customer, and/or pricing class';
     END IF;
 	RETURN NEW;
