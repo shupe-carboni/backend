@@ -117,6 +117,194 @@ CREATE TABLE customer_location_mapping (
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	customer_location_id INT REFERENCES sca_customer_locations(id));
 
+-- TRIGGERS
+-- vendor consistency
+-- pricing by customer
+CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vp_vendor_id VARCHAR
+    vpc_vendor_id VARCHAR
+    vc_vendor_id VARCHAR
+BEGIN
+    -- Get the vendor_id of the product
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
+    
+    -- Get the vendor_id of the pricing class
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_pricing_classes
+	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
+
+    -- Get the vendor_id of the vendor customer
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE vendor_customers.id = NEW.vendor_customer_id;
+    
+    -- Ensure they match
+    IF NOT (vp_vendor_id <=> vpc_vendor_id AND vp_vendor_id <=> vc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product, customer, and/or pricing class';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_customer_consistency
+BEFORE INSERT ON vendor_pricing_by_customer
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_customer_consistency_fn();
+
+-- pricing by class
+CREATE OR REPLACE FUNCTION vendor_pricing_by_class_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vp_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+BEGIN
+    -- Get the vendor_id of the product
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
+    
+    -- Get the vendor_id of the pricing class
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_pricing_classes
+	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
+    
+    -- Ensure they match
+    IF NOT (vp_vendor_id <=> vpc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product and pricing class';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_class_consistency
+BEFORE INSERT ON vendor_pricing_by_class
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_class_consistency_fn();
+
+-- customer pricing classes
+CREATE OR REPLACE FUNCTION vendor_customer_pricing_classes_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vc_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+BEGIN
+    -- customer
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE vendor_customers.id = NEW.vendor_customer_id;
+    
+    -- pricing class
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_pricing_classes
+	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
+    
+    -- Ensure they match
+    IF NOT (vc_vendor_id <=> vpc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between pricing class and customer';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customer_pricing_classes_consistency
+BEFORE INSERT ON vendor_customer_pricing_classes
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customer_pricing_classes_consistency_fn();
+
+-- product class discounts
+CREATE OR REPLACE FUNCTION vendor_product_class_discounts_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vc_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+BEGIN
+    -- customer
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE vendor_customers.id = NEW.vendor_customer_id;
+    
+    -- product class
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_product_classes
+	WHERE vendor_pricing_classes.id = NEW.product_class_id;
+    
+    -- Ensure they match
+    IF NOT (vc_vendor_id <=> vpc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product class and customer';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_class_discounts_consistency
+BEFORE INSERT ON vendor_product_class_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_class_discounts_consistency_fn();
+
+
+-- product to class mapping
+CREATE OR REPLACE FUNCTION vendor_product_to_class_mapping_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vp_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+BEGIN
+    -- product
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
+    
+    -- product class
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_product_classes
+	WHERE vendor_pricing_classes.id = NEW.product_class_id;
+    
+    -- Ensure they match
+    IF NOT (vp_vendor_id <=> vpc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product class and product';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_to_class_mapping_consistency
+BEFORE INSERT ON vendor_product_to_class_mapping
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_to_class_mapping_consistency_fn();
+
+-- quote products
+CREATE OR REPLACE FUNCTION vendor_quote_product_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vp_vendor_id VARCHAR;
+    vc_vendor_id VARCHAR;
+BEGIN
+    -- product
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
+    
+    -- customer
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE EXISTS (
+		SELECT 1
+		FROM vendor_quotes
+		WHERE vendor_quotes.id = NEW.vendor_quotes_id
+		AND vendor_quotes.vendor_customer_id = vendor_customers.id
+	);
+    
+    -- Ensure they match
+    IF NOT (vp_vendor_id <=> vc_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product and customer quoted';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_quote_product_consistency
+BEFORE INSERT ON vendor_quote_products
+FOR EACH ROW
+EXECUTE FUNCTION vendor_quote_product_consistency_fn();
+
 -- MOVE DATA
 -- vendors
 INSERT INTO vendors
@@ -508,59 +696,3 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 	JOIN friedrich_customer_price_levels c ON c.customer_id = a.id
 	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level::VARCHAR
 	WHERE vc.vendor_id = 'friedrich';
-
--- TRIGGERS
--- vendor consistency
-CREATE OR REPLACE FUNCTION vendor_pricing_consistency_fn()
-RETURNS TRIGGER AS $$
-DECLARE
-    vp_vendor_id VARCHAR;
-    vpc_vendor_id VARCHAR;
-    vc_vendor_id VARCHAR;
-BEGIN
-    -- Get the vendor_id of the product
-    SELECT vendor_id INTO vp_vendor_id
-	FROM vendor_products
-	WHERE vendor_products.id = NEW.product_id;
-    
-    -- Get the vendor_id of the pricing class
-    SELECT vendor_id INTO vpc_vendor_id
-	FROM vendor_pricing_classes
-	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
-
-    -- Get the vendor_id of the vendor customer
-    SELECT vendor_id INTO vc_vendor_id
-	FROM vendor_customers
-	WHERE vendor_customers.id = NEW.vendor_customer_id;
-    
-    -- Ensure they match
-    IF NOT (vp_vendor_id <=> vpc_vendor_id AND vp_vendor_id <=> vc_vendor_id) THEN
-        RAISE EXCEPTION 'Vendor mismatch between product, customer, and/or pricing class';
-    END IF;
-	RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER vendor_pricing_consistency
-BEFORE INSERT ON vendor_pricing_by_class
-FOR EACH ROW
-EXECUTE FUNCTION vendor_pricing_consistency_fn();
-
--- CREATE TRIGGER ensure_vendor_consistency_product_classes
--- BEFORE INSERT ON vendor_pricing
--- FOR EACH ROW
--- BEGIN
---     DECLARE pc_vendor_id VARCHAR;
---     DECLARE p_vendor_id VARCHAR;
-    
---     -- Get the vendor_id of the product
---     SELECT vendor_id INTO p_vendor_id FROM vendor_products WHERE vendor_products.id = NEW.product_id;
-    
---     -- Get the vendor_id of the product class
---     SELECT vendor_id INTO pc_vendor_id FROM vendor_product_classes WHERE vendor_product_classes.id = NEW.product_class_id;
-
-    
---     -- Ensure they match
---     IF p_vendor_id != pc_vendor_id THEN
---         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vendor mismatch between product and product class';
---     END IF;
--- END;
