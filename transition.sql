@@ -143,7 +143,7 @@ BEGIN
 	WHERE vendor_customers.id = NEW.vendor_customer_id;
     
     -- Ensure they match
-    IF NOT (vp_vendor_id <=> vpc_vendor_id AND vp_vendor_id <=> vc_vendor_id) THEN
+    IF NOT (vp_vendor_id IS DISTINCT NOT FROM vpc_vendor_id AND vp_vendor_id IS DISTINCT NOT FROM vc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product, customer, and/or pricing class';
     END IF;
 	RETURN NEW;
@@ -172,7 +172,7 @@ BEGIN
 	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
     
     -- Ensure they match
-    IF NOT (vp_vendor_id <=> vpc_vendor_id) THEN
+    IF NOT (vp_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product and pricing class';
     END IF;
 	RETURN NEW;
@@ -201,7 +201,7 @@ BEGIN
 	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
     
     -- Ensure they match
-    IF NOT (vc_vendor_id <=> vpc_vendor_id) THEN
+    IF NOT (vc_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between pricing class and customer';
     END IF;
 	RETURN NEW;
@@ -230,7 +230,7 @@ BEGIN
 	WHERE vendor_pricing_classes.id = NEW.product_class_id;
     
     -- Ensure they match
-    IF NOT (vc_vendor_id <=> vpc_vendor_id) THEN
+    IF NOT (vc_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product class and customer';
     END IF;
 	RETURN NEW;
@@ -260,7 +260,7 @@ BEGIN
 	WHERE vendor_pricing_classes.id = NEW.product_class_id;
     
     -- Ensure they match
-    IF NOT (vp_vendor_id <=> vpc_vendor_id) THEN
+    IF NOT (vp_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product class and product';
     END IF;
 	RETURN NEW;
@@ -294,7 +294,7 @@ BEGIN
 	);
     
     -- Ensure they match
-    IF NOT (vp_vendor_id <=> vc_vendor_id) THEN
+    IF NOT (vp_vendor_id IS NOT DISTINCT FROM vc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product and customer quoted';
     END IF;
 	RETURN NEW;
