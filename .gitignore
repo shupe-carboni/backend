@@ -9,6 +9,7 @@ make_zip.sh
 *.csr
 *.crt
 *.pem
+pglocal.session.sql
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
