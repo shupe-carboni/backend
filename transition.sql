@@ -1,6 +1,11 @@
 -- NEW TABLES
-CREATE TABLE vendors AS SELECT * FROM sca_vendors;
-
+CREATE TABLE vendors (
+	name VARCHAR,
+	headquarters VARCHAR,
+	description TEXT,
+	phone BIGINT,
+	logo_path VARCHAR,
+	id VARCHAR PRIMARY KEY);
 -- customers
 CREATE TABLE vendor_customers (
 	id SERIAL PRIMARY KEY,
@@ -18,11 +23,11 @@ CREATE TABLE vendor_customer_attrs (
 CREATE TABLE vendor_products (
 	id SERIAL PRIMARY KEY,
 	vendor_id VARCHAR REFERENCES vendors(id),
-	vendor_product_identifier VARCHAR),
+	vendor_product_identifier VARCHAR,
 	vendor_product_description VARCHAR);
 CREATE TABLE vendor_product_classes (
 	id SERIAL PRIMARY KEY,
-	vendor_id INT REFERENCES vendors(id),
+	vendor_id VARCHAR REFERENCES vendors(id),
 	name VARCHAR,
 	rank INT);
 CREATE TABLE vendor_product_to_class_mapping (
@@ -44,7 +49,7 @@ CREATE TABLE vendor_pricing_classes (
 CREATE TABLE vendor_pricing_by_class (
 	id SERIAL PRIMARY KEY,
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
-	product_id INT REFERENCES vendor_products(id)
+	product_id INT REFERENCES vendor_products(id),
 	price INT);
 CREATE TABLE vendor_pricing_by_customer (
 	id SERIAL PRIMARY KEY,
@@ -113,6 +118,9 @@ CREATE TABLE customer_location_mapping (
 	customer_location_id INT REFERENCES sca_customer_locations(id));
 
 -- MOVE DATA
+-- vendors
+INSERT INTO vendors
+SELECT * FROM sca_vendors;
 -- customers
 -- adp
 INSERT INTO vendor_customers (vendor_id, name)
@@ -134,7 +142,7 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 -- ADP is the only one with data, so we can start with just them 
 -- and keep id numbers consistent
 INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
-	SELECT vc.id, a.sca_customer_location_id
+	SELECT DISTINCT vc.id, a.sca_customer_location_id
 	FROM adp_alias_to_sca_customer_locations AS a
 	JOIN adp_customers AS ac
 	ON ac.id = a.adp_customer_id
@@ -143,7 +151,7 @@ INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
 
 -- customer terms
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
-	SELECT d.vendor_customer_id, 'ppf', 'NUMBER', ppf
+	SELECT DISTINCT d.vendor_customer_id, 'ppf', 'NUMBER', ppf
 	FROM adp_customer_terms AS a
 	JOIN sca_customers AS b
 	ON b.id = a.sca_id
@@ -153,7 +161,7 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	ON d.customer_location_id = c.id;
 
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
-	SELECT d.vendor_customer_id, 'terms', 'STRING', terms
+	SELECT DISTINCT d.vendor_customer_id, 'terms', 'STRING', terms
 	FROM adp_customer_terms AS a
 	JOIN sca_customers AS b
 	ON b.id = a.sca_id
@@ -172,7 +180,7 @@ INSERT INTO vendor_products (vendor_id, vendor_product_identifier)
 	FROM adp_ah_programs;
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
 	SELECT DISTINCT 'adp', adppp.part_number::VARCHAR, adppp.description
-	FROM adp_pricing_parts AS adppp
+	FROM adp_pricing_parts AS adppp;
 -- friedrich
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
 	SELECT DISTINCT 'friedrich', f.model_number, f.description
@@ -187,7 +195,7 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[category,private_label,mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -203,7 +211,7 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[category,private_label,mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv
 			,ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -223,7 +231,7 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,
+		unnest(array[category,private_label,mpg,series,
 			metering,motor,heat,ratings_ac_txv,
 			ratings_hp_txv,ratings_piston,
 			ratings_field_txv]) value
@@ -240,7 +248,7 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[category,private_label,mpg,series,metering,
 			motor,heat,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_ah_programs a
@@ -326,6 +334,7 @@ INSERT INTO vendor_product_classes (vendor_id, name, rank)
 		   ('adp', 'UH', 1),
 		   ('adp', 'Parts', 1),
 		   ('adp', 'Accessory', 1);
+
 INSERT INTO vendor_product_classes (vendor_id, name, rank)
 	SELECT 'adp' AS vendor_id, id::VARCHAR AS name, 2 AS rank
 	FROM adp_material_groups;
@@ -339,7 +348,7 @@ INSERT INTO vendor_product_to_class_mapping (product_class_id, product_id)
 		FROM vendor_products AS vp
 		JOIN vendor_product_attrs AS vpa
 		ON vp.id = vpa.vendor_product_id
-		WHERE vp.attr = 'mpg') AS p 
+		WHERE vpa.attr = 'mpg') AS p 
 	ON p.value = pc.name;
 
 -- migrate adp material group discounts to vendor product class discounts
@@ -365,10 +374,10 @@ INSERT INTO vendor_pricing_classes (vendor_id, name)
 -- adp
 -- preferred parts
 INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT vpc.id, p.id, (adppp.preferred*100)::INT
+	SELECT vpc.id, vp.id, (adppp.preferred*100)::INT
 	FROM adp_pricing_parts AS adppp
 	JOIN vendor_products AS vp
-	ON vp.vendor_product_idenfifier = adppp.part_number
+	ON vp.vendor_product_identifier = adppp.part_number
 	JOIN vendors AS v
 	ON v.id = vp.vendor_id
 	JOIN vendor_pricing_classes AS vpc
@@ -378,10 +387,10 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 
 -- standard parts
 INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT vpc.id, p.id, (adppp.standard*100)::INT
+	SELECT vpc.id, vp.id, (adppp.standard*100)::INT
 	FROM adp_pricing_parts AS adppp
 	JOIN vendor_products AS vp
-	ON vp.vendor_product_idenfifier = adppp.part_number
+	ON vp.vendor_product_identifier = adppp.part_number
 	JOIN vendors AS v
 	ON v.id = vp.vendor_id
 	JOIN vendor_pricing_classes AS vpc
@@ -390,10 +399,10 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	AND vpc.name = 'STANDARD_PARTS';
 -- zero discount coils
 INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT DISTINCT vpc.id, p.id, (acp.zero_discount_price*100)::INT
+	SELECT DISTINCT vpc.id, vp.id, (acp.zero_discount_price*100)::INT
 	FROM adp_coil_programs AS acp
 	JOIN vendor_products AS vp
-	ON vp.vendor_product_idenfifier = acp.part_number
+	ON vp.vendor_product_identifier = acp.model_number
 	JOIN vendors AS v
 	ON v.id = vp.vendor_id
 	JOIN vendor_pricing_classes AS vpc
@@ -403,10 +412,10 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	AND acp.stage::VARCHAR IN ('ACTIVE','PENDING');
 -- zero discount air handlers
 INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT DISTINCT vpc.id, p.id, (ahp.zero_discount_price*100)::INT
+	SELECT DISTINCT vpc.id, vp.id, (ahp.zero_discount_price*100)::INT
 	FROM adp_ah_programs AS ahp
 	JOIN vendor_products AS vp
-	ON vp.vendor_product_idenfifier = ahp.part_number
+	ON vp.vendor_product_identifier = ahp.model_number
 	JOIN vendors AS v
 	ON v.id = vp.vendor_id
 	JOIN vendor_pricing_classes AS vpc
@@ -422,7 +431,7 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	JOIN friedrich_products b ON a.model_number_id = b.id
 	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
 	JOIN vendors v ON v.id = p.vendor_id
-	JOIN vendor_pricing_classes vpc ON vpc.vendor_id = v.id AND vpc.name = a.price_level
+	JOIN vendor_pricing_classes vpc ON vpc.vendor_id = v.id AND vpc.name = a.price_level::VARCHAR
 	WHERE v.id = 'friedrich';
 
 -- pricing by customer (using pricing class as a tag)
@@ -433,6 +442,8 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	JOIN vendor_products AS p ON p.vendor_product_identifier = a.model_number
 	JOIN vendors AS v ON v.id = p.vendor_id
 	JOIN vendor_pricing_classes AS pc ON pc.vendor_id = v.id
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b ON b.adp_alias = vc.name
 	WHERE pc.name = 'STRATEGY_PRICING'
 	AND v.id = 'adp'
 	AND a.snp_price IS NOT NULL;
@@ -443,9 +454,12 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	JOIN vendor_products AS p ON p.vendor_product_identifier = a.model_number
 	JOIN vendors AS v ON v.id = p.vendor_id
 	JOIN vendor_pricing_classes AS pc ON pc.vendor_id = v.id
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b ON b.adp_alias = vc.name
 	WHERE pc.name = 'STRATEGY_PRICING'
 	AND v.id = 'adp'
-	AND a.material_group_net_price IS NOT NULL;
+	AND a.material_group_net_price IS NOT NULL
+	AND a.snp_price IS NULL;
 
 -- customer pricing classes
 -- adp preferred parts
@@ -492,49 +506,61 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 	FROM friedrich_customers a
 	JOIN vendor_customers vc ON vc.name = a.name
 	JOIN friedrich_customer_price_levels c ON c.customer_id = a.id
-	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level
+	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level::VARCHAR
 	WHERE vc.vendor_id = 'friedrich';
 
 -- TRIGGERS
-CREATE TRIGGER ensure_vendor_consistency_pricing
-BEFORE INSERT ON vendor_pricing
-FOR EACH ROW
+-- vendor consistency
+CREATE OR REPLACE FUNCTION vendor_pricing_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vp_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+    vc_vendor_id VARCHAR;
 BEGIN
-    DECLARE vp_vendor_id INT;
-    DECLARE vpc_vendor_id INT;
-    DECLARE vc_vendor_id INT;
-    
     -- Get the vendor_id of the product
-    SELECT vendor_id INTO v_vendor_id FROM vendor_products WHERE vendor_products.id = NEW.product_id;
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
     
     -- Get the vendor_id of the pricing class
-    SELECT vendor_id INTO vpc_vendor_id FROM vendor_pricing_classes WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
+    SELECT vendor_id INTO vpc_vendor_id
+	FROM vendor_pricing_classes
+	WHERE vendor_pricing_classes.id = NEW.pricing_class_id;
 
     -- Get the vendor_id of the vendor customer
-    SELECT vendor_id INTO vc_vendor_id FROM vendor_customers WHERE vendor_customers.id = NEW.vendor_customer_id;
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE vendor_customers.id = NEW.vendor_customer_id;
     
     -- Ensure they match
     IF NOT (vp_vendor_id <=> vpc_vendor_id AND vp_vendor_id <=> vc_vendor_id) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vendor mismatch between product, customer, and/or pricing class';
+        RAISE EXCEPTION 'Vendor mismatch between product, customer, and/or pricing class';
     END IF;
+	RETURN NEW;
 END;
-
-CREATE TRIGGER ensure_vendor_consistency_product_classes
-BEFORE INSERT ON vendor_pricing
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_consistency
+BEFORE INSERT ON vendor_pricing_by_class
 FOR EACH ROW
-BEGIN
-    DECLARE pc_vendor_id INT;
-    DECLARE p_vendor_id INT;
+EXECUTE FUNCTION vendor_pricing_consistency_fn();
+
+-- CREATE TRIGGER ensure_vendor_consistency_product_classes
+-- BEFORE INSERT ON vendor_pricing
+-- FOR EACH ROW
+-- BEGIN
+--     DECLARE pc_vendor_id VARCHAR;
+--     DECLARE p_vendor_id VARCHAR;
     
-    -- Get the vendor_id of the product
-    SELECT vendor_id INTO p_vendor_id FROM vendor_products WHERE vendor_products.id = NEW.product_id;
+--     -- Get the vendor_id of the product
+--     SELECT vendor_id INTO p_vendor_id FROM vendor_products WHERE vendor_products.id = NEW.product_id;
     
-    -- Get the vendor_id of the product class
-    SELECT vendor_id INTO pc_vendor_id FROM vendor_product_classes WHERE vendor_product_classes.id = NEW.product_class_id;
+--     -- Get the vendor_id of the product class
+--     SELECT vendor_id INTO pc_vendor_id FROM vendor_product_classes WHERE vendor_product_classes.id = NEW.product_class_id;
 
     
-    -- Ensure they match
-    IF p_vendor_id != pc_vendor_id THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vendor mismatch between product and product class';
-    END IF;
-END;
+--     -- Ensure they match
+--     IF p_vendor_id != pc_vendor_id THEN
+--         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Vendor mismatch between product and product class';
+--     END IF;
+-- END;
