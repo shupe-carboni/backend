@@ -123,9 +123,9 @@ CREATE TABLE customer_location_mapping (
 CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_consistency_fn()
 RETURNS TRIGGER AS $$
 DECLARE
-    vp_vendor_id VARCHAR
-    vpc_vendor_id VARCHAR
-    vc_vendor_id VARCHAR
+    vp_vendor_id VARCHAR;
+    vpc_vendor_id VARCHAR;
+    vc_vendor_id VARCHAR;
 BEGIN
     -- Get the vendor_id of the product
     SELECT vendor_id INTO vp_vendor_id
@@ -227,7 +227,7 @@ BEGIN
     -- product class
     SELECT vendor_id INTO vpc_vendor_id
 	FROM vendor_product_classes
-	WHERE vendor_pricing_classes.id = NEW.product_class_id;
+	WHERE vendor_product_classes.id = NEW.product_class_id;
     
     -- Ensure they match
     IF NOT (vc_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
@@ -257,7 +257,7 @@ BEGIN
     -- product class
     SELECT vendor_id INTO vpc_vendor_id
 	FROM vendor_product_classes
-	WHERE vendor_pricing_classes.id = NEW.product_class_id;
+	WHERE vendor_product_classes.id = NEW.product_class_id;
     
     -- Ensure they match
     IF NOT (vp_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
