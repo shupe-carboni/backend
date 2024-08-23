@@ -210,7 +210,7 @@ BEGIN
     
     -- Ensure they match
     IF NOT (vc_vendor_id IS NOT DISTINCT FROM vpc_vendor_id) THEN
-        RAISE EXCEPTION 'Vendor mismatch between pricing class and customer';
+        RAISE EXCEPTION 'Vendor mismatch between pricing class and customer. vendor_customer=% vendor_pricing_class=%', vc_vendor_id, vpc_vendor_id;
     END IF;
 	RETURN NEW;
 END;
@@ -314,11 +314,21 @@ FOR EACH ROW
 EXECUTE FUNCTION vendor_quote_product_consistency_fn();
 
 -- CHANGELOGS
+-- TODO
 
 -- MOVE DATA
 -- vendors
 INSERT INTO vendors
 SELECT * FROM sca_vendors;
+
+INSERT INTO vendors
+VALUES (
+	'Hardcast',
+	'900 Hensley Lane, Wylie, Texas 75098',
+	'Duct Sealants and Adhesives, DynAir Airflow Hardware and Accessories, and the Nexus 4-Bolt Flange Closure System.',
+	8774954822,
+	'vendors/hardcast/logo/hardcast-logo.png',
+	'hardcast');
 -- customers
 -- adp
 INSERT INTO vendor_customers (vendor_id, name)
@@ -391,9 +401,46 @@ INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_produc
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
 	SELECT DISTINCT 'friedrich', f.model_number, f.description
 	FROM friedrich_products f;
+-- hardcast
+INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
+	SELECT DISTINCT 'hardcast', hc.product_number::VARCHAR, hc.description
+	FROM hardcast_products hc;
 
--- the product features need tp be unraveled from columns to rows
--- coil str type attrs proposed coils
+-- hardcast attrs
+INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
+	SELECT DISTINCT b.id, 'code', 'STRING', code
+	FROM hardcast_products a
+	JOIN vendor_products b
+	ON b.vendor_product_identifier = a.product_number::VARCHAR
+	AND b.vendor_product_description = a.description
+	WHERE b.vendor_id = 'hardcast';
+
+INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
+	SELECT DISTINCT b.id, unnest(array['upc','freight_class','weight','case_qty']),
+		'NUMBER', unnest(array[upc, freight_class, weight, case_qty])
+	FROM hardcast_products a
+	JOIN vendor_products b
+	ON b.vendor_product_identifier = a.product_number::VARCHAR
+	AND b.vendor_product_description = a.description
+	WHERE b.vendor_id = 'hardcast';
+
+INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
+	SELECT DISTINCT b.id, 'haz_mat', 'BOOLEAN', haz_mat
+	FROM hardcast_products a
+	JOIN vendor_products b
+	ON b.vendor_product_identifier = a.product_number::VARCHAR
+	AND b.vendor_product_description = a.description
+	WHERE b.vendor_id = 'hardcast';
+
+INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
+	SELECT DISTINCT b.id, 'stock', 'ARRAY', array_to_string(stock, ',')
+	FROM hardcast_products a
+	JOIN vendor_products b
+	ON b.vendor_product_identifier = a.product_number::VARCHAR
+	AND b.vendor_product_description = a.description
+	WHERE b.vendor_id = 'hardcast';
+
+-- adp attrs
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['category','private_label','mpg',
@@ -409,7 +456,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	ON b.vendor_product_identifier = a.model_number
 	WHERE stage::VARCHAR = 'PROPOSED';
 
--- coil str type attrs active coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['category','private_label','mpg',
@@ -429,7 +475,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 		FROM adp_coil_programs
 		WHERE stage::VARCHAR = 'PROPOSED');
 
--- ah str type attrs proposed coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['category','private_label','mpg',
@@ -446,7 +491,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	ON b.vendor_product_identifier = a.model_number
 	WHERE stage::VARCHAR = 'PROPOSED';
 
--- ah str type attrs active coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['category','private_label','mpg',
@@ -466,7 +510,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 		FROM adp_coil_programs
 		WHERE stage::VARCHAR = 'PROPOSED');
 
--- coil numeric type attrs active coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['pallet_qty','tonnage','width',
@@ -483,7 +526,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 		FROM adp_coil_programs
 		WHERE stage::VARCHAR = 'PROPOSED');
 
--- ah numeric type attrs active coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id, 
 		unnest(array['pallet_qty','min_qty','tonnage',
@@ -500,7 +542,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 		FROM adp_coil_programs
 		WHERE stage::VARCHAR = 'PROPOSED');
 
--- coil numeric type attrs proposed coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
 		unnest(array['pallet_qty','tonnage','width',
@@ -513,7 +554,6 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	ON b.vendor_product_identifier = a.model_number 
 	WHERE stage::VARCHAR = 'PROPOSED';
 
--- ah numeric type attrs proposed coils
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id, 
 		unnest(array['pallet_qty','min_qty','tonnage',
@@ -526,7 +566,7 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	ON b.vendor_product_identifier = a.model_number
 	WHERE stage::VARCHAR = 'PROPOSED';
 
--- parts attrs
+-- adp parts attrs
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT vp.id, 'pkg_qty', 'NUMBER', pkg_qty
 	FROM adp_pricing_parts
@@ -567,6 +607,7 @@ INSERT INTO vendor_product_class_discounts (product_class_id, vendor_customer_id
 	ON ac.id = adpmgd.customer_id
 	JOIN vendor_customers AS vc
 	ON vc.name = ac.adp_alias;
+
 -- price classes
 INSERT INTO vendor_pricing_classes (vendor_id, name)
 	VALUES ('adp', 'ZERO_DISCOUNT'),
@@ -575,7 +616,8 @@ INSERT INTO vendor_pricing_classes (vendor_id, name)
 		   ('adp', 'STANDARD_PARTS'),
 		   ('friedrich', 'STANDARD'),
 		   ('friedrich', 'STOCKING'),
-		   ('friedrich', 'NON_STOCKING');
+		   ('friedrich', 'NON_STOCKING'),
+		   ('hardcast', 'STANDARD');
 -- pricing by class 
 -- adp
 -- preferred parts
@@ -639,7 +681,16 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	JOIN vendors v ON v.id = p.vendor_id
 	JOIN vendor_pricing_classes vpc ON vpc.vendor_id = v.id AND vpc.name = a.price_level::VARCHAR
 	WHERE v.id = 'friedrich';
-
+-- hardcast
+INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
+	SELECT DISTINCT vpc.id, p.id, (a.case_price*100)::INT
+	FROM hardcast_products a
+	JOIN vendor_products p ON p.vendor_product_identifier = a.product_number::VARCHAR
+	JOIN vendors v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes vpc ON vpc.vendor_id = v.id
+	WHERE v.id = 'hardcast'
+	AND vpc.name = 'STANDARD';
+	
 -- pricing by customer (using pricing class as a tag)
 -- adp snps
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
@@ -736,7 +787,8 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 	FROM friedrich_customers a
 	JOIN vendor_customers vc ON vc.name = a.name
 	JOIN friedrich_customer_price_levels c ON c.customer_id = a.id
-	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level::VARCHAR
+	JOIN vendor_pricing_classes vpc ON vpc.name = c.price_level::VARCHAR 
+	AND vpc.vendor_id = vc.vendor_id
 	WHERE vc.vendor_id = 'friedrich';
 
 -- vendor info to attributes
