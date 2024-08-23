@@ -353,7 +353,7 @@ def test_collection_filtering(resource: str):
     ## if filtering is working, only 2 customer ids should be represented in the results
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
     assert len(customer_ids_in_result) == 2
-    assert min(customer_ids_in_result) == ADP_CUSTOMER_ID
+    assert customer_ids_in_result == {ADP_CUSTOMER_ID, 64}
 
 
 @mark.parametrize(
