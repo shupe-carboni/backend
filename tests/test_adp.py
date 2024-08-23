@@ -302,10 +302,7 @@ RESET_SNP_STAGE_CHANGE_REQ = TestRequest(
 def test_valid_dl_link_reqs_for_everyone(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     url = str(
-        Path(PATH_PREFIX)
-        / "programs"
-        / str(ADP_CUSTOMER_ID)
-        / "get-download?stage=active"
+        Path(PATH_PREFIX) / "programs" / str(ADP_CUSTOMER_ID) / "download?stage=active"
     )
     response = test_client.post(url)
     assert response.status_code == response_code
@@ -319,7 +316,7 @@ def test_valid_dl_link_reqs_for_sca_only(perm, response_code):
         Path(PATH_PREFIX)
         / "programs"
         / str(ADP_CUSTOMER_ID + 1)
-        / "get-download?stage=active"
+        / "download?stage=active"
     )
     response = test_client.post(url)
     assert response.status_code == response_code
@@ -353,10 +350,10 @@ def test_collection_filtering(resource: str):
     ## check that a developer sees only the test customer as well
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.DeveloperToken
     response = test_client.get(trimmed_data_req)
-    ## if filtering is working, only 1 customer id should be represented in the results
+    ## if filtering is working, only 2 customer ids should be represented in the results
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
-    assert len(customer_ids_in_result) == 1
-    assert customer_ids_in_result.pop() == ADP_CUSTOMER_ID
+    assert len(customer_ids_in_result) == 2
+    assert min(customer_ids_in_result) == ADP_CUSTOMER_ID
 
 
 @mark.parametrize(

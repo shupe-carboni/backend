@@ -16,7 +16,7 @@ class HH(ModelSeries):
         (?P<notch>A)
         (?P<height>\d{2})
         (?P<config>\d{2})
-        (?P<option>[AP|R|N])
+        (?P<option>(AP)|[R|N])
     """
 
     def __init__(self, session: Session, re_match: re.Match):
@@ -91,6 +91,7 @@ class HH(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
+        result += adders_.get(self.attributes["option"], 0)
         if self.is_flex_coil:
             result += 10
         return result
