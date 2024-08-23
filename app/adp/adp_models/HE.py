@@ -230,6 +230,7 @@ class HE(ModelSeries):
         model_hand = hand[self.attributes["config"]]
         hand_core_status = "core" if model_hand in core_hands_list else "non-core"
         result += adders_.get(hand_core_status, 0)
+        result += adders_.get(self.attributes["option"], 0)
         if self.is_flex_coil:
             result += 10
         return result

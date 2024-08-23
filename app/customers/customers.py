@@ -241,7 +241,7 @@ async def upload_customer_logo_file(
         result = await mod_customer(
             session=session,
             token=token,
-            primary_id=customer_id,
+            customer_id=customer_id,
             mod_customer=ModCustomer(
                 data={"id": customer_id, "attributes": {"logo": file_dest}}
             ),

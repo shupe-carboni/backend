@@ -16,7 +16,7 @@ class HD(ModelSeries):
         (?P<notch>B)
         (?P<length>\d{2})
         (?P<config>\d{2})
-        (?P<option>[AP|R|N])
+        (?P<option>(AP)|[R|N])
     """
     material_weight = {"D": "WEIGHT_CU", "P": "WEIGHT_AL"}
 
@@ -127,6 +127,7 @@ class HD(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
+        result += adders_.get(self.attributes["option"], 0)
         if self.is_flex_coil:
             result += 10
         return result

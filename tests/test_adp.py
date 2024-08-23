@@ -354,7 +354,7 @@ def test_collection_filtering(resource: str):
     ## check that a developer sees the same result as customer admin
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.DeveloperToken
     response = test_client.get(trimmed_data_req)
-    ## if filtering is working, only 1 customer id should be represented in the results
+    ## if filtering is working, only 2 customer ids should be represented in the results
     customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
     assert len(customer_ids_in_result) == 2
     assert customer_ids_in_result == {ADP_CUSTOMER_ID, 64}

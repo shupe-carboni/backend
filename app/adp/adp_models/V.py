@@ -139,6 +139,7 @@ class V(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
+        result += adders_.get(self.attributes["rds"], 0)
         if self.is_flex_coil:
             result += 10
         return result
