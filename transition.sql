@@ -124,6 +124,66 @@ CREATE TABLE customer_location_mapping (
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	customer_location_id INT REFERENCES sca_customer_locations(id));
 
+-- changelogs
+-- vendor customer attributes
+CREATE TABLE vendor_customer_attrs_changelog (
+	id SERIAL PRIMARY KEY,
+	attr_id INT REFERENCES vendor_customer_attrs(id),
+	value VARCHAR,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+-- vendor customer pricing classes changelog
+CREATE TABLE vendor_customer_pricing_classes_changelog (
+	id SERIAL PRIMARY KEY,
+	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
+	vendor_customer_id INT REFERENCES vendor_customers(id),
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+-- vendor customers changelog
+CREATE TABLE vendor_customers_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_customer_id INT REFERENCES vendor_customers(id),
+	name VARCHAR,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+	
+-- vendor pricing by class changelog
+CREATE TABLE vendor_pricing_by_class_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_pricing_by_class_id INT REFERENCES vendor_pricing_by_class(id),
+	price INT,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+-- vendor pricing by customer changelog
+CREATE TABLE vendor_pricing_by_customer_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_pricing_by_customer_id INT REFERENCES vendor_pricing_by_customer(id),
+	price INT,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+-- vendor product class discount changelog
+CREATE TABLE vendor_product_class_discounts_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_product_class_discounts_id INT REFERENCES vendor_product_class_discounts(id),
+	discount FLOAT,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+-- vendor quote products changelog
+CREATE TABLE vendor_quote_products_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_quote_products_id INT REFERENCES vendor_quote_products(id),
+	qty INT,
+	price INT,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+-- vendor quotes changelog
+CREATE TABLE vendor_quotes_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_quotes_id INT REFERENCES vendor_quotes(id),
+	status stage,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+-- vendor attrs changelog
+CREATE TABLE vendors_attrs_changelog (
+	id SERIAL PRIMARY KEY,
+	attr_id INT REFERENCES vendors_attrs(id),
+	value VARCHAR,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- TRIGGERS
 -- VENDOR CONSISTENCY
 
@@ -314,7 +374,276 @@ FOR EACH ROW
 EXECUTE FUNCTION vendor_quote_product_consistency_fn();
 
 -- CHANGELOGS
--- TODO
+-- vendor customer attributes
+-- new values
+CREATE OR REPLACE FUNCTION vendor_customer_attrs_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_customer_attrs_changelog (attr_id, value)
+	VALUES (NEW.id, NEW.value);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customer_attrs_changelog_insert
+AFTER INSERT ON vendor_customer_attrs
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customer_attrs_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_customer_attrs_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.value != NEW.value THEN
+		INSERT INTO vendor_customer_attrs_changelog (attr_id, value)
+		VALUES (OLD.id, NEW.value);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customer_attrs_changelog_update
+BEFORE UPDATE ON vendor_customer_attrs
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customer_attrs_changelog_update_fn();
+
+-- vendor customer pricing classes
+-- new values
+CREATE OR REPLACE FUNCTION vendor_customer_pricing_classes_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_customer_pricing_classes_changelog (pricing_class_id, vendor_customer_id)
+	VALUES (NEW.pricing_class_id, NEW.vendor_customer_id);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customer_pricing_classes_changelog_insert
+AFTER INSERT ON vendor_customer_pricing_classes
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customer_pricing_classes_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_customer_pricing_classes_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.pricing_class_id != NEW.pricing_class_id THEN
+		INSERT INTO vendor_customer_pricing_classes_changelog (pricing_class_id, vendor_customer_id)
+		VALUES (OLD.pricing_class_id, NEW.vendor_customer_id);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customer_pricing_classes_changelog_update
+BEFORE UPDATE ON vendor_customer_pricing_classes
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customer_pricing_classes_changelog_update_fn();
+
+-- vendor customers
+-- new values
+CREATE OR REPLACE FUNCTION vendor_customers_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_customers_changelog (vendor_customer_id, name)
+	VALUES (NEW.id, NEW.name);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customers_changelog_insert
+AFTER INSERT ON vendor_customers
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customers_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_customers_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.value != NEW.value THEN
+		INSERT INTO vendor_customers_changelog (vendor_customer_id, name)
+		VALUES (OLD.id, NEW.name);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_customers_changelog_update
+BEFORE UPDATE ON vendor_customers
+FOR EACH ROW
+EXECUTE FUNCTION vendor_customers_changelog_update_fn();
+
+-- vendor pricing by class
+-- new values
+CREATE OR REPLACE FUNCTION vendor_pricing_by_class_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price)
+	VALUES (NEW.id, NEW.price);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_class_changelog_insert
+AFTER INSERT ON vendor_pricing_by_class
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_class_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_pricing_by_class_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.price != NEW.price THEN
+		INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price)
+		VALUES (OLD.id, NEW.price);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_class_changelog_update
+BEFORE UPDATE ON vendor_pricing_by_class
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_class_changelog_update_fn();
+
+-- vendor pricing by customer
+-- new values
+CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price)
+	VALUES (NEW.id, NEW.price);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_customer_changelog_insert
+AFTER INSERT ON vendor_pricing_by_customer
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_customer_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.price != NEW.price THEN
+		INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price)
+		VALUES (OLD.id, NEW.price);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_pricing_by_customer_changelog_update
+BEFORE UPDATE ON vendor_pricing_by_customer
+FOR EACH ROW
+EXECUTE FUNCTION vendor_pricing_by_customer_changelog_update_fn();
+
+-- vendor product class discount
+-- new values
+CREATE OR REPLACE FUNCTION vendor_product_class_discounts_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount)
+	VALUES (NEW.id, NEW.discount);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_class_discounts_changelog_insert
+AFTER INSERT ON vendor_product_class_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_class_discounts_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_product_class_discounts_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.discount != NEW.discount THEN
+		INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount)
+		VALUES (OLD.id, NEW.discount);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_class_discounts_changelog_update
+BEFORE UPDATE ON vendor_product_class_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_class_discounts_changelog_update_fn();
+
+-- vendor quote products
+-- new values
+CREATE OR REPLACE FUNCTION vendor_quote_products_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_quote_products_changelog (vendor_quote_products_id, qty, price)
+	VALUES (NEW.id, NEW.qty, NEW.price);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_quote_products_changelog_insert
+AFTER INSERT ON vendor_quote_products
+FOR EACH ROW
+EXECUTE FUNCTION vendor_quote_products_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_quote_products_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF (OLD.qty != NEW.qty OR OLD.price != NEW.price) THEN
+		INSERT INTO vendor_quote_products_changelog (vendor_quote_products_id, qty, price)
+		VALUES (OLD.id, NEW.qty, NEW.price);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_quote_products_changelog_update
+BEFORE UPDATE ON vendor_quote_products
+FOR EACH ROW
+EXECUTE FUNCTION vendor_quote_products_changelog_update_fn();
+
+-- vendor quotes
+-- new values
+CREATE OR REPLACE FUNCTION vendor_quotes_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_quotes_changelog (vendor_quotes_id, status)
+	VALUES (NEW.id, NEW.status);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_quotes_changelog_insert
+AFTER INSERT ON vendor_quotes
+FOR EACH ROW
+EXECUTE FUNCTION vendor_quotes_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendor_quotes_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF NEW.status != OLD.status THEN
+		INSERT INTO vendor_quotes_changelog (vendor_quotes_id, status)
+		VALUES (OLD.id, NEW.status);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_quotes_changelog_update
+BEFORE UPDATE ON vendor_quotes
+FOR EACH ROW
+EXECUTE FUNCTION vendor_quotes_changelog_update_fn();
+
+-- vendor attrs
+-- new values
+CREATE OR REPLACE FUNCTION vendors_attrs_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendors_attrs_changelog (attr_id, value)
+	VALUES (NEW.id, NEW.value);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendors_attrs_changelog_insert
+AFTER INSERT ON vendors_attrs
+FOR EACH ROW
+EXECUTE FUNCTION vendors_attrs_changelog_insert_fn();
+-- updates
+CREATE OR REPLACE FUNCTION vendors_attrs_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF NEW.value != OLD.value THEN
+		INSERT INTO vendors_attrs_changelog (attr_id, value)
+		VALUES (OLD.id, NEW.value);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendors_attrs_changelog_update
+BEFORE UPDATE ON vendors_attrs
+FOR EACH ROW
+EXECUTE FUNCTION vendors_attrs_changelog_update_fn();
+
 
 -- MOVE DATA
 -- vendors
@@ -340,11 +669,12 @@ INSERT INTO vendor_customers (vendor_id, name)
 	FROM friedrich_customers;
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	SELECT b.id vendor_customer_id, 'account_number' AS attr,
-		'BIGINT' AS type, friedrich_acct_number::VARCHAR AS value
+		'NUMBER' AS type, friedrich_acct_number::VARCHAR AS value
 	FROM friedrich_customers a
 	JOIN vendor_customers b
 	ON b.name = a.name
-	AND b.vendor_id = 'friedrich';
+	AND b.vendor_id = 'friedrich'
+	WHERE friedrich_acct_number IS NOT NULL;
 
 -- customer location mapping
 -- adp
@@ -374,7 +704,8 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	JOIN sca_customer_locations AS c
 	ON c.customer_id = b.id
 	JOIN customer_location_mapping AS d
-	ON d.customer_location_id = c.id;
+	ON d.customer_location_id = c.id
+	WHERE ppf IS NOT NULL;
 
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	SELECT DISTINCT d.vendor_customer_id, 'terms', 'STRING', terms
@@ -384,7 +715,8 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	JOIN sca_customer_locations AS c
 	ON c.customer_id = b.id
 	JOIN customer_location_mapping AS d
-	ON d.customer_location_id = c.id;
+	ON d.customer_location_id = c.id
+	WHERE terms IS NOT NULL;
 
 -- products
 -- adp
@@ -794,4 +1126,17 @@ INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_i
 -- vendor info to attributes
 INSERT INTO vendors_attrs (vendor_id, attr, type, value)
 	SELECT DISTINCT vendor_id, category, 'STRING', content
-	FROM sca_vendors_info;
+	FROM sca_vendors_info
+	WHERE content IS NOT NULL;
+
+DELETE FROM vendor_product_attrs
+WHERE value IS NULL;
+
+DELETE FROM vendor_customer_attrs
+WHERE value IS NULL;
+
+DELETE FROM vendor_quotes_attrs
+WHERE value IS NULL;
+
+DELETE FROM vendors_attrs
+WHERE value IS NULL;
