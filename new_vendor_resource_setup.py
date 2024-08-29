@@ -396,7 +396,7 @@ async def del_{depluraled}(
 
 
 def save_as_py_file(dir: str, filename: str, text: str) -> None:
-    path = Path("./app") / dir / filename
+    path = Path("./app/v2") / dir / filename
     if os.path.exists(path) and "models" in filename:
         mode = "a"
     else:
