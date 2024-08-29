@@ -1,4 +1,6 @@
 -- NEW TABLES
+-- vendors
+-- deleted_at column will be added after data transfer for vendors
 CREATE TABLE vendors (
 	name VARCHAR,
 	headquarters VARCHAR,
@@ -12,18 +14,21 @@ CREATE TABLE vendors_attrs (
 	vendor_id VARCHAR REFERENCES vendors(id),
 	attr VARCHAR,
 	type VARCHAR,
-	value VARCHAR);
+	value VARCHAR,
+	deleted_at TIMESTAMP);
 -- customers
 CREATE TABLE vendor_customers (
 	id SERIAL PRIMARY KEY,
 	vendor_id VARCHAR REFERENCES vendors(id),
-	name VARCHAR);
+	name VARCHAR,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_customer_attrs (
 	id SERIAL PRIMARY KEY,
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	attr VARCHAR,
 	type VARCHAR,
 	value VARCHAR,
+	deleted_at TIMESTAMP,
 	UNIQUE (vendor_customer_id, attr, type, value));
 
 -- products
@@ -31,55 +36,66 @@ CREATE TABLE vendor_products (
 	id SERIAL PRIMARY KEY,
 	vendor_id VARCHAR REFERENCES vendors(id),
 	vendor_product_identifier VARCHAR,
-	vendor_product_description VARCHAR);
+	vendor_product_description VARCHAR,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_product_classes (
 	id SERIAL PRIMARY KEY,
 	vendor_id VARCHAR REFERENCES vendors(id),
 	name VARCHAR,
-	rank INT);
+	rank INT,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_product_to_class_mapping (
 	id SERIAL PRIMARY KEY,
 	product_class_id INT REFERENCES vendor_product_classes(id),
-	product_id INT REFERENCES vendor_products(id));
+	product_id INT REFERENCES vendor_products(id),
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_product_attrs (
 	id SERIAL PRIMARY KEY,
 	vendor_product_id INT REFERENCES vendor_products(id),
 	attr VARCHAR,
 	type VARCHAR,
-	value VARCHAR);
+	value VARCHAR,
+	deleted_at TIMESTAMP);
 
 -- pricing
 CREATE TABLE vendor_pricing_classes (
 	id SERIAL PRIMARY KEY,
 	vendor_id VARCHAR REFERENCES vendors(id),
-	name VARCHAR, UNIQUE(vendor_id, name));
+	name VARCHAR,
+	deleted_at TIMESTAMP,
+	UNIQUE(vendor_id, name));
 CREATE TABLE vendor_pricing_by_class (
 	id SERIAL PRIMARY KEY,
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
 	product_id INT REFERENCES vendor_products(id),
-	price INT);
+	price INT,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_pricing_by_customer (
 	id SERIAL PRIMARY KEY,
 	product_id INT REFERENCES vendor_products(id),
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	use_as_override BOOLEAN DEFAULT false,
-	price INT);
+	price INT,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_product_class_discounts (
 	id SERIAL PRIMARY KEY,
 	product_class_id INT REFERENCES vendor_product_classes(id),
 	vendor_customer_id INT REFERENCES vendor_customers(id),
-	discount FLOAT);
+	discount FLOAT,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_customer_pricing_classes (
 	id SERIAL PRIMARY KEY,
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
-	vendor_customer_id INT REFERENCES vendor_customers(id));
+	vendor_customer_id INT REFERENCES vendor_customers(id),
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_pricing_by_customer_attrs (
 	id SERIAL PRIMARY KEY,
 	pricing_by_customer_id INT REFERENCES vendor_pricing_by_customer(id),
 	attr VARCHAR,
 	type VARCHAR,
 	value VARCHAR,
+	deleted_at TIMESTAMP,
 	UNIQUE (pricing_by_customer_id, attr, type, value));
 
 -- quotes
@@ -91,13 +107,15 @@ CREATE TABLE vendor_quotes (
 	job_name VARCHAR,
 	status stage,
 	quote_doc VARCHAR,
-	plans_doc VARCHAR);
+	plans_doc VARCHAR,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_quotes_attrs (
 	id SERIAL PRIMARY KEY,
 	vendor_quotes_id INT REFERENCES vendor_quotes(id),
 	attr VARCHAR,
 	type VARCHAR,
 	value VARCHAR,
+	deleted_at TIMESTAMP,
 	UNIQUE (vendor_quotes_id, attr, type, value));
 CREATE TABLE vendor_quote_products (
 	id SERIAL PRIMARY KEY,
@@ -106,7 +124,8 @@ CREATE TABLE vendor_quote_products (
 	tag VARCHAR,
 	competitor_model VARCHAR,
 	qty INT,
-	price INT);
+	price INT,
+	deleted_at TIMESTAMP);
 
 -- favoriting
 CREATE TABLE customer_pricing_by_customer (
@@ -122,7 +141,8 @@ CREATE TABLE customer_pricing_by_class (
 CREATE TABLE customer_location_mapping (
 	id SERIAL PRIMARY KEY,
 	vendor_customer_id INT REFERENCES vendor_customers(id),
-	customer_location_id INT REFERENCES sca_customer_locations(id));
+	customer_location_id INT REFERENCES sca_customer_locations(id),
+	deleted_at TIMESTAMP);
 
 -- changelogs
 -- vendor customer attributes
@@ -152,18 +172,21 @@ CREATE TABLE vendor_pricing_by_class_changelog (
 	vendor_pricing_by_class_id INT REFERENCES vendor_pricing_by_class(id),
 	price INT,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- vendor pricing by customer changelog
 CREATE TABLE vendor_pricing_by_customer_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_pricing_by_customer_id INT REFERENCES vendor_pricing_by_customer(id),
 	price INT,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- vendor product class discount changelog
 CREATE TABLE vendor_product_class_discounts_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_product_class_discounts_id INT REFERENCES vendor_product_class_discounts(id),
 	discount FLOAT,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- vendor quote products changelog
 CREATE TABLE vendor_quote_products_changelog (
 	id SERIAL PRIMARY KEY,
@@ -171,12 +194,14 @@ CREATE TABLE vendor_quote_products_changelog (
 	qty INT,
 	price INT,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- vendor quotes changelog
 CREATE TABLE vendor_quotes_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_quotes_id INT REFERENCES vendor_quotes(id),
 	status stage,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
 -- vendor attrs changelog
 CREATE TABLE vendors_attrs_changelog (
 	id SERIAL PRIMARY KEY,
@@ -658,6 +683,9 @@ VALUES (
 	8774954822,
 	'vendors/hardcast/logo/hardcast-logo.png',
 	'hardcast');
+
+ALTER TABLE vendors ADD deleted_at TIMESTAMP;
+
 -- customers
 -- adp
 INSERT INTO vendor_customers (vendor_id, name)
