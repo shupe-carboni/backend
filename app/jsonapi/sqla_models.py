@@ -1193,49 +1193,337 @@ class HardcastProductCategory(Base):
     category_l3 = Column(String)
 
 
-class HardcastPrice(Base):
-    __tablename__ = "hardcast_pricing"
+# V2
+class Vendor(Base):
+    __tablename__ = "vendors"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
+    __modifiable_fields__ = [
+        "name",
+        "headquarters",
+        "description",
+        "phone",
+        "logo_path",
+        "deleted_at",
+    ]
     __primary_ref__ = None
 
+    id = Column(String, primary_key=True)
+    name = Column(String)
+    headquarters = Column(String)
+    description = Column(TEXT)
+    phone = Column(BigInteger)
+    logo_path = Column(String)
+    deleted_at = Column(DateTime)
+    # relationships
+    vendors_attrs = relationship(
+        "SCAVendorsAttr", back_populates=__jsonapi_type_override__
+    )
+    vendors_products = relationship(
+        "SCAVendorsProduct", back_populates=__jsonapi_type_override__
+    )
+    vendors_product_classes = relationship(
+        "SCAVendorsProductClass", back_populates=__jsonapi_type_override__
+    )
+    vendors_pricing_classes = relationship(
+        "SCAVendorsPricingClass", back_populates=__jsonapi_type_override__
+    )
+    vendors_pricing_classes = relationship(
+        "SCAVendorsPricingClass", back_populates=__jsonapi_type_override__
+    )
+    vendors_customers = relationship(
+        "SCAVendorsCustomer", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsAttr(Base):
+    __tablename__ = "vendors_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["value", "deleted_at"]
+    __primary_ref__ = "vendors"
+
     id = Column(Integer, primary_key=True)
+    vendor_id = Column(String, ForeignKey("vendors.id"))
+    attr = Column(String)
+    type = Column(String)
+    value = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors_attrs_changelog = relationship(
+        "VendorsAttrsChangelog", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
 
 
-class HardcastPriceSpecial(Base):
-    __tablename__ = "hardcast_pricing_specials"
+class VendorsAttrsChangelog(Base):
+    __tablename__ = "vendors_attrs_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
-    __primary_ref__ = None
+    __primary_ref__ = "vendors_attrs"
 
     id = Column(Integer, primary_key=True)
+    attr_id = Column(String, ForeignKey("vendors_attrs.id"))
+    type = Column(String)
+    value = Column(String)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendors_attrs = relationship(
+        "VendorsAttr", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
 
 
-class HardcastCustomer(Base):
-    __tablename__ = "hardcast_customers"
+class VendorProduct(Base):
+    __tablename__ = "vendors_products"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["vendor_product_description", "deleted_at"]
+    __primary_ref__ = "vendors"
+
+    id = Column(Integer, primary_key=True)
+    vendor_id = Column(String, ForeignKey("vendors.id"))
+    vendor_product_identifier = Column(String)
+    vendor_product_description = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendor_product_attrs = relationship(
+        "VendorProductsAttr", back_populates=__jsonapi_type_override__
+    )
+    vendor_product_to_class_mapping = relationship(
+        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsProductsAttr(Base):
+    __tablename__ = "vendors_product_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["value", "deleted_at"]
+    __primary_ref__ = "vendor_products"
+
+    id = Column(Integer, primary_key=True)
+    vendor_product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    attr = Column(String)
+    type = Column(String)
+    value = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_products = relationship(
+        "VendorProduct", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsProductClass(Base):
+    __tablename__ = "vendor_product_classes"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["name", "rank", "deleted_at"]
+    __primary_ref__ = "vendors"
+
+    id = Column(Integer, primary_key=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"))
+    name = Column(String)
+    rank = Column(Integer)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors_attrs_changelog = relationship(
+        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsProductToClassMapping(Base):
+    __tablename__ = "vendor_product_to_class_mapping"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["deleted_at"]
+    __primary_ref__ = "vendor_products"
+
+    id = Column(Integer, primary_key=True)
+    product_class_id = Column(Integer, ForeignKey("vendor_product_classes.id"))
+    product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendor_product_classes = relationship(
+        "VendorsProductClass", back_populates=__jsonapi_type_override__
+    )
+    vendor_product = relationship(
+        "VendorProduct", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsPricingClass(Base):
+    __tablename__ = "vendor_pricing_classes"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["name", "deleted_at"]
+    __primary_ref__ = "vendors"
+
+    id = Column(Integer, primary_key=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"))
+    name = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendor_pricing_by_class = relationship(
+        "VendorsPricingByClass", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsPricingByClass(Base):
+    __tablename__ = "vendor_pricing_by_class"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["price", "deleted_at"]
+    __primary_ref__ = "vendor_pricing_classes"
+
+    id = Column(Integer, primary_key=True)
+    pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+    product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    price = Column(Integer)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendor_pricing_classes = relationship(
+        "VendorPricingClass", back_populates=__jsonapi_type_override__
+    )
+    vendor_product_to_class_mapping = relationship(
+        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorsPricingByClassChangelog(Base):
+    __tablename__ = "vendor_pricing_by_class_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
-    __primary_ref__ = None
+    __primary_ref__ = "vendor_pricing_by_class"
 
     id = Column(Integer, primary_key=True)
+    vendor_pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_by_class.id"))
+    price = Column(Integer)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_pricing_by_class = relationship(
+        "VendorsPricingByClass", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
 
 
-class HardcastPriceCustomer(Base):
-    __tablename__ = "hardcast_pricing_customers"
+class VendorsPricingByCustomer(Base):
+    __tablename__ = "vendor_pricing_by_customer"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = None
+    __modifiable_fields__ = ["use_as_override", "price", "deleted_at"]
+    __primary_ref__ = "vendor_customers"
 
     id = Column(Integer, primary_key=True)
+    pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+    product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    use_as_override = Column(Boolean)
+    price = Column(Integer)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship(
+        "VendorCustomer", back_populates=__jsonapi_type_override__
+    )
+    vendor_products = relationship(
+        "VendorProduct", back_populates=__jsonapi_type_override__
+    )
+    vendor_pricing_classes = relationship(
+        "VendorPricingClass", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        # TODO CHANGE THIS TO ACTUALLY FILTER
+        return q
 
 
-class HardcastPriceSpecialCustomer(Base):
-    __tablename__ = "hardcast_pricing_specials_customers"
+class VendorCustomer(Base):
+    __tablename__ = "vendor_customers"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = None
+    __modifiable_fields__ = ["name", "deleted_at"]
+    __primary_ref__ = "vendors"
 
     id = Column(Integer, primary_key=True)
+    vendor_id = Column(String, ForeignKey("vendors.id"))
+    name = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendor_pricing_by_customer = relationship(
+        "VendorPricingByCustomer", back_populates=__jsonapi_type_override__
+    )
+    vendor_pricing_classes = relationship(
+        "VendorProductClassDiscount", back_populates=__jsonapi_type_override__
+    )
+    vendor_customer_pricing_classes_changelog = relationship(
+        "VendorCustomerPricingClassChangelog", back_populates=__jsonapi_type_override__
+    )
+    vendor_customer_pricing_classes = relationship(
+        "VendorCustomerPricingClass", back_populates=__jsonapi_type_override__
+    )
+    vendor_customers_changelog = relationship(
+        "VendorCustomerChangelog", back_populates=__jsonapi_type_override__
+    )
+    vendor_quotes = relationship(
+        "VendorQuote", back_populates=__jsonapi_type_override__
+    )
+    vendor_customer_attrs = relationship(
+        "VendorCustomerAttr", back_populates=__jsonapi_type_override__
+    )
+    customer_location_mapping = relationship(
+        "CustomerLocationMapping", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        # TODO CHANGE THIS TO ACTUALLY FILTER
+        return q
 
 
 serializer = JSONAPI_(Base)
