@@ -144,6 +144,12 @@ CREATE TABLE customer_location_mapping (
 	customer_location_id INT REFERENCES sca_customer_locations(id),
 	deleted_at TIMESTAMP);
 
+-- admin table
+CREATE TABLE customer_admin_map (
+	id SERIAL PRIMARY KEY,
+	user_id INT REFERENCES sca_users(id),
+	customer_id INT REFERENCES sca_customers(id));
+
 -- changelogs
 -- vendor customer attributes
 CREATE TABLE vendor_customer_attrs_changelog (
@@ -686,6 +692,9 @@ VALUES (
 
 ALTER TABLE vendors ADD deleted_at TIMESTAMP;
 
+INSERT INTO customer_admin_map (user_id, customer_id)
+VALUES (1,181);
+
 -- customers
 -- adp
 INSERT INTO vendor_customers (vendor_id, name)
@@ -715,13 +724,7 @@ INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
 	ON vc.name = ac.adp_alias;
 
 -- friedrich
-INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
-	SELECT DISTINCT vc.id, a.sca_customer_location_id
-	FROM adp_alias_to_sca_customer_locations AS a
-	JOIN adp_customers AS ac
-	ON ac.id = a.adp_customer_id
-	JOIN vendor_customers AS vc
-	ON vc.name = ac.adp_alias;
+-- no data
 
 -- customer terms
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
