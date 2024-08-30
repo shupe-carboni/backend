@@ -1194,6 +1194,30 @@ class HardcastProductCategory(Base):
 
 
 # V2
+
+
+class CustomerAdminMap(Base):
+    __tablename__ = "customer_admin_map"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = None
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("sca_users.id"))
+    customer_id = Column(String, ForeignKey("sca_customers.id"))
+
+    ## GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        customer_locations = aliased(SCACustomerLocation)
+        exists_subquery = exists().where(
+            customer_locations.customer_id == CustomerAdminMap.id,
+            customer_locations.id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+
 class Vendor(Base):
     __tablename__ = "vendors"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
@@ -1478,8 +1502,20 @@ class VendorsPricingByCustomer(Base):
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        # TODO CHANGE THIS TO ACTUALLY FILTER
-        return q
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        vendor_customer_to_locations = aliased(CustomerLocationMapping)
+        exists_subquery = exists().where(
+            vendor_customer_to_locations.vendor_customer_id == vendor_customers.id,
+            vendor_customer_to_locations.customer_location_id.in_(ids),
+            vendor_customers.id == VendorsPricingByCustomer.vendor_customer_id,
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
 
 
 class VendorCustomer(Base):
@@ -1522,8 +1558,105 @@ class VendorCustomer(Base):
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        # TODO CHANGE THIS TO ACTUALLY FILTER
-        return q
+        if not ids:
+            return q
+        vendor_customer_to_locations = aliased(CustomerLocationMapping)
+        exists_subquery = exists().where(
+            vendor_customer_to_locations.vendor_customer_id == VendorCustomer.id,
+            vendor_customer_to_locations.customer_location_id.in_(ids),
+        )
+        return q.where(exists_subquery)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+
+
+class CustomerLocationMapping(Base):
+    __tablename__ = "customer_location_mapping"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["deleted_at"]
+    __primary_ref__ = None
+
+    id = Column(Integer, primary_key=True)
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        return q.where(CustomerLocationMapping.customer_location_id.in_(ids))
+
+
+class VendorPricingByCustomerChangelog(Base):
+    __tablename__ = "Vendor_pricing_by_customer_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_pricing_by_customer"
+
+    id = Column(Integer, primary_key=True)
+    vendor_pricing_by_customer_id = Column(
+        Integer, ForeignKey("vendor_pricing_by_customer.id")
+    )
+    price = Column(Integer)
+    timestamp = Column(DateTime)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_pricing_by_customer.id
+            == VendorPricingByCustomerChangelog.vendor_pricing_by_customer_id,
+            vendor_pricing_by_customer.vendor_customer_id == vendor_customers.id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
+
+
+class VendorPricingByCustomerAttr(Base):
+    __tablename__ = "Vendor_pricing_by_customer_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_pricing_by_customer"
+
+    id = Column(Integer, primary_key=True)
+    pricing_by_customer_id = Column(
+        Integer, ForeignKey("vendor_pricing_by_customer.id")
+    )
+    attr = Column(String)
+    type = Column(String)
+    value = Column(String)
+    deleted_at = Column(DateTime)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_pricing_by_customer.id
+            == VendorPricingByCustomerAttr.pricing_by_customer_id,
+            vendor_pricing_by_customer.vendor_customer_id == vendor_customers.id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
 
 
 serializer = JSONAPI_(Base)
@@ -1735,6 +1868,101 @@ def friedrich_quote_primary_id_queries(email: str) -> QuerySet:
             customers_2.sca_id == FriedrichCustomer.sca_id,
             users.email == email,
             friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
+        )
+    )
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
+def vendor_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
+    vendor_customer = aliased(VendorCustomer)
+    customer_to_loc = aliased(CustomerLocationMapping)
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+
+    user_query = select(vendor_customer.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == VendorCustomer.id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(vendor_customer.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            manager_map.user_id == users.id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == VendorCustomer.id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+    admin_map = aliased(CustomerAdminMap)
+    admin_query = select(vendor_customer.id).where(
+        exists().where(
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_locations.customer_id == admin_map.customer_id,
+            admin_map.user_id == users.id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == VendorCustomer.id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
+def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
+    vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+    vendor_customer = aliased(VendorCustomer)
+    customer_to_loc = aliased(CustomerLocationMapping)
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+
+    user_query = select(vendor_pricing_by_customer.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorsPricingByCustomer.id,
+        )
+    )
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(vendor_pricing_by_customer.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            manager_map.user_id == users.id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorsPricingByCustomer.id,
+        )
+    )
+    admin_map = aliased(CustomerAdminMap)
+    admin_query = select(vendor_pricing_by_customer.id).where(
+        exists().where(
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_locations.customer_id == admin_map.customer_id,
+            admin_map.user_id == users.id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorsPricingByCustomer.id,
         )
     )
     querys: QuerySet = {
