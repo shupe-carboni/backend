@@ -1581,6 +1581,11 @@ class CustomerLocationMapping(Base):
     id = Column(Integer, primary_key=True)
     vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
     customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    customer_locations = relationship(
+        "SCACustomerLocation", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1601,6 +1606,11 @@ class VendorPricingByCustomerChangelog(Base):
     )
     price = Column(Integer)
     timestamp = Column(DateTime)
+
+    # relationships
+    vendor_pricing_by_customer = relationship(
+        "VendorsPricingByCustomer", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1623,6 +1633,42 @@ class VendorPricingByCustomerChangelog(Base):
         return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
 
 
+class VendorProductClassDiscounts(Base):
+    __tablename__ = "vendor_product_class_discounts"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["discount", "deleted_at"]
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    product_class_id = Column(Integer, ForeignKey("vendor_product_classes.id"))
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    discount = Column(Float)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    vendor_product_classes = relationship(
+        "VendorsProductClass", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorProductClassDiscounts.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+
+
 class VendorPricingByCustomerAttr(Base):
     __tablename__ = "Vendor_pricing_by_customer_attrs"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
@@ -1637,6 +1683,11 @@ class VendorPricingByCustomerAttr(Base):
     type = Column(String)
     value = Column(String)
     deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_pricing_by_customer = relationship(
+        "VendorsPricingByCustomer", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1657,6 +1708,395 @@ class VendorPricingByCustomerAttr(Base):
     ## primary id lookup
     def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
         return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
+
+
+class VendorsProductClassDiscountsChangelog(Base):
+    __tablename__ = "vendor_product_class_discounts_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_product_class_discounts"
+
+    id = Column(Integer, primary_key=True)
+    vendor_product_class_discounts_id = Column(
+        Integer, ForeignKey("vendor_product_class_discounts.id")
+    )
+    discount = Column(Float)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_product_class_discounts = relationship(
+        "VendorProductClassDiscounts", back_populates=__jsonapi_type_override__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_product_class_discounts = aliased(VendorProductClassDiscounts)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_product_class_discounts.id
+            == VendorsProductClassDiscountsChangelog.vendor_product_class_discounts_id,
+            vendor_customers.id == vendor_product_class_discounts.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorQuote(Base):
+    __tablename__ = "vendor_quotes"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = [
+        "vendor_quote_number",
+        "status",
+        "quote_doc",
+        "plans_doc",
+        "deleted_at",
+    ]
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    place_id = Column(Integer, ForeignKey("sca_places.id"))
+    vendor_quote_number = Column(String)
+    job_name = Column(String)
+    status: Mapped[Stage] = mapped_column()
+    quote_doc = Column(String)
+    plans_doc = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    places = relationship("SCAPlace", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorQuote.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+
+
+class VendorQuoteProduct(Base):
+    __tablename__ = "vendor_quote_products"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["qty", "price", "deleted_at"]
+    __primary_ref__ = "vendor_quotes"
+
+    id = Column(Integer, primary_key=True)
+    vendor_quotes_id = Column(Integer, ForeignKey("vendor_quotes.id"))
+    product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    tag = Column(String)
+    competitor_model = Column(String)
+    qty = Column(Integer)
+    price = Column(Integer)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_quotes = relationship("VendorQuote", back_populates=__tablename__)
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_quotes = aliased(VendorQuote)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_quotes.id == VendorQuoteProduct.vendor_quotes_id,
+            vendor_customers.id == vendor_quotes.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
+        return vendor_quotes_primary_id_queries(email=email, vendor=vendor)
+
+
+class VendorQuoteChangelog(Base):
+    __tablename__ = "vendor_quotes_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_quotes"
+
+    id = Column(Integer, primary_key=True)
+    vendor_quotes_id = Column(Integer, ForeignKey("vendor_quotes.id"))
+    status: Mapped[Stage] = mapped_column()
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_quotes = relationship("VendorQuote", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_quotes = aliased(VendorQuote)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_quotes.id == VendorQuoteChangelog.vendor_quotes_id,
+            vendor_customers.id == vendor_quotes.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorQuoteProductChangelog(Base):
+    __tablename__ = "vendor_quote_products_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_quote_products"
+
+    id = Column(Integer, primary_key=True)
+    vendor_quote_products_id = Column(Integer, ForeignKey("vendor_quote_products.id"))
+    qty = Column(Integer)
+    price = Column(Integer)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_quote_products = relationship(
+        "VendorQuoteProduct", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_quote_products = aliased(VendorQuoteProduct)
+        vendor_quotes = aliased(VendorQuote)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_quote_products.id
+            == VendorQuoteProductChangelog.vendor_quote_products_id,
+            vendor_quotes.id == vendor_quote_products.vendor_quotes_id,
+            vendor_customers.id == vendor_quotes.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorCustomerPricingClass(Base):
+    __tablename__ = "vendor_customer_pricing_classes"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_pricing_classes = relationship(
+        "VendorsPricingClass", back_populates=__tablename__
+    )
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorCustomerPricingClass.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorCustomerPricingClassesChangelog(Base):
+    __tablename__ = "vendor_customer_pricing_classes_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_pricing_classes = relationship(
+        "VendorsPricingClass", back_populates=__tablename__
+    )
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id
+            == VendorCustomerPricingClassesChangelog.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorCustomerChangelog(Base):
+    __tablename__ = "vendor_customer_changelog"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    name = Column(String)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorCustomerChangelog.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+
+class VendorCustomerAttr(Base):
+    __tablename__ = "vendor_customer_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["value", "deleted_at"]
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    attr = Column(String)
+    type = Column(String)
+    value = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorQuoteAttr(Base):
+    __tablename__ = "vendor_quotes_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["value", "deleted_at"]
+    __primary_ref__ = "vendor_quotess"
+
+    id = Column(Integer, primary_key=True)
+    vendor_quotes_id = Column(Integer, ForeignKey("vendor_quotes.id"))
+    attr = Column(String)
+    type = Column(String)
+    value = Column(String)
+    deleted_at = Column(DateTime)
+
+    # relationships
+    vendor_quotes = relationship("VendorQuote", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class CustomerPricingByClass(Base):
+    __tablename__ = "customer_pricing_by_class"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_pricing_by_class"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("sca_users.id"))
+    pricing_by_class_id = Column(Integer, ForeignKey("vendor_pricing_by_class.id"))
+
+    # relationships
+    vendor_pricing_by_class = relationship(
+        "VendorsPricingByClass", back_populates=__tablename__
+    )
+    users = relationship("SCAUser", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class CustomerPricingByCustomer(Base):
+    __tablename__ = "customer_pricing_by_customer"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_pricing_by_customer"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("sca_users.id"))
+    pricing_by_customer_id = Column(
+        Integer, ForeignKey("vendor_pricing_by_customer.id")
+    )
+
+    # relationships
+    vendor_pricing_by_customer = relationship(
+        "VendorsPricingByCustomer", back_populates=__tablename__
+    )
+    users = relationship("SCAUser", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        return q
+
+
+class VendorCustomerAttr(Base):
+    __tablename__ = "vendor_customer_attrs"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = None
+    __primary_ref__ = "vendor_customer_attrs"
+
+    id = Column(Integer, primary_key=True)
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    name = Column(String)
+    timestamp = Column(DateTime)
+
+    # relationships
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorCustomerChangelog.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
 
 
 serializer = JSONAPI_(Base)
@@ -1924,6 +2364,56 @@ def vendor_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
     return querys
 
 
+def vendor_quotes_primary_id_queries(email: str, vendor: str) -> QuerySet:
+    vendor_quotes = aliased(VendorQuote)
+    vendor_customer = aliased(VendorCustomer)
+    customer_to_loc = aliased(CustomerLocationMapping)
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+
+    user_query = select(vendor_quotes.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorQuote.vendor_customer_id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(vendor_quotes.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            manager_map.user_id == users.id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorQuote.vendor_customer_id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+    admin_map = aliased(CustomerAdminMap)
+    admin_query = select(vendor_quotes.id).where(
+        exists().where(
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_locations.customer_id == admin_map.customer_id,
+            admin_map.user_id == users.id,
+            users.email == email,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorQuote.vendor_customer_id,
+        ),
+        vendor_customer.vendor_id == vendor,
+    )
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
 def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
     vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
     vendor_customer = aliased(VendorCustomer)
@@ -1938,7 +2428,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.id,
+            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
         )
     )
     manager_map = aliased(SCAManagerMap)
@@ -1950,7 +2440,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.id,
+            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
         )
     )
     admin_map = aliased(CustomerAdminMap)
@@ -1962,7 +2452,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.id,
+            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
         )
     )
     querys: QuerySet = {
