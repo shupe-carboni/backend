@@ -2071,19 +2071,19 @@ class CustomerPricingByCustomer(Base):
         return q
 
 
-class VendorCustomerAttr(Base):
-    __tablename__ = "vendor_customer_attrs"
+class VendorCustomerAttrChangelog(Base):
+    __tablename__ = "vendor_customer_attrs_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
     __primary_ref__ = "vendor_customer_attrs"
 
     id = Column(Integer, primary_key=True)
-    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
-    name = Column(String)
+    attr_id = Column(Integer, ForeignKey("vendor_customer_attrs.id"))
+    value = Column(String)
     timestamp = Column(DateTime)
 
     # relationships
-    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    vendor_customer_attrs = relationship("VendorCustomerAttr", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -2092,7 +2092,7 @@ class VendorCustomerAttr(Base):
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
-            vendor_customers.id == VendorCustomerChangelog.vendor_customer_id,
+            vendor_customers.id == VendorCustomerAttrChangelog.vendor_customer_id,
             vendor_customers.id == customer_mapping.vendor_customer_id,
             customer_mapping.customer_location_id.in_(ids),
         )
