@@ -15,6 +15,10 @@ def price_flexcoil_version(
     customer_id: int, session: Session, row_subset: pd.Series
 ) -> pd.Series:
     """
+    ADP is no longer offering Air Handlers as FlexCoils.
+
+    -- 2024-09-05 (Joseph Carboni)
+
     I don't like doing it this way, but this seems the most
         straightforward given the requirements.
     To accomplish this, I needed to pass the customer_id in from
@@ -33,7 +37,7 @@ def price_flexcoil_version(
     """
     model_number: str = row_subset[Fields.MODEL_NUMBER.value]
     series: str = row_subset[Fields.SERIES.value]
-    no_change = "No Change"
+    no_change = "Not Available"
     # flexcoil by replacement
     if series in ("HE", "HH", "HD"):
         if model_number.endswith("AP"):
@@ -41,7 +45,7 @@ def price_flexcoil_version(
         elif model_number[:2] == "CE":
             model_to_parse = model_number + "N"
     # flexcoil by append
-    elif series in ("MH", "V", "B", "F", "S", "CP"):
+    elif series in ("MH", "V"):
         if model_number[-1] not in ("R", "N"):
             model_to_parse = model_number + "N"
         else:
