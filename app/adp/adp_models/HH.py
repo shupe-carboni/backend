@@ -9,7 +9,7 @@ class HH(ModelSeries):
         (?P<paint>H)
         (?P<mat>H)
         (?P<scode>\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<depth>A)
         (?P<width>\d{3})
@@ -51,13 +51,22 @@ class HH(ModelSeries):
         self.ratings_field_txv = (
             rf"HH{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}\+TXV"
         )
-        self.is_flex_coil = True if self.attributes["option"] in ("R", "N") else False
+        rds_option = self.attributes.get("option")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
         value = "Horizontal Slab Coils"
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
     def load_pricing(self) -> tuple[int, dict[str, int]]:
@@ -92,8 +101,6 @@ class HH(ModelSeries):
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
         result += adders_.get(self.attributes["option"], 0)
-        if self.is_flex_coil:
-            result += 10
         return result
 
     def record(self) -> dict:

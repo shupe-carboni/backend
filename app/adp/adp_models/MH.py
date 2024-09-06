@@ -10,7 +10,7 @@ class MH(ModelSeries):
         (?P<ton>\d{2})
         (?P<mat>E)
         (?P<scode>\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<rds>[R|N]?)
         """
 
@@ -58,13 +58,22 @@ class MH(ModelSeries):
             rf"M{self.tonnage}{self.attributes['mat']}"
             rf"{self.attributes['scode']}(\(1,2\)|\*)\+TXV"
         )
-        self.is_flex_coil = True if self.attributes.get("rds") else False
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
         value = "Manufactured Housing Coils"
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
     def load_pricing(self) -> tuple[int, dict[str, int]]:
@@ -97,9 +106,7 @@ class MH(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
-        result += adders_.get(self.attributes["rds"], 0)
-        if self.is_flex_coil:
-            result += 10
+        result += adders_.get(self.attributes.get("rds"), 0)
         return result
 
     def record(self) -> dict:

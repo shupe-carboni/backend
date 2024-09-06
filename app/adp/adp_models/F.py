@@ -10,7 +10,7 @@ class F(ModelSeries):
         (?P<motor>[C|E])
         (?P<config>M)
         (?P<scode>\D{2}\d|\D\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<line_conn>[S|B])
         (?P<heat>\d{2})
@@ -63,7 +63,14 @@ class F(ModelSeries):
         self.ratings_field_txv = (
             rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
         )
-        self.is_flex_coil = True if self.attributes.get("rds") else False
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def load_pricing(self) -> tuple[dict[str, int], dict[str, int]]:
@@ -103,8 +110,10 @@ class F(ModelSeries):
         orientation = "Multiposition"
         motor = self.motor
         value = f"Low Profile {orientation} Air Handlers - {motor}"
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
     def calc_zero_disc_price(self) -> int:
@@ -126,8 +135,7 @@ class F(ModelSeries):
             else 0
         )
         result += adders_.get(self.attributes["meter"], 0)
-        if self.is_flex_coil:
-            result += 10
+        result += adders_.get(self.attributes.get("rds"), 0)
         return result
 
     def record(self) -> dict:

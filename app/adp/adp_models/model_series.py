@@ -112,6 +112,8 @@ class ModelSeries:
     metering_mapping = {
         1: "Piston (R-410a)",
         9: "Non-bleed HP-AC TXV (R-410a)",
+        "A": "Non-bleed HP-AC TXV (R-454B)",
+        "B": "Non-bleed HP-AC TXV (R-32)",
     }
 
     motors = {

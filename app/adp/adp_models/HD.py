@@ -9,7 +9,7 @@ class HD(ModelSeries):
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
         (?P<mat>[D|P])
         (?P<scode>\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<width>E)
         (?P<height>\d{3})
@@ -51,7 +51,14 @@ class HD(ModelSeries):
         self.pallet_qty = specs["pallet_qty"]
         self.weight = specs[self.material_weight[self.attributes["mat"]]]
         self.tonnage = int(self.attributes["ton"])
-        self.is_flex_coil = True if self.attributes["option"] in ("R", "N") else False
+        rds_option = self.attributes.get("option")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = (
                 rf"H(,.){{1,2}}{self.attributes['mat']}"
@@ -128,15 +135,18 @@ class HD(ModelSeries):
         pricing_, adders_ = self.load_pricing()
         result = pricing_ + adders_.get(self.attributes["meter"], 0)
         result += adders_.get(self.attributes["option"], 0)
-        if self.is_flex_coil:
-            result += 10
         return result
 
     def category(self) -> str:
         material = self.material
         color = self.color
         additional = "Dedicated Horizontal Coils - Side Connections"
-        return f"{material} {additional} - {color}"
+        value = f"{material} {additional} - {color}"
+        if self.rds_field_installed:
+            value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
+        return value
 
     def record(self) -> dict:
         model_record = super().record()

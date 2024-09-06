@@ -13,7 +13,7 @@ class CE(ModelSeries):
         (?P<width_height>\d{2})
         (?P<mat>[E|G|H|D|P])
         (?P<scode>\d{2}|\d\D)
-        (?P<metering>[1|9])
+        (?P<metering>[1|9|A|B])
         (?P<rds>[N|R]?)
     """
     ce_configurations = {

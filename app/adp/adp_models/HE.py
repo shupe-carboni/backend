@@ -9,7 +9,7 @@ class HE(ModelSeries):
         (?P<paint>[H|A|G|J|N|P|R|T|Y])
         (?P<mat>[A|E|G])
         (?P<scode>\d{2}|\d\D)
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<depth>[A|C|D|E])
         (?P<width>\d{3})
@@ -94,7 +94,14 @@ class HE(ModelSeries):
             "mat_grp",
         ].item()
         self.tonnage = int(self.attributes["ton"])
-        self.is_flex_coil = True if self.attributes["option"] in ("R", "N") else False
+        rds_option = self.attributes.get("option")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = (
                 rf"H(,.){{1,2}}"
@@ -145,8 +152,10 @@ class HE(ModelSeries):
         connections, orientation = self.orientations[self.attributes["config"]]
         additional = "Cased Coils"
         value = f"{orientation} {material} {connections} {additional} - {color}"
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
     def load_pricing(self, config: str) -> tuple[int, dict[str, int]]:
@@ -231,8 +240,6 @@ class HE(ModelSeries):
         hand_core_status = "core" if model_hand in core_hands_list else "non-core"
         result += adders_.get(hand_core_status, 0)
         result += adders_.get(self.attributes["option"], 0)
-        if self.is_flex_coil:
-            result += 10
         return result
 
     def record(self) -> dict:
