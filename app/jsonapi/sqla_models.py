@@ -2083,16 +2083,20 @@ class VendorCustomerAttrChangelog(Base):
     timestamp = Column(DateTime)
 
     # relationships
-    vendor_customer_attrs = relationship("VendorCustomerAttr", back_populates=__tablename__)
+    vendor_customer_attrs = relationship(
+        "VendorCustomerAttr", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
+        vendor_customer_attrs = aliased(VendorCustomerAttr)
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
-            vendor_customers.id == VendorCustomerAttrChangelog.vendor_customer_id,
+            vendor_customer_attrs.id == VendorCustomerAttrChangelog.attr_id,
+            vendor_customers.id == vendor_customer_attrs.vendor_customer_id,
             vendor_customers.id == customer_mapping.vendor_customer_id,
             customer_mapping.customer_location_id.in_(ids),
         )
