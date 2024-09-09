@@ -1,5 +1,10 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+from app.adp.adp_models.model_series import (
+    ModelSeries,
+    Fields,
+    Cabinet,
+    PriceByCategoryAndKey,
+)
 from app.db import ADP_DB, Session
 
 
@@ -12,7 +17,7 @@ class V(ModelSeries):
         (?P<height>\d{3})
         (?P<mat>[D|P])
         (?P<scode>\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<rds>[N|R]?)
         """
     material_weight = {"D": "WEIGHT_CU", "P": "WEIGHT_AL"}
@@ -45,7 +50,12 @@ class V(ModelSeries):
         else:
             height_str = self.attributes["height"]
         self.material = self.material_mapping[self.attributes["mat"]]
-        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.color = self.paint_color_mapping[self.attributes["paint"]]
         self.width = 21
         self.pallet_qty = specs["pallet_qty"]
@@ -57,7 +67,15 @@ class V(ModelSeries):
             "mat_grp",
         ].item()
         self.tonnage = int(self.attributes["ton"])
-        self.is_flex_coil = True if self.attributes.get("rds") else False
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
+
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_ac_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
@@ -104,11 +122,13 @@ class V(ModelSeries):
         material = self.material
         paint = self.color
         value = f'Dedicated Horizontal "A" {material} Coils - {paint}'
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
-    def load_pricing(self) -> tuple[int, dict[str, int]]:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         pricing_sql = f"""
             SELECT "{self.cabinet_config.name}"
             FROM pricing_v_series
@@ -120,28 +140,12 @@ class V(ModelSeries):
             params=dict(scode=self.attributes["scode"]),
         ).scalar_one()
 
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return pricing, adders
+        return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
-        result = pricing_ + adders_.get(self.attributes["meter"], 0)
-        result += adders_.get(self.attributes["rds"], 0)
-        if self.is_flex_coil:
-            result += 10
+        result = pricing_ + adders_["metering"].get(self.attributes["meter"], 0)
+        result += adders_["RDS"].get(self.attributes.get("rds"), 0)
         return result
 
     def record(self) -> dict:

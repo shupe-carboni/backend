@@ -1,5 +1,5 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields
+from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session
 
 
@@ -73,7 +73,14 @@ class CP(ModelSeries):
             rf"{self.attributes['mat']}"
         )
         self.ratings_field_txv = self.ratings_ac_txv
-        self.is_flexcoil = True if self.attributes.get("rds") else False
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         self.zero_disc_price = self.get_zero_disc_price()
         try:
             self.heat = int(self.attributes["heat"])
@@ -85,16 +92,21 @@ class CP(ModelSeries):
         material = self.material_mapping[self.attributes["mat"]]
         motor = self.motor
         cased = "Uncased" if not self.cased else "Cased"
-        return f"Soffit Mount {cased} Air Handlers - {material} - {motor}"
+        value = f"Soffit Mount {cased} Air Handlers - {material} - {motor}"
+        if self.rds_field_installed:
+            value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
+        return value
 
-    def load_pricing(self) -> int:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         sql = f"""
             SELECT price
             FROM pricing_cp_series
             WHERE "{self.attributes['mat']}" = :model ;
         """
         model = str(self)
-        if self.is_flexcoil:
+        if self.attributes.get("rds"):
             model = model[:-1]
         params = dict(model=model)
         result = ADP_DB.execute(
@@ -102,13 +114,12 @@ class CP(ModelSeries):
         ).scalar_one_or_none()
         if not result:
             raise NoBasePrice
-        return int(result)
+        return int(result), self.get_adders()
 
     def get_zero_disc_price(self) -> int:
-        base_price = self.load_pricing()
-        if self.is_flexcoil:
-            base_price += 10
-        return base_price
+        base_price, adders = self.load_pricing()
+        result = base_price + adders["RDS"].get(self.attributes.get("rds"), 0)
+        return result
 
     def record(self) -> dict:
         model_record = super().record()

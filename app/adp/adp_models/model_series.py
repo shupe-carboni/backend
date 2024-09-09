@@ -1,6 +1,7 @@
 import re
 from app.db import ADP_DB, Session
 from enum import StrEnum, auto
+from typing import TypeAlias, Literal
 
 
 class Cabinet(StrEnum):
@@ -64,9 +65,16 @@ class Fields(StrEnum):
         return result
 
 
+PriceAdderCategory = Literal[
+    "tonnage", "metering", "misc", "line_conn", "voltage", "RDS", "motor", "heat"
+]
+PriceByCategoryAndKey: TypeAlias = dict[PriceAdderCategory, dict[str, int]]
+
+
 class ModelSeries:
     text_len: int
     regex: str
+    session: Session
 
     class NoBasePrice(Exception): ...
 
@@ -112,6 +120,8 @@ class ModelSeries:
     metering_mapping = {
         1: "Piston (R-410a)",
         9: "Non-bleed HP-AC TXV (R-410a)",
+        "A": "Non-bleed HP-AC TXV (R-454B)",
+        "B": "Non-bleed HP-AC TXV (R-32)",
     }
 
     motors = {
@@ -205,3 +215,22 @@ class ModelSeries:
             return re.search(pattern, reference) is not None
         except re.error:
             return False
+
+    def get_adders(self) -> PriceByCategoryAndKey:
+
+        price_adders_sql = """
+            SELECT type, key, price
+            FROM price_adders
+            WHERE series = :series;
+        """
+        params = dict(series=self.__series_name__())
+        adders_ = (
+            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
+            .mappings()
+            .all()
+        )
+        adders = dict()
+        for adder in adders_:
+            adders.setdefault(adder["type"], {})
+            adders[adder["type"]] |= {adder["key"]: adder["price"]}
+        return adders

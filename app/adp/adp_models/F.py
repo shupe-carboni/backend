@@ -1,5 +1,5 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields
+from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session
 
 
@@ -10,7 +10,7 @@ class F(ModelSeries):
         (?P<motor>[C|E])
         (?P<config>M)
         (?P<scode>\D{2}\d|\D\d{2})
-        (?P<meter>\d)
+        (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<line_conn>[S|B])
         (?P<heat>\d{2})
@@ -38,7 +38,12 @@ class F(ModelSeries):
         self.height = specs["height"]
         self.weight = specs["weight"]
         self.motor = self.motors[self.attributes["motor"]]
-        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.heat = self.kw_heat[int(self.attributes["heat"])]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
@@ -63,10 +68,17 @@ class F(ModelSeries):
         self.ratings_field_txv = (
             rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
         )
-        self.is_flex_coil = True if self.attributes.get("rds") else False
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
         self.zero_disc_price = self.calc_zero_disc_price()
 
-    def load_pricing(self) -> tuple[dict[str, int], dict[str, int]]:
+    def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
 
         pricing_sql = """
             SELECT base, "05", "07", "10", "15", "20"
@@ -82,29 +94,16 @@ class F(ModelSeries):
             .mappings()
             .one_or_none()
         )
-
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return pricing, adders
+        return pricing, self.get_adders()
 
     def category(self) -> str:
         orientation = "Multiposition"
         motor = self.motor
         value = f"Low Profile {orientation} Air Handlers - {motor}"
-        if self.is_flex_coil:
+        if self.rds_field_installed:
             value += " - FlexCoil"
+        elif self.rds_factory_installed:
+            value += " - A2L"
         return value
 
     def calc_zero_disc_price(self) -> int:
@@ -117,17 +116,16 @@ class F(ModelSeries):
                 raise self.NoBasePrice
         else:
             result = pricing_["base"]
-        result += adders_.get(self.attributes["voltage"], 0)
+        result += adders_["voltage"].get(self.attributes["voltage"], 0)
         if heat == "05" and self.attributes["line_conn"] == "B":
-            result += adders_.get(self.attributes["line_conn"], 0)
+            result += adders_["line_conn"].get(self.attributes["line_conn"], 0)
         result += (
-            adders_.get(self.attributes["ton"], 0)
+            adders_["tonnage"].get(self.attributes["ton"], 0)
             if self.attributes["motor"] == "E"
             else 0
         )
-        result += adders_.get(self.attributes["meter"], 0)
-        if self.is_flex_coil:
-            result += 10
+        result += adders_["metering"].get(self.attributes["meter"], 0)
+        result += adders_["RDS"].get(self.attributes.get("rds"), 0)
         return result
 
     def record(self) -> dict:
