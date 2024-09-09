@@ -1,6 +1,6 @@
-
 from pydantic import BaseModel, Field, create_model, ConfigDict
 from typing import Optional
+from datetime import datetime
 from app.jsonapi.core_models import (
     JSONAPIResourceIdentifier,
     JSONAPIRelationshipsResponse,
@@ -8,7 +8,7 @@ from app.jsonapi.core_models import (
     JSONAPIResponse,
     Query,
 )
-    
+
 from app.jsonapi.sqla_models import Vendor
 
 
@@ -32,11 +32,21 @@ class VendorAttrs(BaseModel):
 
 class VendorRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendors_attrs: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors-attrs")
-    vendor_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-products")
-    vendor_product_classes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-classes")
-    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-classes")
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
+    vendors_attrs: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors-attrs"
+    )
+    vendor_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-products"
+    )
+    vendor_product_classes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-classes"
+    )
+    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-classes"
+    )
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
 
 
 class VendorFilters(BaseModel):
@@ -53,8 +63,12 @@ class VendorFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendors_attrs: str = Field(default=None, alias="fields[vendors-attrs]")
     fields_vendor_products: str = Field(default=None, alias="fields[vendor-products]")
-    fields_vendor_product_classes: str = Field(default=None, alias="fields[vendor-product-classes]")
-    fields_vendor_pricing_classes: str = Field(default=None, alias="fields[vendor-pricing-classes]")
+    fields_vendor_product_classes: str = Field(
+        default=None, alias="fields[vendor-product-classes]"
+    )
+    fields_vendor_pricing_classes: str = Field(
+        default=None, alias="fields[vendor-pricing-classes]"
+    )
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
     fields_vendors: str = Field(default=None, alias="fields[vendors]")
 
@@ -88,7 +102,7 @@ _VendorQuery: type[BaseModel] = create_model(
         for field in VendorAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendors': (
+        f"fields_vendors": (
             Optional[str],
             None,
         )
@@ -111,16 +125,19 @@ class ModVendorAttrs(BaseModel):
     phone: Optional[int] = Field(default=None, alias="phone")
     logo_path: Optional[str] = Field(default=None, alias="logo-path")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorRObj(BaseModel):
     id: int
     type: str = Vendor.__jsonapi_type_override__
     attributes: ModVendorAttrs
     relationships: VendorRels
-    
+
+
 class ModVendor(BaseModel):
     data: ModVendorRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorsAttr
 
 
@@ -143,7 +160,9 @@ class VendorsAttrAttrs(BaseModel):
 class VendorsAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     vendors: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors")
-    vendors_attrs_changelog: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors-attrs-changelog")
+    vendors_attrs_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors-attrs-changelog"
+    )
 
 
 class VendorsAttrFilters(BaseModel):
@@ -157,7 +176,9 @@ class VendorsAttrFilters(BaseModel):
 class VendorsAttrFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendors: str = Field(default=None, alias="fields[vendors]")
-    fields_vendors_attrs_changelog: str = Field(default=None, alias="fields[vendors-attrs-changelog]")
+    fields_vendors_attrs_changelog: str = Field(
+        default=None, alias="fields[vendors-attrs-changelog]"
+    )
     fields_vendors_attrs: str = Field(default=None, alias="fields[vendors-attrs]")
 
 
@@ -190,7 +211,7 @@ _VendorsAttrQuery: type[BaseModel] = create_model(
         for field in VendorsAttrAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendors_attrs': (
+        f"fields_vendors_attrs": (
             Optional[str],
             None,
         )
@@ -209,16 +230,19 @@ class VendorsAttrQueryJSONAPI(VendorsAttrFields, VendorsAttrFilters, Query):
 class ModVendorsAttrAttrs(BaseModel):
     value: Optional[str] = Field(default=None, alias="value")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorsAttrRObj(BaseModel):
     id: int
     type: str = VendorsAttr.__jsonapi_type_override__
     attributes: ModVendorsAttrAttrs
     relationships: VendorsAttrRels
-    
+
+
 class ModVendorsAttr(BaseModel):
     data: ModVendorsAttrRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorProduct
 
 
@@ -232,36 +256,64 @@ class VendorProductRelResp(JSONAPIRelationshipsResponse):
 
 class VendorProductAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_product_identifier: Optional[str] = Field(default=None, alias="vendor-product-identifier")
-    vendor_product_description: Optional[str] = Field(default=None, alias="vendor-product-description")
+    vendor_product_identifier: Optional[str] = Field(
+        default=None, alias="vendor-product-identifier"
+    )
+    vendor_product_description: Optional[str] = Field(
+        default=None, alias="vendor-product-description"
+    )
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
 class VendorProductRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     vendors: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors")
-    vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-by-class")
-    vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-by-customer")
-    vendor_product_attrs: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-attrs")
-    vendor_product_to_class_mapping: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-to-class-mapping")
-    vendor_quote_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quote-products")
+    vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-by-class"
+    )
+    vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-by-customer"
+    )
+    vendor_product_attrs: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-attrs"
+    )
+    vendor_product_to_class_mapping: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-to-class-mapping"
+    )
+    vendor_quote_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quote-products"
+    )
 
 
 class VendorProductFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    filter_vendor_product_identifier: str = Field(default=None, alias="filter[vendor-product-identifier]")
-    filter_vendor_product_description: str = Field(default=None, alias="filter[vendor-product-description]")
+    filter_vendor_product_identifier: str = Field(
+        default=None, alias="filter[vendor-product-identifier]"
+    )
+    filter_vendor_product_description: str = Field(
+        default=None, alias="filter[vendor-product-description]"
+    )
     filter_deleted_at: str = Field(default=None, alias="filter[deleted-at]")
 
 
 class VendorProductFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendors: str = Field(default=None, alias="fields[vendors]")
-    fields_vendor_pricing_by_class: str = Field(default=None, alias="fields[vendor-pricing-by-class]")
-    fields_vendor_pricing_by_customer: str = Field(default=None, alias="fields[vendor-pricing-by-customer]")
-    fields_vendor_product_attrs: str = Field(default=None, alias="fields[vendor-product-attrs]")
-    fields_vendor_product_to_class_mapping: str = Field(default=None, alias="fields[vendor-product-to-class-mapping]")
-    fields_vendor_quote_products: str = Field(default=None, alias="fields[vendor-quote-products]")
+    fields_vendor_pricing_by_class: str = Field(
+        default=None, alias="fields[vendor-pricing-by-class]"
+    )
+    fields_vendor_pricing_by_customer: str = Field(
+        default=None, alias="fields[vendor-pricing-by-customer]"
+    )
+    fields_vendor_product_attrs: str = Field(
+        default=None, alias="fields[vendor-product-attrs]"
+    )
+    fields_vendor_product_to_class_mapping: str = Field(
+        default=None, alias="fields[vendor-product-to-class-mapping]"
+    )
+    fields_vendor_quote_products: str = Field(
+        default=None, alias="fields[vendor-quote-products]"
+    )
     fields_vendor_products: str = Field(default=None, alias="fields[vendor-products]")
 
 
@@ -294,7 +346,7 @@ _VendorProductQuery: type[BaseModel] = create_model(
         for field in VendorProductAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_products': (
+        f"fields_vendor_products": (
             Optional[str],
             None,
         )
@@ -311,18 +363,23 @@ class VendorProductQueryJSONAPI(VendorProductFields, VendorProductFilters, Query
 
 
 class ModVendorProductAttrs(BaseModel):
-    vendor_product_description: Optional[str] = Field(default=None, alias="vendor-product-description")
+    vendor_product_description: Optional[str] = Field(
+        default=None, alias="vendor-product-description"
+    )
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorProductRObj(BaseModel):
     id: int
     type: str = VendorProduct.__jsonapi_type_override__
     attributes: ModVendorProductAttrs
     relationships: VendorProductRels
-    
+
+
 class ModVendorProduct(BaseModel):
     data: ModVendorProductRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorProductAttr
 
 
@@ -344,7 +401,9 @@ class VendorProductAttrAttrs(BaseModel):
 
 class VendorProductAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-products")
+    vendor_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-products"
+    )
 
 
 class VendorProductAttrFilters(BaseModel):
@@ -358,7 +417,9 @@ class VendorProductAttrFilters(BaseModel):
 class VendorProductAttrFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_products: str = Field(default=None, alias="fields[vendor-products]")
-    fields_vendor_product_attrs: str = Field(default=None, alias="fields[vendor-product-attrs]")
+    fields_vendor_product_attrs: str = Field(
+        default=None, alias="fields[vendor-product-attrs]"
+    )
 
 
 class VendorProductAttrRObj(VendorProductAttrRID):
@@ -390,7 +451,7 @@ _VendorProductAttrQuery: type[BaseModel] = create_model(
         for field in VendorProductAttrAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_product_attrs': (
+        f"fields_vendor_product_attrs": (
             Optional[str],
             None,
         )
@@ -401,7 +462,9 @@ _VendorProductAttrQuery: type[BaseModel] = create_model(
 class VendorProductAttrQuery(_VendorProductAttrQuery, BaseModel): ...
 
 
-class VendorProductAttrQueryJSONAPI(VendorProductAttrFields, VendorProductAttrFilters, Query):
+class VendorProductAttrQueryJSONAPI(
+    VendorProductAttrFields, VendorProductAttrFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
@@ -409,16 +472,19 @@ class VendorProductAttrQueryJSONAPI(VendorProductAttrFields, VendorProductAttrFi
 class ModVendorProductAttrAttrs(BaseModel):
     value: Optional[str] = Field(default=None, alias="value")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorProductAttrRObj(BaseModel):
     id: int
     type: str = VendorProductAttr.__jsonapi_type_override__
     attributes: ModVendorProductAttrAttrs
     relationships: VendorProductAttrRels
-    
+
+
 class ModVendorProductAttr(BaseModel):
     data: ModVendorProductAttrRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorProductClass
 
 
@@ -440,8 +506,12 @@ class VendorProductClassAttrs(BaseModel):
 class VendorProductClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     vendors: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors")
-    vendor_product_to_class_mapping: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-to-class-mapping")
-    vendor_product_class_discounts: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-class-discounts")
+    vendor_product_to_class_mapping: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-to-class-mapping"
+    )
+    vendor_product_class_discounts: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-class-discounts"
+    )
 
 
 class VendorProductClassFilters(BaseModel):
@@ -454,9 +524,15 @@ class VendorProductClassFilters(BaseModel):
 class VendorProductClassFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendors: str = Field(default=None, alias="fields[vendors]")
-    fields_vendor_product_to_class_mapping: str = Field(default=None, alias="fields[vendor-product-to-class-mapping]")
-    fields_vendor_product_class_discounts: str = Field(default=None, alias="fields[vendor-product-class-discounts]")
-    fields_vendor_product_classes: str = Field(default=None, alias="fields[vendor-product-classes]")
+    fields_vendor_product_to_class_mapping: str = Field(
+        default=None, alias="fields[vendor-product-to-class-mapping]"
+    )
+    fields_vendor_product_class_discounts: str = Field(
+        default=None, alias="fields[vendor-product-class-discounts]"
+    )
+    fields_vendor_product_classes: str = Field(
+        default=None, alias="fields[vendor-product-classes]"
+    )
 
 
 class VendorProductClassRObj(VendorProductClassRID):
@@ -488,7 +564,7 @@ _VendorProductClassQuery: type[BaseModel] = create_model(
         for field in VendorProductClassAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_product_classes': (
+        f"fields_vendor_product_classes": (
             Optional[str],
             None,
         )
@@ -499,7 +575,9 @@ _VendorProductClassQuery: type[BaseModel] = create_model(
 class VendorProductClassQuery(_VendorProductClassQuery, BaseModel): ...
 
 
-class VendorProductClassQueryJSONAPI(VendorProductClassFields, VendorProductClassFilters, Query):
+class VendorProductClassQueryJSONAPI(
+    VendorProductClassFields, VendorProductClassFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
@@ -508,16 +586,19 @@ class ModVendorProductClassAttrs(BaseModel):
     name: Optional[str] = Field(default=None, alias="name")
     rank: Optional[int] = Field(default=None, alias="rank")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorProductClassRObj(BaseModel):
     id: int
     type: str = VendorProductClass.__jsonapi_type_override__
     attributes: ModVendorProductClassAttrs
     relationships: VendorProductClassRels
-    
+
+
 class ModVendorProductClass(BaseModel):
     data: ModVendorProductClassRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorProductToClassMapping
 
 
@@ -536,8 +617,12 @@ class VendorProductToClassMappingAttrs(BaseModel):
 
 class VendorProductToClassMappingRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_product_classes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-product-classes")
-    vendor_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-products")
+    vendor_product_classes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-classes"
+    )
+    vendor_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-products"
+    )
 
 
 class VendorProductToClassMappingFilters(BaseModel):
@@ -547,9 +632,13 @@ class VendorProductToClassMappingFilters(BaseModel):
 
 class VendorProductToClassMappingFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_product_classes: str = Field(default=None, alias="fields[vendor-product-classes]")
+    fields_vendor_product_classes: str = Field(
+        default=None, alias="fields[vendor-product-classes]"
+    )
     fields_vendor_products: str = Field(default=None, alias="fields[vendor-products]")
-    fields_vendor_product_to_class_mapping: str = Field(default=None, alias="fields[vendor-product-to-class-mapping]")
+    fields_vendor_product_to_class_mapping: str = Field(
+        default=None, alias="fields[vendor-product-to-class-mapping]"
+    )
 
 
 class VendorProductToClassMappingRObj(VendorProductToClassMappingRID):
@@ -581,7 +670,7 @@ _VendorProductToClassMappingQuery: type[BaseModel] = create_model(
         for field in VendorProductToClassMappingAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_product_to_class_mapping': (
+        f"fields_vendor_product_to_class_mapping": (
             Optional[str],
             None,
         )
@@ -589,23 +678,28 @@ _VendorProductToClassMappingQuery: type[BaseModel] = create_model(
 )
 
 
-class VendorProductToClassMappingQuery(_VendorProductToClassMappingQuery, BaseModel): ...
+class VendorProductToClassMappingQuery(
+    _VendorProductToClassMappingQuery, BaseModel
+): ...
 
 
-class VendorProductToClassMappingQueryJSONAPI(VendorProductToClassMappingFields, VendorProductToClassMappingFilters, Query):
+class VendorProductToClassMappingQueryJSONAPI(
+    VendorProductToClassMappingFields, VendorProductToClassMappingFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 
 class ModVendorProductToClassMappingAttrs(BaseModel):
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorProductToClassMappingRObj(BaseModel):
     id: int
     type: str = VendorProductToClassMapping.__jsonapi_type_override__
     attributes: ModVendorProductToClassMappingAttrs
     relationships: VendorProductToClassMappingRels
-    
+
+
 class ModVendorProductToClassMapping(BaseModel):
     data: ModVendorProductToClassMappingRObj
-        
