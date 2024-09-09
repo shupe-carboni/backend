@@ -44,6 +44,8 @@ def price_flexcoil_version(
             model_to_parse = model_number.replace("AP", "N")
         elif model_number[:2] == "CE":
             model_to_parse = model_number + "N"
+        else:
+            return pd.Series([no_change, no_change])
     # flexcoil by append
     elif series in ("MH", "V"):
         if model_number[-1] not in ("R", "N"):
