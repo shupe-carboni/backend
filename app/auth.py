@@ -31,9 +31,18 @@ from app.jsonapi.sqla_models import (
     SCAVendor,
     ADPCustomer,
     ADPQuote,
-    FriedrichCustomer,
-    FriedrichCustomertoSCACustomerLocation,
     permitted_customer_location_ids,
+    Vendor,
+    VendorsAttr,
+    VendorProduct,
+    VendorPricingClass,
+    VendorPricingByClass,
+    VendorPricingByCustomer,
+    VendorCustomer,
+    VendorCustomerAttr,
+    VendorProductClassDiscount,
+    VendorQuote,
+    VendorQuoteProduct,
 )
 from app.jsonapi.sqla_jsonapi_ext import GenericData
 
@@ -709,141 +718,123 @@ class AtcoOperations(SecOp):
         self._serializer = serializer_partial(prefix)
 
 
-class BerryOperations(SecOp):
+# V2
+class VendorOperations2(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = Vendor
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class C_DOperations(SecOp):
+class VendorProductOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class FamcoOperations(SecOp):
+class VendorsAttrOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorsAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class FriedrichOperations(SecOp):
+class VendorPricingClassOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = FriedrichCustomer
+        self._primary_resource = VendorPricingClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class GeneralAireOperations(SecOp):
+class VendorPricingByClassOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorPricingByClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class GenesisOperations(SecOp):
+class VendorPricingByCustomerOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorPricingByCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class GlasflossOperations(SecOp):
+class VendorCustomerOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class HardcastOperations(SecOp):
+class VendorCustomerAttrOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorCustomerAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class JBOperations(SecOp):
+class VendorProductClassDiscountOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorProductClassDiscount
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class MilwaukeeOperations(SecOp):
+class VendorQuoteOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorQuote
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
 
 
-class NelcoOperations(SecOp):
+class VendorQuoteProductOperations(SecOp):
+
     def __init__(
         self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
     ) -> None:
         super().__init__(token, resource)
-        self._primary_resource = None
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix)
-
-
-class SuperiorValveOperations(SecOp):
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = None
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix)
-
-
-class TjernlundOperations(SecOp):
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = None
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix)
-
-
-class TPICorpOperations(SecOp):
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = None
+        self._primary_resource = VendorQuoteProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
