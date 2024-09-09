@@ -1,5 +1,10 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+from app.adp.adp_models.model_series import (
+    ModelSeries,
+    Fields,
+    Cabinet,
+    PriceByCategoryAndKey,
+)
 from app.db import ADP_DB, Session
 
 
@@ -37,7 +42,12 @@ class HH(ModelSeries):
         self.width = width // 10 + (5 / 8) + 4 + (3 / 8)
         self.depth = 10
         self.height = int(self.attributes["height"]) + 0.25 + 1.5
-        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.material = "Copper"
         self.pallet_qty = specs["pallet_qty"]
         self.weight = specs["WEIGHT"]
@@ -69,7 +79,7 @@ class HH(ModelSeries):
             value += " - A2L"
         return value
 
-    def load_pricing(self) -> tuple[int, dict[str, int]]:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
 
         pricing_sql = """
             SELECT price
@@ -81,26 +91,12 @@ class HH(ModelSeries):
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
 
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return pricing, adders
+        return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
-        result = pricing_ + adders_.get(self.attributes["meter"], 0)
-        result += adders_.get(self.attributes["option"], 0)
+        result = pricing_ + adders_["metering"].get(self.attributes["meter"], 0)
+        result += adders_["RDS"].get(self.attributes["option"], 0)
         return result
 
     def record(self) -> dict:

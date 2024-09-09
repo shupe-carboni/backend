@@ -1,5 +1,5 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields
+from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session
 
 
@@ -99,7 +99,7 @@ class CP(ModelSeries):
             value += " - A2L"
         return value
 
-    def load_pricing(self) -> tuple[int, dict[str, int]]:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         sql = f"""
             SELECT price
             FROM pricing_cp_series
@@ -114,25 +114,11 @@ class CP(ModelSeries):
         ).scalar_one_or_none()
         if not result:
             raise NoBasePrice
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return int(result), adders
+        return int(result), self.get_adders()
 
     def get_zero_disc_price(self) -> int:
         base_price, adders = self.load_pricing()
-        result = base_price + adders.get(self.attributes.get("rds"), 0)
+        result = base_price + adders["RDS"].get(self.attributes.get("rds"), 0)
         return result
 
     def record(self) -> dict:

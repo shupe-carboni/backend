@@ -1,5 +1,10 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
+from app.adp.adp_models.model_series import (
+    ModelSeries,
+    Fields,
+    Cabinet,
+    PriceByCategoryAndKey,
+)
 from app.db import ADP_DB, Session
 
 
@@ -85,7 +90,12 @@ class HE(ModelSeries):
         else:
             self.cabinet_config = Cabinet.PAINTED
         self.material = self.material_mapping[self.attributes["mat"]]
-        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.color = self.paint_color_mapping[self.attributes["paint"]]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
@@ -158,7 +168,7 @@ class HE(ModelSeries):
             value += " - A2L"
         return value
 
-    def load_pricing(self, config: str) -> tuple[int, dict[str, int]]:
+    def load_pricing(self, config: str) -> tuple[int, PriceByCategoryAndKey]:
 
         pricing_sql = f"""
             SELECT "{config}"
@@ -170,21 +180,7 @@ class HE(ModelSeries):
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
 
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return int(pricing), adders
+        return int(pricing), self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         if self.depth == 19.5:
@@ -215,7 +211,7 @@ class HE(ModelSeries):
         )
 
         # adder for txvs
-        result = pricing_ + adders_.get(self.attributes["meter"], 0)
+        result = pricing_ + adders_["metering"].get(self.attributes["meter"], 0)
 
         # adder for non_core depth
         core_depths: str = core_configs["depth"]
@@ -223,7 +219,7 @@ class HE(ModelSeries):
         depth_core_status = (
             "core" if self.attributes["depth"] in core_depths_list else "non-core"
         )
-        result += adders_.get(depth_core_status, 0)
+        result += adders_["misc"].get(depth_core_status, 0)
 
         # adder for non_core hand
         core_hands: str = core_configs["hand"]
@@ -238,8 +234,8 @@ class HE(ModelSeries):
         }
         model_hand = hand[self.attributes["config"]]
         hand_core_status = "core" if model_hand in core_hands_list else "non-core"
-        result += adders_.get(hand_core_status, 0)
-        result += adders_.get(self.attributes["option"], 0)
+        result += adders_["misc"].get(hand_core_status, 0)
+        result += adders_["RDS"].get(self.attributes["option"], 0)
         return result
 
     def record(self) -> dict:

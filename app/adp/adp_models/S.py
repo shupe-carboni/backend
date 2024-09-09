@@ -1,5 +1,5 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields
+from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session
 
 
@@ -39,7 +39,12 @@ class S(ModelSeries):
         self.motor = (
             "PSC Motor" if int(self.attributes["ton"]) % 2 == 0 else "ECM Motor"
         )
-        self.metering = self.metering_mapping[int(self.attributes["meter"])]
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
             & (self.mat_grps["mat"].str.contains(self.attributes["mat"])),
@@ -78,7 +83,7 @@ class S(ModelSeries):
             value += " - A2L"
         return value
 
-    def load_pricing(self) -> tuple[int, dict[str, int]]:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         # NOTE the ~ operator compares the parameter str to the regex
         # patterns in the column
         pricing_sql = f"""
@@ -90,27 +95,13 @@ class S(ModelSeries):
         pricing = ADP_DB.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
-        price_adders_sql = """
-            SELECT key, price
-            FROM price_adders
-            WHERE series = :series;
-        """
-        params = dict(series=self.__series_name__())
-        adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            adders |= {adder["key"]: adder["price"]}
-        return pricing, adders
+        return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
-        result = pricing_ + adders_.get(self.attributes["meter"], 0)
-        result += adders_.get(self.attributes["ton"], 0)
-        result += adders_.get(self.attributes.get("rds"), 0)
+        result = pricing_ + adders_["metering"].get(self.attributes["meter"], 0)
+        result += adders_["tonnage"].get(self.attributes["ton"], 0)
+        result += adders_["RDS"].get(self.attributes.get("rds"), 0)
         return result
 
     def set_heat(self):
