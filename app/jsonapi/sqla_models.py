@@ -585,6 +585,9 @@ class SCACustomerLocation(Base):
     adp_alias_to_sca_customer_locations = relationship(
         "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
     )
+    customer_location_mapping = relationship(
+        "CustomerLocationMapping", back_populates=__tablename_alt__
+    )
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -690,6 +693,9 @@ class SCAPlace(Base):
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__jsonapi_type_override__
     )
+    vendor_quotes = relationship(
+        "VendorQuote", back_populates=__jsonapi_type_override__
+    )
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -731,6 +737,12 @@ class SCAUser(Base):
     )
     manager_map = relationship(
         "SCAManagerMap", back_populates=__jsonapi_type_override__
+    )
+    customer_pricing_by_class = relationship(
+        "CustomerPricingByClass", back_populates=__jsonapi_type_override__
+    )
+    customer_pricing_by_customer = relationship(
+        "CustomerPricingByCustomer", back_populates=__jsonapi_type_override__
     )
 
     ## GET request filtering
@@ -1239,24 +1251,15 @@ class Vendor(Base):
     logo_path = Column(String)
     deleted_at = Column(DateTime)
     # relationships
-    vendors_attrs = relationship(
-        "SCAVendorsAttr", back_populates=__jsonapi_type_override__
+    vendors_attrs = relationship("VendorsAttr", back_populates=__tablename__)
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+    vendor_product_classes = relationship(
+        "VendorProductClass", back_populates=__tablename__
     )
-    vendors_products = relationship(
-        "SCAVendorsProduct", back_populates=__jsonapi_type_override__
+    vendor_pricing_classes = relationship(
+        "VendorPricingClass", back_populates=__tablename__
     )
-    vendors_product_classes = relationship(
-        "SCAVendorsProductClass", back_populates=__jsonapi_type_override__
-    )
-    vendors_pricing_classes = relationship(
-        "SCAVendorsPricingClass", back_populates=__jsonapi_type_override__
-    )
-    vendors_pricing_classes = relationship(
-        "SCAVendorsPricingClass", back_populates=__jsonapi_type_override__
-    )
-    vendors_customers = relationship(
-        "SCAVendorsCustomer", back_populates=__jsonapi_type_override__
-    )
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1277,9 +1280,9 @@ class VendorsAttr(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors = relationship("Vendor", back_populates=__tablename__)
     vendors_attrs_changelog = relationship(
-        "VendorsAttrsChangelog", back_populates=__jsonapi_type_override__
+        "VendorsAttrsChangelog", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1300,9 +1303,7 @@ class VendorsAttrsChangelog(Base):
     timestamp = Column(DateTime)
 
     # relationships
-    vendors_attrs = relationship(
-        "VendorsAttr", back_populates=__jsonapi_type_override__
-    )
+    vendors_attrs = relationship("VendorsAttr", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1310,7 +1311,7 @@ class VendorsAttrsChangelog(Base):
 
 
 class VendorProduct(Base):
-    __tablename__ = "vendors_products"
+    __tablename__ = "vendor_products"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["vendor_product_description", "deleted_at"]
     __primary_ref__ = "vendors"
@@ -1322,12 +1323,21 @@ class VendorProduct(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors = relationship("Vendor", back_populates=__tablename__)
+    vendor_pricing_by_class = relationship(
+        "VendorPricingByClass", back_populates=__tablename__
+    )
+    vendor_pricing_by_customer = relationship(
+        "VendorPricingByCustomer", back_populates=__tablename__
+    )
     vendor_product_attrs = relationship(
-        "VendorProductsAttr", back_populates=__jsonapi_type_override__
+        "VendorProductAttr", back_populates=__tablename__
     )
     vendor_product_to_class_mapping = relationship(
-        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+        "VendorProductToClassMapping", back_populates=__tablename__
+    )
+    vendor_quote_products = relationship(
+        "VendorQuoteProduct", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1335,8 +1345,8 @@ class VendorProduct(Base):
         return q
 
 
-class VendorsProductsAttr(Base):
-    __tablename__ = "vendors_product_attrs"
+class VendorProductAttr(Base):
+    __tablename__ = "vendor_product_attrs"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["value", "deleted_at"]
     __primary_ref__ = "vendor_products"
@@ -1349,16 +1359,14 @@ class VendorsProductsAttr(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendor_products = relationship(
-        "VendorProduct", back_populates=__jsonapi_type_override__
-    )
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
-class VendorsProductClass(Base):
+class VendorProductClass(Base):
     __tablename__ = "vendor_product_classes"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["name", "rank", "deleted_at"]
@@ -1371,9 +1379,12 @@ class VendorsProductClass(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
-    vendors_attrs_changelog = relationship(
-        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+    vendors = relationship("Vendor", back_populates=__tablename__)
+    vendor_product_to_class_mapping = relationship(
+        "VendorProductToClassMapping", back_populates=__tablename__
+    )
+    vendor_product_class_discounts = relationship(
+        "VendorProductClassDiscount", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1381,7 +1392,7 @@ class VendorsProductClass(Base):
         return q
 
 
-class VendorsProductToClassMapping(Base):
+class VendorProductToClassMapping(Base):
     __tablename__ = "vendor_product_to_class_mapping"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["deleted_at"]
@@ -1393,20 +1404,17 @@ class VendorsProductToClassMapping(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
     vendor_product_classes = relationship(
-        "VendorsProductClass", back_populates=__jsonapi_type_override__
+        "VendorProductClass", back_populates=__tablename__
     )
-    vendor_product = relationship(
-        "VendorProduct", back_populates=__jsonapi_type_override__
-    )
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
 
-class VendorsPricingClass(Base):
+class VendorPricingClass(Base):
     __tablename__ = "vendor_pricing_classes"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["name", "deleted_at"]
@@ -1418,9 +1426,18 @@ class VendorsPricingClass(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors = relationship("Vendor", back_populates=__tablename__)
     vendor_pricing_by_class = relationship(
-        "VendorsPricingByClass", back_populates=__jsonapi_type_override__
+        "VendorPricingByClass", back_populates=__tablename__
+    )
+    vendor_pricing_by_customer = relationship(
+        "VendorPricingByCustomer", back_populates=__tablename__
+    )
+    vendor_customer_pricing_classes = relationship(
+        "VendorCustomerPricingClass", back_populates=__tablename__
+    )
+    vendor_customer_pricing_classes_changelog = relationship(
+        "VendorCustomerPricingClassesChangelog", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1428,7 +1445,7 @@ class VendorsPricingClass(Base):
         return q
 
 
-class VendorsPricingByClass(Base):
+class VendorPricingByClass(Base):
     __tablename__ = "vendor_pricing_by_class"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["price", "deleted_at"]
@@ -1441,12 +1458,15 @@ class VendorsPricingByClass(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
     vendor_pricing_classes = relationship(
-        "VendorPricingClass", back_populates=__jsonapi_type_override__
+        "VendorPricingClass", back_populates=__tablename__
     )
-    vendor_product_to_class_mapping = relationship(
-        "VendorsProductToClassMapping", back_populates=__jsonapi_type_override__
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+    vendor_pricing_by_class_changelog = relationship(
+        "VendorPricingByClassChangelog", back_populates=__tablename__
+    )
+    customer_pricing_by_class = relationship(
+        "CustomerPricingByClass", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1454,7 +1474,7 @@ class VendorsPricingByClass(Base):
         return q
 
 
-class VendorsPricingByClassChangelog(Base):
+class VendorPricingByClassChangelog(Base):
     __tablename__ = "vendor_pricing_by_class_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
@@ -1467,7 +1487,7 @@ class VendorsPricingByClassChangelog(Base):
 
     # relationships
     vendor_pricing_by_class = relationship(
-        "VendorsPricingByClass", back_populates=__jsonapi_type_override__
+        "VendorPricingByClass", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1475,7 +1495,7 @@ class VendorsPricingByClassChangelog(Base):
         return q
 
 
-class VendorsPricingByCustomer(Base):
+class VendorPricingByCustomer(Base):
     __tablename__ = "vendor_pricing_by_customer"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["use_as_override", "price", "deleted_at"]
@@ -1490,14 +1510,19 @@ class VendorsPricingByCustomer(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendor_customers = relationship(
-        "VendorCustomer", back_populates=__jsonapi_type_override__
-    )
-    vendor_products = relationship(
-        "VendorProduct", back_populates=__jsonapi_type_override__
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+    vendor_pricing_by_customer_attrs = relationship(
+        "VendorPricingByCustomerAttr", back_populates=__tablename__
     )
     vendor_pricing_classes = relationship(
-        "VendorPricingClass", back_populates=__jsonapi_type_override__
+        "VendorPricingClass", back_populates=__tablename__
+    )
+    vendor_pricing_by_customer_changelog = relationship(
+        "VendorPricingByCustomerChangelog", back_populates=__tablename__
+    )
+    customer_pricing_by_customer = relationship(
+        "CustomerPricingByCustomer", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1509,7 +1534,7 @@ class VendorsPricingByCustomer(Base):
         exists_subquery = exists().where(
             vendor_customer_to_locations.vendor_customer_id == vendor_customers.id,
             vendor_customer_to_locations.customer_location_id.in_(ids),
-            vendor_customers.id == VendorsPricingByCustomer.vendor_customer_id,
+            vendor_customers.id == VendorPricingByCustomer.vendor_customer_id,
         )
         return q.where(exists_subquery)
 
@@ -1530,30 +1555,29 @@ class VendorCustomer(Base):
     deleted_at = Column(DateTime)
 
     # relationships
-    vendors = relationship("Vendor", back_populates=__jsonapi_type_override__)
+    vendors = relationship("Vendor", back_populates=__tablename__)
     vendor_pricing_by_customer = relationship(
-        "VendorPricingByCustomer", back_populates=__jsonapi_type_override__
-    )
-    vendor_pricing_classes = relationship(
-        "VendorProductClassDiscount", back_populates=__jsonapi_type_override__
+        "VendorPricingByCustomer", back_populates=__tablename__
     )
     vendor_customer_pricing_classes_changelog = relationship(
-        "VendorCustomerPricingClassChangelog", back_populates=__jsonapi_type_override__
+        "VendorCustomerPricingClassesChangelog",
+        back_populates=__tablename__,
     )
     vendor_customer_pricing_classes = relationship(
-        "VendorCustomerPricingClass", back_populates=__jsonapi_type_override__
+        "VendorCustomerPricingClass", back_populates=__tablename__
     )
-    vendor_customers_changelog = relationship(
-        "VendorCustomerChangelog", back_populates=__jsonapi_type_override__
+    vendor_customer_changelog = relationship(
+        "VendorCustomerChangelog", back_populates=__tablename__
     )
-    vendor_quotes = relationship(
-        "VendorQuote", back_populates=__jsonapi_type_override__
-    )
+    vendor_quotes = relationship("VendorQuote", back_populates=__tablename__)
     vendor_customer_attrs = relationship(
-        "VendorCustomerAttr", back_populates=__jsonapi_type_override__
+        "VendorCustomerAttr", back_populates=__tablename__
+    )
+    vendor_product_class_discounts = relationship(
+        "VendorProductClassDiscount", back_populates=__tablename__
     )
     customer_location_mapping = relationship(
-        "CustomerLocationMapping", back_populates=__jsonapi_type_override__
+        "CustomerLocationMapping", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1595,7 +1619,7 @@ class CustomerLocationMapping(Base):
 
 
 class VendorPricingByCustomerChangelog(Base):
-    __tablename__ = "Vendor_pricing_by_customer_changelog"
+    __tablename__ = "vendor_pricing_by_customer_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
     __primary_ref__ = "vendor_pricing_by_customer"
@@ -1609,14 +1633,14 @@ class VendorPricingByCustomerChangelog(Base):
 
     # relationships
     vendor_pricing_by_customer = relationship(
-        "VendorsPricingByCustomer", back_populates=__tablename__
+        "VendorPricingByCustomer", back_populates=__tablename__
     )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
-        vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+        vendor_pricing_by_customer = aliased(VendorPricingByCustomer)
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
@@ -1633,7 +1657,7 @@ class VendorPricingByCustomerChangelog(Base):
         return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
 
 
-class VendorProductClassDiscounts(Base):
+class VendorProductClassDiscount(Base):
     __tablename__ = "vendor_product_class_discounts"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["discount", "deleted_at"]
@@ -1648,7 +1672,10 @@ class VendorProductClassDiscounts(Base):
     # relationships
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
     vendor_product_classes = relationship(
-        "VendorsProductClass", back_populates=__tablename__
+        "VendorProductClass", back_populates=__tablename__
+    )
+    vendor_product_class_discounts_changelog = relationship(
+        "VendorProductClassDiscountsChangelog", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1658,7 +1685,7 @@ class VendorProductClassDiscounts(Base):
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
-            vendor_customers.id == VendorProductClassDiscounts.vendor_customer_id,
+            vendor_customers.id == VendorProductClassDiscount.vendor_customer_id,
             vendor_customers.id == customer_mapping.vendor_customer_id,
             customer_mapping.customer_location_id.in_(ids),
         )
@@ -1670,7 +1697,7 @@ class VendorProductClassDiscounts(Base):
 
 
 class VendorPricingByCustomerAttr(Base):
-    __tablename__ = "Vendor_pricing_by_customer_attrs"
+    __tablename__ = "vendor_pricing_by_customer_attrs"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
     __primary_ref__ = "vendor_pricing_by_customer"
@@ -1686,14 +1713,14 @@ class VendorPricingByCustomerAttr(Base):
 
     # relationships
     vendor_pricing_by_customer = relationship(
-        "VendorsPricingByCustomer", back_populates=__tablename__
+        "VendorPricingByCustomer", back_populates=__tablename__
     )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
-        vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+        vendor_pricing_by_customer = aliased(VendorPricingByCustomer)
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
@@ -1710,7 +1737,7 @@ class VendorPricingByCustomerAttr(Base):
         return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
 
 
-class VendorsProductClassDiscountsChangelog(Base):
+class VendorProductClassDiscountsChangelog(Base):
     __tablename__ = "vendor_product_class_discounts_changelog"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = None
@@ -1725,19 +1752,19 @@ class VendorsProductClassDiscountsChangelog(Base):
 
     # relationships
     vendor_product_class_discounts = relationship(
-        "VendorProductClassDiscounts", back_populates=__jsonapi_type_override__
+        "VendorProductClassDiscount", back_populates=__tablename__
     )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
-        vendor_product_class_discounts = aliased(VendorProductClassDiscounts)
+        vendor_product_class_discounts = aliased(VendorProductClassDiscount)
         vendor_customers = aliased(VendorCustomer)
         customer_mapping = aliased(CustomerLocationMapping)
         exists_query = exists().where(
             vendor_product_class_discounts.id
-            == VendorsProductClassDiscountsChangelog.vendor_product_class_discounts_id,
+            == VendorProductClassDiscountsChangelog.vendor_product_class_discounts_id,
             vendor_customers.id == vendor_product_class_discounts.vendor_customer_id,
             vendor_customers.id == customer_mapping.vendor_customer_id,
             customer_mapping.customer_location_id.in_(ids),
@@ -1769,7 +1796,14 @@ class VendorQuote(Base):
 
     # relationships
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    vendor_quote_products = relationship(
+        "VendorQuoteProduct", back_populates=__tablename__
+    )
     places = relationship("SCAPlace", back_populates=__tablename__)
+    vendor_quotes_changelog = relationship(
+        "VendorQuoteChangelog", back_populates=__tablename__
+    )
+    vendor_quotes_attrs = relationship("VendorQuoteAttr", back_populates=__tablename__)
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1807,6 +1841,9 @@ class VendorQuoteProduct(Base):
     # relationships
     vendor_quotes = relationship("VendorQuote", back_populates=__tablename__)
     vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+    vendor_quote_products_changelog = relationship(
+        "VendorQuoteProductChangelog", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -1907,7 +1944,7 @@ class VendorCustomerPricingClass(Base):
 
     # relationships
     vendor_pricing_classes = relationship(
-        "VendorsPricingClass", back_populates=__tablename__
+        "VendorPricingClass", back_populates=__tablename__
     )
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
 
@@ -1938,7 +1975,7 @@ class VendorCustomerPricingClassesChangelog(Base):
 
     # relationships
     vendor_pricing_classes = relationship(
-        "VendorsPricingClass", back_populates=__tablename__
+        "VendorPricingClass", back_populates=__tablename__
     )
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
 
@@ -2000,6 +2037,9 @@ class VendorCustomerAttr(Base):
 
     # relationships
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    vendor_customer_attrs_changelog = relationship(
+        "VendorCustomerAttrChangelog", back_populates=__tablename__
+    )
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -2039,7 +2079,7 @@ class CustomerPricingByClass(Base):
 
     # relationships
     vendor_pricing_by_class = relationship(
-        "VendorsPricingByClass", back_populates=__tablename__
+        "VendorPricingByClass", back_populates=__tablename__
     )
     users = relationship("SCAUser", back_populates=__tablename__)
 
@@ -2062,7 +2102,7 @@ class CustomerPricingByCustomer(Base):
 
     # relationships
     vendor_pricing_by_customer = relationship(
-        "VendorsPricingByCustomer", back_populates=__tablename__
+        "VendorPricingByCustomer", back_populates=__tablename__
     )
     users = relationship("SCAUser", back_populates=__tablename__)
 
@@ -2419,7 +2459,7 @@ def vendor_quotes_primary_id_queries(email: str, vendor: str) -> QuerySet:
 
 
 def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
-    vendor_pricing_by_customer = aliased(VendorsPricingByCustomer)
+    vendor_pricing_by_customer = aliased(VendorPricingByCustomer)
     vendor_customer = aliased(VendorCustomer)
     customer_to_loc = aliased(CustomerLocationMapping)
     customer_locations = aliased(SCACustomerLocation)
@@ -2432,7 +2472,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
+            vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
         )
     )
     manager_map = aliased(SCAManagerMap)
@@ -2444,7 +2484,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
+            vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
         )
     )
     admin_map = aliased(CustomerAdminMap)
@@ -2456,7 +2496,7 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> Qu
             users.email == email,
             vendor_customer.vendor_id == vendor,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
-            vendor_customer.id == VendorsPricingByCustomer.vendor_customer_id,
+            vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
         )
     )
     querys: QuerySet = {
