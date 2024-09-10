@@ -1,15 +1,23 @@
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
 from app.jsonapi.core_models import convert_query
-
-# from app.RELATED_RESOURCE.models import
 from app.v2.models import (
     VendorResp,
     VendorQuery,
     VendorQueryJSONAPI,
+    VendorsAttrResp,
+    VendorsAttrRelResp,
+    VendorProductResp,
+    VendorProductRelResp,
+    VendorProductClassResp,
+    VendorProductClassRelResp,
+    VendorPricingClassResp,
+    VendorPricingClassRelResp,
+    VendorCustomerResp,
+    VendorCustomerRelResp,
 )
 from app.jsonapi.sqla_models import Vendor
 
@@ -66,7 +74,7 @@ async def vendor_resource(
 
 @vendors.get(
     "/{vendor_id}/vendors-attrs",
-    response_model=None,
+    response_model=VendorsAttrResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -75,7 +83,7 @@ async def vendor_related_vendors_attrs(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorsAttrResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -88,7 +96,7 @@ async def vendor_related_vendors_attrs(
 
 @vendors.get(
     "/{vendor_id}/relationships/vendors-attrs",
-    response_model=None,
+    response_model=VendorsAttrRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -97,7 +105,7 @@ async def vendor_relationships_vendors_attrs(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorsAttrRelResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -110,7 +118,7 @@ async def vendor_relationships_vendors_attrs(
 
 @vendors.get(
     "/{vendor_id}/vendor-products",
-    response_model=None,
+    response_model=VendorProductResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -119,7 +127,7 @@ async def vendor_related_vendor_products(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorProductResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -132,7 +140,7 @@ async def vendor_related_vendor_products(
 
 @vendors.get(
     "/{vendor_id}/relationships/vendor-products",
-    response_model=None,
+    response_model=VendorProductRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -141,7 +149,7 @@ async def vendor_relationships_vendor_products(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorProductRelResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -154,7 +162,7 @@ async def vendor_relationships_vendor_products(
 
 @vendors.get(
     "/{vendor_id}/vendor-product-classes",
-    response_model=None,
+    response_model=VendorProductClassResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -163,7 +171,7 @@ async def vendor_related_vendor_product_classes(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorProductClassResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -176,7 +184,7 @@ async def vendor_related_vendor_product_classes(
 
 @vendors.get(
     "/{vendor_id}/relationships/vendor-product-classes",
-    response_model=None,
+    response_model=VendorProductClassRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -185,7 +193,7 @@ async def vendor_relationships_vendor_product_classes(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorProductClassRelResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -198,7 +206,7 @@ async def vendor_relationships_vendor_product_classes(
 
 @vendors.get(
     "/{vendor_id}/vendor-pricing-classes",
-    response_model=None,
+    response_model=VendorPricingClassResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -207,7 +215,7 @@ async def vendor_related_vendor_pricing_classes(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorPricingClassResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -220,7 +228,7 @@ async def vendor_related_vendor_pricing_classes(
 
 @vendors.get(
     "/{vendor_id}/relationships/vendor-pricing-classes",
-    response_model=None,
+    response_model=VendorPricingClassRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -229,7 +237,7 @@ async def vendor_relationships_vendor_pricing_classes(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorPricingClassRelResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -242,7 +250,7 @@ async def vendor_relationships_vendor_pricing_classes(
 
 @vendors.get(
     "/{vendor_id}/vendor-customers",
-    response_model=None,
+    response_model=VendorCustomerResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -251,7 +259,7 @@ async def vendor_related_vendor_customers(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorCustomerResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -264,7 +272,7 @@ async def vendor_related_vendor_customers(
 
 @vendors.get(
     "/{vendor_id}/relationships/vendor-customers",
-    response_model=None,
+    response_model=VendorCustomerRelResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -273,7 +281,7 @@ async def vendor_relationships_vendor_customers(
     session: NewSession,
     vendor_id: int,
     query: VendorQuery = Depends(),
-) -> None:
+) -> VendorCustomerRelResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -282,6 +290,15 @@ async def vendor_relationships_vendor_customers(
         .allow_customer("std")
         .get(session, converter(query), vendor_id, "vendor-customers", True)
     )
+
+
+@vendors.post("", tags=["Not Implemented"])
+async def new_vendor(
+    token: Token,
+    session: NewSession,
+    new_vendor: None,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 from app.v2.models import ModVendor
