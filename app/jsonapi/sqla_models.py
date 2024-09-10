@@ -1605,6 +1605,7 @@ class CustomerLocationMapping(Base):
     id = Column(Integer, primary_key=True)
     vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
     customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
+    deleted_at = Column(DateTime)
     # relationships
     vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
     customer_locations = relationship(
