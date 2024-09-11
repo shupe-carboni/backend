@@ -3,7 +3,9 @@ from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategory
 from app.db import ADP_DB, Session
 
 
-class NoBasePrice(Exception): ...
+class NoBasePrice(Exception):
+    def __init__(self) -> None:
+        self.reason = "No record found in the price table with this model number."
 
 
 class CP(ModelSeries):
@@ -81,8 +83,8 @@ class CP(ModelSeries):
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
         self.rds_field_installed = False
-        if self.attributes.get("option"):
-            if str(self)[-1] in ("C", "U"):
+        if option := self.attributes.get("option"):
+            if option != "R":
                 match rds_option:
                     case "R":
                         self.rds_factory_installed = True
