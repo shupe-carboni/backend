@@ -7,6 +7,7 @@ from app.jsonapi.core_models import (
     JSONAPIRelationships,
     JSONAPIResponse,
     Query,
+    convert_query,
 )
 from app.db import Stage
 
@@ -2857,3 +2858,139 @@ class VendorCustomerAttrChangelogQuery(_VendorCustomerAttrChangelogQuery, BaseMo
 class VendorCustomerAttrChangelogQueryJSONAPI(VendorCustomerAttrChangelogFields, VendorCustomerAttrChangelogFilters, Query):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+from app.jsonapi.sqla_models import VendorsAttrsChangelog
+
+
+class VendorsAttrsChangelogRID(JSONAPIResourceIdentifier):
+    type: str = VendorsAttrsChangelog.__jsonapi_type_override__
+
+
+class VendorsAttrsChangelogRelResp(JSONAPIRelationshipsResponse):
+    data: list[VendorsAttrsChangelogRID] | VendorsAttrsChangelogRID
+
+
+class VendorsAttrsChangelogAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    type: Optional[str] = Field(default=None, alias="type")
+    value: Optional[str] = Field(default=None, alias="value")
+    timestamp: Optional[datetime] = Field(default=None, alias="timestamp")
+
+
+class VendorsAttrsChangelogRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    vendors_attrs: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors-attrs")
+
+
+class VendorsAttrsChangelogFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_type: str = Field(default=None, alias="filter[type]")
+    filter_value: str = Field(default=None, alias="filter[value]")
+    filter_timestamp: str = Field(default=None, alias="filter[timestamp]")
+
+
+class VendorsAttrsChangelogFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_vendors_attrs: str = Field(default=None, alias="fields[vendors-attrs]")
+    fields_vendors_attrs_changelog: str = Field(default=None, alias="fields[vendors-attrs-changelog]")
+
+
+class VendorsAttrsChangelogRObj(VendorsAttrsChangelogRID):
+    attributes: VendorsAttrsChangelogAttrs
+    relationships: VendorsAttrsChangelogRels
+
+
+class VendorsAttrsChangelogResp(JSONAPIResponse):
+    data: list[VendorsAttrsChangelogRObj] | VendorsAttrsChangelogRObj
+
+
+class RelatedVendorsAttrsChangelogResp(VendorsAttrsChangelogResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_VendorsAttrsChangelogQuery: type[BaseModel] = create_model(
+    "VendorsAttrsChangelogQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in VendorsAttrsChangelogRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in VendorsAttrsChangelogAttrs.model_fields.keys()
+    },
+    **{
+        f'fields_vendors_attrs_changelog': (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class VendorsAttrsChangelogQuery(_VendorsAttrsChangelogQuery, BaseModel): ...
+
+
+class VendorsAttrsChangelogQueryJSONAPI(VendorsAttrsChangelogFields, VendorsAttrsChangelogFilters, Query):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+
+converters = {
+    VendorQuery: convert_query(VendorQueryJSONAPI),
+    VendorCustomerPricingClassQuery: convert_query(
+        VendorCustomerPricingClassQueryJSONAPI
+    ),
+    VendorPricingByClassChangelogQuery: convert_query(
+        VendorPricingByClassChangelogQueryJSONAPI
+    ),
+    VendorPricingByCustomerQuery: convert_query(VendorPricingByCustomerQueryJSONAPI),
+    VendorCustomerAttrQuery: convert_query(VendorCustomerAttrQueryJSONAPI),
+    VendorCustomerPricingClassesChangelogQuery: convert_query(
+        VendorCustomerPricingClassesChangelogQueryJSONAPI
+    ),
+    VendorQuoteChangelogQuery: convert_query(VendorQuoteChangelogQueryJSONAPI),
+    CustomerLocationMappingQuery: convert_query(CustomerLocationMappingQueryJSONAPI),
+    VendorPricingByCustomerAttrQuery: convert_query(
+        VendorPricingByCustomerAttrQueryJSONAPI
+    ),
+    VendorProductClassDiscountQuery: convert_query(
+        VendorProductClassDiscountQueryJSONAPI
+    ),
+    VendorCustomerQuery: convert_query(VendorCustomerQueryJSONAPI),
+    VendorProductQuery: convert_query(VendorProductQueryJSONAPI),
+    CustomerPricingByClassQuery: convert_query(CustomerPricingByClassQueryJSONAPI),
+    VendorQuoteAttrQuery: convert_query(VendorQuoteAttrQueryJSONAPI),
+    VendorsAttrQuery: convert_query(VendorsAttrQueryJSONAPI),
+    VendorCustomerAttrChangelogQuery: convert_query(
+        VendorCustomerAttrChangelogQueryJSONAPI
+    ),
+    VendorPricingByCustomerChangelogQuery: convert_query(
+        VendorPricingByCustomerChangelogQueryJSONAPI
+    ),
+    CustomerPricingByCustomerQuery: convert_query(
+        CustomerPricingByCustomerQueryJSONAPI
+    ),
+    VendorCustomerChangelogQuery: convert_query(VendorCustomerChangelogQueryJSONAPI),
+    VendorsAttrsChangelogQuery: convert_query(VendorsAttrsChangelogQueryJSONAPI),
+    VendorQuoteProductChangelogQuery: convert_query(
+        VendorQuoteProductChangelogQueryJSONAPI
+    ),
+    VendorQuoteProductQuery: convert_query(VendorQuoteProductQueryJSONAPI),
+    VendorProductClassQuery: convert_query(VendorProductClassQueryJSONAPI),
+    VendorProductAttrQuery: convert_query(VendorProductAttrQueryJSONAPI),
+    VendorProductClassDiscountsChangelogQuery: convert_query(
+        VendorProductClassDiscountsChangelogQueryJSONAPI
+    ),
+    VendorPricingClassQuery: convert_query(VendorPricingClassQueryJSONAPI),
+    VendorPricingByClassQuery: convert_query(VendorPricingByClassQueryJSONAPI),
+    VendorQuoteQuery: convert_query(VendorQuoteQueryJSONAPI),
+    VendorProductToClassMappingQuery: convert_query(
+        VendorProductToClassMappingQueryJSONAPI
+    ),
+}
