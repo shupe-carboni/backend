@@ -323,7 +323,9 @@ class SecOp(ABC):
 
     """
 
-    def __init__(self, token: VerifiedToken, resource: SQLAlchemyModel) -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, **kwargs
+    ) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
         self.token = token
@@ -337,10 +339,14 @@ class SecOp(ABC):
         self._primary_resource: SQLAlchemyModel
         self._associated_resource: bool
         self._serializer: JSONAPI_
+        self.filters: dict = kwargs
 
     def permitted_primary_resource_ids(self, session: Session) -> set[int]:
         return self.get_result_from_id_association_queries(
-            session, **self._resource.permitted_primary_resource_ids(self.token.email)
+            session,
+            **self._resource.permitted_primary_resource_ids(
+                self.token.email, **self.filters
+            ),
         )
 
     def permitted_customer_location_ids(self, session: Session) -> set[int]:
@@ -404,7 +410,9 @@ class SecOp(ABC):
         session: Session,
         primary_id: Optional[int | str] = None,
         obj_id: Optional[int | str] = None,
+        **kwargs,
     ) -> None:
+        filters = kwargs
         if self._associated_resource:
             if not primary_id:
                 raise ValueError(
@@ -421,7 +429,9 @@ class SecOp(ABC):
             if self._admin or self._sca:
                 return
             elif self._customer or self._dev:
-                primary_ids = self.permitted_primary_resource_ids(session=session)
+                primary_ids = self.permitted_primary_resource_ids(
+                    session=session, **filters
+                )
                 if primary_id not in primary_ids:
                     raise IDNotAssociatedWithUser
                 return
@@ -441,6 +451,7 @@ class SecOp(ABC):
         obj_id: Optional[int | str] = None,
         related_resource: Optional[str] = None,
         relationship: bool = False,
+        **kwargs,
     ):
         resource = self._resource.__jsonapi_type_override__
         optional_arguments = (obj_id, relationship, related_resource)
@@ -722,9 +733,13 @@ class AtcoOperations(SecOp):
 class VendorOperations2(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = Vendor
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -733,9 +748,13 @@ class VendorOperations2(SecOp):
 class VendorProductOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -744,9 +763,13 @@ class VendorProductOperations(SecOp):
 class VendorsAttrOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorsAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -755,9 +778,13 @@ class VendorsAttrOperations(SecOp):
 class VendorPricingClassOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorPricingClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -766,9 +793,13 @@ class VendorPricingClassOperations(SecOp):
 class VendorPricingByClassOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorPricingByClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -777,9 +808,13 @@ class VendorPricingByClassOperations(SecOp):
 class VendorPricingByCustomerOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorPricingByCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -788,9 +823,13 @@ class VendorPricingByCustomerOperations(SecOp):
 class VendorCustomerOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -799,9 +838,13 @@ class VendorCustomerOperations(SecOp):
 class VendorCustomerAttrOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorCustomerAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -810,9 +853,13 @@ class VendorCustomerAttrOperations(SecOp):
 class VendorProductClassDiscountOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorProductClassDiscount
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -821,9 +868,13 @@ class VendorProductClassDiscountOperations(SecOp):
 class VendorQuoteOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorQuote
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
@@ -832,9 +883,13 @@ class VendorQuoteOperations(SecOp):
 class VendorQuoteProductOperations(SecOp):
 
     def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
+        self,
+        token: VerifiedToken,
+        resource: SQLAlchemyModel,
+        prefix: str = "",
+        **filters,
     ) -> None:
-        super().__init__(token, resource)
+        super().__init__(token, resource, **filters)
         self._primary_resource = VendorQuoteProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)

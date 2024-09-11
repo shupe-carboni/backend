@@ -42,9 +42,9 @@ class SQLAlchemyModel:
     id = Column(primary_key=True)
 
     def apply_customer_location_filtering(
-        q: sqlQuery, ids: set[int] = None
+        self, q: sqlQuery, ids: set[int] = None
     ) -> sqlQuery: ...
-    def permitted_primary_resource_ids(email: str) -> QuerySet: ...
+    def permitted_primary_resource_ids(self, email: str, **filters) -> QuerySet: ...
 
 
 DEFAULT_SORT: str = "id"
@@ -122,11 +122,11 @@ class JSONAPI_(JSONAPI):
     @staticmethod
     def _filter_deleted(model: SQLAlchemyModel, sqla_query_obj: sqlQuery) -> sqlQuery:
         """
-        The 'deleted' column signals a soft delete.
+        The 'deleted_at' column signals a soft delete.
         While soft deleting preserves reference integrity,
-            we don't want 'deleted' values showing up in query results
+            we don't want 'deleted_at' values showing up in query results
         """
-        field = "deleted"
+        field = "deleted_at"
         if model_attr := getattr(model, field, None):
             return sqla_query_obj.filter(model_attr == None)
         else:

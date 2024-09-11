@@ -31,7 +31,7 @@ Base = declarative_base()
 QuerySet = dict[str, str]
 
 
-def permitted_customer_location_ids(email: str) -> QuerySet:
+def permitted_customer_location_ids_v1(email: str) -> QuerySet:
     customer_locations = aliased(SCACustomerLocation)
     customer_locations_2 = aliased(SCACustomerLocation)
     users = aliased(SCAUser)
@@ -62,6 +62,48 @@ def permitted_customer_location_ids(email: str) -> QuerySet:
         "sql_manager": str(manager),
         "sql_user_only": str(user_only),
     }
+
+
+def permitted_customer_location_ids_v2(email: str) -> QuerySet:
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+    manager_map = aliased(SCAManagerMap)
+    admin_map = aliased(CustomerAdminMap)
+
+    user_only = select(customer_locations.id).where(
+        exists().where(
+            users.email == email, users.customer_location_id == customer_locations.id
+        )
+    )
+
+    manager = select(customer_locations.id).where(
+        exists().where(
+            users.email == email,
+            manager_map.user_id == users.id,
+            manager_map.customer_location_id == customer_locations.id,
+        )
+    )
+
+    admin = select(customer_locations.id).where(
+        exists().where(
+            admin_map.customer_id == customer_locations.customer_id,
+            admin_map.user_id == users.id,
+            users.email == email,
+        )
+    )
+    return {
+        "sql_admin": str(admin),
+        "sql_manager": str(manager),
+        "sql_user_only": str(user_only),
+    }
+
+
+def permitted_customer_location_ids(email: str, version: int = 1):
+    match version:
+        case 1:
+            permitted_customer_location_ids_v1(email=email)
+        case 2:
+            permitted_customer_location_ids_v2(email=email)
 
 
 class ADPAHProgram(Base):
@@ -2148,7 +2190,7 @@ serializer = JSONAPI_(Base)
 serializer_partial = partial(JSONAPI_, Base)
 
 
-def adp_customer_primary_id_queries(email: str) -> QuerySet:
+def adp_customer_primary_id_queries(email: str, **filters) -> QuerySet:
     adp_customers_alias = aliased(ADPCustomer)
     adptoloc = aliased(ADPAliasToSCACustomerLocation)
     users = aliased(SCAUser)
@@ -2192,7 +2234,7 @@ def adp_customer_primary_id_queries(email: str) -> QuerySet:
     return querys
 
 
-def adp_quote_primary_id_queries(email: str) -> QuerySet:
+def adp_quote_primary_id_queries(email: str, **filters) -> QuerySet:
     adp_quotes_alias = aliased(ADPQuote)
     adptoloc = aliased(ADPAliasToSCACustomerLocation)
     users = aliased(SCAUser)
@@ -2236,7 +2278,7 @@ def adp_quote_primary_id_queries(email: str) -> QuerySet:
     return querys
 
 
-def customers_primary_id_queries(email: str) -> QuerySet:
+def customers_primary_id_queries(email: str, **filters) -> QuerySet:
     users = aliased(SCAUser)
     customers = aliased(SCACustomer)
     customer_locations = aliased(SCACustomerLocation)
@@ -2275,7 +2317,7 @@ def customers_primary_id_queries(email: str) -> QuerySet:
     return querys
 
 
-def friedrich_customer_primary_id_queries(email: str) -> QuerySet:
+def friedrich_customer_primary_id_queries(email: str, **filters) -> QuerySet:
     friedrich_customers_alias = aliased(FriedrichCustomer)
     friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
     users = aliased(SCAUser)
@@ -2319,7 +2361,7 @@ def friedrich_customer_primary_id_queries(email: str) -> QuerySet:
     return querys
 
 
-def friedrich_quote_primary_id_queries(email: str) -> QuerySet:
+def friedrich_quote_primary_id_queries(email: str, **filters) -> QuerySet:
     friedrich_quotes_alias = aliased(FriedrichQuote)
     friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
     users = aliased(SCAUser)
@@ -2363,7 +2405,8 @@ def friedrich_quote_primary_id_queries(email: str) -> QuerySet:
     return querys
 
 
-def vendor_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
+def vendor_customer_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
     vendor_customer = aliased(VendorCustomer)
     customer_to_loc = aliased(CustomerLocationMapping)
     customer_locations = aliased(SCACustomerLocation)
@@ -2409,7 +2452,8 @@ def vendor_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
     return querys
 
 
-def vendor_quotes_primary_id_queries(email: str, vendor: str) -> QuerySet:
+def vendor_quotes_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
     vendor_quotes = aliased(VendorQuote)
     vendor_customer = aliased(VendorCustomer)
     customer_to_loc = aliased(CustomerLocationMapping)
@@ -2459,7 +2503,8 @@ def vendor_quotes_primary_id_queries(email: str, vendor: str) -> QuerySet:
     return querys
 
 
-def vendor_pricing_by_customer_primary_id_queries(email: str, vendor: str) -> QuerySet:
+def vendor_pricing_by_customer_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
     vendor_pricing_by_customer = aliased(VendorPricingByCustomer)
     vendor_customer = aliased(VendorCustomer)
     customer_to_loc = aliased(CustomerLocationMapping)
