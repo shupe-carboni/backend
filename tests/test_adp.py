@@ -366,7 +366,7 @@ def test_model_zero_discount_pricing(model, price):
     # id zero with sca employee perms or above triggers zero discount price-only, ignores the id for customer pricing
     url = f"{PATH_PREFIX}/model-lookup?customer_id=0&model_num="
     resp = test_client.get(url + str(model))
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
     assert resp.json()["zero-discount-price"] == price
 
 
