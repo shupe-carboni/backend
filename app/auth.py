@@ -341,7 +341,7 @@ class SecOp(ABC):
         self._serializer: JSONAPI_
         self.filters: dict = kwargs
 
-    def permitted_primary_resource_ids(self, session: Session) -> set[int]:
+    def permitted_primary_resource_ids(self, session: Session) -> tuple[str, set[int]]:
         return self.get_result_from_id_association_queries(
             session,
             **self._resource.permitted_primary_resource_ids(
@@ -410,9 +410,7 @@ class SecOp(ABC):
         session: Session,
         primary_id: Optional[int | str] = None,
         obj_id: Optional[int | str] = None,
-        **kwargs,
     ) -> None:
-        filters = kwargs
         if self._associated_resource:
             if not primary_id:
                 raise ValueError(
@@ -429,9 +427,7 @@ class SecOp(ABC):
             if self._admin or self._sca:
                 return
             elif self._customer or self._dev:
-                primary_ids = self.permitted_primary_resource_ids(
-                    session=session, **filters
-                )
+                _, primary_ids = self.permitted_primary_resource_ids(session=session)
                 if primary_id not in primary_ids:
                     raise IDNotAssociatedWithUser
                 return
@@ -454,6 +450,7 @@ class SecOp(ABC):
         **kwargs,
     ):
         resource = self._resource.__jsonapi_type_override__
+        vendor_filter = partial(self.permitted_primary_resource_ids, session=session)
         optional_arguments = (obj_id, relationship, related_resource)
         match optional_arguments:
             case None, False, None:
@@ -462,6 +459,7 @@ class SecOp(ABC):
                     session=session,
                     query=query,
                     api_type=resource,
+                    vendor_filter=vendor_filter() if self.filters else None,
                 )
             case int() | str(), False, None:
                 result_query = partial(
@@ -543,8 +541,10 @@ class SecOp(ABC):
                     rel_key=related_resource,
                 )
             case int(), _:
+                # attempted relationship without the primary resource referenced
                 raise InvalidArguments("The related resource name is missing")
             case _, str():
+                # trying to post a relationship without the id to add
                 raise InvalidArguments(
                     "the object id for the primary resource is missing"
                 )
@@ -605,6 +605,7 @@ class SecOp(ABC):
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
+        # TODO create a soft delete version
         self.gate(session, primary_id, obj_id)
         self._serializer.delete_resource(
             session=session,

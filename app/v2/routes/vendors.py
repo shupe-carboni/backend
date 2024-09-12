@@ -48,7 +48,7 @@ async def vendor_resource(
     query: VendorQuery = Depends(),
 ) -> VendorResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -70,7 +70,7 @@ async def vendor_related_vendors_attrs(
     query: VendorQuery = Depends(),
 ) -> VendorsAttrResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -92,7 +92,7 @@ async def vendor_relationships_vendors_attrs(
     query: VendorQuery = Depends(),
 ) -> VendorsAttrRelResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -114,7 +114,7 @@ async def vendor_related_vendor_products(
     query: VendorQuery = Depends(),
 ) -> VendorProductResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -136,7 +136,7 @@ async def vendor_relationships_vendor_products(
     query: VendorQuery = Depends(),
 ) -> VendorProductRelResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -160,7 +160,7 @@ async def vendor_related_vendor_product_classes(
     query: VendorQuery = Depends(),
 ) -> VendorProductClassResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -184,7 +184,7 @@ async def vendor_relationships_vendor_product_classes(
     query: VendorQuery = Depends(),
 ) -> VendorProductClassRelResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -212,7 +212,7 @@ async def vendor_related_vendor_pricing_classes(
     query: VendorQuery = Depends(),
 ) -> VendorPricingClassResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -236,7 +236,7 @@ async def vendor_relationships_vendor_pricing_classes(
     query: VendorQuery = Depends(),
 ) -> VendorPricingClassRelResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -264,7 +264,7 @@ async def vendor_related_vendor_customers(
     query: VendorQuery = Depends(),
 ) -> VendorCustomerResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -286,7 +286,7 @@ async def vendor_relationships_vendor_customers(
     query: VendorQuery = Depends(),
 ) -> VendorCustomerRelResp:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -297,7 +297,64 @@ async def vendor_relationships_vendor_customers(
     )
 
 
-# chained GETs - dynamic
+# chained GETs - static collections
+
+
+@vendors.get(
+    "/{vendor_id}/vendors-attrs/vendor-attrs-changelog",
+    response_model=VendorsAttrsChangelogResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_attrs_related_changelog_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    attr_id: int,
+    query: VendorsAttrsChangelogQuery = Depends(),
+) -> VendorsAttrsChangelogResp:
+    return (
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, vendor_id=vendor_id)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorsAttrsChangelogQuery](query),
+            attr_id,
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendors-products/vendor-product-attrs",
+    response_model=VendorsAttrsChangelogResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_attrs_related_changelog_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    attr_id: int,
+    query: VendorsAttrsChangelogQuery = Depends(),
+) -> VendorsAttrsChangelogResp:
+    return (
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, vendor_id=vendor_id)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorsAttrsChangelogQuery](query),
+            attr_id,
+        )
+    )
+
+
+# chained GETs - dynamic resource access
 
 
 @vendors.get(
@@ -314,7 +371,7 @@ async def vendors_attrs_related_object(
     query: VendorsAttrQuery = Depends(),
 ) -> VendorsAttrResp:
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -329,7 +386,7 @@ async def vendors_attrs_related_object(
 
 @vendors.get(
     "/{vendor_id}/vendors-attrs/{attr_id}/vendor-attrs-changelog",
-    response_model=VendorsAttrsChangelog,
+    response_model=VendorsAttrsChangelogResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -341,7 +398,7 @@ async def vendors_attrs_related_object_related_changelogs(
     query: VendorsAttrQuery = Depends(),
 ) -> VendorCustomerAttrChangelogResp:
     return (
-        auth.VendorsAttrOperations(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorsAttrOperations(token, Vendor, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
