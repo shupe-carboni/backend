@@ -42,12 +42,6 @@ class HH(ModelSeries):
         self.width = width // 10 + (5 / 8) + 4 + (3 / 8)
         self.depth = 10
         self.height = int(self.attributes["height"]) + 0.25 + 1.5
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.material = "Copper"
         self.pallet_qty = specs["pallet_qty"]
         self.weight = specs["WEIGHT"]
@@ -69,6 +63,14 @@ class HH(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
