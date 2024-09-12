@@ -1,11 +1,11 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
+from app.adp.adp_models.model_series import (
+    ModelSeries,
+    Fields,
+    PriceByCategoryAndKey,
+    NoBasePrice,
+)
 from app.db import ADP_DB, Session
-
-
-class NoBasePrice(Exception):
-    def __init__(self) -> None:
-        self.reason = "No record found in the price table with this model number."
 
 
 class CP(ModelSeries):
@@ -136,7 +136,9 @@ class CP(ModelSeries):
             session=self.session, sql=sql, params=params
         ).scalar_one_or_none()
         if not result:
-            raise NoBasePrice
+            raise NoBasePrice(
+                "No record found in the price table with this model number."
+            )
         return int(result), self.get_adders()
 
     def get_zero_disc_price(self) -> int:
