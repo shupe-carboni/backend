@@ -44,7 +44,9 @@ class SQLAlchemyModel:
     def apply_customer_location_filtering(
         self, q: sqlQuery, ids: set[int] = None
     ) -> sqlQuery: ...
-    def permitted_primary_resource_ids(self, email: str, **filters) -> QuerySet: ...
+    def permitted_primary_resource_ids(
+        self, email: str, **filters
+    ) -> tuple[Column, QuerySet]: ...
 
 
 DEFAULT_SORT: str = "id"
@@ -281,7 +283,7 @@ class JSONAPI_(JSONAPI):
         query: dict[str, str],
         api_type: str,
         permitted_ids: set[int] = None,
-        vendor_filter: tuple[str, set[int]] = None,
+        vendor_filter: tuple[Column, set[int]] = None,
     ) -> GenericData:
         """
         Fetch a collection of resources of a specified type.
@@ -311,14 +313,9 @@ class JSONAPI_(JSONAPI):
         if sorts == [""]:
             sorts = [DEFAULT_SORT]
 
-        primary_resource_key, primary_resource_ids = vendor_filter
-        primary_resource_field: Column = getattr(model, primary_resource_key)
-
         collection: sqlQuery = session.query(model)
         collection = self._apply_filter(model, collection, query)
         collection = self._filter_deleted(model, collection)
-        if vendor_filter:
-            collection.filter(primary_resource_field.in_(primary_resource_ids))
 
         # for pagination, use count query instead of pulling in all
         #   of the data just for a row count
@@ -327,8 +324,15 @@ class JSONAPI_(JSONAPI):
             model, collection_count, query_params=query
         )
         collection_count = self._filter_deleted(model, collection_count)
+
         if vendor_filter:
-            collection_count.filter(primary_resource_field.in_(primary_resource_ids))
+            primary_resource_field, primary_resource_ids = vendor_filter
+            collection = collection.filter(
+                primary_resource_field.in_(primary_resource_ids)
+            )
+            collection_count = collection_count.filter(
+                primary_resource_field.in_(primary_resource_ids)
+            )
 
         # apply customer-location based filtering
         if permitted_ids:

@@ -41,6 +41,7 @@ from app.friedrich import (
     friedrich_quote_products,
     friedrich_pricing_special_customers,
 )
+from app.v2 import vendors as vendors_v2
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -111,25 +112,26 @@ adp_sub_routes = [
     (adp_mat_grp_discs, "", adp),
     (adp_snps, "", adp),
 ]
-friedrich_routes = [
-    (friedrich_customers, "/vendors/friedrich", app),
-    (friedrich_pricing, "/vendors/friedrich", app),
-    (friedrich_products, "/vendors/friedrich", app),
-    (friedrich_pricing_special, "/vendors/friedrich", app),
-    (friedrich_customer_price_levels, "/vendors/friedrich", app),
-    (friedrich_pricing_customers, "/vendors/friedrich", app),
-    (friedrich_pricing_special_customers, "/vendors/friedrich", app),
-    (friedrich_quotes, "/vendors/friedrich", app),
-    (friedrich_quote_products, "/vendors/friedrich", app),
-]
+# friedrich_routes = [
+#     (friedrich_customers, "/vendors/friedrich", app),
+#     (friedrich_pricing, "/vendors/friedrich", app),
+#     (friedrich_products, "/vendors/friedrich", app),
+#     (friedrich_pricing_special, "/vendors/friedrich", app),
+#     (friedrich_customer_price_levels, "/vendors/friedrich", app),
+#     (friedrich_pricing_customers, "/vendors/friedrich", app),
+#     (friedrich_pricing_special_customers, "/vendors/friedrich", app),
+#     (friedrich_quotes, "/vendors/friedrich", app),
+#     (friedrich_quote_products, "/vendors/friedrich", app),
+# ]
 app_base_routes = [
-    (vendors_info, "/vendors", app),
-    (vendors, "", app),
+    # (vendors_info, "/vendors", app),
+    # (vendors, "", app),
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
-    *friedrich_routes,
+    (vendors_v2.vendors, "", app),
+    # *friedrich_routes,
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
 ## register all of the routes and avoid crashing due to a registration issue

@@ -298,6 +298,7 @@ async def vendor_relationships_vendor_customers(
 
 
 # chained GETs - static collections
+# NOTE - beyond the secondary level, a filtering criteria is needed on collections
 
 
 @vendors.get(
@@ -306,15 +307,16 @@ async def vendor_relationships_vendor_customers(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def vendors_attrs_related_changelog_collection(
+async def vendors_attrs_changelog_collection(
     token: Token,
     session: NewSession,
     vendor_id: str,
-    attr_id: int,
     query: VendorsAttrsChangelogQuery = Depends(),
 ) -> VendorsAttrsChangelogResp:
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorsAttrOperations(
+            token, VendorsAttrsChangelog, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -322,34 +324,33 @@ async def vendors_attrs_related_changelog_collection(
         .get(
             session,
             converters[VendorsAttrsChangelogQuery](query),
-            attr_id,
         )
     )
 
 
 @vendors.get(
-    "/{vendor_id}/vendors-products/vendor-product-attrs",
-    response_model=VendorsAttrsChangelogResp,
+    "/{vendor_id}/vendor-products/vendor-product-attrs",
+    response_model=VendorProductAttrResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def vendors_attrs_related_changelog_collection(
+async def vendors_products_attrs_collection(
     token: Token,
     session: NewSession,
     vendor_id: str,
-    attr_id: int,
-    query: VendorsAttrsChangelogQuery = Depends(),
-) -> VendorsAttrsChangelogResp:
+    query: VendorProductAttrQuery = Depends(),
+) -> VendorProductAttrResp:
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorProductOperations(
+            token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
         .get(
             session,
-            converters[VendorsAttrsChangelogQuery](query),
-            attr_id,
+            converters[VendorProductAttrQuery](query),
         )
     )
 
@@ -398,7 +399,7 @@ async def vendors_attrs_related_object_related_changelogs(
     query: VendorsAttrQuery = Depends(),
 ) -> VendorCustomerAttrChangelogResp:
     return (
-        auth.VendorsAttrOperations(token, Vendor, PARENT_PREFIX)
+        auth.VendorsAttrOperations(token, VendorsAttrsChangelog, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

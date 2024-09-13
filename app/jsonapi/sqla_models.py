@@ -1340,7 +1340,6 @@ class VendorsAttrsChangelog(Base):
 
     id = Column(Integer, primary_key=True)
     attr_id = Column(String, ForeignKey("vendors_attrs.id"))
-    type = Column(String)
     value = Column(String)
     timestamp = Column(DateTime)
 
@@ -1350,6 +1349,15 @@ class VendorsAttrsChangelog(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorsAttrsChangelog.attr_id,
+            vendor_attrs_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorProduct(Base):
@@ -1386,6 +1394,9 @@ class VendorProduct(Base):
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet: ...
+
 
 class VendorProductAttr(Base):
     __tablename__ = "vendor_product_attrs"
@@ -1406,6 +1417,15 @@ class VendorProductAttr(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorProductAttr.vendor_product_id,
+            vendor_product_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorProductClass(Base):
@@ -2545,6 +2565,36 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, **filters) -> Quer
             vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
         )
     )
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
+def vendor_product_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
+    vendor_products = aliased(VendorProduct)
+
+    user_query = select(vendor_products.id).where(vendor_products.vendor_id == vendor)
+    manager_query = user_query
+    admin_query = user_query
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+    }
+    return querys
+
+
+def vendor_attrs_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
+    vendor_attrs = aliased(VendorsAttr)
+
+    user_query = select(vendor_attrs.id).where(vendor_attrs.vendor_id == vendor)
+    manager_query = user_query
+    admin_query = user_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),

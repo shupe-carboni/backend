@@ -19,7 +19,7 @@ from jose.jwt import get_unverified_header, decode
 from typing import Optional, Callable, Literal, TYPE_CHECKING
 import collections.abc as collections
 from functools import partial
-from sqlalchemy import text
+from sqlalchemy import text, Column
 from sqlalchemy_jsonapi.errors import ResourceNotFoundError, BadRequestError
 from sqlalchemy_jsonapi.serializer import JSONAPIResponse
 from app.jsonapi.sqla_jsonapi_ext import SQLAlchemyModel
@@ -341,17 +341,23 @@ class SecOp(ABC):
         self._serializer: JSONAPI_
         self.filters: dict = kwargs
 
-    def permitted_primary_resource_ids(self, session: Session) -> tuple[str, set[int]]:
-        return self.get_result_from_id_association_queries(
+    def permitted_primary_resource_ids(
+        self, session: Session
+    ) -> tuple[Column, set[int]]:
+        primary_id_col, queries = self._resource.permitted_primary_resource_ids(
+            self.token.email, **self.filters
+        )
+        return primary_id_col, self.get_result_from_id_association_queries(
             session,
-            **self._resource.permitted_primary_resource_ids(
-                self.token.email, **self.filters
-            ),
+            **queries,
+            **self.filters,
         )
 
     def permitted_customer_location_ids(self, session: Session) -> set[int]:
         return self.get_result_from_id_association_queries(
-            session, **permitted_customer_location_ids(email=self.token.email)
+            session,
+            **permitted_customer_location_ids(email=self.token.email),
+            **self.filters,
         )
 
     def get_result_from_id_association_queries(
@@ -360,6 +366,7 @@ class SecOp(ABC):
         sql_admin: str,
         sql_manager: str,
         sql_user_only: str,
+        **filters,
     ) -> set[int]:
         queries = [sql_admin, sql_manager, sql_user_only]
         if not all(queries):
@@ -372,11 +379,18 @@ class SecOp(ABC):
                 queries.remove(sql_admin)
             case UserTypes.customer_admin | UserTypes.developer:
                 pass
+            case UserTypes.sca_employee | UserTypes.sca_admin:
+                # TODO
+                # SET UP QUERY OPTION FOR SCA, USED FOR FILTERING COLLECTIONS BY VENDOR 
+                pass
             case _:
                 raise Exception("invalid select_type")
 
+        filters_suffixed = {k + "_1": v for k, v in filters.items()}
         for sql in queries:
-            result = session.scalars(text(sql), dict(email_1=self.token.email)).all()
+            result = session.scalars(
+                text(sql), dict(email_1=self.token.email, **filters_suffixed)
+            ).all()
             if result:
                 return set(result)
         return set()
