@@ -1845,6 +1845,7 @@ class ModVendorQuoteRObj(BaseModel):
 class ModVendorQuote(BaseModel):
     data: ModVendorQuoteRObj
 
+
 from app.jsonapi.sqla_models import CustomerLocationMapping
 
 
@@ -1863,8 +1864,12 @@ class CustomerLocationMappingAttrs(BaseModel):
 
 class CustomerLocationMappingRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
-    customer_locations: Optional[JSONAPIRelationships] = Field(default=None, alias="customer-locations")
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
+    customer_locations: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="customer-locations"
+    )
 
 
 class CustomerLocationMappingFilters(BaseModel):
@@ -1875,8 +1880,12 @@ class CustomerLocationMappingFilters(BaseModel):
 class CustomerLocationMappingFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
-    fields_customer_locations: str = Field(default=None, alias="fields[customer-locations]")
-    fields_customer_location_mapping: str = Field(default=None, alias="fields[customer-location-mapping]")
+    fields_customer_locations: str = Field(
+        default=None, alias="fields[customer-locations]"
+    )
+    fields_customer_location_mapping: str = Field(
+        default=None, alias="fields[customer-location-mapping]"
+    )
 
 
 class CustomerLocationMappingRObj(CustomerLocationMappingRID):
@@ -1908,7 +1917,7 @@ _CustomerLocationMappingQuery: type[BaseModel] = create_model(
         for field in CustomerLocationMappingAttrs.model_fields.keys()
     },
     **{
-        f'fields_customer_location_mapping': (
+        f"fields_customer_location_mapping": (
             Optional[str],
             None,
         )
@@ -1919,23 +1928,28 @@ _CustomerLocationMappingQuery: type[BaseModel] = create_model(
 class CustomerLocationMappingQuery(_CustomerLocationMappingQuery, BaseModel): ...
 
 
-class CustomerLocationMappingQueryJSONAPI(CustomerLocationMappingFields, CustomerLocationMappingFilters, Query):
+class CustomerLocationMappingQueryJSONAPI(
+    CustomerLocationMappingFields, CustomerLocationMappingFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 
 class ModCustomerLocationMappingAttrs(BaseModel):
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModCustomerLocationMappingRObj(BaseModel):
     id: int
     type: str = CustomerLocationMapping.__jsonapi_type_override__
     attributes: ModCustomerLocationMappingAttrs
     relationships: CustomerLocationMappingRels
-    
+
+
 class ModCustomerLocationMapping(BaseModel):
     data: ModCustomerLocationMappingRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorQuoteProduct
 
 
@@ -1958,9 +1972,15 @@ class VendorQuoteProductAttrs(BaseModel):
 
 class VendorQuoteProductRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_quotes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quotes")
-    vendor_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-products")
-    vendor_quote_products_changelog: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quote-products-changelog")
+    vendor_quotes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quotes"
+    )
+    vendor_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-products"
+    )
+    vendor_quote_products_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quote-products-changelog"
+    )
 
 
 class VendorQuoteProductFilters(BaseModel):
@@ -1976,8 +1996,12 @@ class VendorQuoteProductFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_quotes: str = Field(default=None, alias="fields[vendor-quotes]")
     fields_vendor_products: str = Field(default=None, alias="fields[vendor-products]")
-    fields_vendor_quote_products_changelog: str = Field(default=None, alias="fields[vendor-quote-products-changelog]")
-    fields_vendor_quote_products: str = Field(default=None, alias="fields[vendor-quote-products]")
+    fields_vendor_quote_products_changelog: str = Field(
+        default=None, alias="fields[vendor-quote-products-changelog]"
+    )
+    fields_vendor_quote_products: str = Field(
+        default=None, alias="fields[vendor-quote-products]"
+    )
 
 
 class VendorQuoteProductRObj(VendorQuoteProductRID):
@@ -2009,7 +2033,7 @@ _VendorQuoteProductQuery: type[BaseModel] = create_model(
         for field in VendorQuoteProductAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_quote_products': (
+        f"fields_vendor_quote_products": (
             Optional[str],
             None,
         )
@@ -2020,7 +2044,9 @@ _VendorQuoteProductQuery: type[BaseModel] = create_model(
 class VendorQuoteProductQuery(_VendorQuoteProductQuery, BaseModel): ...
 
 
-class VendorQuoteProductQueryJSONAPI(VendorQuoteProductFields, VendorQuoteProductFilters, Query):
+class VendorQuoteProductQueryJSONAPI(
+    VendorQuoteProductFields, VendorQuoteProductFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
@@ -2029,16 +2055,19 @@ class ModVendorQuoteProductAttrs(BaseModel):
     qty: Optional[int] = Field(default=None, alias="qty")
     price: Optional[int] = Field(default=None, alias="price")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorQuoteProductRObj(BaseModel):
     id: int
     type: str = VendorQuoteProduct.__jsonapi_type_override__
     attributes: ModVendorQuoteProductAttrs
     relationships: VendorQuoteProductRels
-    
+
+
 class ModVendorQuoteProduct(BaseModel):
     data: ModVendorQuoteProductRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorQuoteChangelog
 
 
@@ -2058,7 +2087,9 @@ class VendorQuoteChangelogAttrs(BaseModel):
 
 class VendorQuoteChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_quotes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quotes")
+    vendor_quotes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quotes"
+    )
 
 
 class VendorQuoteChangelogFilters(BaseModel):
@@ -2070,7 +2101,9 @@ class VendorQuoteChangelogFilters(BaseModel):
 class VendorQuoteChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_quotes: str = Field(default=None, alias="fields[vendor-quotes]")
-    fields_vendor_quotes_changelog: str = Field(default=None, alias="fields[vendor-quotes-changelog]")
+    fields_vendor_quotes_changelog: str = Field(
+        default=None, alias="fields[vendor-quotes-changelog]"
+    )
 
 
 class VendorQuoteChangelogRObj(VendorQuoteChangelogRID):
@@ -2102,7 +2135,7 @@ _VendorQuoteChangelogQuery: type[BaseModel] = create_model(
         for field in VendorQuoteChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_quotes_changelog': (
+        f"fields_vendor_quotes_changelog": (
             Optional[str],
             None,
         )
@@ -2113,9 +2146,12 @@ _VendorQuoteChangelogQuery: type[BaseModel] = create_model(
 class VendorQuoteChangelogQuery(_VendorQuoteChangelogQuery, BaseModel): ...
 
 
-class VendorQuoteChangelogQueryJSONAPI(VendorQuoteChangelogFields, VendorQuoteChangelogFilters, Query):
+class VendorQuoteChangelogQueryJSONAPI(
+    VendorQuoteChangelogFields, VendorQuoteChangelogFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorQuoteProductChangelog
 
@@ -2137,7 +2173,9 @@ class VendorQuoteProductChangelogAttrs(BaseModel):
 
 class VendorQuoteProductChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_quote_products: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quote-products")
+    vendor_quote_products: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quote-products"
+    )
 
 
 class VendorQuoteProductChangelogFilters(BaseModel):
@@ -2149,8 +2187,12 @@ class VendorQuoteProductChangelogFilters(BaseModel):
 
 class VendorQuoteProductChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_quote_products: str = Field(default=None, alias="fields[vendor-quote-products]")
-    fields_vendor_quote_products_changelog: str = Field(default=None, alias="fields[vendor-quote-products-changelog]")
+    fields_vendor_quote_products: str = Field(
+        default=None, alias="fields[vendor-quote-products]"
+    )
+    fields_vendor_quote_products_changelog: str = Field(
+        default=None, alias="fields[vendor-quote-products-changelog]"
+    )
 
 
 class VendorQuoteProductChangelogRObj(VendorQuoteProductChangelogRID):
@@ -2182,7 +2224,7 @@ _VendorQuoteProductChangelogQuery: type[BaseModel] = create_model(
         for field in VendorQuoteProductChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_quote_products_changelog': (
+        f"fields_vendor_quote_products_changelog": (
             Optional[str],
             None,
         )
@@ -2190,12 +2232,17 @@ _VendorQuoteProductChangelogQuery: type[BaseModel] = create_model(
 )
 
 
-class VendorQuoteProductChangelogQuery(_VendorQuoteProductChangelogQuery, BaseModel): ...
+class VendorQuoteProductChangelogQuery(
+    _VendorQuoteProductChangelogQuery, BaseModel
+): ...
 
 
-class VendorQuoteProductChangelogQueryJSONAPI(VendorQuoteProductChangelogFields, VendorQuoteProductChangelogFilters, Query):
+class VendorQuoteProductChangelogQueryJSONAPI(
+    VendorQuoteProductChangelogFields, VendorQuoteProductChangelogFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorCustomerPricingClass
 
@@ -2215,8 +2262,12 @@ class VendorCustomerPricingClassAttrs(BaseModel):
 
 class VendorCustomerPricingClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-classes")
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
+    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-classes"
+    )
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
 
 
 class VendorCustomerPricingClassFilters(BaseModel):
@@ -2226,9 +2277,13 @@ class VendorCustomerPricingClassFilters(BaseModel):
 
 class VendorCustomerPricingClassFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_pricing_classes: str = Field(default=None, alias="fields[vendor-pricing-classes]")
+    fields_vendor_pricing_classes: str = Field(
+        default=None, alias="fields[vendor-pricing-classes]"
+    )
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
-    fields_vendor_customer_pricing_classes: str = Field(default=None, alias="fields[vendor-customer-pricing-classes]")
+    fields_vendor_customer_pricing_classes: str = Field(
+        default=None, alias="fields[vendor-customer-pricing-classes]"
+    )
 
 
 class VendorCustomerPricingClassRObj(VendorCustomerPricingClassRID):
@@ -2260,7 +2315,7 @@ _VendorCustomerPricingClassQuery: type[BaseModel] = create_model(
         for field in VendorCustomerPricingClassAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_customer_pricing_classes': (
+        f"fields_vendor_customer_pricing_classes": (
             Optional[str],
             None,
         )
@@ -2271,9 +2326,12 @@ _VendorCustomerPricingClassQuery: type[BaseModel] = create_model(
 class VendorCustomerPricingClassQuery(_VendorCustomerPricingClassQuery, BaseModel): ...
 
 
-class VendorCustomerPricingClassQueryJSONAPI(VendorCustomerPricingClassFields, VendorCustomerPricingClassFilters, Query):
+class VendorCustomerPricingClassQueryJSONAPI(
+    VendorCustomerPricingClassFields, VendorCustomerPricingClassFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorCustomerPricingClassesChangelog
 
@@ -2283,7 +2341,10 @@ class VendorCustomerPricingClassesChangelogRID(JSONAPIResourceIdentifier):
 
 
 class VendorCustomerPricingClassesChangelogRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorCustomerPricingClassesChangelogRID] | VendorCustomerPricingClassesChangelogRID
+    data: (
+        list[VendorCustomerPricingClassesChangelogRID]
+        | VendorCustomerPricingClassesChangelogRID
+    )
 
 
 class VendorCustomerPricingClassesChangelogAttrs(BaseModel):
@@ -2293,8 +2354,12 @@ class VendorCustomerPricingClassesChangelogAttrs(BaseModel):
 
 class VendorCustomerPricingClassesChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-classes")
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
+    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-classes"
+    )
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
 
 
 class VendorCustomerPricingClassesChangelogFilters(BaseModel):
@@ -2304,21 +2369,32 @@ class VendorCustomerPricingClassesChangelogFilters(BaseModel):
 
 class VendorCustomerPricingClassesChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_pricing_classes: str = Field(default=None, alias="fields[vendor-pricing-classes]")
+    fields_vendor_pricing_classes: str = Field(
+        default=None, alias="fields[vendor-pricing-classes]"
+    )
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
-    fields_vendor_customer_pricing_classes_changelog: str = Field(default=None, alias="fields[vendor-customer-pricing-classes-changelog]")
+    fields_vendor_customer_pricing_classes_changelog: str = Field(
+        default=None, alias="fields[vendor-customer-pricing-classes-changelog]"
+    )
 
 
-class VendorCustomerPricingClassesChangelogRObj(VendorCustomerPricingClassesChangelogRID):
+class VendorCustomerPricingClassesChangelogRObj(
+    VendorCustomerPricingClassesChangelogRID
+):
     attributes: VendorCustomerPricingClassesChangelogAttrs
     relationships: VendorCustomerPricingClassesChangelogRels
 
 
 class VendorCustomerPricingClassesChangelogResp(JSONAPIResponse):
-    data: list[VendorCustomerPricingClassesChangelogRObj] | VendorCustomerPricingClassesChangelogRObj
+    data: (
+        list[VendorCustomerPricingClassesChangelogRObj]
+        | VendorCustomerPricingClassesChangelogRObj
+    )
 
 
-class RelatedVendorCustomerPricingClassesChangelogResp(VendorCustomerPricingClassesChangelogResp):
+class RelatedVendorCustomerPricingClassesChangelogResp(
+    VendorCustomerPricingClassesChangelogResp
+):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -2338,7 +2414,7 @@ _VendorCustomerPricingClassesChangelogQuery: type[BaseModel] = create_model(
         for field in VendorCustomerPricingClassesChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_customer_pricing_classes_changelog': (
+        f"fields_vendor_customer_pricing_classes_changelog": (
             Optional[str],
             None,
         )
@@ -2346,12 +2422,19 @@ _VendorCustomerPricingClassesChangelogQuery: type[BaseModel] = create_model(
 )
 
 
-class VendorCustomerPricingClassesChangelogQuery(_VendorCustomerPricingClassesChangelogQuery, BaseModel): ...
+class VendorCustomerPricingClassesChangelogQuery(
+    _VendorCustomerPricingClassesChangelogQuery, BaseModel
+): ...
 
 
-class VendorCustomerPricingClassesChangelogQueryJSONAPI(VendorCustomerPricingClassesChangelogFields, VendorCustomerPricingClassesChangelogFilters, Query):
+class VendorCustomerPricingClassesChangelogQueryJSONAPI(
+    VendorCustomerPricingClassesChangelogFields,
+    VendorCustomerPricingClassesChangelogFilters,
+    Query,
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorCustomerChangelog
 
@@ -2372,7 +2455,9 @@ class VendorCustomerChangelogAttrs(BaseModel):
 
 class VendorCustomerChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
 
 
 class VendorCustomerChangelogFilters(BaseModel):
@@ -2384,7 +2469,9 @@ class VendorCustomerChangelogFilters(BaseModel):
 class VendorCustomerChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
-    fields_vendor_customer_changelog: str = Field(default=None, alias="fields[vendor-customer-changelog]")
+    fields_vendor_customer_changelog: str = Field(
+        default=None, alias="fields[vendor-customer-changelog]"
+    )
 
 
 class VendorCustomerChangelogRObj(VendorCustomerChangelogRID):
@@ -2416,7 +2503,7 @@ _VendorCustomerChangelogQuery: type[BaseModel] = create_model(
         for field in VendorCustomerChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_customer_changelog': (
+        f"fields_vendor_customer_changelog": (
             Optional[str],
             None,
         )
@@ -2427,9 +2514,12 @@ _VendorCustomerChangelogQuery: type[BaseModel] = create_model(
 class VendorCustomerChangelogQuery(_VendorCustomerChangelogQuery, BaseModel): ...
 
 
-class VendorCustomerChangelogQueryJSONAPI(VendorCustomerChangelogFields, VendorCustomerChangelogFilters, Query):
+class VendorCustomerChangelogQueryJSONAPI(
+    VendorCustomerChangelogFields, VendorCustomerChangelogFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorCustomerAttr
 
@@ -2452,8 +2542,12 @@ class VendorCustomerAttrAttrs(BaseModel):
 
 class VendorCustomerAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_customers: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customers")
-    vendor_customer_attrs_changelog: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customer-attrs-changelog")
+    vendor_customers: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customers"
+    )
+    vendor_customer_attrs_changelog: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customer-attrs-changelog"
+    )
 
 
 class VendorCustomerAttrFilters(BaseModel):
@@ -2467,8 +2561,12 @@ class VendorCustomerAttrFilters(BaseModel):
 class VendorCustomerAttrFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_customers: str = Field(default=None, alias="fields[vendor-customers]")
-    fields_vendor_customer_attrs_changelog: str = Field(default=None, alias="fields[vendor-customer-attrs-changelog]")
-    fields_vendor_customer_attrs: str = Field(default=None, alias="fields[vendor-customer-attrs]")
+    fields_vendor_customer_attrs_changelog: str = Field(
+        default=None, alias="fields[vendor-customer-attrs-changelog]"
+    )
+    fields_vendor_customer_attrs: str = Field(
+        default=None, alias="fields[vendor-customer-attrs]"
+    )
 
 
 class VendorCustomerAttrRObj(VendorCustomerAttrRID):
@@ -2500,7 +2598,7 @@ _VendorCustomerAttrQuery: type[BaseModel] = create_model(
         for field in VendorCustomerAttrAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_customer_attrs': (
+        f"fields_vendor_customer_attrs": (
             Optional[str],
             None,
         )
@@ -2511,7 +2609,9 @@ _VendorCustomerAttrQuery: type[BaseModel] = create_model(
 class VendorCustomerAttrQuery(_VendorCustomerAttrQuery, BaseModel): ...
 
 
-class VendorCustomerAttrQueryJSONAPI(VendorCustomerAttrFields, VendorCustomerAttrFilters, Query):
+class VendorCustomerAttrQueryJSONAPI(
+    VendorCustomerAttrFields, VendorCustomerAttrFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
@@ -2519,16 +2619,19 @@ class VendorCustomerAttrQueryJSONAPI(VendorCustomerAttrFields, VendorCustomerAtt
 class ModVendorCustomerAttrAttrs(BaseModel):
     value: Optional[str] = Field(default=None, alias="value")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorCustomerAttrRObj(BaseModel):
     id: int
     type: str = VendorCustomerAttr.__jsonapi_type_override__
     attributes: ModVendorCustomerAttrAttrs
     relationships: VendorCustomerAttrRels
-    
+
+
 class ModVendorCustomerAttr(BaseModel):
     data: ModVendorCustomerAttrRObj
-        
+
+
 from app.jsonapi.sqla_models import VendorQuoteAttr
 
 
@@ -2550,7 +2653,9 @@ class VendorQuoteAttrAttrs(BaseModel):
 
 class VendorQuoteAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_quotes: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-quotes")
+    vendor_quotes: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-quotes"
+    )
 
 
 class VendorQuoteAttrFilters(BaseModel):
@@ -2564,7 +2669,9 @@ class VendorQuoteAttrFilters(BaseModel):
 class VendorQuoteAttrFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendor_quotes: str = Field(default=None, alias="fields[vendor-quotes]")
-    fields_vendor_quotes_attrs: str = Field(default=None, alias="fields[vendor-quotes-attrs]")
+    fields_vendor_quotes_attrs: str = Field(
+        default=None, alias="fields[vendor-quotes-attrs]"
+    )
 
 
 class VendorQuoteAttrRObj(VendorQuoteAttrRID):
@@ -2596,7 +2703,7 @@ _VendorQuoteAttrQuery: type[BaseModel] = create_model(
         for field in VendorQuoteAttrAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_quotes_attrs': (
+        f"fields_vendor_quotes_attrs": (
             Optional[str],
             None,
         )
@@ -2615,16 +2722,19 @@ class VendorQuoteAttrQueryJSONAPI(VendorQuoteAttrFields, VendorQuoteAttrFilters,
 class ModVendorQuoteAttrAttrs(BaseModel):
     value: Optional[str] = Field(default=None, alias="value")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-     
+
+
 class ModVendorQuoteAttrRObj(BaseModel):
     id: int
     type: str = VendorQuoteAttr.__jsonapi_type_override__
     attributes: ModVendorQuoteAttrAttrs
     relationships: VendorQuoteAttrRels
-    
+
+
 class ModVendorQuoteAttr(BaseModel):
     data: ModVendorQuoteAttrRObj
-        
+
+
 from app.jsonapi.sqla_models import CustomerPricingByClass
 
 
@@ -2638,25 +2748,29 @@ class CustomerPricingByClassRelResp(JSONAPIRelationshipsResponse):
 
 class CustomerPricingByClassAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
 
 
 class CustomerPricingByClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-by-class")
+    vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-by-class"
+    )
     users: Optional[JSONAPIRelationships] = Field(default=None, alias="users")
 
 
 class CustomerPricingByClassFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
 
 
 class CustomerPricingByClassFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_pricing_by_class: str = Field(default=None, alias="fields[vendor-pricing-by-class]")
+    fields_vendor_pricing_by_class: str = Field(
+        default=None, alias="fields[vendor-pricing-by-class]"
+    )
     fields_users: str = Field(default=None, alias="fields[users]")
-    fields_customer_pricing_by_class: str = Field(default=None, alias="fields[customer-pricing-by-class]")
+    fields_customer_pricing_by_class: str = Field(
+        default=None, alias="fields[customer-pricing-by-class]"
+    )
 
 
 class CustomerPricingByClassRObj(CustomerPricingByClassRID):
@@ -2688,7 +2802,7 @@ _CustomerPricingByClassQuery: type[BaseModel] = create_model(
         for field in CustomerPricingByClassAttrs.model_fields.keys()
     },
     **{
-        f'fields_customer_pricing_by_class': (
+        f"fields_customer_pricing_by_class": (
             Optional[str],
             None,
         )
@@ -2699,9 +2813,12 @@ _CustomerPricingByClassQuery: type[BaseModel] = create_model(
 class CustomerPricingByClassQuery(_CustomerPricingByClassQuery, BaseModel): ...
 
 
-class CustomerPricingByClassQueryJSONAPI(CustomerPricingByClassFields, CustomerPricingByClassFilters, Query):
+class CustomerPricingByClassQueryJSONAPI(
+    CustomerPricingByClassFields, CustomerPricingByClassFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import CustomerPricingByCustomer
 
@@ -2716,25 +2833,29 @@ class CustomerPricingByCustomerRelResp(JSONAPIRelationshipsResponse):
 
 class CustomerPricingByCustomerAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
 
 
 class CustomerPricingByCustomerRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-pricing-by-customer")
+    vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-by-customer"
+    )
     users: Optional[JSONAPIRelationships] = Field(default=None, alias="users")
 
 
 class CustomerPricingByCustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    
 
 
 class CustomerPricingByCustomerFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_pricing_by_customer: str = Field(default=None, alias="fields[vendor-pricing-by-customer]")
+    fields_vendor_pricing_by_customer: str = Field(
+        default=None, alias="fields[vendor-pricing-by-customer]"
+    )
     fields_users: str = Field(default=None, alias="fields[users]")
-    fields_customer_pricing_by_customer: str = Field(default=None, alias="fields[customer-pricing-by-customer]")
+    fields_customer_pricing_by_customer: str = Field(
+        default=None, alias="fields[customer-pricing-by-customer]"
+    )
 
 
 class CustomerPricingByCustomerRObj(CustomerPricingByCustomerRID):
@@ -2766,7 +2887,7 @@ _CustomerPricingByCustomerQuery: type[BaseModel] = create_model(
         for field in CustomerPricingByCustomerAttrs.model_fields.keys()
     },
     **{
-        f'fields_customer_pricing_by_customer': (
+        f"fields_customer_pricing_by_customer": (
             Optional[str],
             None,
         )
@@ -2777,9 +2898,12 @@ _CustomerPricingByCustomerQuery: type[BaseModel] = create_model(
 class CustomerPricingByCustomerQuery(_CustomerPricingByCustomerQuery, BaseModel): ...
 
 
-class CustomerPricingByCustomerQueryJSONAPI(CustomerPricingByCustomerFields, CustomerPricingByCustomerFilters, Query):
+class CustomerPricingByCustomerQueryJSONAPI(
+    CustomerPricingByCustomerFields, CustomerPricingByCustomerFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorCustomerAttrChangelog
 
@@ -2800,7 +2924,9 @@ class VendorCustomerAttrChangelogAttrs(BaseModel):
 
 class VendorCustomerAttrChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_customer_attrs: Optional[JSONAPIRelationships] = Field(default=None, alias="vendor-customer-attrs")
+    vendor_customer_attrs: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-customer-attrs"
+    )
 
 
 class VendorCustomerAttrChangelogFilters(BaseModel):
@@ -2811,8 +2937,12 @@ class VendorCustomerAttrChangelogFilters(BaseModel):
 
 class VendorCustomerAttrChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    fields_vendor_customer_attrs: str = Field(default=None, alias="fields[vendor-customer-attrs]")
-    fields_vendor_customer_attrs_changelog: str = Field(default=None, alias="fields[vendor-customer-attrs-changelog]")
+    fields_vendor_customer_attrs: str = Field(
+        default=None, alias="fields[vendor-customer-attrs]"
+    )
+    fields_vendor_customer_attrs_changelog: str = Field(
+        default=None, alias="fields[vendor-customer-attrs-changelog]"
+    )
 
 
 class VendorCustomerAttrChangelogRObj(VendorCustomerAttrChangelogRID):
@@ -2844,7 +2974,7 @@ _VendorCustomerAttrChangelogQuery: type[BaseModel] = create_model(
         for field in VendorCustomerAttrChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendor_customer_attrs_changelog': (
+        f"fields_vendor_customer_attrs_changelog": (
             Optional[str],
             None,
         )
@@ -2852,12 +2982,17 @@ _VendorCustomerAttrChangelogQuery: type[BaseModel] = create_model(
 )
 
 
-class VendorCustomerAttrChangelogQuery(_VendorCustomerAttrChangelogQuery, BaseModel): ...
+class VendorCustomerAttrChangelogQuery(
+    _VendorCustomerAttrChangelogQuery, BaseModel
+): ...
 
 
-class VendorCustomerAttrChangelogQueryJSONAPI(VendorCustomerAttrChangelogFields, VendorCustomerAttrChangelogFilters, Query):
+class VendorCustomerAttrChangelogQueryJSONAPI(
+    VendorCustomerAttrChangelogFields, VendorCustomerAttrChangelogFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
+
 
 from app.jsonapi.sqla_models import VendorsAttrsChangelog
 
@@ -2879,7 +3014,9 @@ class VendorsAttrsChangelogAttrs(BaseModel):
 
 class VendorsAttrsChangelogRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendors_attrs: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors-attrs")
+    vendors_attrs: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors-attrs"
+    )
 
 
 class VendorsAttrsChangelogFilters(BaseModel):
@@ -2892,7 +3029,9 @@ class VendorsAttrsChangelogFilters(BaseModel):
 class VendorsAttrsChangelogFields(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     fields_vendors_attrs: str = Field(default=None, alias="fields[vendors-attrs]")
-    fields_vendors_attrs_changelog: str = Field(default=None, alias="fields[vendors-attrs-changelog]")
+    fields_vendors_attrs_changelog: str = Field(
+        default=None, alias="fields[vendors-attrs-changelog]"
+    )
 
 
 class VendorsAttrsChangelogRObj(VendorsAttrsChangelogRID):
@@ -2924,7 +3063,7 @@ _VendorsAttrsChangelogQuery: type[BaseModel] = create_model(
         for field in VendorsAttrsChangelogAttrs.model_fields.keys()
     },
     **{
-        f'fields_vendors_attrs_changelog': (
+        f"fields_vendors_attrs_changelog": (
             Optional[str],
             None,
         )
@@ -2935,10 +3074,11 @@ _VendorsAttrsChangelogQuery: type[BaseModel] = create_model(
 class VendorsAttrsChangelogQuery(_VendorsAttrsChangelogQuery, BaseModel): ...
 
 
-class VendorsAttrsChangelogQueryJSONAPI(VendorsAttrsChangelogFields, VendorsAttrsChangelogFilters, Query):
+class VendorsAttrsChangelogQueryJSONAPI(
+    VendorsAttrsChangelogFields, VendorsAttrsChangelogFilters, Query
+):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
-
 
 
 converters = {
