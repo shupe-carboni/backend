@@ -12,7 +12,6 @@ warnings.simplefilter("ignore")
 from app.db import ADP_DB, Session
 from app.adp.models import Ratings
 
-TODAY = str(datetime.today().date())
 logger = logging.getLogger("uvicorn.info")
 
 
@@ -172,7 +171,7 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
         ratings_df["AHRI Ref Number"], errors="coerce"
     )
     ratings_df["AHRI Ref Number"] = ratings_df["AHRI Ref Number"].fillna(0).astype(int)
-    ratings_df["effective_date"] = TODAY
+    ratings_df["effective_date"] = str(datetime.today().date())
     return ratings_df
 
 
