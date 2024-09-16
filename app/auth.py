@@ -779,6 +779,7 @@ class VendorProductOperations(SecOp):
         self._primary_resource = VendorProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorsAttrOperations(SecOp):
@@ -794,6 +795,7 @@ class VendorsAttrOperations(SecOp):
         self._primary_resource = VendorsAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorPricingClassOperations(SecOp):
@@ -809,6 +811,7 @@ class VendorPricingClassOperations(SecOp):
         self._primary_resource = VendorPricingClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorPricingByClassOperations(SecOp):
@@ -824,6 +827,7 @@ class VendorPricingByClassOperations(SecOp):
         self._primary_resource = VendorPricingByClass
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorPricingByCustomerOperations(SecOp):
@@ -839,6 +843,7 @@ class VendorPricingByCustomerOperations(SecOp):
         self._primary_resource = VendorPricingByCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorCustomerOperations(SecOp):
@@ -854,6 +859,7 @@ class VendorCustomerOperations(SecOp):
         self._primary_resource = VendorCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorCustomerAttrOperations(SecOp):
@@ -869,6 +875,7 @@ class VendorCustomerAttrOperations(SecOp):
         self._primary_resource = VendorCustomerAttr
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorProductClassDiscountOperations(SecOp):
@@ -884,6 +891,7 @@ class VendorProductClassDiscountOperations(SecOp):
         self._primary_resource = VendorProductClassDiscount
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorQuoteOperations(SecOp):
@@ -899,6 +907,7 @@ class VendorQuoteOperations(SecOp):
         self._primary_resource = VendorQuote
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorQuoteProductOperations(SecOp):
@@ -914,3 +923,4 @@ class VendorQuoteProductOperations(SecOp):
         self._primary_resource = VendorQuoteProduct
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
