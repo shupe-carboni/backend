@@ -98,12 +98,12 @@ def permitted_customer_location_ids_v2(email: str) -> QuerySet:
     }
 
 
-def permitted_customer_location_ids(email: str, version: int = 1):
+def permitted_customer_location_ids(email: str, version: int = 1) -> QuerySet:
     match version:
         case 1:
-            permitted_customer_location_ids_v1(email=email)
+            return permitted_customer_location_ids_v1(email=email)
         case 2:
-            permitted_customer_location_ids_v2(email=email)
+            return permitted_customer_location_ids_v2(email=email)
 
 
 class ADPAHProgram(Base):
@@ -1882,8 +1882,12 @@ class VendorQuote(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return VendorQuote.vendor_customer_id, vendor_customer_primary_id_queries(
+            email=email, vendor_id=vendor_id
+        )
 
 
 class VendorQuoteProduct(Base):

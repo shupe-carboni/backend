@@ -7,7 +7,7 @@ from app.v2.models import *
 
 from app.jsonapi.sqla_models import Vendor
 
-PARENT_PREFIX = "/vendors/v2"
+PARENT_PREFIX = "/vendors"
 VENDORS = Vendor.__jsonapi_type_override__
 
 vendors = APIRouter(prefix=f"/{VENDORS}", tags=["v2", ""])
@@ -351,6 +351,114 @@ async def vendors_products_attrs_collection(
         .get(
             session,
             converters[VendorProductAttrQuery](query),
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/vendor-pricing-by-customer",
+    response_model=VendorPricingByCustomerResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_pricing_by_customer_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: VendorPricingByCustomerQuery = Depends(),
+) -> VendorPricingByCustomerResp:
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorPricingByCustomerQuery](query),
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/vendor-product-class-discounts",
+    response_model=VendorProductClassDiscountResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_product_class_discounts_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: VendorProductClassDiscountQuery = Depends(),
+) -> VendorProductClassDiscountResp:
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorProductClassDiscountQuery](query),
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/vendor-customer-pricing-classes",
+    response_model=VendorCustomerPricingClassResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_product_class_discounts_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: VendorCustomerPricingClassQuery = Depends(),
+) -> VendorCustomerPricingClassResp:
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorCustomerPricingClassQuery](query),
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/vendor-quotes",
+    response_model=VendorQuoteResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_product_class_discounts_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: VendorQuoteQuery = Depends(),
+) -> VendorQuoteResp:
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorQuote, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorQuoteQuery](query),
         )
     )
 

@@ -340,6 +340,7 @@ class SecOp(ABC):
         self._associated_resource: bool
         self._serializer: JSONAPI_
         self.filters: dict = kwargs
+        self.version: int
 
     def permitted_primary_resource_ids(
         self, session: Session
@@ -347,18 +348,21 @@ class SecOp(ABC):
         primary_id_col, queries = self._resource.permitted_primary_resource_ids(
             self.token.email, **self.filters
         )
-        return primary_id_col, self.get_result_from_id_association_queries(
-            session,
-            **queries,
-            **self.filters,
+        get_result = partial(
+            self.get_result_from_id_association_queries(session, **queries)
+        )
+        return primary_id_col, (
+            get_result(**self.filters) if self.filters else get_result()
         )
 
     def permitted_customer_location_ids(self, session: Session) -> set[int]:
-        return self.get_result_from_id_association_queries(
-            session,
-            **permitted_customer_location_ids(email=self.token.email),
-            **self.filters,
+        queries = permitted_customer_location_ids(
+            email=self.token.email, version=self.version
         )
+        get_result = partial(
+            self.get_result_from_id_association_queries, session, **queries
+        )
+        return get_result(**self.filters) if self.filters else get_result()
 
     def get_result_from_id_association_queries(
         self,
@@ -381,7 +385,7 @@ class SecOp(ABC):
                 pass
             case UserTypes.sca_employee | UserTypes.sca_admin:
                 # TODO
-                # SET UP QUERY OPTION FOR SCA, USED FOR FILTERING COLLECTIONS BY VENDOR 
+                # SET UP QUERY OPTION FOR SCA, USED FOR FILTERING COLLECTIONS BY VENDOR
                 pass
             case _:
                 raise Exception("invalid select_type")
@@ -758,6 +762,7 @@ class VendorOperations2(SecOp):
         self._primary_resource = Vendor
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 2
 
 
 class VendorProductOperations(SecOp):
