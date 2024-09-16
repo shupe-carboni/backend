@@ -13,7 +13,6 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match
 
 ## Routers ##
-from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import (
@@ -29,17 +28,6 @@ from app.adp import (
     adp_material_groups,
     adp_mat_grp_discs,
     adp_snps,
-)
-from app.friedrich import (
-    friedrich_pricing,
-    friedrich_customers,
-    friedrich_products,
-    friedrich_pricing_special,
-    friedrich_customer_price_levels,
-    friedrich_pricing_customers,
-    friedrich_quotes,
-    friedrich_quote_products,
-    friedrich_pricing_special_customers,
 )
 from app.v2 import vendors as vendors_v2
 
@@ -112,26 +100,12 @@ adp_sub_routes = [
     (adp_mat_grp_discs, "", adp),
     (adp_snps, "", adp),
 ]
-# friedrich_routes = [
-#     (friedrich_customers, "/vendors/friedrich", app),
-#     (friedrich_pricing, "/vendors/friedrich", app),
-#     (friedrich_products, "/vendors/friedrich", app),
-#     (friedrich_pricing_special, "/vendors/friedrich", app),
-#     (friedrich_customer_price_levels, "/vendors/friedrich", app),
-#     (friedrich_pricing_customers, "/vendors/friedrich", app),
-#     (friedrich_pricing_special_customers, "/vendors/friedrich", app),
-#     (friedrich_quotes, "/vendors/friedrich", app),
-#     (friedrich_quote_products, "/vendors/friedrich", app),
-# ]
 app_base_routes = [
-    # (vendors_info, "/vendors", app),
-    # (vendors, "", app),
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
     (vendors_v2.vendors, "", app),
-    # *friedrich_routes,
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
 ## register all of the routes and avoid crashing due to a registration issue
@@ -155,11 +129,11 @@ async def home():
 
 @app.get("/test-db")
 async def test_db():
-    from app.db import ADP_DB
+    from app.db import SCA_DB
 
     try:
-        session = next(ADP_DB.get_db())
-        test = ADP_DB.test(session=session)
+        session = next(SCA_DB.get_db())
+        test = SCA_DB.test(session=session)
         return {"db_version": test}
     except Exception:
         import traceback as tb
