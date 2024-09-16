@@ -339,6 +339,7 @@ class SecOp(ABC):
         self._primary_resource: SQLAlchemyModel
         self._associated_resource: bool
         self._serializer: JSONAPI_
+        # other attributes
         self.filters: dict = kwargs
         self.version: int
 
