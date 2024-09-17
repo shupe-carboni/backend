@@ -10,11 +10,13 @@ from random import randint
 class AdminToken:
     permissions = Permissions.sca_admin
     email_verified = True
+    email = getenv("TEST_USER_EMAIL")
 
 
 class SCAEmployeeToken:
     permissions = Permissions.sca_employee
     email_verified = True
+    email = getenv("TEST_USER_EMAIL")
 
 
 class DeveloperToken:
