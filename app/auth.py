@@ -346,11 +346,12 @@ class SecOp(ABC):
     def permitted_primary_resource_ids(
         self, session: Session
     ) -> tuple[Column, set[int]]:
+
         primary_id_col, queries = self._resource.permitted_primary_resource_ids(
             self.token.email, **self.filters
         )
         get_result = partial(
-            self.get_result_from_id_association_queries(session, **queries)
+            self.get_result_from_id_association_queries, session, **queries
         )
         return primary_id_col, (
             get_result(**self.filters) if self.filters else get_result()
@@ -371,34 +372,24 @@ class SecOp(ABC):
         sql_admin: str,
         sql_manager: str,
         sql_user_only: str,
+        sql_sca_employee: str,
+        sql_sca_admin: str,
         **filters,
     ) -> set[int]:
-        queries = [sql_admin, sql_manager, sql_user_only]
-        if not all(queries):
-            raise Exception("all user type sql queries must be defined")
-        match UserTypes[self.token.permissions.name]:
-            case UserTypes.customer_std:
-                queries.remove(sql_admin)
-                queries.remove(sql_manager)
-            case UserTypes.customer_manager:
-                queries.remove(sql_admin)
-            case UserTypes.customer_admin | UserTypes.developer:
-                pass
-            case UserTypes.sca_employee | UserTypes.sca_admin:
-                # TODO
-                # SET UP QUERY OPTION FOR SCA, USED FOR FILTERING COLLECTIONS BY VENDOR
-                pass
-            case _:
-                raise Exception("invalid select_type")
-
+        queries_by_user = {
+            UserTypes.customer_std: sql_user_only,
+            UserTypes.customer_manager: sql_manager,
+            UserTypes.customer_admin: sql_admin,
+            UserTypes.sca_employee: sql_sca_employee,
+            UserTypes.sca_admin: sql_sca_admin,
+            UserTypes.developer: sql_admin,
+        }
+        query = queries_by_user[UserTypes[self.token.permissions.name]]
         filters_suffixed = {k + "_1": v for k, v in filters.items()}
-        for sql in queries:
-            result = session.scalars(
-                text(sql), dict(email_1=self.token.email, **filters_suffixed)
-            ).all()
-            if result:
-                return set(result)
-        return set()
+        result = session.scalars(
+            text(query), dict(email_1=self.token.email, **filters_suffixed)
+        ).all()
+        return set(result) if result else set()
 
     def allow_admin(self) -> "SecOp":
         self._admin = self.token.permissions >= Permissions.sca_admin
