@@ -57,10 +57,15 @@ def permitted_customer_location_ids_v1(email: str) -> QuerySet:
             customer_locations_2.customer_id == customer_locations.customer_id,
         )
     )
+    sca_employee = select(customer_locations.id)
+    sca_admin = select(customer_locations.id)
+
     return {
         "sql_admin": str(admin),
         "sql_manager": str(manager),
         "sql_user_only": str(user_only),
+        "sql_sca_employee": str(sca_employee),
+        "sql_sca_admin": str(sca_admin),
     }
 
 
