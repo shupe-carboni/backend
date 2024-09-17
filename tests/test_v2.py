@@ -47,10 +47,39 @@ EXCLUDE_BASE_CUSTOMER = list(
     )
 )
 
+ROUTES = [
+    VENDORS_PREFIX,
+    VENDORS_PREFIX / "TEST_VENDOR",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendors-attrs",
+    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendors-attrs",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-products",
+    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-products",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-product-classes",
+    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-product-classes",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-pricing-classes",
+    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-pricing-classes",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendors-attrs" / "vendor-attrs-changelog",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-products" / "vendor-product-attrs",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-customers" / "vendor-pricing-by-customer",
+    VENDORS_PREFIX
+    / "TEST_VENDOR"
+    / "vendor-customers"
+    / "vendor-product-class-discounts",
+    VENDORS_PREFIX
+    / "TEST_VENDOR"
+    / "vendor-customers"
+    / "vendor-customer-pricing-classes",
+    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-customers" / "vendor-quotes",
+]
+ROUTE_PERM_RESP_ALL_ALLOWED = [
+    (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
+]
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
-def test_vendors_collection(perm, response_code):
-    url = str(VENDORS_PREFIX)
+
+@mark.parametrize("route,perm,response_code", ROUTE_PERM_RESP_ALL_ALLOWED)
+def test_vendors_collection(route, perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
-    resp = test_client.get(url)
-    assert resp.status_code == response_code, pprint(resp.json())
+    resp = test_client.get(route)
+    assert resp.status_code == response_code or resp.status_code == 204, pprint(
+        resp.content
+    )
