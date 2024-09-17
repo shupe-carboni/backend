@@ -8,6 +8,7 @@ from app.v2.models import *
 from app.jsonapi.sqla_models import Vendor
 
 PARENT_PREFIX = "/vendors"
+VENDOR_PREFIX = "/{vendor}"
 VENDORS = Vendor.__jsonapi_type_override__
 
 vendors = APIRouter(prefix=f"/{VENDORS}", tags=["v2", ""])
@@ -313,9 +314,10 @@ async def vendors_attrs_changelog_collection(
     vendor_id: str,
     query: VendorsAttrsChangelogQuery = Depends(),
 ) -> VendorsAttrsChangelogResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
         auth.VendorsAttrOperations(
-            token, VendorsAttrsChangelog, PARENT_PREFIX, vendor_id=vendor_id
+            token, VendorsAttrsChangelog, prefix, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -340,9 +342,10 @@ async def vendors_products_attrs_collection(
     vendor_id: str,
     query: VendorProductAttrQuery = Depends(),
 ) -> VendorProductAttrResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
         auth.VendorProductOperations(
-            token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
+            token, VendorProductAttr, prefix, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -367,9 +370,10 @@ async def vendors_pricing_by_customer_collection(
     vendor_id: str,
     query: VendorPricingByCustomerQuery = Depends(),
 ) -> VendorPricingByCustomerResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
         auth.VendorCustomerOperations(
-            token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+            token, VendorPricingByCustomer, prefix, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -394,9 +398,10 @@ async def vendors_product_class_discounts_collection(
     vendor_id: str,
     query: VendorProductClassDiscountQuery = Depends(),
 ) -> VendorProductClassDiscountResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
         auth.VendorCustomerOperations(
-            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+            token, VendorProductClassDiscount, prefix, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -421,9 +426,10 @@ async def vendors_product_class_discounts_collection(
     vendor_id: str,
     query: VendorCustomerPricingClassQuery = Depends(),
 ) -> VendorCustomerPricingClassResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
         auth.VendorCustomerOperations(
-            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+            token, VendorCustomerPricingClass, prefix, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -448,10 +454,9 @@ async def vendors_product_class_discounts_collection(
     vendor_id: str,
     query: VendorQuoteQuery = Depends(),
 ) -> VendorQuoteResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
-        auth.VendorCustomerOperations(
-            token, VendorQuote, PARENT_PREFIX, vendor_id=vendor_id
-        )
+        auth.VendorCustomerOperations(token, VendorQuote, prefix, vendor_id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -479,8 +484,9 @@ async def vendors_attrs_related_object(
     attr_id: int,
     query: VendorsAttrQuery = Depends(),
 ) -> VendorsAttrResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX)
+        auth.VendorOperations2(token, VendorsAttr, prefix)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -506,8 +512,9 @@ async def vendors_attrs_related_object_related_changelogs(
     attr_id: int,
     query: VendorsAttrQuery = Depends(),
 ) -> VendorCustomerAttrChangelogResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
-        auth.VendorsAttrOperations(token, VendorsAttrsChangelog, PARENT_PREFIX)
+        auth.VendorsAttrOperations(token, VendorsAttrsChangelog, prefix)
         .allow_admin()
         .allow_sca()
         .allow_dev()
