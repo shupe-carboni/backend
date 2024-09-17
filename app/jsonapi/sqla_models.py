@@ -24,7 +24,7 @@ from sqlalchemy.orm import (
     mapped_column,
 )
 from app.jsonapi.sqla_jsonapi_ext import JSONAPI_
-from app.db import Stage, FriedrichPriceLevels, FriedrichMarketType
+from app.db import Stage
 from functools import partial
 
 Base = declarative_base()
@@ -91,10 +91,16 @@ def permitted_customer_location_ids_v2(email: str) -> QuerySet:
             users.email == email,
         )
     )
+
+    sca_employee = select(customer_locations.id)
+    sca_admin = sca_employee
+
     return {
         "sql_admin": str(admin),
         "sql_manager": str(manager),
         "sql_user_only": str(user_only),
+        "sql_sca_employee": str(sca_employee),
+        "sql_sca_admin": str(sca_admin),
     }
 
 
@@ -358,9 +364,6 @@ class SCACustomer(Base):
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__jsonapi_type_override__
     )
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__jsonapi_type_override__
-    )
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -616,14 +619,10 @@ class SCACustomerLocation(Base):
         "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
     )
     adp_quotes = relationship("ADPQuote", back_populates=__tablename_alt__)
-    friedrich_quotes = relationship("FriedrichQuote", back_populates=__tablename_alt__)
     customers = relationship("SCACustomer", back_populates=__tablename_alt__)
     places = relationship("SCAPlace", back_populates=__tablename_alt__)
     manager_map = relationship("SCAManagerMap", back_populates=__tablename_alt__)
     users = relationship("SCAUser", back_populates=__tablename_alt__)
-    friedrich_customers_to_sca_customer_locations = relationship(
-        "FriedrichCustomertoSCACustomerLocation", back_populates=__tablename_alt__
-    )
     adp_alias_to_sca_customer_locations = relationship(
         "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
     )
@@ -729,9 +728,6 @@ class SCAPlace(Base):
     long = Column(Float)
     ## relationships
     adp_quotes = relationship("ADPQuote", back_populates=__jsonapi_type_override__)
-    friedrich_quotes = relationship(
-        "FriedrichQuote", back_populates=__jsonapi_type_override__
-    )
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__jsonapi_type_override__
     )
@@ -844,407 +840,6 @@ class SCAVendorResourceMap(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
-
-
-class FriedrichCustomer(Base):
-    __tablename__ = "friedrich_customers"
-    __jsonapi_type_override__ = "friedrich-customers"
-    __modifiable_fields__ = ["name", "friedrich_acct_number"]
-    __primary_ref__ = None
-
-    id = Column(Integer, primary_key=True)
-    sca_id = Column(Integer, ForeignKey("sca_customers.id"))
-    name = Column(String)
-    friedrich_acct_number = Column(String)
-    # relationships
-    customers = relationship("SCACustomer", back_populates=__tablename__)
-    friedrich_pricing_special = relationship(
-        "FriedrichPricingSpecial", back_populates=__tablename__
-    )
-    friedrich_customers_to_sca_customer_locations = relationship(
-        "FriedrichCustomertoSCACustomerLocation", back_populates=__tablename__
-    )
-    friedrich_customer_price_levels = relationship(
-        "FriedrichCustomerPriceLevel", back_populates=__tablename__
-    )
-    friedrich_pricing_customers = relationship(
-        "FriedrichPricingCustomer", back_populates=__tablename__
-    )
-    friedrich_pricing_special_customers = relationship(
-        "FriedrichPricingSpecialCustomer", back_populates=__tablename__
-    )
-    friedrich_quotes = relationship("FriedrichQuote", back_populates=__tablename__)
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        """Friedrich Customers is the main primary for Friedrivh"""
-
-
-class FriedrichCustomertoSCACustomerLocation(Base):
-    __tablename__ = "friedrich_customers_to_sca_customer_locations"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    id = Column(Integer, primary_key=True)
-    friedrich_customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    sca_customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
-    # relationships
-    customer_locations = relationship(
-        "SCACustomerLocation", back_populates=__tablename__
-    )
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.id == FriedrichCustomertoSCACustomerLocation.id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichProduct(Base):
-    __tablename__ = "friedrich_products"
-    __jsonapi_type_override__ = "friedrich-products"
-    __modifiable_fields__ = ["description"]
-    __primary_ref__ = None
-
-    id = Column(Integer, primary_key=True)
-    model_number = Column(String)
-    description = Column(String)
-    # relationships
-    friedrich_pricing = relationship("FriedrichPricing", back_populates=__tablename__)
-    friedrich_pricing_special = relationship(
-        "FriedrichPricingSpecial", back_populates=__tablename__
-    )
-    friedrich_quote_products = relationship(
-        "FriedrichQuoteProduct", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> None:
-        """Products table is a reference table"""
-
-
-class FriedrichPricing(Base):
-    __tablename__ = "friedrich_pricing"
-    __jsonapi_type_override__ = "friedrich-pricing"
-    __modifiable_fields__ = ["price"]
-    __primary_ref__ = None
-
-    id = Column(Integer, primary_key=True)
-    model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
-    price_level: Mapped[FriedrichPriceLevels] = mapped_column()
-    price = Column(Float)
-    # relationships
-    friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
-    friedrich_pricing_customers = relationship(
-        "FriedrichPricingCustomer", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        price_levels = aliased(FriedrichCustomerPriceLevel)
-        exists_subquery = exists().where(
-            price_levels.price_level == FriedrichPricing.price_level,
-            price_levels.customer_id == friedrichtoloc.friedrich_customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> None:
-        """Pricing table is a reference table"""
-
-
-class FriedrichPricingSpecial(Base):
-    __tablename__ = "friedrich_pricing_special"
-    __jsonapi_type_override__ = "friedrich-pricing-special"
-    __modifiable_fields__ = ["price", "customer_model_number"]
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    model_number_id = Column(Integer, ForeignKey("friedrich_products.id"))
-    customer_model_number = Column(String)
-    price = Column(Float)
-    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    # relationships
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-    friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
-    friedrich_pricing_special_customers = relationship(
-        "FriedrichPricingSpecialCustomer", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id == FriedrichPricingSpecial.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichCustomerPriceLevel(Base):
-    __tablename__ = "friedrich_customer_price_levels"
-    __jsonapi_type_override__ = "friedrich-customer-price-levels"
-    __modifiable_fields__ = ["price_level"]
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    price_level: Mapped[FriedrichPriceLevels] = mapped_column()
-    # relationships
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id
-            == FriedrichCustomerPriceLevel.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichPricingCustomer(Base):
-    """mapping of curated pricing from FriedrichPricing. Like a favorites list"""
-
-    __tablename__ = "friedrich_pricing_customers"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    price_id = Column(Integer, ForeignKey("friedrich_pricing.id"))
-    # relationships
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-    friedrich_pricing = relationship("FriedrichPricing", back_populates=__tablename__)
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id
-            == FriedrichPricingCustomer.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichPricingSpecialCustomer(Base):
-    """mapping of curated pricing from FriedrichPricingSpecial. Like a favorites list"""
-
-    __tablename__ = "friedrich_pricing_special_customers"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    price_id = Column(Integer, ForeignKey("friedrich_pricing_special.id"))
-    # relationships
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-    friedrich_pricing_special = relationship(
-        "FriedrichPricingSpecial", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id
-            == FriedrichPricingSpecialCustomer.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichQuote(Base):
-
-    __tablename__ = "friedrich_quotes"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = [
-        "friedrich_quote_id",
-        "job_name",
-        "status",
-        "plans_doc",
-        "quote_doc",
-    ]
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey("friedrich_customers.id"))
-    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
-    place_id = Column(Integer, ForeignKey("sca_places.id"))
-    friedrich_quote_id = Column(Integer, unique=True)
-    job_name = Column(String)
-    status: Mapped[Stage] = mapped_column()
-    new_construction = Column(Boolean)
-    market_type: Mapped[FriedrichMarketType] = mapped_column()
-    plans_doc = Column(String)
-    quote_doc = Column(String, unique=True)
-    created_at = Column(DateTime)
-    expires_at = Column(DateTime)
-
-    # relationships
-    friedrich_customers = relationship(
-        "FriedrichCustomer", back_populates=__tablename__
-    )
-    customer_locations = relationship(
-        "SCACustomerLocation", back_populates=__tablename__
-    )
-    places = relationship("SCAPlace", back_populates=__tablename__)
-    friedrich_quote_products = relationship(
-        "FriedrichQuoteProduct", back_populates=__tablename__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        exists_subquery = exists().where(
-            friedrichtoloc.friedrich_customer_id == FriedrichQuote.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_customer_primary_id_queries(email=email)
-
-
-class FriedrichQuoteProduct(Base):
-
-    __tablename__ = "friedrich_quote_products"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = [
-        "tag",
-        "qty",
-        "product_id",
-        "price",
-    ]
-    __primary_ref__ = "friedrich_customers"
-
-    id = Column(Integer, primary_key=True)
-    quote_id = Column(Integer, ForeignKey("friedrich_quotes.id"))
-    tag = Column(String)
-    qty = Column(Integer)
-    product_id = Column(Integer, ForeignKey("friedrich_products.id"))
-    price = Column(Float)
-
-    # relationships
-    friedrich_quotes = relationship("FriedrichQuote", back_populates=__tablename__)
-    friedrich_products = relationship("FriedrichProduct", back_populates=__tablename__)
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-        quote_to_customer = aliased(FriedrichQuote)
-        exists_subquery = exists().where(
-            quote_to_customer.id == FriedrichQuoteProduct.quote_id,
-            friedrichtoloc.friedrich_customer_id == quote_to_customer.customer_id,
-            friedrichtoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return friedrich_quote_primary_id_queries(email=email)
-
-
-class HardcastProduct(Base):
-    __tablename__ = "hardcast_products"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = None
-
-    id = Column(Integer, primary_key=True)
-    product_number = Column(Integer)
-    category_id = Column(Integer, ForeignKey("hardcast_product_categories.id"))
-    description = Column(String)
-    code = Column(String)
-    upc = Column(BigInteger)
-    haz_mat = Column(Boolean)
-    freight_class = Column(Float)
-    stock = Column(ARRAY(String))
-    weight = Column(Integer)
-    case_qty = Column(Integer)
-    case_price = Column(Float)
-
-
-class HardcastProductCategory(Base):
-    __tablename__ = "hardcast_product_categories"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
-    __primary_ref__ = None
-
-    id = Column(Integer, primary_key=True)
-    category_l1 = Column(String)
-    category_l2 = Column(String)
-    category_l3 = Column(String)
 
 
 # V2
@@ -1395,7 +990,8 @@ class VendorProduct(Base):
         return q
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet: ...
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return vendor_primary_id_queries(vendor_id=vendor_id)
 
 
 class VendorProductAttr(Base):
@@ -1601,8 +1197,11 @@ class VendorPricingByCustomer(Base):
         return q.where(exists_subquery)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            VendorPricingByCustomer.vendor_customer_id,
+            vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorCustomer(Base):
@@ -1654,8 +1253,10 @@ class VendorCustomer(Base):
         return q.where(exists_subquery)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return VendorCustomer.vendor_id, vendor_primary_id_queries(
+            email=email, vendor_id=vendor_id
+        )
 
 
 class CustomerLocationMapping(Base):
@@ -1716,8 +1317,13 @@ class VendorPricingByCustomerChangelog(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            VendorPricingByCustomerChangelog.vendor_pricing_by_customer_id,
+            vendor_pricing_by_customer_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
 
 
 class VendorProductClassDiscount(Base):
@@ -1755,8 +1361,11 @@ class VendorProductClassDiscount(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            VendorProductClassDiscount.vendor_customer_id,
+            vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorPricingByCustomerAttr(Base):
@@ -1796,8 +1405,13 @@ class VendorPricingByCustomerAttr(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_pricing_by_customer_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            VendorPricingByCustomerAttr.pricing_by_customer_id,
+            vendor_pricing_by_customer_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
 
 
 class VendorProductClassDiscountsChangelog(Base):
@@ -1928,8 +1542,10 @@ class VendorQuoteProduct(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor: str) -> QuerySet:
-        return vendor_quotes_primary_id_queries(email=email, vendor=vendor)
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return VendorQuote.vendor_customer_id, vendor_quotes_primary_id_queries(
+            email=email, vendor_id=vendor_id
+        )
 
 
 class VendorQuoteChangelog(Base):
@@ -2027,6 +1643,13 @@ class VendorCustomerPricingClass(Base):
             customer_mapping.customer_location_id.in_(ids),
         )
         return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            VendorCustomerPricingClass.vendor_customer_id,
+            vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorCustomerPricingClassesChangelog(Base):
@@ -2341,94 +1964,6 @@ def customers_primary_id_queries(email: str, **filters) -> QuerySet:
     return querys
 
 
-def friedrich_customer_primary_id_queries(email: str, **filters) -> QuerySet:
-    friedrich_customers_alias = aliased(FriedrichCustomer)
-    friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-    users = aliased(SCAUser)
-    customer_locations = aliased(SCACustomerLocation)
-
-    user_query = select(friedrich_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-
-    manager_map = aliased(SCAManagerMap)
-    manager_query = select(friedrich_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            manager_map.user_id == users.id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-    customers_2 = aliased(FriedrichCustomer)
-    admin_query = select(friedrich_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            customers_2.id == friedrichtoloc.friedrich_customer_id,
-            customers_2.sca_id == FriedrichCustomer.sca_id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-    querys: QuerySet = {
-        "sql_user_only": str(user_query),
-        "sql_manager": str(manager_query),
-        "sql_admin": str(admin_query),
-    }
-    return querys
-
-
-def friedrich_quote_primary_id_queries(email: str, **filters) -> QuerySet:
-    friedrich_quotes_alias = aliased(FriedrichQuote)
-    friedrichtoloc = aliased(FriedrichCustomertoSCACustomerLocation)
-    users = aliased(SCAUser)
-    customer_locations = aliased(SCACustomerLocation)
-
-    user_query = select(friedrich_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-
-    manager_map = aliased(SCAManagerMap)
-    manager_query = select(friedrich_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            manager_map.user_id == users.id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-    customers_2 = aliased(FriedrichCustomer)
-    admin_query = select(friedrich_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == friedrichtoloc.sca_customer_location_id,
-            customers_2.id == friedrichtoloc.friedrich_customer_id,
-            customers_2.sca_id == FriedrichCustomer.sca_id,
-            users.email == email,
-            friedrichtoloc.friedrich_customer_id == FriedrichCustomer.id,
-        )
-    )
-    querys: QuerySet = {
-        "sql_user_only": str(user_query),
-        "sql_manager": str(manager_query),
-        "sql_admin": str(admin_query),
-    }
-    return querys
-
-
 def vendor_customer_primary_id_queries(email: str, **filters) -> QuerySet:
     vendor = filters.get("vendor_id")
     vendor_customer = aliased(VendorCustomer)
@@ -2442,8 +1977,8 @@ def vendor_customer_primary_id_queries(email: str, **filters) -> QuerySet:
             customer_locations.id == customer_to_loc.customer_location_id,
             users.email == email,
             customer_to_loc.vendor_customer_id == VendorCustomer.id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
 
     manager_map = aliased(SCAManagerMap)
@@ -2454,8 +1989,8 @@ def vendor_customer_primary_id_queries(email: str, **filters) -> QuerySet:
             manager_map.user_id == users.id,
             users.email == email,
             customer_to_loc.vendor_customer_id == VendorCustomer.id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
     admin_map = aliased(CustomerAdminMap)
     admin_query = select(vendor_customer.id).where(
@@ -2465,13 +2000,22 @@ def vendor_customer_primary_id_queries(email: str, **filters) -> QuerySet:
             admin_map.user_id == users.id,
             users.email == email,
             customer_to_loc.vendor_customer_id == VendorCustomer.id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
+    sca_employee_query = select(vendor_customer.id).where(
+        exists().where(
+            customer_to_loc.vendor_customer_id == VendorCustomer.id,
+            vendor_customer.vendor_id == vendor,
+        ),
+    )
+    sca_admin_query = sca_employee_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
     }
     return querys
 
@@ -2491,8 +2035,8 @@ def vendor_quotes_primary_id_queries(email: str, **filters) -> QuerySet:
             users.email == email,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
             vendor_customer.id == VendorQuote.vendor_customer_id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
 
     manager_map = aliased(SCAManagerMap)
@@ -2504,8 +2048,8 @@ def vendor_quotes_primary_id_queries(email: str, **filters) -> QuerySet:
             users.email == email,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
             vendor_customer.id == VendorQuote.vendor_customer_id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
     admin_map = aliased(CustomerAdminMap)
     admin_query = select(vendor_quotes.id).where(
@@ -2516,13 +2060,22 @@ def vendor_quotes_primary_id_queries(email: str, **filters) -> QuerySet:
             users.email == email,
             customer_to_loc.vendor_customer_id == vendor_customer.id,
             vendor_customer.id == VendorQuote.vendor_customer_id,
+            vendor_customer.vendor_id == vendor,
         ),
-        vendor_customer.vendor_id == vendor,
     )
+    sca_employee_query = select(vendor_quotes.id).where(
+        exists().where(
+            vendor_customer.id == VendorQuote.vendor_customer_id,
+            vendor_customer.vendor_id == vendor,
+        ),
+    )
+    sca_admin_query = sca_employee_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
     }
     return querys
 
@@ -2569,10 +2122,19 @@ def vendor_pricing_by_customer_primary_id_queries(email: str, **filters) -> Quer
             vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
         )
     )
+    sca_employee_query = select(vendor_pricing_by_customer.id).where(
+        exists().where(
+            vendor_customer.vendor_id == vendor,
+            vendor_customer.id == VendorPricingByCustomer.vendor_customer_id,
+        )
+    )
+    sca_admin_query = sca_employee_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
     }
     return querys
 
@@ -2584,10 +2146,14 @@ def vendor_product_primary_id_queries(email: str, **filters) -> QuerySet:
     user_query = select(vendor_products.id).where(vendor_products.vendor_id == vendor)
     manager_query = user_query
     admin_query = user_query
+    sca_employee_query = user_query
+    sca_admin_query = user_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
     }
     return querys
 
@@ -2599,9 +2165,32 @@ def vendor_attrs_primary_id_queries(email: str, **filters) -> QuerySet:
     user_query = select(vendor_attrs.id).where(vendor_attrs.vendor_id == vendor)
     manager_query = user_query
     admin_query = user_query
+    sca_employee_query = user_query
+    sca_admin_query = user_query
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
+    }
+    return querys
+
+
+def vendor_primary_id_queries(*args, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
+    vendors = aliased(Vendor)
+
+    user_query = select(vendors.id).where(vendors.id == vendor)
+    manager_query = user_query
+    admin_query = user_query
+    sca_employee_query = user_query
+    sca_admin_query = user_query
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
     }
     return querys
