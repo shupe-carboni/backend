@@ -635,6 +635,7 @@ class CustomersOperations(SecOp):
         self._primary_resource = SCACustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix=prefix)
+        self.version = 1
 
 
 class VendorOperations(SecOp):
@@ -646,6 +647,7 @@ class VendorOperations(SecOp):
         self._primary_resource = SCAVendor
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix=prefix)
+        self.version = 1
 
     def permitted_primary_resource_ids(self, session: Session) -> list[int]:
         """The Vendors resource does not have underlying resources that need to
@@ -706,6 +708,7 @@ class ADPOperations(SecOp):
         self._primary_resource = ADPCustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 1
 
 
 class ADPQuoteOperations(SecOp):
@@ -717,6 +720,7 @@ class ADPQuoteOperations(SecOp):
         self._primary_resource = ADPQuote
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 1
 
 
 class AGasOperations(SecOp):
@@ -727,6 +731,7 @@ class AGasOperations(SecOp):
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 1
 
 
 class AtcoOperations(SecOp):
@@ -738,6 +743,7 @@ class AtcoOperations(SecOp):
         self._primary_resource = None
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix)
+        self.version = 1
 
 
 # V2

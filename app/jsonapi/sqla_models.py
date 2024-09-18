@@ -170,7 +170,7 @@ class ADPAHProgram(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPAHProgramChangelog(Base):
@@ -193,7 +193,7 @@ class ADPAHProgramChangelog(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> str:
-        return str()
+        return None, str()
 
 
 class ADPCoilProgram(Base):
@@ -248,7 +248,7 @@ class ADPCoilProgram(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPCoilProgramChangelog(Base):
@@ -413,7 +413,7 @@ class ADPMaterialGroupDiscount(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPMaterialGroupDiscountChangelog(Base):
@@ -438,7 +438,7 @@ class ADPMaterialGroupDiscountChangelog(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPMaterialGroup(Base):
@@ -520,7 +520,7 @@ class ADPProgramRating(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPPricingPart(Base):
@@ -565,7 +565,7 @@ class ADPProgramPart(Base):
 
     ## object id queries
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPQuote(Base):
@@ -604,7 +604,7 @@ class ADPQuote(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class SCACustomerLocation(Base):
@@ -643,7 +643,7 @@ class SCACustomerLocation(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return customers_primary_id_queries(email=email)
+        return None, customers_primary_id_queries(email=email)
 
 
 class ADPSNP(Base):
@@ -677,7 +677,7 @@ class ADPSNP(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_customer_primary_id_queries(email=email)
+        return None, adp_customer_primary_id_queries(email=email)
 
 
 class ADPSNPChangelog(Base):
@@ -719,7 +719,7 @@ class ADPQuoteProduct(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return adp_quote_primary_id_queries(email=email)
+        return None, adp_quote_primary_id_queries(email=email)
 
 
 class SCAPlace(Base):
@@ -1882,6 +1882,8 @@ def adp_customer_primary_id_queries(email: str, **filters) -> QuerySet:
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(),
+        "sql_sca_admin": str(),
     }
     return querys
 
@@ -1926,6 +1928,8 @@ def adp_quote_primary_id_queries(email: str, **filters) -> QuerySet:
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(),
+        "sql_sca_admin": str(),
     }
     return querys
 
@@ -1965,6 +1969,8 @@ def customers_primary_id_queries(email: str, **filters) -> QuerySet:
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
         "sql_admin": str(admin_query),
+        "sql_sca_employee": str(),
+        "sql_sca_admin": str(),
     }
     return querys
 
