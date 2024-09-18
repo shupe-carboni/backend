@@ -12,6 +12,7 @@ test_client = TestClient(app)
 
 VENDOR_RESOURCE = Vendor.__jsonapi_type_override__
 VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
+TEST_VENDOR = VENDORS_PREFIX / "TEST_VENDOR"
 INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
 INFO_PREFIX = VENDORS_PREFIX / INFO_RESOURCE
 
@@ -47,29 +48,28 @@ EXCLUDE_BASE_CUSTOMER = list(
     )
 )
 
+TEST_VENDOR_ATTR = str(4)
+
 ROUTES = [
     VENDORS_PREFIX,
-    VENDORS_PREFIX / "TEST_VENDOR",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendors-attrs",
-    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendors-attrs",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-products",
-    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-products",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-product-classes",
-    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-product-classes",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-pricing-classes",
-    VENDORS_PREFIX / "TEST_VENDOR" / "relationships" / "vendor-pricing-classes",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendors-attrs" / "vendor-attrs-changelog",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-products" / "vendor-product-attrs",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-customers" / "vendor-pricing-by-customer",
-    VENDORS_PREFIX
-    / "TEST_VENDOR"
-    / "vendor-customers"
-    / "vendor-product-class-discounts",
-    VENDORS_PREFIX
-    / "TEST_VENDOR"
-    / "vendor-customers"
-    / "vendor-customer-pricing-classes",
-    VENDORS_PREFIX / "TEST_VENDOR" / "vendor-customers" / "vendor-quotes",
+    TEST_VENDOR,
+    TEST_VENDOR / "vendors-attrs",
+    TEST_VENDOR / "relationships" / "vendors-attrs",
+    TEST_VENDOR / "vendor-products",
+    TEST_VENDOR / "relationships" / "vendor-products",
+    TEST_VENDOR / "vendor-product-classes",
+    TEST_VENDOR / "relationships" / "vendor-product-classes",
+    TEST_VENDOR / "vendor-pricing-classes",
+    TEST_VENDOR / "relationships" / "vendor-pricing-classes",
+    TEST_VENDOR / "vendors-attrs" / "vendor-attrs-changelog",
+    TEST_VENDOR / "vendor-products" / "vendor-product-attrs",
+    TEST_VENDOR / "vendor-customers" / "vendor-pricing-by-customer",
+    TEST_VENDOR / "vendor-customers" / "vendor-product-class-discounts",
+    TEST_VENDOR / "vendor-customers" / "vendor-customer-pricing-classes",
+    TEST_VENDOR / "vendor-customers" / "vendor-quotes",
+    TEST_VENDOR / "vendors-attrs" / "vendor-attrs-changelog",
+    TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR,
+    TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendor-attrs-changelog",
 ]
 ROUTE_PERM_RESP_ALL_ALLOWED = [
     (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
@@ -77,9 +77,9 @@ ROUTE_PERM_RESP_ALL_ALLOWED = [
 
 
 @mark.parametrize("route,perm,response_code", ROUTE_PERM_RESP_ALL_ALLOWED)
-def test_vendors_collection(route, perm, response_code):
+def test_vendor_response_codes(route, perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(route)
-    assert resp.status_code == response_code or resp.status_code == 204, pprint(
-        resp.content
-    )
+    valid_code = resp.status_code == response_code or resp.status_code == 204
+    internal_error = resp.status_code == 500
+    assert valid_code, pprint(resp.text if internal_error else resp.json())
