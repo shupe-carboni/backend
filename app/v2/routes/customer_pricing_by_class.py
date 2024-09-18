@@ -1,11 +1,10 @@
-
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
-from app.jsonapi.core_models import convert_query
-#from app.RELATED_RESOURCE.models import 
+
+# from app.RELATED_RESOURCE.models import
 from app.v2.models import (
     CustomerPricingByClassResp,
     CustomerPricingByClassQuery,
@@ -13,7 +12,7 @@ from app.v2.models import (
 )
 from app.jsonapi.sqla_models import CustomerPricingByClass
 
-PARENT_PREFIX = "/vendors/v2"
+PARENT_PREFIX = "/vendors"
 CUSTOMER_PRICING_BY_CLASS = CustomerPricingByClass.__jsonapi_type_override__
 
 customer_pricing_by_class = APIRouter(
@@ -22,152 +21,99 @@ customer_pricing_by_class = APIRouter(
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
-converter = convert_query(CustomerPricingByClassQueryJSONAPI)
 
 
 @customer_pricing_by_class.get(
     "",
-    response_model=CustomerPricingByClassResp,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
-async def customer_pricing_by_clas_collection(
-    token: Token, session: NewSession, query: CustomerPricingByClassQuery = Depends()
+async def customer_pricing_by_class_collection(
+    token: Token, session: NewSession
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_class.get(
+    "/{customer_pricing_by_class_id}",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_class_resource(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_class_id: int,
 ) -> CustomerPricingByClassResp:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query))
-    )
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @customer_pricing_by_class.get(
-    "/{customer_pricing_by_clas_id}",
-    response_model=CustomerPricingByClassResp,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
+    "/{customer_pricing_by_class_id}/vendor-pricing-by-class",
+    tags=["Not Implemented"],
 )
-async def customer_pricing_by_clas_resource(
+async def customer_pricing_by_class_related_vendor_pricing_by_class(
     token: Token,
     session: NewSession,
-    customer_pricing_by_clas_id: int,
-    query: CustomerPricingByClassQuery = Depends(),
-) -> CustomerPricingByClassResp:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_clas_id)
-    )
-
-
-@customer_pricing_by_class.get(
-    "/{customer_pricing_by_clas_id}/vendor-pricing-by-class",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_clas_related_vendor_pricing_by_class(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_clas_id: int,
-    query: CustomerPricingByClassQuery = Depends(),
+    customer_pricing_by_class_id: int,
 ) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_clas_id, "vendor-pricing-by-class")
-    )
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
 
 @customer_pricing_by_class.get(
-    "/{customer_pricing_by_clas_id}/relationships/vendor-pricing-by-class",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
+    "/{customer_pricing_by_class_id}/relationships/vendor-pricing-by-class",
+    tags=["Not Implemented"],
 )
-async def customer_pricing_by_clas_relationships_vendor_pricing_by_class(
+async def customer_pricing_by_class_relationships_vendor_pricing_by_class(
     token: Token,
     session: NewSession,
-    customer_pricing_by_clas_id: int,
-    query: CustomerPricingByClassQuery = Depends(),
+    customer_pricing_by_class_id: int,
 ) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_clas_id, "vendor-pricing-by-class", True)
-    )
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-    
-@customer_pricing_by_class.get(
-    "/{customer_pricing_by_clas_id}/users",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_clas_related_users(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_clas_id: int,
-    query: CustomerPricingByClassQuery = Depends(),
-) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_clas_id, "users")
-    )
 
 @customer_pricing_by_class.get(
-    "/{customer_pricing_by_clas_id}/relationships/users",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
+    "/{customer_pricing_by_class_id}/users",
+    tags=["Not Implemented"],
 )
-async def customer_pricing_by_clas_relationships_users(
+async def customer_pricing_by_class_related_users(
     token: Token,
     session: NewSession,
-    customer_pricing_by_clas_id: int,
-    query: CustomerPricingByClassQuery = Depends(),
+    customer_pricing_by_class_id: int,
 ) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_clas_id, "users", True)
-    )
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
-    
+
+@customer_pricing_by_class.get(
+    "/{customer_pricing_by_class_id}/relationships/users",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_class_relationships_users(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_class_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
 @customer_pricing_by_class.delete(
-    "/{customer_pricing_by_clas_id}",
+    "/{customer_pricing_by_class_id}",
     tags=["jsonapi"],
 )
 async def del_customer_pricing_by_clas(
     token: Token,
     session: NewSession,
-    customer_pricing_by_clas_id: int,
-    vendor_pricing_by_clas_id: int,
+    customer_pricing_by_class_id: int,
+    vendor_pricing_by_class_id: int,
 ) -> None:
     return (
-        auth.VOperations(token, CustomerPricingByClass, PARENT_PREFIX)
+        auth.VendorPricingByClassOperations(
+            token, CustomerPricingByClass, PARENT_PREFIX
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, obj_id=customer_pricing_by_clas_id, primary_id=vendor_pricing_by_clas_id)
+        .delete(
+            session,
+            obj_id=customer_pricing_by_class_id,
+            primary_id=vendor_pricing_by_class_id,
+        )
     )
-    

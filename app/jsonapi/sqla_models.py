@@ -1268,7 +1268,7 @@ class CustomerLocationMapping(Base):
     __tablename__ = "customer_location_mapping"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["deleted_at"]
-    __primary_ref__ = None
+    __primary_ref__ = "vendor_customers"
 
     id = Column(Integer, primary_key=True)
     vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
@@ -1285,6 +1285,13 @@ class CustomerLocationMapping(Base):
         if not ids:
             return q
         return q.where(CustomerLocationMapping.customer_location_id.in_(ids))
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+        return (
+            CustomerLocationMapping.vendor_customer_id,
+            vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorPricingByCustomerChangelog(Base):

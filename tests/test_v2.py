@@ -60,13 +60,17 @@ ROUTES = [
     TEST_VENDOR / "relationships" / "vendor-product-classes",
     TEST_VENDOR / "vendor-pricing-classes",
     TEST_VENDOR / "relationships" / "vendor-pricing-classes",
+    # chained static collections
     TEST_VENDOR / "vendors-attrs" / "vendors-attrs-changelog",
     TEST_VENDOR / "vendor-products" / "vendor-product-attrs",
     TEST_VENDOR / "vendor-customers" / "vendor-pricing-by-customer",
     TEST_VENDOR / "vendor-customers" / "vendor-product-class-discounts",
     TEST_VENDOR / "vendor-customers" / "vendor-customer-pricing-classes",
     TEST_VENDOR / "vendor-customers" / "vendor-quotes",
-    TEST_VENDOR / "vendors-attrs" / "vendors-attrs-changelog",
+    # TODO
+    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-class",
+    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-customer",
+    # chained dynamic resource/collections by object
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR,
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendors-attrs-changelog",
     TEST_VENDOR / "vendor-products" / TEST_VENDOR_PRODUCT,
@@ -76,6 +80,9 @@ ROUTES = [
     TEST_VENDOR_TEST_CUSTOMER / "vendor-product-class-discounts",
     TEST_VENDOR_TEST_CUSTOMER / "vendor-customer-pricing-classes",
     TEST_VENDOR_TEST_CUSTOMER / "vendor-quotes",
+    # TODO
+    TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-class",
+    TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-customer",
 ]
 ROUTE_PERM_RESP_ALL_ALLOWED = [
     (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
