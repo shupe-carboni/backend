@@ -49,6 +49,7 @@ EXCLUDE_BASE_CUSTOMER = list(
 )
 
 TEST_VENDOR_ATTR = str(4)
+TEST_VENDOR_PRODUCT = str(2355)
 
 ROUTES = [
     VENDORS_PREFIX,
@@ -61,15 +62,17 @@ ROUTES = [
     TEST_VENDOR / "relationships" / "vendor-product-classes",
     TEST_VENDOR / "vendor-pricing-classes",
     TEST_VENDOR / "relationships" / "vendor-pricing-classes",
-    TEST_VENDOR / "vendors-attrs" / "vendor-attrs-changelog",
+    TEST_VENDOR / "vendors-attrs" / "vendors-attrs-changelog",
     TEST_VENDOR / "vendor-products" / "vendor-product-attrs",
     TEST_VENDOR / "vendor-customers" / "vendor-pricing-by-customer",
     TEST_VENDOR / "vendor-customers" / "vendor-product-class-discounts",
     TEST_VENDOR / "vendor-customers" / "vendor-customer-pricing-classes",
     TEST_VENDOR / "vendor-customers" / "vendor-quotes",
-    TEST_VENDOR / "vendors-attrs" / "vendor-attrs-changelog",
+    TEST_VENDOR / "vendors-attrs" / "vendors-attrs-changelog",
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR,
-    TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendor-attrs-changelog",
+    TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendors-attrs-changelog",
+    TEST_VENDOR / "vendor-products" / TEST_VENDOR_PRODUCT,
+    TEST_VENDOR / "vendor-products" / TEST_VENDOR_PRODUCT / "vendor-product-attrs",
 ]
 ROUTE_PERM_RESP_ALL_ALLOWED = [
     (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
