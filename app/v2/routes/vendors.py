@@ -303,7 +303,7 @@ async def vendor_relationships_vendor_customers(
 
 
 @vendors.get(
-    "/{vendor_id}/vendors-attrs/vendor-attrs-changelog",
+    "/{vendor_id}/vendors-attrs/vendors-attrs-changelog",
     response_model=VendorsAttrsChangelogResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
@@ -500,7 +500,7 @@ async def vendors_attrs_related_object(
 
 
 @vendors.get(
-    "/{vendor_id}/vendors-attrs/{attr_id}/vendor-attrs-changelog",
+    "/{vendor_id}/vendors-attrs/{attr_id}/vendors-attrs-changelog",
     response_model=VendorsAttrsChangelogResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
@@ -514,7 +514,7 @@ async def vendors_attrs_related_object_related_changelogs(
 ) -> VendorCustomerAttrChangelogResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
     return (
-        auth.VendorsAttrOperations(token, VendorsAttrsChangelog, prefix)
+        auth.VendorsAttrOperations(token, VendorsAttr, prefix)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -523,7 +523,212 @@ async def vendors_attrs_related_object_related_changelogs(
             session,
             converters[VendorsAttrQuery](query),
             attr_id,
-            "vendors-attrs",
+            "vendors-attrs-changelog",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-products/{product_id}",
+    response_model=VendorProductAttrResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_product_related_object(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    product_id: int,
+    query: VendorProductAttrQuery = Depends(),
+) -> VendorProductAttrResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorProductOperations(
+            token, VendorProductAttr, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session, converters[VendorProductAttrQuery](query), product_id)
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-products/{product_id}/vendor-product-attrs",
+    response_model=VendorProductAttrResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendors_product_related_object_attrs(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    product_id: int,
+    query: VendorProductQuery = Depends(),
+) -> VendorProductAttrResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorProductOperations(token, VendorProduct, prefix, vendor_id=vendor_id)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorProductQuery](query),
+            product_id,
+            "vendor-product-attrs",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}",
+    response_model=VendorCustomerResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendor_customer_obj(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+    query: VendorCustomerQuery = Depends(),
+) -> VendorCustomerResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(session, converters[VendorCustomerQuery](query), customer_id)
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/vendor-pricing-by-customer",
+    response_model=VendorPricingByCustomerResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendor_customer_related_pricing_by_customer(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+    query: VendorCustomerQuery = Depends(),
+) -> VendorPricingByCustomerResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorCustomerQuery](query),
+            customer_id,
+            "vendor-pricing-by-customer",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/vendor-product-class-discounts",
+    response_model=VendorProductClassDiscountResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendor_customer_related_product_class_discounts(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+    query: VendorCustomerQuery = Depends(),
+) -> VendorProductClassDiscountResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorCustomerQuery](query),
+            customer_id,
+            "vendor-product-class-discounts",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/vendor-customer-pricing-classes",
+    response_model=VendorCustomerPricingClassResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendor_customer_related_customer_pricing_classes(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+    query: VendorCustomerQuery = Depends(),
+) -> VendorCustomerPricingClassResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorCustomerQuery](query),
+            customer_id,
+            "vendor-customer-pricing-classes",
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/vendor-quotes",
+    response_model=VendorQuoteResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def vendor_customer_related_quotes(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+    query: VendorCustomerQuery = Depends(),
+) -> VendorQuoteResp:
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[VendorCustomerQuery](query),
+            customer_id,
+            "vendor-quotes",
         )
     )
 

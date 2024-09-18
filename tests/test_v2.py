@@ -11,10 +11,6 @@ from pathlib import Path
 test_client = TestClient(app)
 
 VENDOR_RESOURCE = Vendor.__jsonapi_type_override__
-VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
-TEST_VENDOR = VENDORS_PREFIX / "TEST_VENDOR"
-INFO_RESOURCE = SCAVendorInfo.__jsonapi_type_override__
-INFO_PREFIX = VENDORS_PREFIX / INFO_RESOURCE
 
 SCA_PERMS = (
     auth_overrides.AdminToken,
@@ -47,9 +43,11 @@ EXCLUDE_BASE_CUSTOMER = list(
         [200, 200, 200, 200, 401, 200],
     )
 )
-
+VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
+TEST_VENDOR = VENDORS_PREFIX / "TEST_VENDOR"
 TEST_VENDOR_ATTR = str(4)
 TEST_VENDOR_PRODUCT = str(2355)
+TEST_VENDOR_TEST_CUSTOMER = TEST_VENDOR / "vendor-customers" / str(169)
 
 ROUTES = [
     VENDORS_PREFIX,
@@ -73,6 +71,11 @@ ROUTES = [
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendors-attrs-changelog",
     TEST_VENDOR / "vendor-products" / TEST_VENDOR_PRODUCT,
     TEST_VENDOR / "vendor-products" / TEST_VENDOR_PRODUCT / "vendor-product-attrs",
+    TEST_VENDOR_TEST_CUSTOMER,
+    TEST_VENDOR_TEST_CUSTOMER / "vendor-pricing-by-customer",
+    TEST_VENDOR_TEST_CUSTOMER / "vendor-product-class-discounts",
+    TEST_VENDOR_TEST_CUSTOMER / "vendor-customer-pricing-classes",
+    TEST_VENDOR_TEST_CUSTOMER / "vendor-quotes",
 ]
 ROUTE_PERM_RESP_ALL_ALLOWED = [
     (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
