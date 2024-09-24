@@ -1789,6 +1789,17 @@ class CustomerPricingByClass(Base):
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            CustomerPricingByClass.pricing_by_class_id,
+            vendor_pricing_by_class_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
+
 
 class CustomerPricingByCustomer(Base):
     __tablename__ = "customer_pricing_by_customer"
@@ -1811,6 +1822,17 @@ class CustomerPricingByCustomer(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            CustomerPricingByCustomer.pricing_by_customer_id,
+            vendor_pricing_by_customer_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
 
 
 class VendorCustomerAttrChangelog(Base):
@@ -2086,6 +2108,79 @@ def vendor_quotes_primary_id_queries(email: str, **filters) -> QuerySet:
             vendor_customer.id == VendorQuote.vendor_customer_id,
             vendor_customer.vendor_id == vendor,
         ),
+    )
+    sca_admin_query = sca_employee_query
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
+    }
+    return querys
+
+
+def vendor_pricing_by_class_primary_id_queries(email: str, **filters) -> QuerySet:
+    vendor = filters.get("vendor_id")
+    vendor_pricing_by_class = aliased(VendorPricingByClass)
+    vendor_pricing_classes = aliased(VendorPricingClass)
+    vendor_customer_pricing_classes = aliased(VendorCustomerPricingClass)
+    vendor_customer = aliased(VendorCustomer)
+    customer_to_loc = aliased(CustomerLocationMapping)
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+
+    user_query = select(vendor_pricing_by_class.id).where(
+        exists().where(
+            users.email == email,
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == vendor_customer_pricing_classes.vendor_customer_id,
+            vendor_customer_pricing_classes.pricing_class_id
+            == vendor_pricing_classes.id,
+            vendor_customer_pricing_classes.id == VendorPricingByClass.id,
+            vendor_customer.vendor_id == vendor,
+        )
+    )
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(vendor_pricing_by_class.id).where(
+        exists().where(
+            manager_map.user_id == users.id,
+            users.email == email,
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == vendor_customer_pricing_classes.vendor_customer_id,
+            vendor_customer_pricing_classes.pricing_class_id
+            == vendor_pricing_classes.id,
+            vendor_customer_pricing_classes.id == VendorPricingByClass.id,
+            vendor_customer.vendor_id == vendor,
+        )
+    )
+    admin_map = aliased(CustomerAdminMap)
+    admin_query = select(vendor_pricing_by_class.id).where(
+        exists().where(
+            admin_map.user_id == users.id,
+            users.email == email,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_locations.customer_id == admin_map.customer_id,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == vendor_customer_pricing_classes.vendor_customer_id,
+            vendor_customer_pricing_classes.pricing_class_id
+            == vendor_pricing_classes.id,
+            vendor_customer_pricing_classes.id == VendorPricingByClass.id,
+            vendor_customer.vendor_id == vendor,
+        )
+    )
+    sca_employee_query = select(vendor_pricing_by_class.id).where(
+        exists().where(
+            vendor_customer.vendor_id == vendor,
+            vendor_customer.id == vendor_customer_pricing_classes.vendor_customer_id,
+            vendor_customer_pricing_classes.pricing_class_id
+            == vendor_pricing_classes.id,
+            vendor_customer_pricing_classes.id == VendorPricingByClass.id,
+        )
     )
     sca_admin_query = sca_employee_query
     querys: QuerySet = {

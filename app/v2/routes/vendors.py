@@ -387,6 +387,66 @@ async def vendors_pricing_by_customer_collection(
 
 
 @vendors.get(
+    "/{vendor_id}/vendor-customers/customer-pricing-by-class",
+    response_model=CustomerPricingByClassResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def customer_pricing_by_class_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: CustomerPricingByClassQuery = Depends(),
+) -> CustomerPricingByClassResp:
+    """Customer 'favorites' within the vendor's price assignments by class/tier
+    assigned to the customer account(s) with which the user is associated."""
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorPricingByClassOperations(
+            token, CustomerPricingByClass, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[CustomerPricingByClassQuery](query),
+        )
+    )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/customer-pricing-by-customer",
+    response_model=CustomerPricingByCustomerResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def customer_pricing_by_customer_collection(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    query: CustomerPricingByCustomerQuery = Depends(),
+) -> CustomerPricingByCustomerResp:
+    """Customer 'favorites' within the vendor's price assignments directly
+    to the customer account(s) with which the user is associated."""
+    prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
+    return (
+        auth.VendorCustomerOperations(
+            token, CustomerPricingByCustomer, prefix, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .allow_customer("std")
+        .get(
+            session,
+            converters[CustomerPricingByCustomerQuery](query),
+        )
+    )
+
+
+@vendors.get(
     "/{vendor_id}/vendor-customers/vendor-product-class-discounts",
     response_model=VendorProductClassDiscountResp,
     response_model_exclude_none=True,

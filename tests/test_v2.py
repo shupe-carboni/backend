@@ -67,9 +67,8 @@ ROUTES = [
     TEST_VENDOR / "vendor-customers" / "vendor-product-class-discounts",
     TEST_VENDOR / "vendor-customers" / "vendor-customer-pricing-classes",
     TEST_VENDOR / "vendor-customers" / "vendor-quotes",
-    # TODO
-    # TEST_VENDOR / "vendor-customers" / "customer-pricing-by-class",
-    # TEST_VENDOR / "vendor-customers" / "customer-pricing-by-customer",
+    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-class",
+    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-customer",
     # chained dynamic resource/collections by object
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR,
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendors-attrs-changelog",
