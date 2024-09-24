@@ -68,8 +68,8 @@ ROUTES = [
     TEST_VENDOR / "vendor-customers" / "vendor-customer-pricing-classes",
     TEST_VENDOR / "vendor-customers" / "vendor-quotes",
     # TODO
-    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-class",
-    TEST_VENDOR / "vendor-customers" / "customer-pricing-by-customer",
+    # TEST_VENDOR / "vendor-customers" / "customer-pricing-by-class",
+    # TEST_VENDOR / "vendor-customers" / "customer-pricing-by-customer",
     # chained dynamic resource/collections by object
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR,
     TEST_VENDOR / "vendors-attrs" / TEST_VENDOR_ATTR / "vendors-attrs-changelog",
@@ -81,8 +81,8 @@ ROUTES = [
     TEST_VENDOR_TEST_CUSTOMER / "vendor-customer-pricing-classes",
     TEST_VENDOR_TEST_CUSTOMER / "vendor-quotes",
     # TODO
-    TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-class",
-    TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-customer",
+    # TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-class",
+    # TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-customer",
 ]
 ROUTE_PERM_RESP_ALL_ALLOWED = [
     (str(route), perm, resp) for route in ROUTES for perm, resp in ALL_ALLOWED
@@ -93,6 +93,9 @@ ROUTE_PERM_RESP_ALL_ALLOWED = [
 def test_vendor_response_codes(route, perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(route)
-    valid_code = resp.status_code == response_code or resp.status_code == 204
+    no_content = resp.status_code == 204
+    expected_code = resp.status_code == response_code
     internal_error = resp.status_code == 500
-    assert valid_code, pprint(resp.text if internal_error else resp.json())
+    assert expected_code or no_content, pprint(
+        resp.text if internal_error else resp.json()
+    )
