@@ -50,8 +50,9 @@ def price_flexcoil_version(
         elif model_number.endswith("N"):
             return same_as_model
         elif model_number.endswith("R"):
-            model_to_parse = list(model_number.replace("R", "N"))
-            model_to_parse[4] = 1
+            model_to_parse = model_number
+            model_to_parse[4] = "1"
+            model_to_parse[-1] = "N"
             model_to_parse = "".join(model_to_parse)
         else:
             return not_available
