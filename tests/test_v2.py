@@ -79,7 +79,7 @@ ROUTES = [
     TEST_VENDOR_TEST_CUSTOMER / "vendor-product-class-discounts",
     TEST_VENDOR_TEST_CUSTOMER / "vendor-customer-pricing-classes",
     TEST_VENDOR_TEST_CUSTOMER / "vendor-quotes",
-    # TODO
+    # TODO : would a specific vendor path be appropriate? maybe it's not needed
     # TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-class",
     # TEST_VENDOR_TEST_CUSTOMER / "customer-pricing-by-customer",
 ]
