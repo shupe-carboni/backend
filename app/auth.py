@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import bcrypt
+from random import random
 from abc import ABC, abstractmethod
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
@@ -310,6 +311,17 @@ class SecOp(ABC):
 
     """
 
+    PRICE_COLUMNS = [
+        "zero-discount-price",
+        "material-group-discount",
+        "material-group-net-price",
+        "snp-discount",
+        "snp-price",
+        "net-price",
+        "discount",
+        "price",
+    ]
+
     def __init__(self, token: VerifiedToken, resource: str) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
@@ -529,7 +541,28 @@ class SecOp(ABC):
                 result = result.data
         if not result["data"]:
             raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
+        if self.token.permissions == Permissions.developer:
+            self.mangle_pricing_for_dev(result)
         return result
+
+    def mangle_pricing_for_dev(self, result: dict) -> None:
+        match result["data"]:
+            case list():
+                collection = True
+            case dict():
+                collection = False
+
+        for price_col in self.PRICE_COLUMNS:
+            if collection:
+                for obj in result["data"]:
+                    obj: dict
+                    if hasattr(obj.get("attributes"), price_col):
+                        obj["attributes"][price_col] *= random()
+            else:
+                attrs = result["data"].get("attributes")
+                if attrs:
+                    if hasattr(attrs, price_col):
+                        result["data"]["attributes"][price_col] *= random()
 
     @standard_error_handler
     def post(
@@ -582,9 +615,12 @@ class SecOp(ABC):
 
         match result:
             case JSONAPIResponse():
-                return result.data
+                result = result.data
             case dict():
-                return result
+                result = result
+        if self.token.permissions == Permissions.developer:
+            self.mangle_pricing_for_dev(result)
+        return result
 
     @standard_error_handler
     def patch(
@@ -622,9 +658,12 @@ class SecOp(ABC):
 
         match result:
             case JSONAPIResponse():
-                return result.data
+                result = result.data
             case dict():
-                return result
+                result = result
+        if self.token.permissions == Permissions.developer:
+            self.mangle_pricing_for_dev(result)
+        return result
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
