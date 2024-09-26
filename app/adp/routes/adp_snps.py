@@ -39,7 +39,6 @@ def snps_collection(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session, query=converter(query))
     )
@@ -58,7 +57,6 @@ def an_snp(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session, query=converter(query), obj_id=snp_id)
     )
@@ -77,7 +75,6 @@ def snp_related_adp_customers(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session,
@@ -100,7 +97,6 @@ def snp_adp_customer_relationships(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session,
@@ -131,7 +127,6 @@ def new_snp(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .post(
             session,
             data=new_snp.model_dump(exclude_none=True, by_alias=True),
@@ -156,7 +151,6 @@ def snp_modification(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .patch(
             session,
             data=new_stage.model_dump(exclude_none=True, by_alias=True),
@@ -177,7 +171,6 @@ def del_snp(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .delete(
             session,
             obj_id=snp_id,

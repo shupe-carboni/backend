@@ -325,7 +325,6 @@ async def discounts_relationships(
         auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -350,7 +349,6 @@ async def related_ratings(
         auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -375,7 +373,6 @@ async def ratings_relationships(
         auth.ADPOperations(token, ADP_CUSTOMERS, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,

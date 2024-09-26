@@ -41,7 +41,6 @@ def mat_grp_disc_collection(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session, converter(query))
     )
@@ -63,7 +62,6 @@ def mat_grp_disc_resource(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session, converter(query), obj_id=mat_grp_id)
     )
@@ -85,7 +83,6 @@ def mat_grp_disc_related_mat_grp(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session,
@@ -112,7 +109,6 @@ def mat_grp_disc_mat_grp_relationship(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session,
@@ -144,7 +140,6 @@ def new_mat_grp_disc(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .post(
             session,
             data=new_discount.model_dump(exclude_none=True, by_alias=True),
@@ -169,7 +164,6 @@ def mat_grp_disc_modification(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .patch(
             session,
             data=new_stage.model_dump(exclude_none=True, by_alias=True),
@@ -190,7 +184,6 @@ def del_mat_grp_disc(
         auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .delete(
             session,
             obj_id=mat_grp_id,

@@ -29,7 +29,6 @@ def all_parts(
         auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, query=converter(query))
     )
@@ -48,7 +47,6 @@ def a_part(
         auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -71,7 +69,6 @@ async def add_program_parts(
         auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .post(
             session=session,
@@ -95,7 +92,6 @@ def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id
         auth.ADPOperations(token, ADP_PARTS_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .delete(session=session, obj_id=part_id, primary_id=adp_customer_id)
     )

@@ -44,7 +44,6 @@ async def quote_collection(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, query=converter(query))
     )
@@ -65,7 +64,6 @@ async def one_quote(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -140,7 +138,6 @@ async def new_quote(
         **auth.ADPOperations(token, QUOTES_RESOURCE)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .post(
             session=session,
@@ -202,7 +199,6 @@ async def modify_quote(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .patch(
             session=session,
             data=body.model_dump(exclude_none=True, by_alias=True),
@@ -291,7 +287,6 @@ async def delete_quote(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .delete(session=session, obj_id=quote_id, primary_id=adp_customer_id)
     )
@@ -310,7 +305,6 @@ def related_quote_customers(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, obj_id=quote_id, related_resource="adp-customers")
     )
@@ -329,7 +323,6 @@ def related_quote_products(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, obj_id=quote_id, related_resource="adp-quote-products")
     )
@@ -348,7 +341,6 @@ def related_quote_place(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, obj_id=quote_id, related_resource="places")
     )
@@ -367,7 +359,6 @@ def related_quote_customer_location(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(session=session, obj_id=quote_id, related_resource="customer-locations")
     )
@@ -386,7 +377,6 @@ def quote_customers_rel(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -410,7 +400,6 @@ def quote_products_rel(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -434,7 +423,6 @@ def quote_place_rel(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
@@ -458,7 +446,6 @@ def quote_customer_location_rel(
         auth.ADPOperations(token, QUOTES_RESOURCE, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .get(
             session=session,
