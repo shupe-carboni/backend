@@ -38,7 +38,7 @@ async def new_confirmation(
     else:
         warn_msg = "Endpoint unprotected and no auth header was sent."
     logger.warning(warn_msg)
-    new_conf = BytesIO(file)
+    new_conf = BytesIO(file.file)
     try:
         confirmation = confirmations.extract_from_file(new_conf)
     except Exception:
