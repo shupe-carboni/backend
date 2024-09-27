@@ -1,4 +1,4 @@
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,6 +13,7 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match
 
 ## Routers ##
+from app.hardcast import hardcast
 from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
@@ -103,6 +104,7 @@ for route, prefix, target in (
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
+    (hardcast, "", app),
 ):
     resource_path = f"{prefix}{route.prefix}"
     try:
