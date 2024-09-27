@@ -5,10 +5,11 @@ from typing import Annotated, Optional
 from fastapi import HTTPException, status, Depends, UploadFile, Header
 from fastapi.routing import APIRouter
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.hardcast import confirmations
 from app import auth
-from app.db import DB_V2, File
+from app.db import DB_V2
 
 hardcast = APIRouter(prefix="/hardcast", tags=["hardcast"])
 logger = logging.getLogger("uvicorn.info")
@@ -16,11 +17,15 @@ Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
+class NewFile(BaseModel):
+    file: bytes
+
+
 @hardcast.post("/confirmations")
 async def new_confirmation(
     session: NewSession,
     # token: Token,
-    file: bytes,
+    file: NewFile,
     authorization: Optional[str] = Header(None),
 ) -> JSONResponse:
     # if token.permissions != auth.Permissions.hardcast_confirmations:
