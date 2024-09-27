@@ -541,28 +541,7 @@ class SecOp(ABC):
                 result = result.data
         if not result["data"]:
             raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
-        if self.token.permissions == Permissions.developer:
-            self.mangle_pricing_for_dev(result)
         return result
-
-    def mangle_pricing_for_dev(self, result: dict) -> None:
-        match result["data"]:
-            case list():
-                collection = True
-            case dict():
-                collection = False
-
-        for price_col in self.PRICE_COLUMNS:
-            if collection:
-                for obj in result["data"]:
-                    obj: dict
-                    if hasattr(obj.get("attributes"), price_col):
-                        obj["attributes"][price_col] *= random()
-            else:
-                attrs = result["data"].get("attributes")
-                if attrs:
-                    if hasattr(attrs, price_col):
-                        result["data"]["attributes"][price_col] *= random()
 
     @standard_error_handler
     def post(
@@ -618,8 +597,6 @@ class SecOp(ABC):
                 result = result.data
             case dict():
                 result = result
-        if self.token.permissions == Permissions.developer:
-            self.mangle_pricing_for_dev(result)
         return result
 
     @standard_error_handler
@@ -661,8 +638,6 @@ class SecOp(ABC):
                 result = result.data
             case dict():
                 result = result
-        if self.token.permissions == Permissions.developer:
-            self.mangle_pricing_for_dev(result)
         return result
 
     @standard_error_handler

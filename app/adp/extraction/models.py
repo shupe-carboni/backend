@@ -32,11 +32,9 @@ class InvalidModelNumber(Exception): ...
 
 
 def build_model_attributes(
-    session: Session, adp_customer_id: int, model: str
+    session: Session, adp_customer_id: int, model: str, parse_mode: ParsingModes
 ) -> pd.Series:
-    record_series = parse_model_string(
-        session, adp_customer_id, model, ParsingModes.CUSTOMER_PRICING
-    )
+    record_series = parse_model_string(session, adp_customer_id, model, parse_mode)
     record_series["stage"] = Stage.PROPOSED.name
     record_series["effective_date"] = datetime.today().date()
     record_series = record_series.dropna()
@@ -70,13 +68,7 @@ def parse_model_string(
             record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value, inplace=True)
             return record_series
         case ParsingModes.DEVELOPER:
-            record_series["customer_id"] = adp_customer_id
-            priced_model = price_models_by_customer_discounts(
-                session=session, model=record_series, adp_customer_id=adp_customer_id
-            )
-            priced_model.pop("customer_id")
-
-            # mangle pricing
+            # random pricing
             def to_field_style(value: str) -> str:
                 return value.replace("-", "_").upper()
 
@@ -85,14 +77,14 @@ def parse_model_string(
                 for price_col in SecOp.PRICE_COLUMNS
                 if to_field_style(price_col) in Fields.__members__
             ]
-            price_cols_in_record = set(price_cols) & set(priced_model.index.to_list())
+            price_cols_in_record = set(price_cols) & set(record_series.index.to_list())
             for price_col in price_cols_in_record:
-                match priced_model[price_col]:
+                match record_series[price_col]:
                     case float() | int():
-                        priced_model[price_col] *= random()
+                        record_series[price_col] = int(random() * 1000)
                     case None:
                         continue
-            return priced_model
+            return record_series
         case _:
             raise InvalidParsingMode
 

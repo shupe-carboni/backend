@@ -14,7 +14,7 @@ from app.adp.models import (
     ModStageAHReq,
     NewAHRObjFull,
 )
-from app.adp.extraction.models import build_model_attributes
+from app.adp.extraction.models import build_model_attributes, ParsingModes
 from app.jsonapi.sqla_models import ADPAHProgram, ADPCustomer
 from app.jsonapi.core_models import convert_query
 from app.jsonapi.sqla_jsonapi_ext import MAX_PAGE_SIZE
@@ -177,11 +177,19 @@ def ah_program_product(
     )
 
 
-def build_full_model_obj(session: Session, new_coil: NewAHRequest):
+def build_full_model_obj(session: Session, new_coil: NewAHRequest, token: Token):
+    match auth.Permissions(token.permissions):
+        case auth.Permissions.developer:
+            parse_mode = ParsingModes.DEVELOPER
+        case _:
+            parse_mode = ParsingModes.CUSTOMER_PRICING
     model_num = new_coil.data.attributes.model_number
     adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     model_w_attrs = build_model_attributes(
-        session=session, model=model_num, adp_customer_id=adp_customer_id
+        session=session,
+        model=model_num,
+        adp_customer_id=adp_customer_id,
+        parse_mode=parse_mode,
     )
     json_api_data = dict(
         data=NewAHRObjFull(
@@ -205,7 +213,7 @@ def add_to_ah_program(
     new_ah: NewAHRequest,
 ) -> AirHandlerProgResp:
     """create a new product in an existing program"""
-    json_api_data = partial(build_full_model_obj, session, new_ah)
+    json_api_data = partial(build_full_model_obj, session, new_ah, token)
     adp_customer_id = new_ah.data.relationships.adp_customers.data.id
     return (
         auth.ADPOperations(token, ADP_AIR_HANDLERS_RESOURCE, prefix=PARENT_PREFIX)
