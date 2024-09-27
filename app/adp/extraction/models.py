@@ -75,11 +75,15 @@ def parse_model_string(
                 session=session, model=record_series, adp_customer_id=adp_customer_id
             )
             priced_model.pop("customer_id")
+
             # mangle pricing
+            def to_field_style(value: str) -> str:
+                return value.replace("-", "_").upper()
+
             price_cols = [
-                Fields(price_col)
+                Fields[to_field_style(price_col)]
                 for price_col in SecOp.PRICE_COLUMNS
-                if price_col in Fields
+                if to_field_style(price_col) in Fields.__members__
             ]
             price_cols_in_record = set(price_cols) & set(priced_model.index.to_list())
             for price_col in price_cols_in_record:
