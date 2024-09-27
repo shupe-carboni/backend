@@ -1,6 +1,7 @@
 import logging
 import traceback
 from io import BytesIO
+from base64 import b64decode
 from typing import Annotated, Optional
 from fastapi import HTTPException, status, Depends, UploadFile, Header
 from fastapi.routing import APIRouter
@@ -18,7 +19,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
 class NewFile(BaseModel):
-    file: bytes
+    file: str
 
 
 @hardcast.post("/confirmations")
@@ -38,7 +39,8 @@ async def new_confirmation(
     else:
         warn_msg = "Endpoint unprotected and no auth header was sent."
     logger.warning(warn_msg)
-    new_conf = BytesIO(file.file)
+    data = b64decode(file.file)
+    new_conf = BytesIO(data)
     try:
         confirmation = confirmations.extract_from_file(new_conf)
     except Exception:
