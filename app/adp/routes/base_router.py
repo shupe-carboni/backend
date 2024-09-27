@@ -126,7 +126,7 @@ def parse_model_and_pricing(
                 raise e
         else:
             if adp_perm == auth.Permissions.developer:
-                parse_mode = ParsingModes.ATTRS_ONLY
+                parse_mode = ParsingModes.DEVELOPER
             elif adp_perm >= auth.Permissions.customer_manager:
                 parse_mode = ParsingModes.CUSTOMER_PRICING
             elif adp_perm >= auth.Permissions.customer_std:

@@ -1,11 +1,13 @@
 import math
 import copy
+from random import random
 import pandas as pd
 import openpyxl as opxl
 from fastapi import HTTPException
 from enum import Enum, auto
 from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
+from app.auth import SecOp
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
 from app.db import ADP_DB, Stage, Session
@@ -20,6 +22,7 @@ class ParsingModes(Enum):
     ATTRS_ONLY = auto()
     BASE_PRICE = auto()
     CUSTOMER_PRICING = auto()
+    DEVELOPER = auto()
 
 
 class InvalidParsingMode(Exception): ...
@@ -65,6 +68,14 @@ def parse_model_string(
             return record_series
         case ParsingModes.ATTRS_ONLY:
             record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value, inplace=True)
+            return record_series
+        case ParsingModes.DEVELOPER:
+            # mangle pricing
+            price_cols_in_series = set(SecOp.PRICE_COLUMNS) - set(
+                record_series.index.to_list()
+            )
+            for price_col in price_cols_in_series:
+                record_series[price_col] *= random()
             return record_series
         case _:
             raise InvalidParsingMode
