@@ -1,7 +1,7 @@
 import re
 from app.db import ADP_DB, Session
 from enum import StrEnum, auto
-from typing import TypeAlias, Literal
+from typing import TypeAlias, Literal, Any
 
 
 class NoBasePrice(Exception):
@@ -184,7 +184,7 @@ class ModelSeries:
         in a customer program"""
         pass
 
-    def record(self) -> dict:
+    def record(self) -> dict[StrEnum, Any]:
         return {
             Fields.CATEGORY.value: None,
             Fields.MODEL_NUMBER.value: None,
