@@ -213,5 +213,22 @@ class Database:
             return session.execute(text("SELECT version();")).fetchone()[0]
 
 
+class DatabaseV2(Database):
+    """Just use the given table names, no obfuscation of prefixs and hot-swapping
+    the table name."""
+
+    def full_table_name(self, table_name: str) -> str:
+        return table_name
+
+    def execute(
+        self,
+        session: Session,
+        sql: str,
+        params: Iterable[dict | str | int | None] = None,
+    ) -> Result:
+        return session.execute(text(sql), params=params)
+
+
 ADP_DB = Database("adp")
 SCA_DB = Database("sca")
+DB_V2 = DatabaseV2()
