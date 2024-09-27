@@ -87,7 +87,11 @@ def parse_model_string(
             ]
             price_cols_in_record = set(price_cols) & set(priced_model.index.to_list())
             for price_col in price_cols_in_record:
-                priced_model[price_col] *= random()
+                match priced_model[price_col]:
+                    case float() | int():
+                        priced_model[price_col] *= random()
+                    case None:
+                        continue
             return priced_model
         case _:
             raise InvalidParsingMode
