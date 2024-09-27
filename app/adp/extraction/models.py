@@ -76,10 +76,13 @@ def parse_model_string(
             )
             priced_model.pop("customer_id")
             # mangle pricing
-            price_cols_in_series = set(SecOp.PRICE_COLUMNS) & set(
-                priced_model.index.to_list()
-            )
-            for price_col in price_cols_in_series:
+            price_cols = [
+                Fields(price_col)
+                for price_col in SecOp.PRICE_COLUMNS
+                if price_col in Fields
+            ]
+            price_cols_in_record = set(price_cols) & set(priced_model.index.to_list())
+            for price_col in price_cols_in_record:
                 priced_model[price_col] *= random()
             return priced_model
         case _:
