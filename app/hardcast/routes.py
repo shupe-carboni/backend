@@ -1,5 +1,6 @@
 import logging
 import traceback
+from io import BytesIO
 from typing import Annotated, Optional
 from fastapi import HTTPException, status, Depends, UploadFile, Header
 from fastapi.routing import APIRouter
@@ -19,7 +20,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 async def new_confirmation(
     session: NewSession,
     # token: Token,
-    file: UploadFile,
+    file: bytes,
     authorization: Optional[str] = Header(None),
 ) -> JSONResponse:
     # if token.permissions != auth.Permissions.hardcast_confirmations:
@@ -32,9 +33,9 @@ async def new_confirmation(
     else:
         warn_msg = "Endpoint unprotected and no auth header was sent."
     logger.warning(warn_msg)
-    new_conf = File(file.filename, file.content_type, await file.read())
+    new_conf = BytesIO(file)
     try:
-        confirmation = confirmations.extract_from_file(new_conf.file_content)
+        confirmation = confirmations.extract_from_file(new_conf)
     except Exception:
         tb = traceback.format_exc()
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb)
