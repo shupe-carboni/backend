@@ -70,13 +70,18 @@ def parse_model_string(
             record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value, inplace=True)
             return record_series
         case ParsingModes.DEVELOPER:
+            record_series["customer_id"] = adp_customer_id
+            priced_model = price_models_by_customer_discounts(
+                session=session, model=record_series, adp_customer_id=adp_customer_id
+            )
+            priced_model.pop("customer_id")
             # mangle pricing
             price_cols_in_series = set(SecOp.PRICE_COLUMNS) & set(
-                record_series.index.to_list()
+                priced_model.index.to_list()
             )
             for price_col in price_cols_in_series:
-                record_series[price_col] *= random()
-            return record_series
+                priced_model[price_col] *= random()
+            return priced_model
         case _:
             raise InvalidParsingMode
 
