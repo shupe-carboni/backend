@@ -71,7 +71,7 @@ def parse_model_string(
             return record_series
         case ParsingModes.DEVELOPER:
             # mangle pricing
-            price_cols_in_series = set(SecOp.PRICE_COLUMNS) - set(
+            price_cols_in_series = set(SecOp.PRICE_COLUMNS) & set(
                 record_series.index.to_list()
             )
             for price_col in price_cols_in_series:
