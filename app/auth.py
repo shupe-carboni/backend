@@ -342,7 +342,9 @@ class SecOp(ABC):
         "price",
     ]
 
-    def __init__(self, token: VerifiedToken, resource: str) -> None:
+    def __init__(
+        self, token: VerifiedToken, resource: SQLAlchemyModel, **kwargs
+    ) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
         self.token = token

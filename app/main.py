@@ -14,7 +14,6 @@ from starlette.routing import Match
 
 ## Routers ##
 from app.hardcast import hardcast
-from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import (

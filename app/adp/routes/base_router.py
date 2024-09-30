@@ -111,7 +111,7 @@ def parse_model_and_pricing(
     elif customer_id:
         try:
             (
-                auth.ADPOperations(token, ADPCustomer.__jsonapi_type_override__)
+                auth.ADPOperations(token, ADPCustomer)
                 .allow_dev()
                 .allow_customer("std")
                 .get(session, obj_id=customer_id)
