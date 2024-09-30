@@ -43,7 +43,7 @@ EXCLUDE_BASE_CUSTOMER = list(
         [200, 200, 200, 200, 401, 200],
     )
 )
-VENDORS_PREFIX = Path(f"/{VENDOR_RESOURCE}")
+VENDORS_PREFIX = Path(f"/v2/{VENDOR_RESOURCE}")
 TEST_VENDOR = VENDORS_PREFIX / "TEST_VENDOR"
 TEST_VENDOR_ATTR = str(4)
 TEST_VENDOR_PRODUCT = str(2355)
@@ -89,7 +89,7 @@ ROUTE_PERM_RESP_ALL_ALLOWED = [
 
 
 @mark.parametrize("route,perm,response_code", ROUTE_PERM_RESP_ALL_ALLOWED)
-def test_vendor_response_codes(route, perm, response_code):
+def test_vendor_endpoint_response_codes(route, perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     resp = test_client.get(route)
     no_content = resp.status_code == 204
@@ -98,3 +98,12 @@ def test_vendor_response_codes(route, perm, response_code):
     assert expected_code or no_content, pprint(
         resp.text if internal_error else resp.json()
     )
+
+
+# @mark.parametrize("route,perm,ids", [PARAMETER OBJECT])
+# def test_vendor_endpoint_return_data(route, perm, ids):
+def test_vendor_endpoint_return_data():
+    """Return data ought to be filtered as expected based on the vendor in the path
+    as well as the permission type"""
+    # TODO supplement data such that different returns come back for sca vs customer
+    #  admin vs customer manager vs customer standard and developer
