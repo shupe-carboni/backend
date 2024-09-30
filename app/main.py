@@ -107,7 +107,7 @@ app_base_routes = [
     (places, "", app),
     (adp, "/vendors", app),
     (hardcast, "", app),
-    (vendors_v2.vendors, "", app),
+    (vendors_v2.vendors, "/v2", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
 ## register all of the routes and avoid crashing due to a registration issue
