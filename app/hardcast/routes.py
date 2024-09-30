@@ -3,7 +3,7 @@ import traceback
 from io import BytesIO
 from base64 import b64decode
 from typing import Annotated, Optional
-from fastapi import HTTPException, status, Depends, UploadFile, Header
+from fastapi import HTTPException, status, Depends, Header
 from fastapi.routing import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
