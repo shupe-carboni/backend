@@ -64,7 +64,6 @@ async def new_quote_product(
         auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .post(
             session=session,
@@ -110,7 +109,6 @@ async def mod_quote_product(
         auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .patch(
             session=session,
@@ -129,7 +127,6 @@ async def delete_quote_product(
         auth.ADPQuoteOperations(token, ADPQuoteProduct, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
         .delete(session=session, obj_id=product_id, primary_id=quote_id)
     )

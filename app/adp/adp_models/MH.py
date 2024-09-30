@@ -36,12 +36,6 @@ class MH(ModelSeries):
             .one()
         )
         self.cabinet_config = Cabinet.UNCASED
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.material = "Copper"
         self.width = 18
         self.depth = 19.5
@@ -76,6 +70,14 @@ class MH(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:

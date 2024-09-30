@@ -38,12 +38,6 @@ class F(ModelSeries):
         self.height = specs["height"]
         self.weight = specs["weight"]
         self.motor = self.motors[self.attributes["motor"]]
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.heat = self.kw_heat[int(self.attributes["heat"])]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
@@ -76,6 +70,14 @@ class F(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:

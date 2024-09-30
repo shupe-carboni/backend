@@ -39,12 +39,6 @@ class S(ModelSeries):
         self.motor = (
             "PSC Motor" if int(self.attributes["ton"]) % 2 == 0 else "ECM Motor"
         )
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
             & (self.mat_grps["mat"].str.contains(self.attributes["mat"])),
@@ -73,6 +67,14 @@ class S(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
 
     def category(self) -> str:
         motor = self.motor

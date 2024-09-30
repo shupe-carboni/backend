@@ -1,4 +1,4 @@
-__version__ = "1.0.7"
+__version__ = "1.2.1"
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,6 +13,8 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match
 
 ## Routers ##
+from app.hardcast import hardcast
+from app.vendors import vendors, vendors_info
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import (
@@ -105,6 +107,7 @@ app_base_routes = [
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
+    (hardcast, "", app),
     (vendors_v2.vendors, "", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)

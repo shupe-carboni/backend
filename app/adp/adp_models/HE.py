@@ -90,12 +90,6 @@ class HE(ModelSeries):
         else:
             self.cabinet_config = Cabinet.PAINTED
         self.material = self.material_mapping[self.attributes["mat"]]
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.color = self.paint_color_mapping[self.attributes["paint"]]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__())
@@ -112,6 +106,14 @@ class HE(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = (
                 rf"H(,.){{1,2}}"

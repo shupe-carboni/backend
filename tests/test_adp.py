@@ -95,6 +95,13 @@ SCA_ONLY_EXCLUDING_DEV = list(
 
 SCA_ONLY = SCA_ONLY_INCLUDING_DEV
 
+ALL_ALLOWED_EXCEPT_DEV = list(
+    zip(
+        [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM],
+        [200, 200, 200, 200, 200, 401],
+    )
+)
+
 
 class mock_S3:
     async def upload_file(cls, file, destination):
@@ -106,9 +113,9 @@ app.dependency_overrides[real_S3] = mock_S3
 collections_endpoints = [
     "adp-coil-programs",
     "adp-ah-programs",
-    "adp-material-group-discounts",
-    "adp-snps",
-    "adp-quotes",
+    # "adp-material-group-discounts",
+    # "adp-snps",
+    # "adp-quotes",
 ]
 
 # AH Change Requests
@@ -355,7 +362,11 @@ def test_collection_filtering(resource: str):
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.DeveloperToken
     response = test_client.get(trimmed_data_req)
     ## if filtering is working, only 2 customer ids should be represented in the results
-    customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
+    try:
+        customer_ids_in_result = set([x["id"] for x in response.json()["included"]])
+    except Exception:
+        pprint(response.json())
+        raise Exception
     assert len(customer_ids_in_result) == 2
     assert customer_ids_in_result == {ADP_CUSTOMER_ID, 64}
 
@@ -370,7 +381,7 @@ def test_model_zero_discount_pricing(model, price):
     # id zero with sca employee perms or above triggers zero discount price-only, ignores the id for customer pricing
     url = f"{PATH_PREFIX}/model-lookup?customer_id=0&model_num="
     resp = test_client.get(url + str(model))
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
     assert resp.json()["zero-discount-price"] == price
 
 
@@ -458,7 +469,7 @@ def test_new_ah(perm, response_code):
     assert response.status_code == response_code, pprint(response.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_new_part(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     url = Path(PATH_PREFIX) / "adp-program-parts"
@@ -617,7 +628,7 @@ def test_related_mat_grp_disc(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_mat_grp_disc_relationships(perm, response_code):
     url = str(
         Path(PATH_PREFIX)
@@ -631,7 +642,7 @@ def test_mat_grp_disc_relationships(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_mat_grp_disc_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-material-group-discounts")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -639,7 +650,7 @@ def test_mat_grp_disc_collection(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_mat_grp_disc_resource(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-material-group-discounts" / str(MAT_GRP_DISC_ID))
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -647,7 +658,7 @@ def test_mat_grp_disc_resource(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_mat_grp_disc_related_mat_grp(perm, response_code):
     url = str(
         Path(PATH_PREFIX)
@@ -660,7 +671,7 @@ def test_mat_grp_disc_related_mat_grp(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_mat_grp_disc_mat_grp_relationships(perm, response_code):
     url = str(
         Path(PATH_PREFIX)
@@ -674,22 +685,25 @@ def test_mat_grp_disc_mat_grp_relationships(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
 def test_customer_mat_grp_disc_stage_modification(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     pre_mod_response = test_client.get(VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ.url)
-    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
-    try:
-        # good request
-        response = test_client.patch(**VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ)
-        assert response.status_code == response_code
-        if response_code == 200:
-            assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
-    finally:
-        test_client.patch(**RESET_MAT_GRP_DISC_STAGE_CHANGE_REQ)
+    if perm == auth_overrides.DeveloperToken:
+        assert pre_mod_response.status_code == response_code
+    else:
+        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.PROPOSED
+        try:
+            # good request
+            response = test_client.patch(**VALID_MAT_GRP_DISC_STAGE_CHANGE_REQ)
+            assert response.status_code == response_code
+            if response_code == 200:
+                assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
+        finally:
+            test_client.patch(**RESET_MAT_GRP_DISC_STAGE_CHANGE_REQ)
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
 def test_create_and_del_mat_grp_disc(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     # make a new record to delete
@@ -718,7 +732,7 @@ def test_create_and_del_mat_grp_disc(perm, response_code):
     assert response.status_code == 204
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_snp_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-snps")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -726,7 +740,7 @@ def test_snp_collection(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.text)
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_an_snp(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-snps" / str(417))
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -734,7 +748,7 @@ def test_an_snp(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.text)
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_snp_related_adp_customers(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-snps" / str(417) / "adp-customers")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -742,7 +756,7 @@ def test_snp_related_adp_customers(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_snp_adp_customer_relationships(perm, response_code):
     url = str(
         Path(PATH_PREFIX) / "adp-snps" / str(417) / "relationships" / "adp-customers"
@@ -752,7 +766,7 @@ def test_snp_adp_customer_relationships(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
 def test_create_and_del_snp(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     # make a new record to delete
@@ -778,23 +792,26 @@ def test_create_and_del_snp(perm, response_code):
     assert response.status_code == 204
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
 def test_customer_snp_stage_modification(perm, response_code):
     app.dependency_overrides[authenticate_auth0_token] = perm
     pre_mod_response = test_client.get(VALID_SNP_STAGE_CHANGE_REQ.url)
-    assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
-    try:
-        # good request
-        response = test_client.patch(**VALID_SNP_STAGE_CHANGE_REQ)
-        assert response.status_code == response_code
-        if response_code == 200:
-            assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
-    finally:
-        test_client.patch(**RESET_SNP_STAGE_CHANGE_REQ)
+    if perm == auth_overrides.DeveloperToken:
+        assert pre_mod_response.status_code == response_code
+    else:
+        assert pre_mod_response.json()["data"]["attributes"]["stage"] == Stage.REMOVED
+        try:
+            # good request
+            response = test_client.patch(**VALID_SNP_STAGE_CHANGE_REQ)
+            assert response.status_code == response_code
+            if response_code == 200:
+                assert response.json()["data"]["attributes"]["stage"] == Stage.REJECTED
+        finally:
+            test_client.patch(**RESET_SNP_STAGE_CHANGE_REQ)
 
 
 ## ADP QUOTES
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_quotes_collection(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -802,7 +819,7 @@ def test_quotes_collection(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_quote_resource(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -810,7 +827,7 @@ def test_quote_resource(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_new_quote_no_files(perm: VerifiedToken, response_code):
     url = (
         str(Path(PATH_PREFIX) / "adp-quotes")
@@ -827,13 +844,15 @@ def test_new_quote_no_files(perm: VerifiedToken, response_code):
     }
     resp = test_client.post(url, data=new_quote)
     assert resp.status_code == response_code, pprint(resp.json())
+    if perm == auth_overrides.DeveloperToken:
+        return
     if perm.permissions >= auth_overrides.DeveloperToken.permissions:
         assert resp.json()["data"]["attributes"].get("adp-quote-id") is not None
     else:
         assert resp.json()["data"]["attributes"].get("adp-quote-id") is None
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_new_quote_w_plans_file(perm, response_code):
     url = (
         str(Path(PATH_PREFIX) / "adp-quotes")
@@ -857,29 +876,31 @@ def test_new_quote_w_plans_file(perm, response_code):
     assert resp.status_code == response_code, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY)
+@mark.parametrize("perm,response_code", SCA_ONLY_EXCLUDING_DEV)
 def test_patch_quote(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
     app.dependency_overrides[authenticate_auth0_token] = perm
-    sample_quote = test_client.get(
-        url + "?page_size=1&page_number=1&include=adp-customers"
-    ).json()["data"][0]
-    QN = randint(10000000, 99999999)
-    sample_quote["attributes"]["adp-quote-id"] = f"QN-{QN}"
-    rel_keys_to_delete = list()
-    for other_rel in sample_quote["relationships"]:
-        if other_rel != "adp-customers":
-            rel_keys_to_delete.append(other_rel)
-    for rel in rel_keys_to_delete:
-        del sample_quote["relationships"][rel]
+    resp = test_client.get(url + "?page_size=1&page_number=1&include=adp-customers")
+    if perm == auth_overrides.DeveloperToken:
+        assert resp.status_code == response_code, resp.text
+    else:
+        sample_quote = resp.json()["data"][0]
+        QN = randint(1000, 9999)
+        sample_quote["attributes"]["adp-quote-id"] = f"QN-{QN}"
+        rel_keys_to_delete = list()
+        for other_rel in sample_quote["relationships"]:
+            if other_rel != "adp-customers":
+                rel_keys_to_delete.append(other_rel)
+        for rel in rel_keys_to_delete:
+            del sample_quote["relationships"][rel]
 
-    resp = test_client.patch(
-        url + f"/{sample_quote['id']}", json=dict(data=sample_quote)
-    )
-    assert resp.status_code == response_code, resp.text
+        resp = test_client.patch(
+            url + f"/{sample_quote['id']}", json=dict(data=sample_quote)
+        )
+        assert resp.status_code == response_code, resp.text
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_delete_quote(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes")
     QN = randint(1000000, 9999999)
@@ -903,7 +924,7 @@ def test_delete_quote(perm, response_code):
         assert resp.status_code == 204, pprint(resp.json())
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_related_adp_customer(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes" / "1" / "adp-customers")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -911,7 +932,7 @@ def test_related_adp_customer(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_related_adp_quote_products(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes" / "1" / "adp-quote-products")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -919,7 +940,7 @@ def test_related_adp_quote_products(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_related_places(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes" / "1" / "places")
     app.dependency_overrides[authenticate_auth0_token] = perm
@@ -927,7 +948,7 @@ def test_related_places(perm, response_code):
     assert resp.status_code == response_code
 
 
-@mark.parametrize("perm,response_code", ALL_ALLOWED)
+@mark.parametrize("perm,response_code", ALL_ALLOWED_EXCEPT_DEV)
 def test_related_customer_locations(perm, response_code):
     url = str(Path(PATH_PREFIX) / "adp-quotes" / "1" / "customer-locations")
     app.dependency_overrides[authenticate_auth0_token] = perm

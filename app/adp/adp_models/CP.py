@@ -1,31 +1,39 @@
 import re
-from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
+from app.adp.adp_models.model_series import (
+    ModelSeries,
+    Fields,
+    PriceByCategoryAndKey,
+    NoBasePrice,
+)
 from app.db import ADP_DB, Session
 
 
-class NoBasePrice(Exception): ...
-
-
 class CP(ModelSeries):
-    text_len = (14, 13)
+    text_len = (14, 13, 15, 16)
     regex = r"""
         (?P<series>C)
         (?P<motor>[P|E])
         (?P<ton>\d{2})
         (?P<scode>\d{2})
         (?P<mat>[C|A])
-        (?P<meter>[A|H])
+        (?P<meter>[A|H|1|B|C])
         (?P<config>H)
         (?P<line_conn>[S|P])
         (?P<heat>\d{2})
         (?P<voltage>\d)
-        (?P<option>C?)
+        (?P<option>[U|C|R]?)
+        (?P<rds>R?)
         (?P<drain>R?)
-        (?P<rds>[N|R]?)
     """
-    metering_mapping_ = {
+    metering_mapping_1 = {
         "A": "Piston (R-410A) w/ Access Port",
         "H": "Non-bleed HP-A/C TXV (R-410A)",
+    }
+    metering_mapping_2 = {
+        "1": "Piston (R-454B/R-32) w/ Access Port",
+        "A": "Non-bleed HP-A/C TXV (R-454B)",
+        "B": "Non-bleed HP-A/C TXV (R-32)",
+        "C": "Bleed HP-A/C TXV (R-454B)",
     }
 
     def __init__(self, session: Session, re_match: re.Match):
@@ -56,7 +64,6 @@ class CP(ModelSeries):
         self.height = specs["height"]
         self.weight = specs["weight"]
         self.motor = self.motors[self.attributes["motor"]]
-        self.metering = self.metering_mapping_[self.attributes["meter"]]
         self.mat_grp = self.mat_grps.loc[
             (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
         ].item()
@@ -76,11 +83,27 @@ class CP(ModelSeries):
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
         self.rds_field_installed = False
-        match rds_option:
-            case "R":
-                self.rds_factory_installed = True
-            case "N":
-                self.rds_field_installed = True
+        if option := self.attributes.get("option"):
+            if option != "R":
+                match rds_option:
+                    case "R":
+                        self.rds_factory_installed = True
+                        self.metering = self.metering_mapping_2[
+                            self.attributes["meter"]
+                        ]
+                    case "N":
+                        self.rds_field_installed = True
+                        self.metering = self.metering_mapping_2[
+                            self.attributes["meter"]
+                        ]
+                    case _:
+                        self.metering = self.metering_mapping_1[
+                            self.attributes["meter"]
+                        ]
+            else:
+                self.metering = self.metering_mapping_1[self.attributes["meter"]]
+        else:
+            self.metering = self.metering_mapping_1[self.attributes["meter"]]
         self.zero_disc_price = self.get_zero_disc_price()
         try:
             self.heat = int(self.attributes["heat"])
@@ -97,6 +120,8 @@ class CP(ModelSeries):
             value += " - FlexCoil"
         elif self.rds_factory_installed:
             value += " - A2L"
+        if self.attributes.get("drain"):
+            value += " - Right Hand Drain"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
@@ -106,19 +131,20 @@ class CP(ModelSeries):
             WHERE "{self.attributes['mat']}" = :model ;
         """
         model = str(self)
-        if self.attributes.get("rds"):
-            model = model[:-1]
         params = dict(model=model)
         result = ADP_DB.execute(
             session=self.session, sql=sql, params=params
         ).scalar_one_or_none()
         if not result:
-            raise NoBasePrice
+            raise NoBasePrice(
+                "No record found in the price table with this model number."
+            )
         return int(result), self.get_adders()
 
     def get_zero_disc_price(self) -> int:
         base_price, adders = self.load_pricing()
-        result = base_price + adders["RDS"].get(self.attributes.get("rds"), 0)
+        # result = base_price + adders["RDS"].get(self.attributes.get("rds"), 0)
+        result = base_price
         return result
 
     def record(self) -> dict:

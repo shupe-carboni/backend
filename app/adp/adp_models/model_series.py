@@ -1,7 +1,12 @@
 import re
 from app.db import ADP_DB, Session
 from enum import StrEnum, auto
-from typing import TypeAlias, Literal
+from typing import TypeAlias, Literal, Any
+
+
+class NoBasePrice(Exception):
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
 
 
 class Cabinet(StrEnum):
@@ -118,6 +123,7 @@ class ModelSeries:
     }
 
     metering_mapping = {
+        -1: "Piston (R-454B/R-32)",
         1: "Piston (R-410a)",
         9: "Non-bleed HP-AC TXV (R-410a)",
         "A": "Non-bleed HP-AC TXV (R-454B)",
@@ -178,7 +184,7 @@ class ModelSeries:
         in a customer program"""
         pass
 
-    def record(self) -> dict:
+    def record(self) -> dict[StrEnum, Any]:
         return {
             Fields.CATEGORY.value: None,
             Fields.MODEL_NUMBER.value: None,

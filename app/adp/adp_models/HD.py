@@ -51,12 +51,6 @@ class HD(ModelSeries):
         self.height = int(self.attributes["height"]) / 10
         self.length = int(self.attributes["length"]) + 0.5
         self.material = self.material_mapping[self.attributes["mat"]]
-        metering = self.attributes["meter"]
-        try:
-            metering = int(metering)
-        except ValueError:
-            pass
-        self.metering = self.metering_mapping[metering]
         self.color = self.paint_color_mapping[self.attributes["paint"]]
         self.pallet_qty = specs["pallet_qty"]
         self.weight = specs[self.material_weight[self.attributes["mat"]]]
@@ -69,6 +63,14 @@ class HD(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        metering = self.attributes["meter"]
+        try:
+            metering = int(metering)
+            if self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         if self.cabinet_config != Cabinet.PAINTED:
             self.ratings_piston = (
                 rf"H(,.){{1,2}}{self.attributes['mat']}"

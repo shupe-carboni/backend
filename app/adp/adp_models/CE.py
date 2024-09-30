@@ -38,17 +38,19 @@ class CE(ModelSeries):
             .mappings()
             .one()
         )
+        # BUG this will throw an error with the new nomenclature, and reference adp_model
+        #   needs to reflect the new txv nomenclature
         specs = {k: v for k, v in specs.items() if v}
         self.configuration = self.ce_configurations[self.attributes["config"]]
         self.mat_grp = self.configuration[1]
         self.cabinet_config = Cabinet.PAINTED
-        self.metering = self.metering_mapping[int(self.attributes["metering"])]
         self.pallet_qty = specs["pallet_qty"]
         self.height = specs["height"]
         self.width = specs["width"]
         self.weight = specs["weight"]
         self.real_model = specs["adp_model"]
         self.tonnage = int(self.attributes["ton"])
+        self.metering = self.metering_mapping[int(self.attributes["metering"])]
         match self.attributes["config"]:
             case "H":
                 from app.adp.adp_models.V import V

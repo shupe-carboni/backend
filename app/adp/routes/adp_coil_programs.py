@@ -6,7 +6,7 @@ from logging import getLogger
 
 from app import auth
 from app.db import Session, ADP_DB, Stage
-from app.adp.extraction.models import build_model_attributes
+from app.adp.extraction.models import build_model_attributes, ParsingModes
 from app.adp.models import (
     CoilProgQuery,
     CoilProgQueryJSONAPI,
@@ -171,11 +171,20 @@ def coil_program_product(
     )
 
 
-def build_full_model_obj(session: Session, new_coil: NewCoilRequest):
+def build_full_model_obj(session: Session, new_coil: NewCoilRequest, token: Token):
+    match auth.Permissions(token.permissions):
+        case auth.Permissions.developer:
+            parse_mode = ParsingModes.DEVELOPER
+        case _:
+            parse_mode = ParsingModes.CUSTOMER_PRICING
+
     model_num = new_coil.data.attributes.model_number
     adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     model_w_attrs = build_model_attributes(
-        session=session, model=model_num, adp_customer_id=adp_customer_id
+        session=session,
+        model=model_num,
+        adp_customer_id=adp_customer_id,
+        parse_mode=parse_mode,
     )
     json_api_data = dict(
         data=NewCoilRObjFull(
@@ -196,7 +205,7 @@ def build_full_model_obj(session: Session, new_coil: NewCoilRequest):
 def add_to_coil_program(
     token: Token, session: NewSession, new_coil: NewCoilRequest
 ) -> CoilProgResp:
-    json_api_data = partial(build_full_model_obj, session, new_coil)
+    json_api_data = partial(build_full_model_obj, session, new_coil, token)
     adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     return (
         auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)

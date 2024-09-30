@@ -111,9 +111,9 @@ def parse_model_and_pricing(
     elif customer_id:
         try:
             (
-                auth.ADPOperations(token, ADPCustomer)
-                .allow_customer("std")
+                auth.ADPOperations(token, ADPCustomer.__jsonapi_type_override__)
                 .allow_dev()
+                .allow_customer("std")
                 .get(session, obj_id=customer_id)
             )
         except HTTPException as e:
@@ -125,11 +125,10 @@ def parse_model_and_pricing(
             else:
                 raise e
         else:
-            if adp_perm >= auth.Permissions.customer_manager:
+            if adp_perm == auth.Permissions.developer:
+                parse_mode = ParsingModes.DEVELOPER
+            elif adp_perm >= auth.Permissions.customer_manager:
                 parse_mode = ParsingModes.CUSTOMER_PRICING
-                return parse_model_string(
-                    session, customer_id, model_num, ParsingModes.CUSTOMER_PRICING
-                )
             elif adp_perm >= auth.Permissions.customer_std:
                 parse_mode = ParsingModes.ATTRS_ONLY
             else:

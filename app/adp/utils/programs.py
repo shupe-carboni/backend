@@ -37,23 +37,36 @@ def price_flexcoil_version(
     """
     model_number: str = row_subset[Fields.MODEL_NUMBER.value]
     series: str = row_subset[Fields.SERIES.value]
-    no_change = "Not Available"
+    not_available_txt = "Not Available"
+    not_available = pd.Series([not_available_txt, not_available_txt])
+    same_as_model_txt = "Same as Model Number"
+    same_as_model = pd.Series([same_as_model_txt, same_as_model_txt])
     # flexcoil by replacement
     if series in ("HE", "HH", "HD"):
         if model_number.endswith("AP"):
             model_to_parse = model_number.replace("AP", "N")
-        elif model_number[:2] == "CE":
+        elif model_number[:2] == "CE" and not model_number.endswith("N"):
             model_to_parse = model_number + "N"
+        elif model_number.endswith("N"):
+            return same_as_model
+        elif model_number.endswith("R"):
+            model_to_parse = list(model_number)
+            model_to_parse[4] = "1"
+            model_to_parse[-1] = "N"
+            model_to_parse = "".join(model_to_parse)
         else:
-            return pd.Series([no_change, no_change])
+            return not_available
     # flexcoil by append
     elif series in ("MH", "V"):
-        if model_number[-1] not in ("R", "N"):
+        model_end = model_number[-1]
+        if model_end not in ("R", "N"):
             model_to_parse = model_number + "N"
-        else:
-            return pd.Series([no_change, no_change])
+        elif model_end == "N":
+            return same_as_model
+        elif model_end == "R":
+            model_to_parse = model_number[:-2] + "1N"
     else:
-        return pd.Series([no_change, no_change])
+        return not_available
 
     result = parse_model_string(
         session=session,

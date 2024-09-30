@@ -6,7 +6,6 @@ from abc import ABC
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
 from dotenv import load_dotenv
-from pprint import pprint
 
 load_dotenv()
 from pydantic import BaseModel, field_validator
@@ -59,6 +58,7 @@ AUDIENCE = os.getenv("AUDIENCE")
 class TUI(Enum):
     SCA_CLOUD = os.getenv("SCA_CLOUD_TUI_CLIENT_ID")
     DEVELOPER = os.getenv("DEVELOPER_TUI_CLIENT_ID")
+    MS_POWER_AUTOMATE = os.getenv("MS_AUTOMATE_CLIENT_ID")
 
 
 class UserTypes(StrEnum):
@@ -78,6 +78,7 @@ class Permissions(IntEnum):
     customer_admin = 12
     customer_manager = 11
     customer_std = 10
+    hardcast_confirmations = 2
     view_only = 1
 
 
@@ -219,6 +220,13 @@ async def authenticate_auth0_token(
                             email=os.getenv("TEST_USER_EMAIL"),
                             email_verified=True,
                         )
+                    case TUI.MS_POWER_AUTOMATE.value:
+                        user_info = dict(
+                            nickname="MS Power Automate",
+                            name="MS Power Automate",
+                            email="",
+                            email_verified=True,
+                        )
                     case _:
                         user_info = get_user_info(token.credentials)
                 verified_token = VerifiedToken(
@@ -276,7 +284,7 @@ def standard_error_handler(func):
             import traceback as tb
 
             raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=pprint(tb.format_exc())
+                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc()
             )
 
     return wrapper
@@ -323,9 +331,18 @@ class SecOp(ABC):
 
     """
 
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, **kwargs
-    ) -> None:
+    PRICE_COLUMNS = [
+        "zero-discount-price",
+        "material-group-discount",
+        "material-group-net-price",
+        "snp-discount",
+        "snp-price",
+        "net-price",
+        "discount",
+        "price",
+    ]
+
+    def __init__(self, token: VerifiedToken, resource: str) -> None:
         if not token.email_verified:
             raise UnverifiedEmail
         self.token = token
@@ -569,9 +586,10 @@ class SecOp(ABC):
 
         match result:
             case JSONAPIResponse():
-                return result.data
+                result = result.data
             case dict():
-                return result
+                result = result
+        return result
 
     @standard_error_handler
     def patch(
@@ -609,9 +627,10 @@ class SecOp(ABC):
 
         match result:
             case JSONAPIResponse():
-                return result.data
+                result = result.data
             case dict():
-                return result
+                result = result
+        return result
 
     @standard_error_handler
     def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
