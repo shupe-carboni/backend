@@ -45,7 +45,7 @@ class AirHandlerProgRelResp(JSONAPIRelationshipsResponse):
 
 
 class ProgAttrs(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces={})
     category: Optional[str] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
     private_label: Optional[str] = Field(default=None, alias="private-label")
@@ -251,7 +251,7 @@ class AHProgQueryJSONAPI(AHProgFields, ProgFilters, Query):
 
 ## New Models to a Program
 class NewModelNumber(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces={})
     model_number: str = Field(alias="model-number")
 
 
@@ -337,7 +337,7 @@ class Rating(BaseModel):
 
 
 class RatingExpanded(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces={})
     AHRINumber: Optional[str] = Field(default=None, alias="ahrinumber")
     OutdoorModel: Optional[str] = Field(default=None, alias="outdoor-model")
     IndoorModel: Optional[str] = Field(default=None, alias="indoor-model")
