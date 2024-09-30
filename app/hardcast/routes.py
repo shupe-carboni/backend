@@ -20,6 +20,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 class NewFile(BaseModel):
     file: str
+    content_type: str
 
 
 @hardcast.post("/confirmations")
@@ -28,7 +29,6 @@ async def new_confirmation(
     # token: Token,
     file: NewFile,
     authorization: Optional[str] = Header(None),
-    content_type: Optional[str] = Header(None),
 ) -> JSONResponse:
     # if token.permissions != auth.Permissions.hardcast_confirmations:
     #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -40,7 +40,7 @@ async def new_confirmation(
     else:
         warn_msg = "Endpoint unprotected and no auth header was sent."
 
-    if content_type != "application/pdf":
+    if file.content_type != "application/pdf":
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     logger.warning(warn_msg)
