@@ -18,8 +18,6 @@ from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import (
     adp,
-    adp_quotes,
-    adp_quote_products,
     coil_progs,
     ah_progs,
     prog_parts,
@@ -89,8 +87,6 @@ app.add_middleware(
 ##          ordering paths correctly
 customer_sub_routes = [(customer_rel, "", customers)]
 adp_sub_routes = [
-    (adp_quotes, "", adp),
-    (adp_quote_products, "", adp),
     (adp_customers, "", adp),
     (coil_progs, "", adp),
     (ah_progs, "", adp),
