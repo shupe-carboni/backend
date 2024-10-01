@@ -626,6 +626,7 @@ class PriceBook:
                 oemseries.startswith("YH")
                 or oemseries.startswith("AC0")
                 or oemseries.startswith("YC")
+                or oemseries.startswith("HH8")
             ):
                 start, end = (0, 3)
             else:
