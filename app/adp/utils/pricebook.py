@@ -620,6 +620,8 @@ class PriceBook:
             return self
 
         def set_series_name(oemseries: str) -> str:
+            # TODO abstract this to either environment variables, db entries, or a file
+            # extrnal to the code itself
             if any([val in oemseries for val in ("4AC", "4HP")]):
                 start, end = (0, 5)
             elif (
