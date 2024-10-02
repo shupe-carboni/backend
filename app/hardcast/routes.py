@@ -3,9 +3,9 @@ import traceback
 from io import BytesIO
 from base64 import b64decode
 from typing import Annotated, Optional
-from fastapi import HTTPException, status, Depends, Header
+from fastapi import HTTPException, status, Depends, Header, Request
 from fastapi.routing import APIRouter
-from fastapi.responses import JSONResponse
+from starlette.templating import Jinja2Templates, _TemplateResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.hardcast import confirmations
@@ -14,8 +14,9 @@ from app.db import DB_V2
 
 hardcast = APIRouter(prefix="/hardcast", tags=["hardcast"])
 logger = logging.getLogger("uvicorn.info")
-Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
+# Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
+templates = Jinja2Templates("./app/hardcast/templates")
 
 
 class NewFile(BaseModel):
@@ -25,11 +26,12 @@ class NewFile(BaseModel):
 
 @hardcast.post("/confirmations")
 async def new_confirmation(
+    request: Request,
     session: NewSession,
     # token: Token,
     file: NewFile,
     authorization: Optional[str] = Header(None),
-) -> JSONResponse:
+) -> _TemplateResponse:
     # if token.permissions != auth.Permissions.hardcast_confirmations:
     #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     if authorization:
@@ -52,5 +54,11 @@ async def new_confirmation(
         tb = traceback.format_exc()
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb)
     else:
+        variable_values = confirmations.analyze_confirmation(
+            session, confirmation=confirmation
+        )
+        variable_values["request"] = request
         confirmations.save_record(session, confirmation)
-        return JSONResponse(confirmations.asdict(confirmation))
+        return templates.TemplateResponse(
+            "confirmation_analysis_email.html", variable_values
+        )
