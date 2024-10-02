@@ -1,4 +1,3 @@
-import os
 import re
 import itertools
 from app.db import DB_V2
@@ -466,20 +465,51 @@ def save_record(session: Session, record: Confirmation) -> None:
         item_dicts.append(order_item_dict)
     DB_V2.execute(session, conf_product_statement, item_dicts)
     session.commit()
+    return
 
 
 def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     template_values = {
         "has_state_tax": False,
+        "state_tax": 0,
         "has_county_tax": False,
+        "county_tax": 0,
         "is_duplicate": False,
-        "email_address": "",
-        "recipient_name": "",
+        "duplicates": [],
+        "sold_to_customer": "",
+        "sold_to_rep": "",
+        "ship_to_customer": "",
+        "ship_to_rep": "",
     }
+    duplicated_records_sql = """
+        SELECT purchase_order_number, created_at
+        FROM hardcast_confirmations
+        WHERE order_confirmation_number = :order_confirmation_number;
+    """
+    param = dict(
+        order_confirmation_number=confirmation.order_details.order_confirmation_number
+    )
+    duplicated_records = (
+        DB_V2.execute(session, duplicated_records_sql, param).mappings().fetchall()
+    )
     template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
+    template_values["state_tax"] = (
+        f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
+    )
     template_values["has_county_tax"] = confirmation.order_tax_and_total.county_tax > 0
-    template_values["is_duplicate"] = False  # TODO database query
-    template_values["email_address"] = os.getenv("ADMIN_EMAIL")
-    template_values["recipient_name"] = "TEST USER"
+    template_values["county_tax"] = (
+        f"${confirmation.order_tax_and_total.county_tax / 100:,.2f}"
+    )
+    template_values["sold_to_customer"] = confirmation.customer.sold_to_customer_name
+    template_values["ship_to_customer"] = confirmation.customer.ship_to_customer_name
+    template_values["sold_to_rep"] = "Joseph Carboni"
+    template_values["ship_to_rep"] = "Joseph Carboni"
+
+    if duplicated_records:
+        template_values["is_duplicate"] = True
+        for dup in duplicated_records:
+            dup_po_num = dup["purchase_order_number"]
+            dup_date_created = dup["created_at"]
+            template_values["duplicates"].append((dup_po_num, dup_date_created))
 
     return template_values
