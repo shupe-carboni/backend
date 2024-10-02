@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #dddddd;
+        }
+        h1 {
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #555555;
+        }
+        .important {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .section-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-top: 30px;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 5px;
+        }
+        .status {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .highlight {
+            background-color: #fef5e7;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .footer {
+            font-size: 14px;
+            color: #777777;
+            margin-top: 40px;
+            border-top: 1px solid #dddddd;
+            padding-top: 10px;
+        }
+    </style>
+    <title>Email Notification</title>
+</head>
+<body>
+    <div class="email-container">
+        <h1>Email Notification</h1>
+        
+        <p>Hello <span class="highlight">{{ recipient_name }}</span>,</p>
+
+        <p>We are reaching out with the following details related to the document you submitted:</p>
+
+        <div class="section-title">Document Details</div>
+
+        <p><strong>Email Address:</strong> <span class="highlight">{{ email_address }}</span></p>
+
+        <p><strong>State Taxes</strong> 
+            {% if has_state_tax %}
+            <span class="status" style="color:green;">Yes</span>
+            {% else %}
+            <span class="status" style="color:red;">No</span>
+            {% endif %}
+        </p>
+        <p><strong>County Taxes</strong> 
+            {% if has_county_tax %}
+            <span class="status" style="color:green;">Yes</span>
+            {% else %}
+            <span class="status" style="color:red;">No</span>
+            {% endif %}
+        </p>
+
+        <p><strong>Document is a Duplicate:</strong> 
+            {% if is_duplicate %}
+            <span class="status" style="color:red;">Yes</span> <br>
+            <span class="important">This document appears to be a duplicate.</span>
+            {% else %}
+            <span class="status" style="color:green;">No</span>
+            {% endif %}
+        </p>
+
+        <p>If any of the information above is incorrect, please let us know as soon as possible.</p>
+
+        <div class="footer">
+            <p>Thank you,</p>
+            <p>The Team at {{ company_name }}</p>
+        </div>
+    </div>
+</body>
+</html>
