@@ -355,7 +355,6 @@ def extract_order_products(text_array: TextArray) -> OrderProducts:
     return OrderProducts(products=result)
 
 
-## TODO combine somehow with the database actions at the bottom?
 def extract_from_file(file: str | BytesLike) -> Confirmation:
     match file:
         case bytes():
@@ -387,26 +386,6 @@ def extract_from_file(file: str | BytesLike) -> Confirmation:
         order_details=order_details,
         order_products=order_products_flat,
     )
-
-
-# TODO remove
-def extract_all_files() -> tuple[list[Confirmation], list[str]]:
-    all_results: list[dict] = list()
-    file_list = os.listdir("./files")
-    num_files = len(file_list)
-    failures = list()
-    for i, file in enumerate(file_list):
-        msg = f"reading file {i+1} of {num_files}"
-        print(msg, end="")
-        try:
-            result = extract_from_file("./files/" + file)
-        except Exception as e:
-            failures.append(f"{file} {e}")
-        else:
-            all_results.append(result)
-        print("\b" * len(msg), end="")
-    print("\nDone")
-    return all_results, failures
 
 
 def save_record(session: Session, record: Confirmation) -> None:
@@ -486,3 +465,21 @@ def save_record(session: Session, record: Confirmation) -> None:
         order_item_dict["order_id"] = new_order_id
         item_dicts.append(order_item_dict)
     DB_V2.execute(session, conf_product_statement, item_dicts)
+    session.commit()
+
+
+def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
+    template_values = {
+        "has_state_tax": False,
+        "has_county_tax": False,
+        "is_duplicate": False,
+        "email_address": "",
+        "recipient_name": "",
+    }
+    template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
+    template_values["has_county_tax"] = confirmation.order_tax_and_total.county_tax > 0
+    template_values["is_duplicate"] = False  # TODO database query
+    template_values["email_address"] = os.getenv("ADMIN_EMAIL")
+    template_values["recipient_name"] = "TEST USER"
+
+    return template_values
