@@ -16,7 +16,8 @@ class B(ModelSeries):
         (?P<line_conn>S)
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
-        (?P<rds>[N|R]?)
+        (?P<revision>[A]?)
+        (?P<rds>[R]?)
         """
 
     class InvalidHeatOption(Exception): ...

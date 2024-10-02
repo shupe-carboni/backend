@@ -14,7 +14,8 @@ class CF(ModelSeries):
         (?P<scode>\D{2}\d|\D\d{2})
         (?P<heat>\d{2})
         (?P<voltage>\d)
-        (?P<rds>[N|R]?)
+        (?P<revision>[A]?)
+        (?P<rds>[R]?)
     """
 
     def __init__(self, session: Session, re_match: re.Match):

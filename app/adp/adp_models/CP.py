@@ -22,6 +22,7 @@ class CP(ModelSeries):
         (?P<heat>\d{2})
         (?P<voltage>\d)
         (?P<option>[U|C|R]?)
+        (?P<revision>[A]?)
         (?P<rds>R?)
         (?P<drain>R?)
     """
