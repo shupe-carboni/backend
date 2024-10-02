@@ -60,45 +60,52 @@
 </head>
 <body>
     <div class="email-container">
-        <h1>Email Notification</h1>
+        <h1>Hardcast Confirmation Analysis</h1>
         
-        <p>Hello <span class="highlight">{{ recipient_name }}</span>,</p>
+        <!-- <p>Hello <span class="highlight">{{ recipient_name }}</span>,</p> -->
 
-        <p>We are reaching out with the following details related to the document you submitted:</p>
+        <!-- <p>We are reaching out with the following details related to the document you submitted:</p> -->
 
-        <div class="section-title">Document Details</div>
+        <div class="section-title">Details</div>
 
-        <p><strong>Email Address:</strong> <span class="highlight">{{ email_address }}</span></p>
+        <p><strong>Sold-to Customer:</strong> <span class="highlight">{{ sold_to_customer }}</span></p>
+        <p><strong>Sold-to Rep:</strong> <span class="highlight">{{ sold_to_rep }}</span></p>
+        <p><strong>Ship-to Customer:</strong> <span class="highlight">{{ ship_to_customer }}</span></p>
+        <p><strong>Ship-to Rep:</strong> <span class="highlight">{{ ship_to_rep }}</span></p>
 
         <p><strong>State Taxes</strong> 
             {% if has_state_tax %}
-            <span class="status" style="color:green;">Yes</span>
+            <span class="status" style="color:green;">{{ state_tax }}</span>
             {% else %}
-            <span class="status" style="color:red;">No</span>
+            <span class="status" style="color:red;">{{ state_tax }}</span>
             {% endif %}
         </p>
         <p><strong>County Taxes</strong> 
             {% if has_county_tax %}
-            <span class="status" style="color:green;">Yes</span>
+            <span class="status" style="color:green;">{{ county_tax }}</span>
             {% else %}
-            <span class="status" style="color:red;">No</span>
+            <span class="status" style="color:red;">{{ county_tax }}</span>
             {% endif %}
         </p>
 
-        <p><strong>Document is a Duplicate:</strong> 
+        <p><strong>Duplicates:</strong> 
             {% if is_duplicate %}
             <span class="status" style="color:red;">Yes</span> <br>
-            <span class="important">This document appears to be a duplicate.</span>
+            <!-- <span class="important">This document appears to be a duplicate.</span> -->
+             <ul>
+                {% for dup in duplicates %}
+                <li>PO: {{ dup[0] }}, Recieved: {{ dup[1] }}</li>
+                {% endfor %}
+             </ul>
             {% else %}
-            <span class="status" style="color:green;">No</span>
+            <span class="status" style="color:green;">None</span>
             {% endif %}
         </p>
 
-        <p>If any of the information above is incorrect, please let us know as soon as possible.</p>
+        <!-- <p>If any of the information above is incorrect, please let us know as soon as possible.</p> -->
 
         <div class="footer">
-            <p>Thank you,</p>
-            <p>The Team at {{ company_name }}</p>
+            <p><i>This is an automated message. Please <b>reply to this email</b> if there are any issues.</i></p>
         </div>
     </div>
 </body>
