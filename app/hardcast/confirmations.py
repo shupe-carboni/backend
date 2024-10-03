@@ -1,13 +1,23 @@
 import re
 import itertools
+import requests
 from app.db import DB_V2
 from io import BytesIO
 from pypdf import PdfReader
 from dataclasses import dataclass, asdict
 from sqlalchemy.orm import Session
+from app.cmmssns import CMMSSNS_URL
+from app.street_endings import STREET_ENDINGS
 
 TextArray = list[list[str]]
 BytesLike = bytes | BytesIO
+STREET_ENDINGS = [ending.upper() for ending in STREET_ENDINGS]
+
+
+class CityNotExtracted(Exception):
+    def __init__(self, address: str, *args, **kwargs):
+        self.address = address
+        super().__init__(*args, **kwargs)
 
 
 @dataclass
@@ -468,6 +478,37 @@ def save_record(session: Session, record: Confirmation) -> None:
     return
 
 
+def format_rep_response(response: requests.Response) -> str:
+    match response.status_code:
+        case 204:
+            return "N/A"
+        case 200:
+            data = response.json()
+            return f"{data['rep'] ({data['location']})}"
+        case _:
+            return "Error with lookup"
+
+
+def extract_city_state_from_address(full_address: str) -> dict[str, str]:
+    strip_non_alphanumeric = re.compile("[^A-Za-z0-9\s]")
+    full_address_stripped = strip_non_alphanumeric.sub("", full_address)
+    address_array_rev = full_address_stripped.split(" ")[::-1]
+    city = None
+    state = None
+    state_i = None
+
+    for i, e in enumerate(address_array_rev):
+        if len(e) == 2 and not state and not e.isdigit():
+            state = e
+            state_i = i
+        elif state_i and (e.isdigit() or e in STREET_ENDINGS):
+            city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+            break
+    if not city:
+        raise CityNotExtracted(address=full_address)
+    return dict(city=city, state=state)
+
+
 def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     template_values = {
         "has_state_tax": False,
@@ -492,6 +533,7 @@ def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     duplicated_records = (
         DB_V2.execute(session, duplicated_records_sql, param).mappings().fetchall()
     )
+    rep_lookup_url = CMMSSNS_URL + "/representatives/lookup-by-location"
     template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
     template_values["state_tax"] = (
         f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
@@ -502,8 +544,23 @@ def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     )
     template_values["sold_to_customer"] = confirmation.customer.sold_to_customer_name
     template_values["ship_to_customer"] = confirmation.customer.ship_to_customer_name
-    template_values["sold_to_rep"] = "Joseph Carboni"
-    template_values["ship_to_rep"] = "Joseph Carboni"
+
+    sold_to_query = dict(
+        **extract_city_state_from_address(
+            confirmation.customer.sold_to_customer_address
+        ),
+        user_id=1,
+    )
+    ship_to_query = dict(
+        **extract_city_state_from_address(
+            confirmation.customer.ship_to_customer_address
+        ),
+        user_id=1,
+    )
+    sold_to_rep_resp = requests.get(rep_lookup_url, params=sold_to_query)
+    ship_to_rep_resp = requests.get(rep_lookup_url, params=ship_to_query)
+    template_values["sold_to_rep"] = format_rep_response(sold_to_rep_resp)
+    template_values["ship_to_rep"] = format_rep_response(ship_to_rep_resp)
 
     if duplicated_records:
         template_values["is_duplicate"] = True
