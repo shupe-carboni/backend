@@ -9,7 +9,8 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.hardcast import confirmations
-from app import auth
+
+# from app import auth
 from app.db import DB_V2
 
 hardcast = APIRouter(prefix="/hardcast", tags=["hardcast"])
@@ -54,11 +55,24 @@ async def new_confirmation(
         tb = traceback.format_exc()
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb)
     else:
-        variable_values = confirmations.analyze_confirmation(
-            session, confirmation=confirmation
-        )
-        variable_values["request"] = request
-        confirmations.save_record(session, confirmation)
-        return templates.TemplateResponse(
-            "confirmation_analysis_email.html", variable_values
-        )
+        try:
+            variable_values = confirmations.analyze_confirmation(
+                session, confirmation=confirmation
+            )
+        except confirmations.CityNotExtracted as e:
+            error_msg = (
+                "The city-part of the address was unable to be extracted "
+                f"given the address: {e.address}"
+            )
+            logger.error(error_msg)
+            detail = dict(exception_type="CityNotExtracted", error_msg=error_msg)
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
+        except Exception as e:
+            tb = traceback.format_exc()
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb)
+        else:
+            variable_values["request"] = request
+            confirmations.save_record(session, confirmation)
+            return templates.TemplateResponse(
+                "confirmation_analysis_email.html", variable_values
+            )
