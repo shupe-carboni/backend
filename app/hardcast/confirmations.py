@@ -484,7 +484,7 @@ def format_rep_response(response: requests.Response) -> str:
             return "N/A"
         case 200:
             data = response.json()
-            return f"{data['rep'] ({data['location']})}"
+            return f"{data['rep']} ({data['location']})"
         case _:
             return "Error with lookup"
 
@@ -533,7 +533,7 @@ def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     duplicated_records = (
         DB_V2.execute(session, duplicated_records_sql, param).mappings().fetchall()
     )
-    rep_lookup_url = CMMSSNS_URL + "/representatives/lookup-by-location"
+    rep_lookup_url = CMMSSNS_URL + "representatives/lookup-by-location"
     template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
     template_values["state_tax"] = (
         f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
