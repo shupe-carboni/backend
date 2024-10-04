@@ -13,3 +13,5 @@ def test_confirmation_endpoint_works():
     pl = {"file": file_data, "content_type": "application/pdf"}
     resp = test_client.post(PATH, json=pl)
     assert resp.status_code == 200, resp.text
+    with open("email_test.html", "w") as email:
+        email.write(resp.text)
