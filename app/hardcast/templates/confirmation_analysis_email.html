@@ -48,6 +48,13 @@
             padding: 5px;
             border-radius: 4px;
         }
+        .box {
+            border: 1px solid #dddddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
         .footer {
             font-size: 14px;
             color: #777777;
@@ -55,50 +62,68 @@
             border-top: 1px solid #dddddd;
             padding-top: 10px;
         }
+        .taxes-section p {
+            margin-bottom: 10px;
+        }
     </style>
-    <title>Email Notification</title>
+    <title>Hardcast Confirmation Summary</title>
 </head>
 <body>
     <div class="email-container">
-        <h1>Hardcast Confirmation Summary</h1>
-        <div class="section-title">Details</div>
-        <p><strong>Sold-to Customer: </strong> <span class="highlight">{{ sold_to_customer }}</span></p>
-        <p><strong>Address: </strong> <span class="highlight">{{ sold_to_address }}</span></p>
-        <p><strong>Rep: </strong> <span class="highlight">{{ sold_to_rep }}</span></p>
-        <p><strong>Ship-to Customer: </strong> <span class="highlight">{{ ship_to_customer }}</span></p>
-        <p><strong>Address: </strong> <span class="highlight">{{ ship_to_address }}</span></p>
-        <p><strong>Rep: </strong> <span class="highlight">{{ ship_to_rep }}</span></p>
+        <!-- TODO -->
         <!-- <p><strong>PO Log:</strong> <span class="highlight">TODO</span></p> -->
-        <p><strong>State Taxes</strong> 
-            {% if has_state_tax %}
-            <span class="status" style="color:red;">{{ state_tax }}</span>
-            {% else %}
-            <span class="status" style="color:darkgray;">{{ state_tax }}</span>
-            {% endif %}
-        </p>
-        <p><strong>County Taxes</strong> 
-            {% if has_county_tax %}
-            <span class="status" style="color:red;">{{ county_tax }}</span>
-            {% else %}
-            <span class="status" style="color:darkgrey;">{{ county_tax }}</span>
-            {% endif %}
-        </p>
-        <p><strong>Duplicates:</strong> 
-            {% if is_duplicate %}
-            <span class="status" style="color:red;">Possible duplicates found</span> <br>
-            <div class="section-title"></div>
-            <p>Same confirmation number</p>
-             <ul>
-                {% for dup in duplicates %}
-                <li>PO: {{ dup[0] }}, Recieved: {{ dup[1] }}</li>
-                {% endfor %}
-             </ul>
-            <p>Same or similar PO number:</p>
-                <!-- TODO -->
-            {% else %}
-            <span class="status" style="color:green;">No duplicates found</span>
-            {% endif %}
-        </p>
+        <h1>Hardcast Confirmation Summary</h1>
+        <!-- Sold-to Customer Section -->
+        <div class="box">
+            <div class="section-title">Sold-to</div>
+            <p><strong>Name: </strong> <span class="highlight">{{ sold_to_customer }}</span></p>
+            <p><strong>Address: </strong> <span class="highlight">{{ sold_to_address }}</span></p>
+            <p><strong>Rep: </strong> <span class="highlight">{{ sold_to_rep }}</span></p>
+        </div>
+        <!-- Ship-to Customer Section -->
+        <div class="box">
+            <div class="section-title">Ship-to</div>
+            <p><strong>Name: </strong> <span class="highlight">{{ ship_to_customer }}</span></p>
+            <p><strong>Address: </strong> <span class="highlight">{{ ship_to_address }}</span></p>
+            <p><strong>Rep: </strong> <span class="highlight">{{ ship_to_rep }}</span></p>
+        </div>
+        <!-- Taxes Section -->
+        <div class="box taxes-section">
+            <div class="section-title">Taxes</div>
+            <p><strong>State Taxes:</strong> 
+                {% if has_state_tax %}
+                <span class="status" style="color:red;">{{ state_tax }}</span>
+                {% else %}
+                <span class="status" style="color:darkgray;">{{ state_tax }}</span>
+                {% endif %}
+            </p>
+            <p><strong>County Taxes:</strong> 
+                {% if has_county_tax %}
+                <span class="status" style="color:red;">{{ county_tax }}</span>
+                {% else %}
+                <span class="status" style="color:darkgrey;">{{ county_tax }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <!-- Duplicates Section -->
+        <div class="box">
+            <div class="section-title">Duplicates</div>
+            <p><strong>Status: </strong>
+                {% if is_duplicate %}
+                <span class="status" style="color:red;">Possible duplicates found</span> <br>
+                <p><strong>Same confirmation number:</strong></p>
+                <ul>
+                    {% for dup in duplicates %}
+                    <li>PO: {{ dup[0] }}, Received: {{ dup[1] }}</li>
+                    {% endfor %}
+                </ul>
+                <p><strong>Same or similar PO number:</strong> Not checked</p>
+                    <!-- TODO -->
+                {% else %}
+                <span class="status" style="color:green;">No duplicates found</span>
+                {% endif %}
+            </p>
+        </div>
         <div class="footer">
             <p><i>This is an automated message. Please <b>reply to this email</b> if there are any issues or inaccuracies.</i></p>
         </div>
