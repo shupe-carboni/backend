@@ -62,10 +62,12 @@
     <div class="email-container">
         <h1>Hardcast Confirmation Summary</h1>
         <div class="section-title">Details</div>
-        <p><strong>Sold-to Customer:</strong> <span class="highlight">{{ sold_to_customer }}</span></p>
-        <p><strong>Sold-to Rep:</strong> <span class="highlight">{{ sold_to_rep }}</span></p>
-        <p><strong>Ship-to Customer:</strong> <span class="highlight">{{ ship_to_customer }}</span></p>
-        <p><strong>Ship-to Rep:</strong> <span class="highlight">{{ ship_to_rep }}</span></p>
+        <p><strong>Sold-to Customer: </strong> <span class="highlight">{{ sold_to_customer }}</span></p>
+        <p><strong>Address: </strong> <span class="highlight">{{ sold_to_address }}</span></p>
+        <p><strong>Rep: </strong> <span class="highlight">{{ sold_to_rep }}</span></p>
+        <p><strong>Ship-to Customer: </strong> <span class="highlight">{{ ship_to_customer }}</span></p>
+        <p><strong>Address: </strong> <span class="highlight">{{ ship_to_address }}</span></p>
+        <p><strong>Rep: </strong> <span class="highlight">{{ ship_to_rep }}</span></p>
         <!-- <p><strong>PO Log:</strong> <span class="highlight">TODO</span></p> -->
         <p><strong>State Taxes</strong> 
             {% if has_state_tax %}

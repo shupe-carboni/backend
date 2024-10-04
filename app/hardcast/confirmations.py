@@ -12,6 +12,7 @@ from app.street_endings import STREET_ENDINGS
 TextArray = list[list[str]]
 BytesLike = bytes | BytesIO
 STREET_ENDINGS = [ending.upper() for ending in STREET_ENDINGS]
+Template = dict[str, bool | int | str | list[tuple[str, str]]]
 
 
 class CityNotExtracted(Exception):
@@ -74,6 +75,7 @@ class Confirmation:
     order_products: OrderProducts
     order_tax_and_total: OrderTaxAndTotal
 
+    # TODO either get rid of this or fix the extraction issue that causes false positives
     # def __post_init__(self) -> None:
     #     products_total = sum(product.total for product in self.order_products.products)
     #     diff = abs(products_total - self.order_tax_and_total.subtotal)
@@ -481,7 +483,7 @@ def save_record(session: Session, record: Confirmation) -> None:
 def format_rep_response(response: requests.Response) -> str:
     match response.status_code:
         case 204:
-            return "N/A"
+            return "---"
         case 200:
             data = response.json()
             return f"{data['rep']} ({data['location']})"
@@ -509,8 +511,8 @@ def extract_city_state_from_address(full_address: str) -> dict[str, str]:
     return dict(city=city, state=state)
 
 
-def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
-    template_values = {
+def analyze_confirmation(session: Session, confirmation: Confirmation) -> Template:
+    template_values: Template = {
         "has_state_tax": False,
         "state_tax": 0,
         "has_county_tax": False,
@@ -518,10 +520,13 @@ def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
         "is_duplicate": False,
         "duplicates": [],
         "sold_to_customer": "",
+        "sold_to_address": "",
         "sold_to_rep": "",
         "ship_to_customer": "",
+        "ship_to_address": "",
         "ship_to_rep": "",
     }
+    # Duplicates
     duplicated_records_sql = """
         SELECT purchase_order_number, created_at
         FROM hardcast_confirmations
@@ -533,40 +538,42 @@ def analyze_confirmation(session: Session, confirmation: Confirmation) -> dict:
     duplicated_records = (
         DB_V2.execute(session, duplicated_records_sql, param).mappings().fetchall()
     )
-    rep_lookup_url = CMMSSNS_URL + "representatives/lookup-by-location"
-    template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
-    template_values["state_tax"] = (
-        f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
-    )
-    template_values["has_county_tax"] = confirmation.order_tax_and_total.county_tax > 0
-    template_values["county_tax"] = (
-        f"${confirmation.order_tax_and_total.county_tax / 100:,.2f}"
-    )
-    template_values["sold_to_customer"] = confirmation.customer.sold_to_customer_name
-    template_values["ship_to_customer"] = confirmation.customer.ship_to_customer_name
-
-    sold_to_query = dict(
-        **extract_city_state_from_address(
-            confirmation.customer.sold_to_customer_address
-        ),
-        user_id=1,
-    )
-    ship_to_query = dict(
-        **extract_city_state_from_address(
-            confirmation.customer.ship_to_customer_address
-        ),
-        user_id=1,
-    )
-    sold_to_rep_resp = requests.get(rep_lookup_url, params=sold_to_query)
-    ship_to_rep_resp = requests.get(rep_lookup_url, params=ship_to_query)
-    template_values["sold_to_rep"] = format_rep_response(sold_to_rep_resp)
-    template_values["ship_to_rep"] = format_rep_response(ship_to_rep_resp)
-
     if duplicated_records:
         template_values["is_duplicate"] = True
         for dup in duplicated_records:
             dup_po_num = dup["purchase_order_number"]
             dup_date_created = dup["created_at"]
             template_values["duplicates"].append((dup_po_num, dup_date_created))
+    # State Tax
+    template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
+    state_tax_formatted = f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
+    template_values["state_tax"] = state_tax_formatted
+
+    # County Tax
+    template_values["has_county_tax"] = confirmation.order_tax_and_total.county_tax > 0
+    county_tax_formatted = f"${confirmation.order_tax_and_total.county_tax / 100:,.2f}"
+    template_values["county_tax"] = county_tax_formatted
+
+    # Customer Names
+    template_values["sold_to_customer"] = confirmation.customer.sold_to_customer_name
+    template_values["ship_to_customer"] = confirmation.customer.ship_to_customer_name
+
+    rep_lookup_url = CMMSSNS_URL + "representatives/lookup-by-location"
+
+    # Sold to Address & Rep
+    full_sold_to_address = confirmation.customer.sold_to_customer_address.upper()
+    sold_to_address = extract_city_state_from_address(full_sold_to_address)
+    sold_to_query = dict(**sold_to_address, user_id=1)
+    sold_to_rep_resp = requests.get(rep_lookup_url, params=sold_to_query)
+    template_values["sold_to_rep"] = format_rep_response(sold_to_rep_resp)
+    template_values["sold_to_address"] = ", ".join(sold_to_address.values())
+
+    # Ship to Address & Rep
+    full_ship_to_address = confirmation.customer.ship_to_customer_address.upper()
+    ship_to_address = extract_city_state_from_address(full_ship_to_address)
+    ship_to_query = dict(**ship_to_address, user_id=1)
+    ship_to_rep_resp = requests.get(rep_lookup_url, params=ship_to_query)
+    template_values["ship_to_rep"] = format_rep_response(ship_to_rep_resp)
+    template_values["ship_to_address"] = ", ".join(ship_to_address.values())
 
     return template_values
