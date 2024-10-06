@@ -2,6 +2,9 @@ from os import getenv
 from time import sleep
 from dataclasses import dataclass
 from requests import post
+from dotenv import load_dotenv
+
+load_dotenv()
 
 CMMSSNS_URL: str = getenv("CMMSSNS_AUDIENCE")
 
