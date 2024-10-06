@@ -1,5 +1,6 @@
 import logging
 import traceback
+from os import getenv
 from io import BytesIO
 from base64 import b64decode
 from typing import Annotated, Optional
@@ -9,15 +10,17 @@ from starlette.templating import Jinja2Templates, _TemplateResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.hardcast import confirmations
+from dotenv import load_dotenv
 
-# from app import auth
+load_dotenv()
+
 from app.db import DB_V2
 
 hardcast = APIRouter(prefix="/hardcast", tags=["hardcast"])
 logger = logging.getLogger("uvicorn.info")
-# Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 templates = Jinja2Templates("./app/hardcast/templates")
+FLOW_NAME = getenv("FLOW_NAME")
 
 
 class NewFile(BaseModel):
@@ -29,24 +32,16 @@ class NewFile(BaseModel):
 async def new_confirmation(
     request: Request,
     session: NewSession,
-    # token: Token,
     file: NewFile,
-    authorization: Optional[str] = Header(None),
+    x_ms_workflow_name: Annotated[Optional[str], Header()] = None,
 ) -> _TemplateResponse:
-    # if token.permissions != auth.Permissions.hardcast_confirmations:
-    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    if authorization:
-        warn_msg = (
-            "Endpoint unprotected but an auth header was sent, "
-            f"starting with {authorization[:30]}"
-        )
-    else:
-        warn_msg = "Endpoint unprotected and no auth header was sent."
+    if not x_ms_workflow_name or x_ms_workflow_name != FLOW_NAME:
+        logger.warning("Request recieved with invalid or missing workflow name header.")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
 
     if file.content_type != "application/pdf":
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-    logger.warning(warn_msg)
     data = b64decode(file.file)
     new_conf = BytesIO(data)
     try:
