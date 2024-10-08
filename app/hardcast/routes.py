@@ -46,9 +46,11 @@ async def new_confirmation(
     new_conf = BytesIO(data)
     try:
         confirmation = confirmations.extract_from_file(new_conf)
+    except confirmations.NoContent as e:
+        raise HTTPException(status.HTTP_204_NO_CONTENT, detail=e)
     except Exception:
         tb = traceback.format_exc()
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=tb)
     else:
         try:
             variable_values = confirmations.analyze_confirmation(
