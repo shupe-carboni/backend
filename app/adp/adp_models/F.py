@@ -15,7 +15,8 @@ class F(ModelSeries):
         (?P<line_conn>[S|B])
         (?P<heat>\d{2})
         (?P<voltage>\d)
-        (?P<rds>[N|R]?)
+        (?P<revision>[A]?)
+        (?P<rds>[R]?)
         """
 
     def __init__(self, session: Session, re_match: re.Match):

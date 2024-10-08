@@ -16,7 +16,8 @@ class B(ModelSeries):
         (?P<line_conn>S)
         (?P<heat>\d[0|P|N])
         (?P<voltage>\d)
-        (?P<rds>[N|R]?)
+        (?P<revision>[A]?)
+        (?P<rds>[R]?)
         """
 
     class InvalidHeatOption(Exception): ...
@@ -61,22 +62,22 @@ class B(ModelSeries):
         self.ratings_ac_txv = (
             rf"B{self.attributes['motor']}"
             rf"\*\*{self.attributes['scode']}"
-            rf"\(6,9\){self.tonnage}"
+            rf"(\(6,9\)|\*){self.tonnage}"
         )
         self.ratings_hp_txv = (
             rf"B{self.attributes['motor']}"
             rf"\*\*{self.attributes['scode']}"
-            rf"9{self.tonnage}"
+            rf"(9|\*){self.tonnage}"
         )
         self.ratings_piston = (
             rf"B{self.attributes['motor']}"
             rf"\*\*{self.attributes['scode']}"
-            rf"\(1,2\){self.tonnage}"
+            rf"(\(1,2\)|\*){self.tonnage}"
         )
         self.ratings_field_txv = (
             rf"B{self.attributes['motor']}"
             rf"\*\*{self.attributes['scode']}"
-            rf"\(1,2\){self.tonnage}\+TXV"
+            rf"(\(1,2\)|\*){self.tonnage}\+TXV"
         )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False

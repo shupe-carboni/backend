@@ -1,14 +1,24 @@
-import os
 import re
 import itertools
+import requests
 from app.db import DB_V2
 from io import BytesIO
 from pypdf import PdfReader
 from dataclasses import dataclass, asdict
 from sqlalchemy.orm import Session
+from app.cmmssns import CMMSSNS_URL
+from app.street_endings import STREET_ENDINGS
 
 TextArray = list[list[str]]
 BytesLike = bytes | BytesIO
+STREET_ENDINGS = [ending.upper() for ending in STREET_ENDINGS]
+Template = dict[str, bool | int | str | list[tuple[str, str]]]
+
+
+class CityNotExtracted(Exception):
+    def __init__(self, address: str, *args, **kwargs):
+        self.address = address
+        super().__init__(*args, **kwargs)
 
 
 @dataclass
@@ -65,6 +75,7 @@ class Confirmation:
     order_products: OrderProducts
     order_tax_and_total: OrderTaxAndTotal
 
+    # TODO either get rid of this or fix the extraction issue that causes false positives
     # def __post_init__(self) -> None:
     #     products_total = sum(product.total for product in self.order_products.products)
     #     diff = abs(products_total - self.order_tax_and_total.subtotal)
@@ -355,7 +366,9 @@ def extract_order_products(text_array: TextArray) -> OrderProducts:
     return OrderProducts(products=result)
 
 
-## TODO combine somehow with the database actions at the bottom?
+class NoContent(Exception): ...
+
+
 def extract_from_file(file: str | BytesLike) -> Confirmation:
     match file:
         case bytes():
@@ -363,7 +376,7 @@ def extract_from_file(file: str | BytesLike) -> Confirmation:
     reader = PdfReader(file)
     last_page_i = len(reader.pages) - 1
     if last_page_i < 1:
-        raise Exception("Confirmation is one page. It may be blank.")
+        raise NoContent("Confirmation is one page. It may be blank.")
     order_products: list[OrderProducts] = list()
     for i, page in enumerate(reader.pages):
         text = page.extract_text()
@@ -387,26 +400,6 @@ def extract_from_file(file: str | BytesLike) -> Confirmation:
         order_details=order_details,
         order_products=order_products_flat,
     )
-
-
-# TODO remove
-def extract_all_files() -> tuple[list[Confirmation], list[str]]:
-    all_results: list[dict] = list()
-    file_list = os.listdir("./files")
-    num_files = len(file_list)
-    failures = list()
-    for i, file in enumerate(file_list):
-        msg = f"reading file {i+1} of {num_files}"
-        print(msg, end="")
-        try:
-            result = extract_from_file("./files/" + file)
-        except Exception as e:
-            failures.append(f"{file} {e}")
-        else:
-            all_results.append(result)
-        print("\b" * len(msg), end="")
-    print("\nDone")
-    return all_results, failures
 
 
 def save_record(session: Session, record: Confirmation) -> None:
@@ -486,3 +479,117 @@ def save_record(session: Session, record: Confirmation) -> None:
         order_item_dict["order_id"] = new_order_id
         item_dicts.append(order_item_dict)
     DB_V2.execute(session, conf_product_statement, item_dicts)
+    session.commit()
+    return
+
+
+def format_rep_response(response: requests.Response) -> str:
+    match response.status_code:
+        case 204:
+            return "---"
+        case 200:
+            data = response.json()
+            return f"{data['rep']} ({data['location']})"
+        case _:
+            return "Error with lookup"
+
+
+def extract_city_state_from_address(full_address: str) -> dict[str, str]:
+    strip_non_alphanumeric = re.compile("[^A-Za-z0-9\s]")
+    full_address_stripped = strip_non_alphanumeric.sub("", full_address)
+    address_array_rev = full_address_stripped.split(" ")[::-1]
+    city = None
+    state = None
+    state_i = None
+    prev_ending = 0
+
+    for i, e in enumerate(address_array_rev):
+        if len(e) == 2 and not state and not e.isdigit():
+            state = e
+            state_i = i
+        elif state_i and e.isdigit():
+            if not prev_ending:
+                city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+            else:
+                city = " ".join(address_array_rev[state_i + 1 : prev_ending][::-1])
+            break
+        elif state_i and (e in STREET_ENDINGS):
+            if (set(address_array_rev[i:]) & set(STREET_ENDINGS)) == set(e):
+                if not prev_ending:
+                    city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+                else:
+                    city = " ".join(address_array_rev[state_i + 1 : prev_ending][::-1])
+                break
+            else:
+                prev_ending = i
+    if not city:
+        raise CityNotExtracted(address=full_address)
+    return dict(city=city, state=state)
+
+
+def analyze_confirmation(session: Session, confirmation: Confirmation) -> Template:
+    template_values: Template = {
+        "has_state_tax": False,
+        "state_tax": 0,
+        "has_county_tax": False,
+        "county_tax": 0,
+        "is_duplicate": False,
+        "duplicates": [],
+        "sold_to_customer": "",
+        "sold_to_address": "",
+        "sold_to_rep": "",
+        "ship_to_customer": "",
+        "ship_to_address": "",
+        "ship_to_rep": "",
+    }
+    # Duplicates
+    duplicated_records_sql = """
+        SELECT purchase_order_number, created_at
+        FROM hardcast_confirmations
+        WHERE order_confirmation_number = :order_confirmation_number;
+    """
+    param = dict(
+        order_confirmation_number=confirmation.order_details.order_confirmation_number
+    )
+    duplicated_records = (
+        DB_V2.execute(session, duplicated_records_sql, param).mappings().fetchall()
+    )
+    if duplicated_records:
+        template_values["is_duplicate"] = True
+        for dup in duplicated_records:
+            dup_po_num = dup["purchase_order_number"]
+            dup_date_created = dup["created_at"]
+            template_values["duplicates"].append((dup_po_num, dup_date_created))
+    # State Tax
+    template_values["has_state_tax"] = confirmation.order_tax_and_total.state_tax > 0
+    state_tax_formatted = f"${confirmation.order_tax_and_total.state_tax / 100:,.2f}"
+    template_values["state_tax"] = state_tax_formatted
+
+    # County Tax
+    template_values["has_county_tax"] = confirmation.order_tax_and_total.county_tax > 0
+    county_tax_formatted = f"${confirmation.order_tax_and_total.county_tax / 100:,.2f}"
+    template_values["county_tax"] = county_tax_formatted
+
+    # Customer Names
+    template_values["sold_to_customer"] = confirmation.customer.sold_to_customer_name
+    template_values["ship_to_customer"] = confirmation.customer.ship_to_customer_name
+
+    rep_lookup_url = CMMSSNS_URL + "representatives/lookup-by-location"
+
+    # Sold to Address & Rep
+    full_sold_to_address = confirmation.customer.sold_to_customer_address.upper()
+    sold_to_address = extract_city_state_from_address(full_sold_to_address)
+    sold_to_query = dict(**sold_to_address, user_id=1)
+    sold_to_rep_resp = requests.get(rep_lookup_url, params=sold_to_query)
+    template_values["sold_to_rep"] = format_rep_response(sold_to_rep_resp)
+    template_values["sold_to_address"] = ", ".join(sold_to_address.values())
+
+    # Ship to Address & Rep
+    full_ship_to_address = confirmation.customer.ship_to_customer_address.upper()
+    ship_to_address = extract_city_state_from_address(full_ship_to_address)
+    ship_to_query = dict(**ship_to_address, user_id=1)
+    ship_to_rep_resp = requests.get(rep_lookup_url, params=ship_to_query)
+    template_values["ship_to_rep"] = format_rep_response(ship_to_rep_resp)
+    template_values["ship_to_address"] = ", ".join(ship_to_address.values())
+
+    return template_values

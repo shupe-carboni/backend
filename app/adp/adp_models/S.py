@@ -12,7 +12,8 @@ class S(ModelSeries):
         (?P<meter>[\d|A|B])
         (?P<ton>\d{2})
         (?P<heat>(\d{2}|(XX)))
-        (?P<rds>[N|R]?)
+        (?P<revision>[A]?)
+        (?P<rds>[R]?)
     """
     weight_by_material = {"K": "weight_cu", "L": "weight_cu", "M": "weight_al"}
 

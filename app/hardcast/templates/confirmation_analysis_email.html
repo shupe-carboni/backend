@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border: 1px solid #dddddd;
+        }
+        h1 {
+            color: #333333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #555555;
+        }
+        .important {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .section-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-top: 30px;
+            border-bottom: 2px solid #e74c3c;
+            padding-bottom: 5px;
+        }
+        .status {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .highlight {
+            border: 1px solid #cccccc;
+            padding: 5px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333333;
+            background-color: #f9f9f9;
+        }
+        .box {
+            border: 1px solid #dddddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .footer {
+            font-size: 14px;
+            color: #777777;
+            margin-top: 40px;
+            border-top: 1px solid #dddddd;
+            padding-top: 10px;
+        }
+        .taxes-section p {
+            margin-bottom: 10px;
+        }
+    </style>
+    <title>Hardcast Confirmation Summary</title>
+</head>
+<body>
+    <div class="email-container">
+        <!-- TODO -->
+        <!-- <p><strong>PO Log:</strong> <span class="highlight">TODO</span></p> -->
+        <h1>Hardcast Confirmation Summary</h1>
+        <!-- Sold-to Customer Section -->
+        <div class="box">
+            <div class="section-title">Sold-to</div>
+            <p><strong>Name: </strong> <span class="highlight">{{ sold_to_customer }}</span></p>
+            <p><strong>Address: </strong> <span class="highlight">{{ sold_to_address }}</span></p>
+            <p><strong>Rep: </strong> <span class="highlight">{{ sold_to_rep }}</span></p>
+        </div>
+        <!-- Ship-to Customer Section -->
+        <div class="box">
+            <div class="section-title">Ship-to</div>
+            <p><strong>Name: </strong> <span class="highlight">{{ ship_to_customer }}</span></p>
+            <p><strong>Address: </strong> <span class="highlight">{{ ship_to_address }}</span></p>
+            <p><strong>Rep: </strong> <span class="highlight">{{ ship_to_rep }}</span></p>
+        </div>
+        <!-- Taxes Section -->
+        <div class="box taxes-section">
+            <div class="section-title">Taxes</div>
+            <p><strong>State Taxes:</strong> 
+                {% if has_state_tax %}
+                <span class="status" style="color:red;">{{ state_tax }}</span>
+                {% else %}
+                <span class="status" style="color:darkgray;">{{ state_tax }}</span>
+                {% endif %}
+            </p>
+            <p><strong>County Taxes:</strong> 
+                {% if has_county_tax %}
+                <span class="status" style="color:red;">{{ county_tax }}</span>
+                {% else %}
+                <span class="status" style="color:darkgrey;">{{ county_tax }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <!-- Duplicates Section -->
+        <div class="box">
+            <div class="section-title">Duplicates</div>
+            <p><strong>Status: </strong>
+                {% if is_duplicate %}
+                <span class="status" style="color:red;">Possible duplicates found</span> <br>
+                <p><strong>Same confirmation number:</strong></p>
+                <ul>
+                    {% for dup in duplicates %}
+                    <li>PO: {{ dup[0] }}, Received: {{ dup[1] }}</li>
+                    {% endfor %}
+                </ul>
+                <p><strong>Same or similar PO number:</strong> Not checked</p>
+                    <!-- TODO -->
+                {% else %}
+                <span class="status" style="color:green;">No duplicates found</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="footer">
+            <p><i>This is an automated message. Please <b>reply to this email</b> if there are any issues or inaccuracies.</i></p>
+        </div>
+    </div>
+</body>
+</html>

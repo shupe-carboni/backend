@@ -1,4 +1,4 @@
-__version__ = "1.2.1"
+__version__ = "1.2.10"
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -6,7 +6,7 @@ import os
 import logging
 from random import randint
 from asyncio import sleep
-from fastapi import FastAPI, Request, status, Response
+from fastapi import FastAPI, Request, status, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
@@ -139,3 +139,8 @@ async def test_db():
         return {
             "error_tb": tb.format_exc(),
         }
+
+
+@app.get("/v2")
+async def v2_available() -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
