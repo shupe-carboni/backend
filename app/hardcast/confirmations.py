@@ -366,6 +366,9 @@ def extract_order_products(text_array: TextArray) -> OrderProducts:
     return OrderProducts(products=result)
 
 
+class NoContent(Exception): ...
+
+
 def extract_from_file(file: str | BytesLike) -> Confirmation:
     match file:
         case bytes():
@@ -373,7 +376,7 @@ def extract_from_file(file: str | BytesLike) -> Confirmation:
     reader = PdfReader(file)
     last_page_i = len(reader.pages) - 1
     if last_page_i < 1:
-        raise Exception("Confirmation is one page. It may be blank.")
+        raise NoContent("Confirmation is one page. It may be blank.")
     order_products: list[OrderProducts] = list()
     for i, page in enumerate(reader.pages):
         text = page.extract_text()
@@ -498,14 +501,27 @@ def extract_city_state_from_address(full_address: str) -> dict[str, str]:
     city = None
     state = None
     state_i = None
+    prev_ending = 0
 
     for i, e in enumerate(address_array_rev):
         if len(e) == 2 and not state and not e.isdigit():
             state = e
             state_i = i
-        elif state_i and (e.isdigit() or e in STREET_ENDINGS):
-            city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+        elif state_i and e.isdigit():
+            if not prev_ending:
+                city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+            else:
+                city = " ".join(address_array_rev[state_i + 1 : prev_ending][::-1])
             break
+        elif state_i and (e in STREET_ENDINGS):
+            if (set(address_array_rev[i:]) & set(STREET_ENDINGS)) == set(e):
+                if not prev_ending:
+                    city = " ".join(address_array_rev[state_i + 1 : i][::-1])
+                else:
+                    city = " ".join(address_array_rev[state_i + 1 : prev_ending][::-1])
+                break
+            else:
+                prev_ending = i
     if not city:
         raise CityNotExtracted(address=full_address)
     return dict(city=city, state=state)
