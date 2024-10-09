@@ -7,37 +7,43 @@ from os import getenv
 from random import randint
 
 
-class AdminToken:
+class Token:
+    permissions: Permissions
+    email_verified: bool
+    email: str
+
+
+class AdminToken(Token):
     permissions = Permissions.sca_admin
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
 
 
-class SCAEmployeeToken:
+class SCAEmployeeToken(Token):
     permissions = Permissions.sca_employee
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
 
 
-class DeveloperToken:
+class DeveloperToken(Token):
     permissions = Permissions.developer
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
 
 
-class CustomerAdminToken:
+class CustomerAdminToken(Token):
     permissions = Permissions.customer_admin
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
 
 
-class CustomerManagerToken:
+class CustomerManagerToken(Token):
     permissions = Permissions.customer_manager
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
 
 
-class CustomerStandardToken:
+class CustomerStandardToken(Token):
     permissions = Permissions.customer_std
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
