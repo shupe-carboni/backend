@@ -480,7 +480,7 @@ async def vendors_product_class_discounts_collection(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def vendors_product_class_discounts_collection(
+async def vendor_customer_pricing_classes_collection(
     token: Token,
     session: NewSession,
     vendor_id: str,
@@ -508,7 +508,7 @@ async def vendors_product_class_discounts_collection(
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def vendors_product_class_discounts_collection(
+async def vendors_quotes_collection(
     token: Token,
     session: NewSession,
     vendor_id: str,
