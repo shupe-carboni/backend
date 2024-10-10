@@ -793,9 +793,6 @@ async def vendor_customer_related_quotes(
     )
 
 
-# modifications to vendors
-
-
 @vendors.post("", tags=["Not Implemented"])
 async def new_vendor(
     token: Token,
@@ -804,6 +801,8 @@ async def new_vendor(
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
+
+# modifications to vendors
 
 from app.v2.models import ModVendor
 
