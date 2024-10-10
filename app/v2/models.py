@@ -7,7 +7,7 @@ from app.jsonapi.core_models import (
     JSONAPIRelationships,
     JSONAPIResponse,
     Query,
-    convert_query,
+    convert_query as __convert_query,
 )
 from app.db import Stage
 
@@ -193,6 +193,16 @@ class VendorsAttrResp(JSONAPIResponse):
     data: list[VendorsAttrRObj] | VendorsAttrRObj
 
 
+class NewVendorsAttrRObj(BaseModel):
+    type: str = VendorsAttr.__jsonapi_type_override__
+    attributes: VendorsAttrAttrs
+    relationships: VendorsAttrRels
+
+
+class NewVendorsAttr(BaseModel):
+    data: VendorsAttrRObj
+
+
 class RelatedVendorsAttrResp(VendorsAttrResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -328,6 +338,16 @@ class VendorProductResp(JSONAPIResponse):
     data: list[VendorProductRObj] | VendorProductRObj
 
 
+class NewVendorProductRObj(BaseModel):
+    type: str = VendorProduct.__jsonapi_type_override__
+    attributes: VendorProductAttrs
+    relationships: VendorProductRels
+
+
+class NewVendorProduct(BaseModel):
+    data: VendorProductRObj
+
+
 class RelatedVendorProductResp(VendorProductResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -431,6 +451,16 @@ class VendorProductAttrRObj(VendorProductAttrRID):
 
 class VendorProductAttrResp(JSONAPIResponse):
     data: list[VendorProductAttrRObj] | VendorProductAttrRObj
+
+
+class NewVendorProductAttrRObj(BaseModel):
+    type: str = VendorProductAttr.__jsonapi_type_override__
+    attributes: VendorProductAttrAttrs
+    relationships: VendorProductAttrRels
+
+
+class NewVendorProductAttr(BaseModel):
+    data: VendorProductAttrRObj
 
 
 class RelatedVendorProductAttrResp(VendorProductAttrResp):
@@ -546,6 +576,16 @@ class VendorProductClassResp(JSONAPIResponse):
     data: list[VendorProductClassRObj] | VendorProductClassRObj
 
 
+class NewVendorProductClassRObj(BaseModel):
+    type: str = VendorProductClass.__jsonapi_type_override__
+    attributes: VendorProductClassAttrs
+    relationships: VendorProductClassRels
+
+
+class NewVendorProductClass(BaseModel):
+    data: VendorProductClassRObj
+
+
 class RelatedVendorProductClassResp(VendorProductClassResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -650,6 +690,16 @@ class VendorProductToClassMappingRObj(VendorProductToClassMappingRID):
 
 class VendorProductToClassMappingResp(JSONAPIResponse):
     data: list[VendorProductToClassMappingRObj] | VendorProductToClassMappingRObj
+
+
+class NewVendorProductToClassMappingRObj(BaseModel):
+    type: str = VendorProductToClassMapping.__jsonapi_type_override__
+    attributes: VendorProductToClassMappingAttrs
+    relationships: VendorProductToClassMappingRels
+
+
+class NewVendorProductToClassMapping(BaseModel):
+    data: VendorProductToClassMappingRObj
 
 
 class RelatedVendorProductToClassMappingResp(VendorProductToClassMappingResp):
@@ -776,6 +826,16 @@ class VendorPricingClassResp(JSONAPIResponse):
     data: list[VendorPricingClassRObj] | VendorPricingClassRObj
 
 
+class NewVendorPricingClassRObj(BaseModel):
+    type: str = VendorPricingClass.__jsonapi_type_override__
+    attributes: VendorPricingClassAttrs
+    relationships: VendorPricingClassRels
+
+
+class NewVendorPricingClass(BaseModel):
+    data: VendorPricingClassRObj
+
+
 class RelatedVendorPricingClassResp(VendorPricingClassResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -893,6 +953,16 @@ class VendorPricingByClassRObj(VendorPricingByClassRID):
 
 class VendorPricingByClassResp(JSONAPIResponse):
     data: list[VendorPricingByClassRObj] | VendorPricingByClassRObj
+
+
+class NewVendorPricingByClassRObj(BaseModel):
+    type: str = VendorPricingByClass.__jsonapi_type_override__
+    attributes: VendorPricingByClassAttrs
+    relationships: VendorPricingByClassRels
+
+
+class NewVendorPricingByClass(BaseModel):
+    data: NewVendorPricingByClassRObj
 
 
 class RelatedVendorPricingByClassResp(VendorPricingByClassResp):
@@ -1115,6 +1185,16 @@ class VendorPricingByCustomerResp(JSONAPIResponse):
     data: list[VendorPricingByCustomerRObj] | VendorPricingByCustomerRObj
 
 
+class NewVendorPricingByCustomerRObj(BaseModel):
+    type: str = VendorPricingByCustomer.__jsonapi_type_override__
+    attributes: VendorPricingByCustomerAttrs
+    relationships: VendorPricingByCustomerRels
+
+
+class NewVendorPricingByCustomer(BaseModel):
+    data: NewVendorPricingByCustomerRObj
+
+
 class RelatedVendorPricingByCustomerResp(VendorPricingByCustomerResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -1257,6 +1337,16 @@ class VendorCustomerRObj(VendorCustomerRID):
 
 class VendorCustomerResp(JSONAPIResponse):
     data: list[VendorCustomerRObj] | VendorCustomerRObj
+
+
+class NewVendorCustomerRObj(JSONAPIResponse):
+    type: str = VendorCustomer.__jsonapi_type_override__
+    attributes: VendorCustomerAttrs
+    relationships: VendorCustomerRels
+
+
+class NewVendorCustomer(JSONAPIResponse):
+    data: NewVendorCustomerRObj
 
 
 class RelatedVendorCustomerResp(VendorCustomerResp):
@@ -1466,6 +1556,16 @@ class VendorProductClassDiscountResp(JSONAPIResponse):
     data: list[VendorProductClassDiscountRObj] | VendorProductClassDiscountRObj
 
 
+class NewVendorProductClassDiscountRObj(BaseModel):
+    type: str = VendorProductClassDiscount.__jsonapi_type_override__
+    attributes: VendorProductClassDiscountAttrs
+    relationships: VendorProductClassDiscountRels
+
+
+class NewVendorProductClassDiscount(BaseModel):
+    data: VendorProductClassDiscountRObj
+
+
 class RelatedVendorProductClassDiscountResp(VendorProductClassDiscountResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -1571,6 +1671,16 @@ class VendorPricingByCustomerAttrRObj(VendorPricingByCustomerAttrRID):
 
 class VendorPricingByCustomerAttrResp(JSONAPIResponse):
     data: list[VendorPricingByCustomerAttrRObj] | VendorPricingByCustomerAttrRObj
+
+
+class NewVendorPricingByCustomerAttrRObj(BaseModel):
+    type: str = VendorPricingByCustomerAttr.__jsonapi_type_override__
+    attributes: VendorPricingByCustomerAttrAttrs
+    relationships: VendorPricingByCustomerAttrRels
+
+
+class NewVendorPricingByCustomerAttr(BaseModel):
+    data: NewVendorPricingByCustomerAttrRObj
 
 
 class RelatedVendorPricingByCustomerAttrResp(VendorPricingByCustomerAttrResp):
@@ -1789,6 +1899,16 @@ class VendorQuoteResp(JSONAPIResponse):
     data: list[VendorQuoteRObj] | VendorQuoteRObj
 
 
+class NewVendorQuoteRObj(BaseModel):
+    type: str = VendorQuote.__jsonapi_type_override__
+    attributes: VendorQuoteAttrs
+    relationships: VendorQuoteRels
+
+
+class NewVendorQuote(BaseModel):
+    data: VendorQuoteRObj
+
+
 class RelatedVendorQuoteResp(VendorQuoteResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -1897,6 +2017,16 @@ class CustomerLocationMappingResp(JSONAPIResponse):
     data: list[CustomerLocationMappingRObj] | CustomerLocationMappingRObj
 
 
+class NewCustomerLocationMappingRObj(BaseModel):
+    type: str = CustomerLocationMapping.__jsonapi_type_override__
+    attributes: CustomerLocationMappingAttrs
+    relationships: CustomerLocationMappingRels
+
+
+class NewCustomerLocationMapping(BaseModel):
+    data: NewCustomerLocationMappingRObj
+
+
 class RelatedCustomerLocationMappingResp(CustomerLocationMappingResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -1933,21 +2063,6 @@ class CustomerLocationMappingQueryJSONAPI(
 ):
     page_number: Optional[int] = Field(default=None, alias="page[number]")
     page_size: Optional[int] = Field(default=None, alias="page[size]")
-
-
-class ModCustomerLocationMappingAttrs(BaseModel):
-    deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
-
-
-class ModCustomerLocationMappingRObj(BaseModel):
-    id: int
-    type: str = CustomerLocationMapping.__jsonapi_type_override__
-    attributes: ModCustomerLocationMappingAttrs
-    relationships: CustomerLocationMappingRels
-
-
-class ModCustomerLocationMapping(BaseModel):
-    data: ModCustomerLocationMappingRObj
 
 
 from app.jsonapi.sqla_models import VendorQuoteProduct
@@ -2011,6 +2126,16 @@ class VendorQuoteProductRObj(VendorQuoteProductRID):
 
 class VendorQuoteProductResp(JSONAPIResponse):
     data: list[VendorQuoteProductRObj] | VendorQuoteProductRObj
+
+
+class NewVendorQuoteProductRObj(BaseModel):
+    type: str = VendorQuoteProduct.__jsonapi_type_override__
+    attributes: VendorQuoteProductAttrs
+    relationships: VendorQuoteProductRels
+
+
+class NewVendorQuoteProduct(BaseModel):
+    data: VendorQuoteProductRObj
 
 
 class RelatedVendorQuoteProductResp(VendorQuoteProductResp):
@@ -2293,6 +2418,16 @@ class VendorCustomerPricingClassRObj(VendorCustomerPricingClassRID):
 
 class VendorCustomerPricingClassResp(JSONAPIResponse):
     data: list[VendorCustomerPricingClassRObj] | VendorCustomerPricingClassRObj
+
+
+class NewVendorCustomerPricingClassRObj(BaseModel):
+    type: str = VendorCustomerPricingClass.__jsonapi_type_override__
+    attributes: VendorCustomerPricingClassAttrs
+    relationships: VendorCustomerPricingClassRels
+
+
+class NewVendorCustomerPricingClass(BaseModel):
+    data: NewVendorCustomerPricingClassRObj
 
 
 class RelatedVendorCustomerPricingClassResp(VendorCustomerPricingClassResp):
@@ -2578,6 +2713,16 @@ class VendorCustomerAttrResp(JSONAPIResponse):
     data: list[VendorCustomerAttrRObj] | VendorCustomerAttrRObj
 
 
+class NewVendorCustomerAttrRObj(BaseModel):
+    type: str = VendorCustomerAttr.__jsonapi_type_override__
+    attributes: VendorCustomerAttrAttrs
+    relationships: VendorCustomerAttrRels
+
+
+class NewVendorCustomerAttr(BaseModel):
+    data: NewVendorCustomerAttrRObj
+
+
 class RelatedVendorCustomerAttrResp(VendorCustomerAttrResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -2683,6 +2828,16 @@ class VendorQuoteAttrResp(JSONAPIResponse):
     data: list[VendorQuoteAttrRObj] | VendorQuoteAttrRObj
 
 
+class NewVendorQuoteAttrRObj(BaseModel):
+    type: str = VendorQuoteAttr.__jsonapi_type_override__
+    attributes: VendorQuoteAttrAttrs
+    relationships: VendorQuoteAttrRels
+
+
+class NewVendorQuoteAttr(BaseModel):
+    data: VendorQuoteAttrRObj
+
+
 class RelatedVendorQuoteAttrResp(VendorQuoteAttrResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -2782,6 +2937,16 @@ class CustomerPricingByClassResp(JSONAPIResponse):
     data: list[CustomerPricingByClassRObj] | CustomerPricingByClassRObj
 
 
+class NewCustomerPricingByClassRObj(BaseModel):
+    type: str = CustomerPricingByClass.__jsonapi_type_override__
+    attributes: CustomerPricingByClassAttrs
+    relationships: CustomerPricingByClassRels
+
+
+class NewCustomerPricingByClass(BaseModel):
+    data: NewCustomerPricingByClassRObj
+
+
 class RelatedCustomerPricingByClassResp(CustomerPricingByClassResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
@@ -2870,6 +3035,16 @@ class CustomerPricingByCustomerResp(JSONAPIResponse):
 class RelatedCustomerPricingByCustomerResp(CustomerPricingByCustomerResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
+
+
+class NewCustomerPricingByCustomerRObj(BaseModel):
+    type: str = CustomerPricingByCustomer.__jsonapi_type_override__
+    attributes: CustomerPricingByCustomerAttrs
+    relationships: CustomerPricingByCustomerRels
+
+
+class NewCustomerPricingByCustomer(BaseModel):
+    data: NewCustomerPricingByCustomerRObj
 
 
 _CustomerPricingByCustomerQuery: type[BaseModel] = create_model(
@@ -3082,55 +3257,55 @@ class VendorsAttrsChangelogQueryJSONAPI(
 
 
 converters = {
-    VendorQuery: convert_query(VendorQueryJSONAPI),
-    VendorCustomerPricingClassQuery: convert_query(
+    VendorQuery: __convert_query(VendorQueryJSONAPI),
+    VendorCustomerPricingClassQuery: __convert_query(
         VendorCustomerPricingClassQueryJSONAPI
     ),
-    VendorPricingByClassChangelogQuery: convert_query(
+    VendorPricingByClassChangelogQuery: __convert_query(
         VendorPricingByClassChangelogQueryJSONAPI
     ),
-    VendorPricingByCustomerQuery: convert_query(VendorPricingByCustomerQueryJSONAPI),
-    VendorCustomerAttrQuery: convert_query(VendorCustomerAttrQueryJSONAPI),
-    VendorCustomerPricingClassesChangelogQuery: convert_query(
+    VendorPricingByCustomerQuery: __convert_query(VendorPricingByCustomerQueryJSONAPI),
+    VendorCustomerAttrQuery: __convert_query(VendorCustomerAttrQueryJSONAPI),
+    VendorCustomerPricingClassesChangelogQuery: __convert_query(
         VendorCustomerPricingClassesChangelogQueryJSONAPI
     ),
-    VendorQuoteChangelogQuery: convert_query(VendorQuoteChangelogQueryJSONAPI),
-    CustomerLocationMappingQuery: convert_query(CustomerLocationMappingQueryJSONAPI),
-    VendorPricingByCustomerAttrQuery: convert_query(
+    VendorQuoteChangelogQuery: __convert_query(VendorQuoteChangelogQueryJSONAPI),
+    CustomerLocationMappingQuery: __convert_query(CustomerLocationMappingQueryJSONAPI),
+    VendorPricingByCustomerAttrQuery: __convert_query(
         VendorPricingByCustomerAttrQueryJSONAPI
     ),
-    VendorProductClassDiscountQuery: convert_query(
+    VendorProductClassDiscountQuery: __convert_query(
         VendorProductClassDiscountQueryJSONAPI
     ),
-    VendorCustomerQuery: convert_query(VendorCustomerQueryJSONAPI),
-    VendorProductQuery: convert_query(VendorProductQueryJSONAPI),
-    CustomerPricingByClassQuery: convert_query(CustomerPricingByClassQueryJSONAPI),
-    VendorQuoteAttrQuery: convert_query(VendorQuoteAttrQueryJSONAPI),
-    VendorsAttrQuery: convert_query(VendorsAttrQueryJSONAPI),
-    VendorCustomerAttrChangelogQuery: convert_query(
+    VendorCustomerQuery: __convert_query(VendorCustomerQueryJSONAPI),
+    VendorProductQuery: __convert_query(VendorProductQueryJSONAPI),
+    CustomerPricingByClassQuery: __convert_query(CustomerPricingByClassQueryJSONAPI),
+    VendorQuoteAttrQuery: __convert_query(VendorQuoteAttrQueryJSONAPI),
+    VendorsAttrQuery: __convert_query(VendorsAttrQueryJSONAPI),
+    VendorCustomerAttrChangelogQuery: __convert_query(
         VendorCustomerAttrChangelogQueryJSONAPI
     ),
-    VendorPricingByCustomerChangelogQuery: convert_query(
+    VendorPricingByCustomerChangelogQuery: __convert_query(
         VendorPricingByCustomerChangelogQueryJSONAPI
     ),
-    CustomerPricingByCustomerQuery: convert_query(
+    CustomerPricingByCustomerQuery: __convert_query(
         CustomerPricingByCustomerQueryJSONAPI
     ),
-    VendorCustomerChangelogQuery: convert_query(VendorCustomerChangelogQueryJSONAPI),
-    VendorsAttrsChangelogQuery: convert_query(VendorsAttrsChangelogQueryJSONAPI),
-    VendorQuoteProductChangelogQuery: convert_query(
+    VendorCustomerChangelogQuery: __convert_query(VendorCustomerChangelogQueryJSONAPI),
+    VendorsAttrsChangelogQuery: __convert_query(VendorsAttrsChangelogQueryJSONAPI),
+    VendorQuoteProductChangelogQuery: __convert_query(
         VendorQuoteProductChangelogQueryJSONAPI
     ),
-    VendorQuoteProductQuery: convert_query(VendorQuoteProductQueryJSONAPI),
-    VendorProductClassQuery: convert_query(VendorProductClassQueryJSONAPI),
-    VendorProductAttrQuery: convert_query(VendorProductAttrQueryJSONAPI),
-    VendorProductClassDiscountsChangelogQuery: convert_query(
+    VendorQuoteProductQuery: __convert_query(VendorQuoteProductQueryJSONAPI),
+    VendorProductClassQuery: __convert_query(VendorProductClassQueryJSONAPI),
+    VendorProductAttrQuery: __convert_query(VendorProductAttrQueryJSONAPI),
+    VendorProductClassDiscountsChangelogQuery: __convert_query(
         VendorProductClassDiscountsChangelogQueryJSONAPI
     ),
-    VendorPricingClassQuery: convert_query(VendorPricingClassQueryJSONAPI),
-    VendorPricingByClassQuery: convert_query(VendorPricingByClassQueryJSONAPI),
-    VendorQuoteQuery: convert_query(VendorQuoteQueryJSONAPI),
-    VendorProductToClassMappingQuery: convert_query(
+    VendorPricingClassQuery: __convert_query(VendorPricingClassQueryJSONAPI),
+    VendorPricingByClassQuery: __convert_query(VendorPricingByClassQueryJSONAPI),
+    VendorQuoteQuery: __convert_query(VendorQuoteQueryJSONAPI),
+    VendorProductToClassMappingQuery: __convert_query(
         VendorProductToClassMappingQueryJSONAPI
     ),
 }
