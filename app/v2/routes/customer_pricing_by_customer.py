@@ -1,19 +1,12 @@
-
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
-from app.db import SCA_DB, Session
-from app.jsonapi.core_models import convert_query
-#from app.RELATED_RESOURCE.models import 
-from app.v2.models import (
-    CustomerPricingByCustomerResp,
-    CustomerPricingByCustomerQuery,
-    CustomerPricingByCustomerQueryJSONAPI,
-)
+from app.db import DB_V2, Session
 from app.jsonapi.sqla_models import CustomerPricingByCustomer
+from app.v2.models import NewCustomerPricingByCustomer, CustomerPricingByCustomerResp
 
-PARENT_PREFIX = "/vendors/v2"
+PARENT_PREFIX = "/vendors"
 CUSTOMER_PRICING_BY_CUSTOMER = CustomerPricingByCustomer.__jsonapi_type_override__
 
 customer_pricing_by_customer = APIRouter(
@@ -21,137 +14,36 @@ customer_pricing_by_customer = APIRouter(
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
-converter = convert_query(CustomerPricingByCustomerQueryJSONAPI)
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
-@customer_pricing_by_customer.get(
+@customer_pricing_by_customer.post(
     "",
     response_model=CustomerPricingByCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
-async def customer_pricing_by_customer_collection(
-    token: Token, session: NewSession, query: CustomerPricingByCustomerQuery = Depends()
+async def new_customer_pricing_by_customer(
+    token: Token,
+    session: NewSession,
+    new_obj: NewCustomerPricingByCustomer,
 ) -> CustomerPricingByCustomerResp:
     return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
+        auth.VendorPricingByCustomerOperations(
+            token, CustomerPricingByCustomer, PARENT_PREFIX
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converter(query))
+        .post(
+            session,
+            data=new_obj.model_dump(exclude_none=True, by_alias=True),
+            primary_id=new_obj.data.relationships.vendor_pricing_by_customer.data.id,
+        )
     )
 
 
-@customer_pricing_by_customer.get(
-    "/{customer_pricing_by_customer_id}",
-    response_model=CustomerPricingByCustomerResp,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_customer_resource(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_customer_id: int,
-    query: CustomerPricingByCustomerQuery = Depends(),
-) -> CustomerPricingByCustomerResp:
-    return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_customer_id)
-    )
-
-
-@customer_pricing_by_customer.get(
-    "/{customer_pricing_by_customer_id}/vendor-pricing-by-customer",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_customer_related_vendor_pricing_by_customer(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_customer_id: int,
-    query: CustomerPricingByCustomerQuery = Depends(),
-) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_customer_id, "vendor-pricing-by-customer")
-    )
-
-@customer_pricing_by_customer.get(
-    "/{customer_pricing_by_customer_id}/relationships/vendor-pricing-by-customer",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_customer_relationships_vendor_pricing_by_customer(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_customer_id: int,
-    query: CustomerPricingByCustomerQuery = Depends(),
-) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_customer_id, "vendor-pricing-by-customer", True)
-    )
-
-    
-@customer_pricing_by_customer.get(
-    "/{customer_pricing_by_customer_id}/users",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_customer_related_users(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_customer_id: int,
-    query: CustomerPricingByCustomerQuery = Depends(),
-) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_customer_id, "users")
-    )
-
-@customer_pricing_by_customer.get(
-    "/{customer_pricing_by_customer_id}/relationships/users",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_pricing_by_customer_relationships_users(
-    token: Token,
-    session: NewSession,
-    customer_pricing_by_customer_id: int,
-    query: CustomerPricingByCustomerQuery = Depends(),
-) -> None:
-    return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), customer_pricing_by_customer_id, "users", True)
-    )
-
-    
 @customer_pricing_by_customer.delete(
     "/{customer_pricing_by_customer_id}",
     tags=["jsonapi"],
@@ -163,11 +55,98 @@ async def del_customer_pricing_by_customer(
     vendor_pricing_by_customer_id: int,
 ) -> None:
     return (
-        auth.VOperations(token, CustomerPricingByCustomer, PARENT_PREFIX)
+        auth.VendorPricingByCustomerOperations(
+            token, CustomerPricingByCustomer, PARENT_PREFIX
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, obj_id=customer_pricing_by_customer_id, primary_id=vendor_pricing_by_customer_id)
+        .delete(
+            session,
+            obj_id=customer_pricing_by_customer_id,
+            primary_id=vendor_pricing_by_customer_id,
+            hard_delete=True,
+        )
     )
-    
+
+
+## NOT IMPLEMENTED ##
+
+
+@customer_pricing_by_customer.get("", tags=["Not Implemented"])
+async def customer_pricing_by_customer_collection(
+    token: Token, session: NewSession
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.get(
+    "/{customer_pricing_by_customer_id}", tags=["Not Implemented"]
+)
+async def customer_pricing_by_customer_resource(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.get(
+    "/{customer_pricing_by_customer_id}/vendor-pricing-by-customer",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_customer_related_vendor_pricing_by_customer(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.get(
+    "/{customer_pricing_by_customer_id}/relationships/vendor-pricing-by-customer",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_customer_relationships_vendor_pricing_by_customer(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.get(
+    "/{customer_pricing_by_customer_id}/users",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_customer_related_users(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.get(
+    "/{customer_pricing_by_customer_id}/relationships/users",
+    tags=["Not Implemented"],
+)
+async def customer_pricing_by_customer_relationships_users(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@customer_pricing_by_customer.patch(
+    "/{customer_pricing_by_customer_id}", tags=["Not Implemented"]
+)
+async def mod_customer_pricing_by_customer(
+    token: Token,
+    session: NewSession,
+    customer_pricing_by_customer_id: int,
+    mod_data: None,
+) -> None:
+    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
