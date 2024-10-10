@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import bcrypt
+from datetime import datetime
 from abc import ABC
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
@@ -635,15 +636,39 @@ class SecOp(ABC):
         return result
 
     @standard_error_handler
-    def delete(self, session: Session, obj_id: int, primary_id: Optional[int] = None):
-        # TODO create a soft delete version
+    def delete(
+        self,
+        session: Session,
+        obj_id: int,
+        primary_id: Optional[int] = None,
+        hard_delete: bool = False,
+    ):
         self.gate(session, primary_id, obj_id)
-        self._serializer.delete_resource(
-            session=session,
-            data={},
-            api_type=self._resource.__jsonapi_type_override__,
-            obj_id=obj_id,
-        )
+        if hard_delete:
+            self._serializer.delete_resource(
+                session=session,
+                data={},
+                api_type=self._resource.__jsonapi_type_override__,
+                obj_id=obj_id,
+            )
+        else:
+            now = datetime.now()
+            api_type = self._resource.__jsonapi_type_override__
+            data = {
+                "data": {
+                    "id": obj_id,
+                    "type": api_type,
+                    "attributes": {
+                        "deleted_at": now
+                    }
+                }
+            }
+            self._serializer.patch_resource(
+                session=session,
+                json_data=data,
+                api_type=api_type,
+                obj_id=obj_id,
+            )
         return JSONResponse({}, status_code=204)
 
 
