@@ -82,9 +82,7 @@ class MH(ModelSeries):
 
     def category(self) -> str:
         value = "Manufactured Housing Coils"
-        if self.rds_field_installed:
-            value += " - FlexCoil"
-        elif self.rds_factory_installed:
+        if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         return value
 

@@ -123,9 +123,7 @@ class V(ModelSeries):
         material = self.material
         paint = self.color
         value = f'Dedicated Horizontal "A" {material} Coils - {paint}'
-        if self.rds_field_installed:
-            value += " - FlexCoil"
-        elif self.rds_factory_installed:
+        if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         return value
 

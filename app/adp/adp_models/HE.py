@@ -164,9 +164,7 @@ class HE(ModelSeries):
         connections, orientation = self.orientations[self.attributes["config"]]
         additional = "Cased Coils"
         value = f"{orientation} {material} {connections} {additional} - {color}"
-        if self.rds_field_installed:
-            value += " - FlexCoil"
-        elif self.rds_factory_installed:
+        if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         return value
 
