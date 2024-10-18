@@ -47,18 +47,18 @@ class S(ModelSeries):
         ].item()
         self.ratings_ac_txv = (
             rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(6,9\){self.tonnage}"
+            rf"{self.attributes['scode']}(\(6,9\)|\*){self.tonnage}"
         )
         self.ratings_hp_txv = (
-            rf"S{self.attributes['mat']}" rf"{self.attributes['scode']}9{self.tonnage}"
+            rf"S{self.attributes['mat']}" rf"{self.attributes['scode']}(9|\*){self.tonnage}"
         )
         self.ratings_piston = (
             rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(1,2\){self.tonnage}"
+            rf"{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}"
         )
         self.ratings_field_txv = (
             rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
+            rf"{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}\+TXV"
         )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False

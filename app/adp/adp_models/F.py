@@ -52,16 +52,16 @@ class F(ModelSeries):
         s_code = self.attributes["scode"]
         self.s_code_mat = s_code[0] if s_code[0] in ("E", "G") else s_code[:2]
         self.ratings_ac_txv = (
-            rf"""F,P{self.attributes['motor']}\*{s_code}\(6,9\){self.tonnage}"""
+            rf"""F,P{self.attributes['motor']}\*{s_code}(\(6,9\)|\*){self.tonnage}"""
         )
         self.ratings_hp_txv = (
-            rf"""F,P{self.attributes['motor']}\*{s_code}9{self.tonnage}"""
+            rf"""F,P{self.attributes['motor']}\*{s_code}(9|\*){self.tonnage}"""
         )
         self.ratings_piston = (
-            rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}"""
+            rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)|\*){self.tonnage}"""
         )
         self.ratings_field_txv = (
-            rf"""F,P{self.attributes['motor']}\*{s_code}\(1,2\){self.tonnage}\+TXV"""
+            rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)|\*){self.tonnage}\+TXV"""
         )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
