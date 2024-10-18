@@ -196,7 +196,7 @@ class PriceBook:
         self.active = self._9_col_template
         self.cursor = Cursor()
         adp_logo = ADPLogo(
-            price_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
+            price_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -204,7 +204,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
         sca_logo = SCALogo(
-            price_pos=AnchorPosition("J1", offset_x=200, offset_y=0),
+            price_pos=AnchorPosition("I1", offset_x=200, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
             nomen_long_pos=AnchorPosition("H1", offset_x=100, offset_y=0),

@@ -1,8 +1,9 @@
 from datetime import datetime
+from warnings import warn
 import re
 import pandas as pd
 import logging
-from functools import partial
+from functools import partial, wraps
 from app.adp.adp_models import Fields
 from app.adp.extraction.models import parse_model_string, ParsingModes
 
@@ -11,10 +12,35 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger("uvicorn.info")
 
 
+def deprecated(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        warn(
+            "Flexcoil is no longer dynamically added to strategy files for comparison."
+            " This function will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@deprecated
 def price_flexcoil_version(
     customer_id: int, session: Session, row_subset: pd.Series
 ) -> pd.Series:
     """
+    ADP has killed the FlexCoil in practical effect, as coils with field installed
+        RDS ordered from this point forward will come with an A2L piston and will
+        NOT be allowed to be used on R410a systems.
+    As a result, SCA is making the decision to remove the Flexcoil model dynamic
+        insertion into program files side-by-side with A1 models.
+        A2L models will be in their own product vlocks, explicitly added to strategies.
+
+        -- 2024-10-18 (Joseph Carboni)
+
+
     ADP is no longer offering Air Handlers as FlexCoils.
 
     -- 2024-09-05 (Joseph Carboni)
@@ -183,16 +209,16 @@ class CoilProgram(Program):
             columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
         )
         # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
-        apply_method = partial(price_flexcoil_version, customer_id, session)
-        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
-            [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
-        ].apply(apply_method, axis=1, result_type="expand")
-        data.insert(
-            1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
-        )
-        data.insert(
-            10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
-        )
+        # apply_method = partial(price_flexcoil_version, customer_id, session)
+        # data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
+        #     [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
+        # ].apply(apply_method, axis=1, result_type="expand")
+        # data.insert(
+        #     1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
+        # )
+        # data.insert(
+        #     10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
+        # )
         return data
 
 
@@ -245,16 +271,16 @@ class AirHandlerProgram(Program):
             columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
         )
         # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
-        apply_method = partial(price_flexcoil_version, customer_id, session)
-        data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
-            [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
-        ].apply(apply_method, axis=1, result_type="expand")
-        data.insert(
-            1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
-        )
-        data.insert(
-            10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
-        )
+        # apply_method = partial(price_flexcoil_version, customer_id, session)
+        # data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
+        #     [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
+        # ].apply(apply_method, axis=1, result_type="expand")
+        # data.insert(
+        #     1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
+        # )
+        # data.insert(
+        #     10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
+        # )
         return data
 
 
@@ -387,7 +413,7 @@ class CustomerProgram:
                 result: str = sample.item()
                 if result[-1] not in ("R", "N"):
                     if series in ("MH", "V", "B", "F", "S", "CP", "CE", "CF"):
-                        result += "N"
+                        result += "R"
                     elif series in ("HE", "HH", "HD"):
-                        result = result.replace("AP", "N")
+                        result = result.replace("AP", "R")
                 return result
