@@ -189,6 +189,7 @@ class PriceBook:
         self.template_wb = opxl.load_workbook(template)
         self._9_col_template = self.template_wb["9-col"]
         self.parts_template = self.template_wb["parts-template"]
+        self.product_block: CellRange = self._9_col_template["B12:J15"]
         self.parts_block: tuple[tuple[Cell]] = self.parts_template["A1:D4"]
         self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
@@ -196,7 +197,7 @@ class PriceBook:
         self.active = self._9_col_template
         self.cursor = Cursor()
         adp_logo = ADPLogo(
-            price_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
+            price_pos=AnchorPosition("E2", offset_x=0, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -204,7 +205,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
         sca_logo = SCALogo(
-            price_pos=AnchorPosition("I1", offset_x=200, offset_y=0),
+            price_pos=AnchorPosition("I1", offset_x=100, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
             nomen_long_pos=AnchorPosition("H1", offset_x=100, offset_y=0),
@@ -285,7 +286,6 @@ class PriceBook:
         (self.min_col, self.min_row, self.max_col, self.max_row) = range_boundaries(
             "B12:L15"
         )
-        self.product_block: CellRange = self._9_col_template["B12:L15"]
         new_sheet = self.new_sheet(
             template=new_sheet_template, title=title, sheet_type=sheet_type
         )
