@@ -109,7 +109,7 @@ class HE(ModelSeries):
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
-            if self.rds_factory_installed:
+            if self.rds_field_installed or self.rds_factory_installed:
                 metering = -metering
         except ValueError:
             pass
