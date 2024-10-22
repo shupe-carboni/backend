@@ -394,6 +394,10 @@ class PriceBook:
             model_nomenclature = re.match(
                 model_type.regex, model_example, re.VERBOSE
             ).groupdict()
+            if model_nomenclature.get("revision"):
+                model_nomenclature.pop("rds", None)
+            elif model_nomenclature.get("rds"):
+                model_nomenclature.pop("revision", None)
             ignore_custom_model_insertion = False
         except:
             ignore_custom_model_insertion = True
