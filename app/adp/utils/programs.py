@@ -411,6 +411,7 @@ class CustomerProgram:
                 continue
             else:
                 result: str = sample.item()
+                result = result.strip()
                 if result[-1] not in ("R", "N"):
                     if series in ("MH", "V", "B", "F", "S", "CP", "CE", "CF"):
                         result += "R"
