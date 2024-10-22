@@ -158,7 +158,7 @@ class ModelSeries:
         self.session = session
 
     def __str__(self) -> str:
-        return "".join(self.attributes.values())
+        return "".join(self.attributes.values()).strip()
 
     def __getitem__(self, key):
         return self.attributes.get(key)
