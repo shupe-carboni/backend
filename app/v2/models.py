@@ -130,14 +130,23 @@ class ModVendorAttrs(BaseModel):
 
 
 class ModVendorRObj(BaseModel):
-    id: int
+    id: str
     type: str = Vendor.__jsonapi_type_override__
     attributes: ModVendorAttrs
-    relationships: VendorRels
+    relationships: Optional[VendorRels] = {}
 
 
 class ModVendor(BaseModel):
     data: ModVendorRObj
+
+
+class NewVendorRObj(BaseModel):
+    type: str = Vendor.__jsonapi_type_override__
+    attributes: ModVendorAttrs
+
+
+class NewVendor(BaseModel):
+    data: NewVendorRObj
 
 
 from app.jsonapi.sqla_models import VendorsAttr
