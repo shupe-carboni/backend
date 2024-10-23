@@ -658,9 +658,7 @@ class SecOp(ABC):
                 "data": {
                     "id": obj_id,
                     "type": api_type,
-                    "attributes": {
-                        "deleted_at": now
-                    }
+                    "attributes": {"deleted_at": now},
                 }
             }
             self._serializer.patch_resource(
