@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, status, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
-from starlette.routing import Match
+from starlette.routing import Match, Route
 
 ## Routers ##
 from app.hardcast import hardcast
@@ -40,6 +40,7 @@ class BotTarpit(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
         for route in app.routes:
+            route: Route
             match_, scope = route.matches(request)
             if match_ == Match.FULL or path == "/favicon.ico":
                 if route.path == "/" and any(request.query_params._dict.keys()):
@@ -143,4 +144,5 @@ async def test_db():
 
 @app.get("/v2")
 async def v2_available() -> None:
+    """Feature flag endpoint for clients"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
