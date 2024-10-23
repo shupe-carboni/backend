@@ -995,8 +995,8 @@ class VendorProduct(Base):
         return q
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
-        return vendor_primary_id_queries(vendor_id=vendor_id)
+    def permitted_primary_resource_ids(email: str, id: str) -> QuerySet:
+        return VendorProduct.vendor_id, vendor_primary_id_queries(id=id)
 
 
 class VendorProductAttr(Base):
@@ -1258,10 +1258,8 @@ class VendorCustomer(Base):
         return q.where(exists_subquery)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
-        return VendorCustomer.vendor_id, vendor_primary_id_queries(
-            email=email, vendor_id=vendor_id
-        )
+    def permitted_primary_resource_ids(email: str, id: str) -> QuerySet:
+        return VendorCustomer.vendor_id, vendor_primary_id_queries(email=email, id=id)
 
 
 class CustomerLocationMapping(Base):
@@ -2291,7 +2289,7 @@ def vendor_attrs_primary_id_queries(email: str, **filters) -> QuerySet:
 
 
 def vendor_primary_id_queries(*args, **filters) -> QuerySet:
-    vendor = filters.get("vendor_id")
+    vendor = filters.get("id")
     vendors = aliased(Vendor)
 
     user_query = select(vendors.id).where(vendors.id == vendor)
