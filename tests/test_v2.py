@@ -3,9 +3,12 @@ from app.main import app
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
 from pytest import mark
-from pprint import pprint
+from pprint import pformat
+from httpx import Response
 from app.jsonapi.sqla_models import *
 from pathlib import Path
+from random import random
+from pydantic import BaseModel
 
 test_client = TestClient(app)
 
@@ -22,7 +25,7 @@ CUSTOMER_PERMS = (
 )
 DEV_PERM = auth_overrides.DeveloperToken
 
-ALL_PERMS = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
+ALL_PERMS: list[auth_overrides.Token] = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
 
 TEST_VENDOR_CUSTOMER_1_ID = 169
 TEST_VENDOR_CUSTOMER_2_ID = 176
@@ -34,6 +37,7 @@ ADMIN_CUSTOMER_IDS = [
     TEST_VENDOR_CUSTOMER_3_ID,
 ]
 
+NOT_IMPLEMENTED = list(zip(ALL_PERMS, [501] * len(ALL_PERMS)))
 ALL_ALLOWED = list(
     zip(
         ALL_PERMS,
@@ -135,7 +139,7 @@ def test_vendor_endpoint_response_codes(
     no_content = resp.status_code == 204
     expected_code = resp.status_code == response_code
     internal_error = resp.status_code == 500
-    assert expected_code or no_content, pprint(
+    assert expected_code or no_content, pformat(
         resp.text if internal_error else resp.json()
     )
     if expected_code and response_code == 200:
@@ -159,9 +163,73 @@ def test_vendor_endpoint_response_content(
         assert returned_ids == ids
     else:
         resp = test_client.get(route)
+        assert resp.status_code < 500, pformat(resp.text)
         returned_ids = sorted([customer["id"] for customer in resp.json()["data"]])
         match perm:
             case auth_overrides.AdminToken | auth_overrides.SCAEmployeeToken:
                 assert set(returned_ids) >= set(ids) and len(returned_ids) > len(ids)
             case _:
                 assert returned_ids == ids
+
+
+post_patch_delete_outline = [
+    {
+        "route": VENDORS_PREFIX,
+        "status_codes": NOT_IMPLEMENTED,
+        "post": {
+            "data": {
+                "attributes": {"name": f"TEST VENDOR {int((random()+1) * 1000000000)}"}
+            },
+        },
+    },
+    {
+        "route": TEST_VENDOR,
+        "status_codes": SCA_ONLY,
+        "patch": {
+            "data": {
+                "id": "TEST_VENDOR",
+                "attributes": {"headquarters": f"{int((random()+1) * 1000000000)}"},
+            },
+        },
+    },
+]
+
+POST_PATCH_DELETE_PARAMS: list[tuple] = []
+for route in post_patch_delete_outline:
+    post = route.get("post")
+    patch = route.get("patch")
+    if post:
+        for status_code in route["status_codes"]:
+            perm, sc = status_code
+            new_item = (perm, sc, "post", str(route["route"]), post)
+            POST_PATCH_DELETE_PARAMS.append(new_item)
+    if patch:
+        for status_code in route["status_codes"]:
+            perm, sc = status_code
+            new_item = (perm, sc, "patch", str(route["route"]), patch)
+            POST_PATCH_DELETE_PARAMS.append(new_item)
+
+
+@mark.parametrize("perm,status_code,method,route,data", POST_PATCH_DELETE_PARAMS)
+def test_post_patch_delete(perm, status_code, method, route, data):
+    """
+    post new, change it if it can be changed, and delete it (soft or hard)
+    by route -> each needs it's own object structure, some may need to capture the id
+    returned and use it in order dependent operations (i.e. product needs to be created
+    before a product attribute.) -> if it can be modified, provide an object for patch
+    request, and if it's not modifiable, skip this step -> delete the objects, order
+    doesn't matter for soft deletes (patches to 'deleted-at' under the hood) but do them
+    in reverse order.
+
+    Patches and deletes shall be called only on objects created by POST requests within
+    this test, albeit most records created will remain in the test DB soft-deleted.
+
+    Assert expected status codes by token type
+        post - 200/401/501
+        patch - 200/401/501
+        delete - 204/401/501
+    """
+    app.dependency_overrides[authenticate_auth0_token] = perm
+    client_method = getattr(test_client, method)
+    resp: Response = client_method(route, json=data)
+    assert resp.status_code == status_code, pformat(resp.text)
