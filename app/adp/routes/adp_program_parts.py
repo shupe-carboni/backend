@@ -93,5 +93,10 @@ def delete_part(token: Token, session: NewSession, part_id: int, adp_customer_id
         .allow_admin()
         .allow_sca()
         .allow_customer("std")
-        .delete(session=session, obj_id=part_id, primary_id=adp_customer_id)
+        .delete(
+            session=session,
+            obj_id=part_id,
+            primary_id=adp_customer_id,
+            hard_delete=True,
+        )
     )

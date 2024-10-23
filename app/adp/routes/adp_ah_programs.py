@@ -273,7 +273,12 @@ def delete_ah_program_product(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session=session, obj_id=program_product_id, primary_id=adp_customer_id)
+        .delete(
+            session=session,
+            obj_id=program_product_id,
+            primary_id=adp_customer_id,
+            hard_delete=True,
+        )
     )
 
 

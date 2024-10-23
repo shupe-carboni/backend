@@ -273,7 +273,7 @@ def permanently_delete_record(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, program_product_id, adp_customer_id)
+        .delete(session, program_product_id, adp_customer_id, hard_delete=True)
     )
 
 

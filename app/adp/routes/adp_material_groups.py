@@ -129,5 +129,5 @@ async def del_adp_material_group(
     return (
         auth.ADPOperations(token, ADPMaterialGroup, PARENT_PREFIX)
         .allow_admin()
-        .delete(session, obj_id=adp_material_group_id)
+        .delete(session, obj_id=adp_material_group_id, hard_delete=True)
     )

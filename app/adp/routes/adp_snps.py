@@ -171,9 +171,5 @@ def del_snp(
         auth.ADPOperations(token, ADPSNP, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
-        .delete(
-            session,
-            obj_id=snp_id,
-            primary_id=adp_customer_id,
-        )
+        .delete(session, obj_id=snp_id, primary_id=adp_customer_id, hard_delete=True)
     )

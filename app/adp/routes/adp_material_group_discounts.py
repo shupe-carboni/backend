@@ -185,8 +185,6 @@ def del_mat_grp_disc(
         .allow_admin()
         .allow_sca()
         .delete(
-            session,
-            obj_id=mat_grp_id,
-            primary_id=adp_customer_id,
+            session, obj_id=mat_grp_id, primary_id=adp_customer_id, hard_delete=True
         )
     )
