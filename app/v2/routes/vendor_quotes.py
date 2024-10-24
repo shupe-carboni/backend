@@ -9,7 +9,7 @@ from app.jsonapi.sqla_models import VendorQuote
 PARENT_PREFIX = "/vendors"
 VENDOR_QUOTES = VendorQuote.__jsonapi_type_override__
 
-vendor_quotes = APIRouter(prefix=f"/{VENDOR_QUOTES}", tags=["v2", ""])
+vendor_quotes = APIRouter(prefix=f"/{VENDOR_QUOTES}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -26,8 +26,12 @@ async def new_vendor_quote(
     session: NewSession,
     new_obj: NewVendorQuote,
 ) -> VendorQuoteResp:
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorQuote, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorQuote, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -35,7 +39,7 @@ async def new_vendor_quote(
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -52,8 +56,12 @@ async def mod_vendor_quote(
     vendor_quote_id: int,
     mod_data: ModVendorQuote,
 ) -> VendorQuoteResp:
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorQuote, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorQuote, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -62,7 +70,7 @@ async def mod_vendor_quote(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_quote_id,
-            primary_id=mod_data.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -76,9 +84,12 @@ async def del_vendor_quote(
     session: NewSession,
     vendor_quote_id: int,
     vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(token, VendorQuote, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorQuote, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

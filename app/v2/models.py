@@ -1870,6 +1870,9 @@ class VendorQuoteRels(BaseModel):
     vendor_quotes_attrs: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-quotes-attrs"
     )
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
 
 
 class VendorQuoteFilters(BaseModel):
