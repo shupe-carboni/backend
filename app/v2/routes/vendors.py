@@ -803,13 +803,24 @@ async def vendor_customer_related_quotes(
     )
 
 
-@vendors.post("", tags=["Not Implemented"])
+@vendors.post(
+    "",
+    response_model=VendorResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
 async def new_vendor(
     token: Token,
     session: NewSession,
     new_vendor: NewVendor,
 ) -> VendorResp:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    return (
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .post(session, new_vendor.model_dump(exclude_none=True, by_alias=True))
+    )
 
 
 # modifications to vendors
@@ -852,7 +863,7 @@ async def del_vendor(
     vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, Vendor, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
