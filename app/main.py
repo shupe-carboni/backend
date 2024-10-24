@@ -28,7 +28,7 @@ from app.adp import (
     adp_mat_grp_discs,
     adp_snps,
 )
-from app.v2 import vendors as vendors_v2
+import app.v2 as v2
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -104,7 +104,8 @@ app_base_routes = [
     (places, "", app),
     (adp, "/vendors", app),
     (hardcast, "", app),
-    (vendors_v2.vendors, "/v2", app),
+    (v2.vendors.vendors, "/v2", app),
+    (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
 ## register all of the routes and avoid crashing due to a registration issue
