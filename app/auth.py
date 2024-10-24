@@ -639,7 +639,7 @@ class SecOp(ABC):
     def delete(
         self,
         session: Session,
-        obj_id: int,
+        obj_id: int | str,
         primary_id: Optional[int] = None,
         hard_delete: bool = False,
     ):
@@ -654,11 +654,12 @@ class SecOp(ABC):
         else:
             now = datetime.now()
             api_type = self._resource.__jsonapi_type_override__
+            # NOTE remember to use kebab case in keys for this custom object
             data = {
                 "data": {
                     "id": obj_id,
                     "type": api_type,
-                    "attributes": {"deleted_at": now},
+                    "attributes": {"deleted-at": now},
                 }
             }
             self._serializer.patch_resource(
