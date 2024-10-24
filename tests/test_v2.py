@@ -1,18 +1,57 @@
 from fastapi.testclient import TestClient
+from pytest import mark, fixture
+from random import random
+from pprint import pformat
+from httpx import Response
+from pathlib import Path
+from typing import Union, Generator, Optional
+from dataclasses import dataclass, asdict, replace
+from enum import StrEnum
+
 from app.main import app
 from app.auth import authenticate_auth0_token
 from tests import auth_overrides
-from pytest import mark
-from pprint import pformat
-from httpx import Response
 from app.jsonapi.sqla_models import *
-from pathlib import Path
-from random import random
-from pydantic import BaseModel
 
 test_client = TestClient(app)
 
 VENDOR_RESOURCE = Vendor.__jsonapi_type_override__
+
+
+class HTTPReqType(StrEnum):
+    GET = "get"
+    POST = "post"
+    PATCH = "patch"
+    DELETE = "delete"
+
+
+class Shared:
+    def __init__(self) -> None:
+        self.data = {}
+
+    def update(self, key, value) -> None:
+        self.data.update({key: value})
+
+    def get(self, key) -> Union[int | str | None]:
+        return self.data.get(key)
+
+    def clear(self) -> None:
+        self.data.clear()
+
+
+def try_return_json(response: Response) -> str:
+    try:
+        return pformat(response.json())
+    except:
+        return pformat(response.text)
+
+
+@fixture(scope="module")
+def shared():
+    shared_state = Shared()
+    yield shared_state
+    shared_state.clear()
+
 
 SCA_PERMS = (
     auth_overrides.AdminToken,
@@ -172,46 +211,105 @@ def test_vendor_endpoint_response_content(
                 assert returned_ids == ids
 
 
+@dataclass
+class Data:
+    attributes: dict[str, str | int | bool]
+    relationships: Optional[dict[str, str | int | bool]] = None
+    id: Optional[int | str] = None
+
+
+@dataclass
+class Route:
+    route: Path
+    status_codes: list[tuple[auth_overrides.Token, int]]
+    post: Optional[Data] = None
+    patch: Optional[Data] = None
+    delete: Optional[dict[str, int | str]] = None
+
+
+def rand_num() -> int:
+    return int((random() + 1) * 1000000000)
+
+
 post_patch_delete_outline = [
-    {
-        "route": VENDORS_PREFIX,
-        "status_codes": NOT_IMPLEMENTED,
-        "post": {
-            "data": {
-                "attributes": {"name": f"TEST VENDOR {int((random()+1) * 1000000000)}"}
+    Route(
+        route=VENDORS_PREFIX,
+        status_codes=SCA_ONLY,
+        post=Data(id="TEST VENDOR {0}", attributes={"name": f"TEST VENDOR"}),
+        patch=Data(id="{0}", attributes={"headquarters": f"{rand_num()}"}),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendors-attrs",
+        status_codes=SCA_ONLY,
+        post=Data(
+            attributes={
+                "attr": f"test_attr {rand_num()}",
+                "type": "INTEGER",
+                "value": f"{rand_num()}",
             },
-        },
-    },
-    {
-        "route": TEST_VENDOR,
-        "status_codes": SCA_ONLY,
-        "patch": {
-            "data": {
-                "id": "TEST_VENDOR",
-                "attributes": {"headquarters": f"{int((random()+1) * 1000000000)}"},
+            relationships={
+                "vendors": {"data": {"id": "TEST_VENDOR", "type": "vendors"}}
             },
-        },
-    },
+        ),
+        patch=Data(
+            id="{0}",
+            attributes={"value": f"{rand_num()}"},
+            relationships={
+                "vendors": {"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            },
+        ),
+        delete={"vendor_id": "TEST_VENDOR"},
+    ),
 ]
 
-POST_PATCH_DELETE_PARAMS: list[tuple] = []
-for route in post_patch_delete_outline:
-    post = route.get("post")
-    patch = route.get("patch")
-    if post:
-        for status_code in route["status_codes"]:
+
+def post_patch_delete_params() -> list[tuple]:
+    params: list[tuple] = []
+    for route in post_patch_delete_outline:
+        post = route.post
+        patch = route.patch
+        delete = route.delete
+        for status_code in route.status_codes:
             perm, sc = status_code
-            new_item = (perm, sc, "post", str(route["route"]), post)
-            POST_PATCH_DELETE_PARAMS.append(new_item)
-    if patch:
-        for status_code in route["status_codes"]:
+            if post:
+                new_item = (perm, sc, "post", str(route.route), post)
+                params.append(new_item)
+            if patch:
+                new_item = (perm, sc, "patch", str(route.route), patch)
+                params.append(new_item)
+        for status_code in route.status_codes:
             perm, sc = status_code
-            new_item = (perm, sc, "patch", str(route["route"]), patch)
-            POST_PATCH_DELETE_PARAMS.append(new_item)
+            del_item = (perm, sc, "delete", str(route.route), delete if delete else {})
+            params.append(del_item)
+    return params
 
 
-@mark.parametrize("perm,status_code,method,route,data", POST_PATCH_DELETE_PARAMS)
-def test_post_patch_delete(perm, status_code, method, route, data):
+def convert_to_data_dict(data_obj: Data) -> dict:
+    id_ = data_obj.id
+    attrs = data_obj.attributes
+    rels = data_obj.relationships
+    data_dict = asdict(data_obj)
+
+    match id_:
+        case str():
+            data_dict["id"] = id_.format(rand_num())
+
+    if attrs:
+        for k, v in attrs.items():
+            if isinstance(v, str):
+                data_dict["attributes"][k] = v.format(rand_num())
+    return dict(data=data_dict)
+
+
+@mark.parametrize("perm,status_code,method,route,data", post_patch_delete_params())
+def test_post_patch_delete(
+    shared: Shared,
+    perm: auth_overrides.Token,
+    status_code: int,
+    method: str,
+    route: str,
+    data: Union[Data, dict],
+):
     """
     post new, change it if it can be changed, and delete it (soft or hard)
     by route -> each needs it's own object structure, some may need to capture the id
@@ -231,5 +329,44 @@ def test_post_patch_delete(perm, status_code, method, route, data):
     """
     app.dependency_overrides[authenticate_auth0_token] = perm
     client_method = getattr(test_client, method)
-    resp: Response = client_method(route, json=data)
-    assert resp.status_code == status_code, pformat(resp.text)
+    match HTTPReqType(method):
+        case HTTPReqType.POST:
+            resp: Response = client_method(route, json=convert_to_data_dict(data))
+            assert resp.status_code == status_code, try_return_json(resp)
+            if status_code < 400:
+                shared.update((route, perm), resp.json()["data"]["id"])
+        case HTTPReqType.PATCH:
+            new_id = shared.get((route, perm))
+            print(shared.data)
+            id_ = data.id.format(new_id) if new_id else 0
+            try:
+                id_ = int(id_)
+            except:
+                pass
+            finally:
+                data_updated: Data = replace(data, id=id_)
+            route += f"/{id_}"
+            resp: Response = client_method(route, json=dict(data=asdict(data_updated)))
+            if resp.status_code == 422:
+                route = route[:-1] + "a"
+                data_updated: Data = replace(data, id="a")
+                resp = client_method(route, json=dict(data=asdict(data_updated)))
+            assert resp.status_code == status_code, try_return_json(resp)
+        case HTTPReqType.DELETE:
+            new_id = shared.get((route, perm))
+            if not new_id:
+                new_id = 0
+            route += f"/{new_id}"
+            if data:
+                queries = [f"{k}={v}" for k, v in data.items()]
+                query = "?" + "&".join(queries)
+            else:
+                query = ""
+            route += query
+            resp: Response = client_method(route)
+            if resp.status_code == 422:
+                route = route[:-1] + "a"
+                resp = client_method(route)
+            if 199 < status_code < 300:
+                status_code = 204
+            assert resp.status_code == status_code, try_return_json(resp)
