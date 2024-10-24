@@ -1002,7 +1002,7 @@ class VendorProduct(Base):
         return q
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, id: str) -> QuerySet:
+    def permitted_primary_resource_ids(email: str, id: str) -> tuple[Column, QuerySet]:
         return VendorProduct.vendor_id, vendor_primary_id_queries(id=id)
 
 
@@ -1082,6 +1082,15 @@ class VendorProductToClassMapping(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorProductToClassMapping.product_class_id,
+            vendor_product_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
 
 
 class VendorPricingClass(Base):
@@ -1209,7 +1218,9 @@ class VendorPricingByCustomer(Base):
         return q.where(exists_subquery)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
         return (
             VendorPricingByCustomer.vendor_customer_id,
             vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
@@ -1560,7 +1571,7 @@ class VendorQuoteProduct(Base):
 
     ## primary id lookup
     def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
-        return VendorQuote.vendor_customer_id, vendor_quotes_primary_id_queries(
+        return VendorQuoteProduct.vendor_quotes_id, vendor_quotes_primary_id_queries(
             email=email, vendor_id=vendor_id
         )
 
@@ -1757,7 +1768,7 @@ class VendorQuoteAttr(Base):
     __tablename__ = "vendor_quotes_attrs"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
     __modifiable_fields__ = ["value", "deleted_at"]
-    __primary_ref__ = "vendor_quotess"
+    __primary_ref__ = "vendor_quotes"
 
     id = Column(Integer, primary_key=True)
     vendor_quotes_id = Column(Integer, ForeignKey("vendor_quotes.id"))
@@ -1771,7 +1782,29 @@ class VendorQuoteAttr(Base):
 
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
+        if not ids:
+            return q
+        vendor_quotes = aliased(VendorQuote)
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_quotes.id == VendorQuoteAttr.vendor_quotes_id,
+            vendor_customers.id == vendor_quotes.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            CustomerPricingByClass.pricing_by_class_id,
+            vendor_pricing_by_class_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
 
 
 class CustomerPricingByClass(Base):
