@@ -14,7 +14,7 @@ PARENT_PREFIX = "/vendors"
 VENDOR_PRODUCT_CLASS_DISCOUNTS = VendorProductClassDiscount.__jsonapi_type_override__
 
 vendor_product_class_discounts = APIRouter(
-    prefix=f"/{VENDOR_PRODUCT_CLASS_DISCOUNTS}", tags=["v2", ""]
+    prefix=f"/{VENDOR_PRODUCT_CLASS_DISCOUNTS}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -32,15 +32,19 @@ async def new_vendor_product_class_discount(
     session: NewSession,
     new_obj: NewVendorProductClassDiscount,
 ) -> VendorProductClassDiscountResp:
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorProductClassDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -57,8 +61,12 @@ async def mod_vendor_product_class_discount(
     vendor_product_class_discount_id: int,
     mod_data: ModVendorProductClassDiscount,
 ) -> VendorProductClassDiscountResp:
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorProductClassDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -66,7 +74,7 @@ async def mod_vendor_product_class_discount(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_product_class_discount_id,
-            primary_id=mod_data.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -80,9 +88,12 @@ async def del_vendor_product_class_discount(
     session: NewSession,
     vendor_product_class_discount_id: int,
     vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorCustomerOperations(token, VendorProductClassDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

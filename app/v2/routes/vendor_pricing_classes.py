@@ -13,7 +13,7 @@ from app.jsonapi.sqla_models import VendorPricingClass
 PARENT_PREFIX = "/vendors"
 VENDOR_PRICING_CLASSES = VendorPricingClass.__jsonapi_type_override__
 
-vendor_pricing_classes = APIRouter(prefix=f"/{VENDOR_PRICING_CLASSES}", tags=["v2", ""])
+vendor_pricing_classes = APIRouter(prefix=f"/{VENDOR_PRICING_CLASSES}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
@@ -30,21 +30,24 @@ async def mod_vendor_pricing_classe(
     session: NewSession,
     new_obj: NewVendorPricingClass,
 ) -> VendorPricingClassResp:
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
 
 @vendor_pricing_classes.patch(
-    "/{vendor_pricing_classe_id}",
+    "/{vendor_pricing_classes_id}",
     response_model=VendorPricingClassResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
@@ -52,36 +55,41 @@ async def mod_vendor_pricing_classe(
 async def mod_vendor_pricing_classe(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
     mod_data: ModVendorPricingClass,
 ) -> VendorPricingClassResp:
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .patch(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
-            obj_id=vendor_pricing_classe_id,
-            primary_id=mod_data.data.relationships.vendors.data.id,
+            obj_id=vendor_pricing_classes_id,
+            primary_id=vendor_id,
         )
     )
 
 
-@vendor_pricing_classes.delete("/{vendor_pricing_classe_id}", tags=["jsonapi"])
+@vendor_pricing_classes.delete("/{vendor_pricing_classes_id}", tags=["jsonapi"])
 async def del_vendor_pricing_classe(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
-    vendor_id: int,
+    vendor_pricing_classes_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .delete(session, obj_id=vendor_pricing_classe_id, primary_id=vendor_id)
+        .delete(session, obj_id=vendor_pricing_classes_id, primary_id=vendor_id)
     )
 
 
@@ -97,132 +105,132 @@ async def vendor_pricing_classe_collection(
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}",
+    "/{vendor_pricing_classes_id}",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_resource(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/vendors",
+    "/{vendor_pricing_classes_id}/vendors",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_related_vendors(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/relationships/vendors",
+    "/{vendor_pricing_classes_id}/relationships/vendors",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_relationships_vendors(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/vendor-pricing-by-class",
+    "/{vendor_pricing_classes_id}/vendor-pricing-by-class",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_related_vendor_pricing_by_class(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/relationships/vendor-pricing-by-class",
+    "/{vendor_pricing_classes_id}/relationships/vendor-pricing-by-class",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_relationships_vendor_pricing_by_class(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/vendor-pricing-by-customer",
+    "/{vendor_pricing_classes_id}/vendor-pricing-by-customer",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_related_vendor_pricing_by_customer(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/relationships/vendor-pricing-by-customer",
+    "/{vendor_pricing_classes_id}/relationships/vendor-pricing-by-customer",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_relationships_vendor_pricing_by_customer(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/vendor-customer-pricing-classes",
+    "/{vendor_pricing_classes_id}/vendor-customer-pricing-classes",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_related_vendor_customer_pricing_classes(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/relationships/vendor-customer-pricing-classes",
+    "/{vendor_pricing_classes_id}/relationships/vendor-customer-pricing-classes",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_relationships_vendor_customer_pricing_classes(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/vendor-customer-pricing-classes-changelog",
+    "/{vendor_pricing_classes_id}/vendor-customer-pricing-classes-changelog",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_related_vendor_customer_pricing_classes_changelog(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendor_pricing_classes.get(
-    "/{vendor_pricing_classe_id}/relationships/vendor-customer-pricing-classes-changelog",
+    "/{vendor_pricing_classes_id}/relationships/vendor-customer-pricing-classes-changelog",
     tags=["jsonapi"],
 )
 async def vendor_pricing_classe_relationships_vendor_customer_pricing_classes_changelog(
     token: Token,
     session: NewSession,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_classes_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)

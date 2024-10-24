@@ -13,7 +13,7 @@ from app.jsonapi.sqla_models import VendorProductClass
 PARENT_PREFIX = "/vendors"
 VENDOR_PRODUCT_CLASSES = VendorProductClass.__jsonapi_type_override__
 
-vendor_product_classes = APIRouter(prefix=f"/{VENDOR_PRODUCT_CLASSES}", tags=["v2", ""])
+vendor_product_classes = APIRouter(prefix=f"/{VENDOR_PRODUCT_CLASSES}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -30,15 +30,18 @@ async def new_vendor_product_classes(
     session: NewSession,
     new_obj: NewVendorProductClass,
 ) -> VendorProductClassResp:
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorProductClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorProductClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -55,8 +58,11 @@ async def mod_vendor_product_classes(
     vendor_product_classes_id: int,
     mod_data: ModVendorProductClass,
 ) -> VendorProductClassResp:
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorProductClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorProductClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -64,7 +70,7 @@ async def mod_vendor_product_classes(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_product_classes_id,
-            primary_id=mod_data.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -77,10 +83,12 @@ async def del_vendor_product_classes(
     token: Token,
     session: NewSession,
     vendor_product_classes_id: int,
-    vendor_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(token, VendorProductClass, PARENT_PREFIX)
+        auth.VendorOperations2(
+            token, VendorProductClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -88,20 +96,14 @@ async def del_vendor_product_classes(
     )
 
 
-@vendor_product_classes.get(
-    "",
-    tags=["jsonapi"],
-)
+@vendor_product_classes.get("", tags=["Not Implemented"])
 async def vendor_product_classes_collection(
     token: Token, session: NewSession
 ) -> VendorProductClassResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@vendor_product_classes.get(
-    "/{vendor_product_classes_id}",
-    tags=["jsonapi"],
-)
+@vendor_product_classes.get("/{vendor_product_classes_id}", tags=["Not Implemented"])
 async def vendor_product_classes_resource(
     token: Token,
     session: NewSession,
@@ -111,8 +113,7 @@ async def vendor_product_classes_resource(
 
 
 @vendor_product_classes.get(
-    "/{vendor_product_classes_id}/vendors",
-    tags=["jsonapi"],
+    "/{vendor_product_classes_id}/vendors", tags=["Not Implemented"]
 )
 async def vendor_product_classes_related_vendors(
     token: Token,
@@ -123,8 +124,7 @@ async def vendor_product_classes_related_vendors(
 
 
 @vendor_product_classes.get(
-    "/{vendor_product_classes_id}/relationships/vendors",
-    tags=["jsonapi"],
+    "/{vendor_product_classes_id}/relationships/vendors", tags=["Not Implemented"]
 )
 async def vendor_product_classes_relationships_vendors(
     token: Token,
@@ -136,7 +136,7 @@ async def vendor_product_classes_relationships_vendors(
 
 @vendor_product_classes.get(
     "/{vendor_product_classes_id}/vendor-product-to-class-mapping",
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
 async def vendor_product_classes_related_vendor_product_to_class_mapping(
     token: Token,
@@ -148,7 +148,7 @@ async def vendor_product_classes_related_vendor_product_to_class_mapping(
 
 @vendor_product_classes.get(
     "/{vendor_product_classes_id}/relationships/vendor-product-to-class-mapping",
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
 async def vendor_product_classes_relationships_vendor_product_to_class_mapping(
     token: Token,
@@ -160,7 +160,7 @@ async def vendor_product_classes_relationships_vendor_product_to_class_mapping(
 
 @vendor_product_classes.get(
     "/{vendor_product_classes_id}/vendor-product-class-discounts",
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
 async def vendor_product_classes_related_vendor_product_class_discounts(
     token: Token,
@@ -172,7 +172,7 @@ async def vendor_product_classes_related_vendor_product_class_discounts(
 
 @vendor_product_classes.get(
     "/{vendor_product_classes_id}/relationships/vendor-product-class-discounts",
-    tags=["jsonapi"],
+    tags=["Not Implemented"],
 )
 async def vendor_product_classes_relationships_vendor_product_class_discounts(
     token: Token,

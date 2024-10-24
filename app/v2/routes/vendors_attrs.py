@@ -9,7 +9,7 @@ from app.jsonapi.sqla_models import VendorsAttr
 PARENT_PREFIX = "/vendors"
 VENDORS_ATTRS = VendorsAttr.__jsonapi_type_override__
 
-vendors_attrs = APIRouter(prefix=f"/{VENDORS_ATTRS}", tags=["v2", ""])
+vendors_attrs = APIRouter(prefix=f"/{VENDORS_ATTRS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]

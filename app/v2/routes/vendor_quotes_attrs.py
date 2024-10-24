@@ -9,7 +9,7 @@ from app.jsonapi.sqla_models import VendorQuoteAttr
 PARENT_PREFIX = "/vendors"
 VENDOR_QUOTES_ATTRS = VendorQuoteAttr.__jsonapi_type_override__
 
-vendor_quotes_attrs = APIRouter(prefix=f"/{VENDOR_QUOTES_ATTRS}", tags=["v2", ""])
+vendor_quotes_attrs = APIRouter(prefix=f"/{VENDOR_QUOTES_ATTRS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -21,20 +21,24 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def mod_vendor_quotes_attr(
+async def new_vendor_quotes_attr(
     token: Token,
     session: NewSession,
     new_obj: NewVendorQuoteAttr,
 ) -> VendorQuoteAttrResp:
+    vendor_quotes_id = new_obj.data.relationships.vendor_quotes.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorQuoteOperations(token, VendorQuoteAttr, PARENT_PREFIX)
+        auth.VendorQuoteOperations(
+            token, VendorQuoteAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_quotes.data.id,
+            primary_id=vendor_quotes_id,
         )
     )
 
@@ -51,8 +55,12 @@ async def mod_vendor_quotes_attr(
     vendor_quotes_attr_id: int,
     mod_data: ModVendorQuoteAttr,
 ) -> VendorQuoteAttrResp:
+    vendor_quotes_id = mod_data.data.relationships.vendor_quotes.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorQuoteOperations(token, VendorQuoteAttr, PARENT_PREFIX)
+        auth.VendorQuoteOperations(
+            token, VendorQuoteAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -60,7 +68,7 @@ async def mod_vendor_quotes_attr(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_quotes_attr_id,
-            primary_id=mod_data.data.relationships.vendor_quotes.data.id,
+            primary_id=vendor_quotes_id,
         )
     )
 
@@ -74,9 +82,12 @@ async def del_vendor_quotes_attr(
     session: NewSession,
     vendor_quotes_attr_id: int,
     vendor_quotes_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorQuoteOperations(token, VendorQuoteAttr, PARENT_PREFIX)
+        auth.VendorQuoteOperations(
+            token, VendorQuoteAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

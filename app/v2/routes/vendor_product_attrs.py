@@ -13,7 +13,7 @@ from app.jsonapi.sqla_models import VendorProductAttr
 PARENT_PREFIX = "/vendors"
 VENDOR_PRODUCT_ATTRS = VendorProductAttr.__jsonapi_type_override__
 
-vendor_product_attrs = APIRouter(prefix=f"/{VENDOR_PRODUCT_ATTRS}", tags=["v2", ""])
+vendor_product_attrs = APIRouter(prefix=f"/{VENDOR_PRODUCT_ATTRS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -30,15 +30,19 @@ async def new_vendor_product_attr(
     session: NewSession,
     new_obj: NewVendorProductAttr,
 ) -> VendorProductAttrResp:
+    vendor_product_id = new_obj.data.relationships.vendor_products.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorProductOperations(token, VendorProductAttr, PARENT_PREFIX)
+        auth.VendorProductOperations(
+            token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_products.data.id,
+            primary_id=vendor_product_id,
         )
     )
 
@@ -55,8 +59,12 @@ async def mod_vendor_product_attr(
     vendor_product_attr_id: int,
     mod_data: ModVendorProductAttr,
 ) -> VendorProductAttrResp:
+    vendor_product_id = mod_data.data.relationships.vendor_products.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorProductOperations(token, VendorProductAttr, PARENT_PREFIX)
+        auth.VendorProductOperations(
+            token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -64,7 +72,7 @@ async def mod_vendor_product_attr(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_product_attr_id,
-            primary_id=mod_data.data.relationships.vendor_products.data.id,
+            primary_id=vendor_product_id,
         )
     )
 
@@ -78,9 +86,12 @@ async def del_vendor_product_attr(
     session: NewSession,
     vendor_product_attr_id: int,
     vendor_product_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorProductOperations(token, VendorProductAttr, PARENT_PREFIX)
+        auth.VendorProductOperations(
+            token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
