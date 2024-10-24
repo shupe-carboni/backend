@@ -931,6 +931,13 @@ class VendorsAttr(Base):
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, id: str) -> tuple[Column, QuerySet]:
+        return (
+            VendorsAttr.vendor_id,
+            vendor_primary_id_queries(email=email, id=id),
+        )
+
 
 class VendorsAttrsChangelog(Base):
     __tablename__ = "vendors_attrs_changelog"
