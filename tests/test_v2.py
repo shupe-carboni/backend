@@ -4,7 +4,7 @@ from random import random
 from pprint import pformat
 from httpx import Response
 from pathlib import Path
-from typing import Union, Generator, Optional
+from typing import Union, Optional
 from dataclasses import dataclass, asdict, replace
 from enum import StrEnum
 
@@ -311,16 +311,10 @@ def test_post_patch_delete(
     data: Union[Data, dict],
 ):
     """
-    post new, change it if it can be changed, and delete it (soft or hard)
-    by route -> each needs it's own object structure, some may need to capture the id
-    returned and use it in order dependent operations (i.e. product needs to be created
-    before a product attribute.) -> if it can be modified, provide an object for patch
-    request, and if it's not modifiable, skip this step -> delete the objects, order
-    doesn't matter for soft deletes (patches to 'deleted-at' under the hood) but do them
-    in reverse order.
-
     Patches and deletes shall be called only on objects created by POST requests within
     this test, albeit most records created will remain in the test DB soft-deleted.
+    The `shared` fixture contains a dictionary used to pass id numbers created by
+    post operations to patch and delete operations.
 
     Assert expected status codes by token type
         post - 200/401/501
@@ -337,7 +331,6 @@ def test_post_patch_delete(
                 shared.update((route, perm), resp.json()["data"]["id"])
         case HTTPReqType.PATCH:
             new_id = shared.get((route, perm))
-            print(shared.data)
             id_ = data.id.format(new_id) if new_id else 0
             try:
                 id_ = int(id_)
