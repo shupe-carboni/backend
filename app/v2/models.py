@@ -355,7 +355,7 @@ class NewVendorProductRObj(BaseModel):
 
 
 class NewVendorProduct(BaseModel):
-    data: VendorProductRObj
+    data: NewVendorProductRObj
 
 
 class RelatedVendorProductResp(VendorProductResp):
@@ -436,6 +436,9 @@ class VendorProductAttrRels(BaseModel):
     vendor_products: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-products"
     )
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
 
 
 class VendorProductAttrFilters(BaseModel):
@@ -470,7 +473,7 @@ class NewVendorProductAttrRObj(BaseModel):
 
 
 class NewVendorProductAttr(BaseModel):
-    data: VendorProductAttrRObj
+    data: NewVendorProductAttrRObj
 
 
 class RelatedVendorProductAttrResp(VendorProductAttrResp):
@@ -593,7 +596,7 @@ class NewVendorProductClassRObj(BaseModel):
 
 
 class NewVendorProductClass(BaseModel):
-    data: VendorProductClassRObj
+    data: NewVendorProductClassRObj
 
 
 class RelatedVendorProductClassResp(VendorProductClassResp):
@@ -669,6 +672,9 @@ class VendorProductToClassMappingAttrs(BaseModel):
 
 class VendorProductToClassMappingRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_product_classes: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-product-classes"
     )
@@ -709,7 +715,7 @@ class NewVendorProductToClassMappingRObj(BaseModel):
 
 
 class NewVendorProductToClassMapping(BaseModel):
-    data: VendorProductToClassMappingRObj
+    data: NewVendorProductToClassMappingRObj
 
 
 class RelatedVendorProductToClassMappingResp(VendorProductToClassMappingResp):
@@ -843,7 +849,7 @@ class NewVendorPricingClassRObj(BaseModel):
 
 
 class NewVendorPricingClass(BaseModel):
-    data: VendorPricingClassRObj
+    data: NewVendorPricingClassRObj
 
 
 class RelatedVendorPricingClassResp(VendorPricingClassResp):
@@ -1155,6 +1161,9 @@ class VendorPricingByCustomerRels(BaseModel):
     )
     customer_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
         default=None, alias="customer-pricing-by-customer"
+    )
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
     )
 
 
@@ -1526,6 +1535,9 @@ class VendorProductClassDiscountAttrs(BaseModel):
 
 class VendorProductClassDiscountRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_customers: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-customers"
     )
@@ -1573,7 +1585,7 @@ class NewVendorProductClassDiscountRObj(BaseModel):
 
 
 class NewVendorProductClassDiscount(BaseModel):
-    data: VendorProductClassDiscountRObj
+    data: NewVendorProductClassDiscountRObj
 
 
 class RelatedVendorProductClassDiscountResp(VendorProductClassDiscountResp):
@@ -1919,7 +1931,7 @@ class NewVendorQuoteRObj(BaseModel):
 
 
 class NewVendorQuote(BaseModel):
-    data: VendorQuoteRObj
+    data: NewVendorQuoteRObj
 
 
 class RelatedVendorQuoteResp(VendorQuoteResp):
@@ -2109,6 +2121,9 @@ class VendorQuoteProductRels(BaseModel):
     vendor_quote_products_changelog: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-quote-products-changelog"
     )
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
 
 
 class VendorQuoteProductFilters(BaseModel):
@@ -2148,7 +2163,7 @@ class NewVendorQuoteProductRObj(BaseModel):
 
 
 class NewVendorQuoteProduct(BaseModel):
-    data: VendorQuoteProductRObj
+    data: NewVendorQuoteProductRObj
 
 
 class RelatedVendorQuoteProductResp(VendorQuoteProductResp):
@@ -2814,6 +2829,9 @@ class VendorQuoteAttrRels(BaseModel):
     vendor_quotes: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-quotes"
     )
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
 
 
 class VendorQuoteAttrFilters(BaseModel):
@@ -2848,7 +2866,7 @@ class NewVendorQuoteAttrRObj(BaseModel):
 
 
 class NewVendorQuoteAttr(BaseModel):
-    data: VendorQuoteAttrRObj
+    data: NewVendorQuoteAttrRObj
 
 
 class RelatedVendorQuoteAttrResp(VendorQuoteAttrResp):
