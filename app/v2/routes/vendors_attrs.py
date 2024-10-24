@@ -26,15 +26,16 @@ async def new_vendors_attr(
     session: NewSession,
     new_obj: NewVendorsAttr,
 ) -> VendorsAttrResp:
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX)
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -51,8 +52,9 @@ async def mod_vendors_attr(
     vendors_attr_id: int,
     mod_data: ModVendorsAttr,
 ) -> VendorsAttrResp:
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX)
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -60,7 +62,7 @@ async def mod_vendors_attr(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendors_attr_id,
-            primary_id=mod_data.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -73,10 +75,10 @@ async def del_vendors_attr(
     token: Token,
     session: NewSession,
     vendors_attr_id: int,
-    vendor_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX)
+        auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -95,10 +97,7 @@ async def vendors_attr_collection(token: Token, session: NewSession) -> VendorsA
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@vendors_attrs.get(
-    "/{vendors_attr_id}",
-    tags=["jsonapi"],
-)
+@vendors_attrs.get("/{vendors_attr_id}", tags=["jsonapi"])
 async def vendors_attr_resource(
     token: Token,
     session: NewSession,
@@ -107,10 +106,7 @@ async def vendors_attr_resource(
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@vendors_attrs.get(
-    "/{vendors_attr_id}/vendors",
-    tags=["jsonapi"],
-)
+@vendors_attrs.get("/{vendors_attr_id}/vendors", tags=["jsonapi"])
 async def vendors_attr_related_vendors(
     token: Token,
     session: NewSession,
@@ -119,10 +115,7 @@ async def vendors_attr_related_vendors(
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@vendors_attrs.get(
-    "/{vendors_attr_id}/relationships/vendors",
-    tags=["jsonapi"],
-)
+@vendors_attrs.get("/{vendors_attr_id}/relationships/vendors", tags=["jsonapi"])
 async def vendors_attr_relationships_vendors(
     token: Token,
     session: NewSession,
@@ -131,10 +124,7 @@ async def vendors_attr_relationships_vendors(
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
-@vendors_attrs.get(
-    "/{vendors_attr_id}/vendors-attrs-changelog",
-    tags=["jsonapi"],
-)
+@vendors_attrs.get("/{vendors_attr_id}/vendors-attrs-changelog", tags=["jsonapi"])
 async def vendors_attr_related_vendors_attrs_changelog(
     token: Token,
     session: NewSession,
@@ -144,8 +134,7 @@ async def vendors_attr_related_vendors_attrs_changelog(
 
 
 @vendors_attrs.get(
-    "/{vendors_attr_id}/relationships/vendors-attrs-changelog",
-    tags=["jsonapi"],
+    "/{vendors_attr_id}/relationships/vendors-attrs-changelog", tags=["jsonapi"]
 )
 async def vendors_attr_relationships_vendors_attrs_changelog(
     token: Token,
