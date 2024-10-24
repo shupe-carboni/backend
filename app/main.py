@@ -98,16 +98,53 @@ adp_sub_routes = [
     (adp_mat_grp_discs, "", adp),
     (adp_snps, "", adp),
 ]
-app_base_routes = [
+v2_routes = [
+    (v2.vendors.vendors, "/v2", app),
+    (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
+    (v2.vendor_quotes.vendor_quotes, "/v2/vendors", app),
+    (v2.vendor_quotes_attrs.vendor_quotes_attrs, "/v2/vendors", app),
+    (v2.vendor_quote_products.vendor_quote_products, "/v2/vendors", app),
+    (v2.vendor_products.vendor_products, "/v2/vendors", app),
+    (
+        v2.vendor_product_to_class_mapping.vendor_product_to_class_mapping,
+        "/v2/vendors",
+        app,
+    ),
+    (v2.vendor_product_classes.vendor_product_classes, "/v2/vendors", app),
+    (
+        v2.vendor_product_class_discounts.vendor_product_class_discounts,
+        "/v2/vendors",
+        app,
+    ),
+    (v2.vendor_product_attrs.vendor_product_attrs, "/v2/vendors", app),
+    (v2.vendor_pricing_classes.vendor_pricing_classes, "/v2/vendors", app),
+    (v2.vendor_pricing_by_customer.vendor_pricing_by_customer, "/v2/vendors", app),
+    # TODO ROUTES BELOW HERE
+    (
+        v2.vendor_pricing_by_customer_attrs.vendor_pricing_by_customer_attrs,
+        "/v2/vendors",
+        app,
+    ),
+    (v2.vendor_pricing_by_class.vendor_pricing_by_class, "/v2/vendors", app),
+    (v2.vendor_customers.vendor_customers, "/v2/vendors", app),
+    (
+        v2.vendor_customer_pricing_classes.vendor_customer_pricing_classes,
+        "/v2/vendors",
+        app,
+    ),
+    (v2.vendor_customer_attrs.vendor_customer_attrs, "/v2/vendors", app),
+    (v2.customer_pricing_by_customer.customer_pricing_by_customer, "/v2/vendors", app),
+    (v2.customer_pricing_by_class.customer_pricing_by_class, "/v2/vendors", app),
+    (v2.customer_location_mapping.customer_location_mapping, "/v2/vendors", app),
+]
+app_misc_routes = [
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
     (adp, "/vendors", app),
     (hardcast, "", app),
-    (v2.vendors.vendors, "/v2", app),
-    (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
 ]
-routes = (*adp_sub_routes, *customer_sub_routes, *app_base_routes)
+routes = (*adp_sub_routes, *customer_sub_routes, *app_misc_routes, *v2_routes)
 ## register all of the routes and avoid crashing due to a registration issue
 for route, prefix, target in routes:
     resource_path = f"{prefix}{route.prefix}"
