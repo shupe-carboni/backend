@@ -133,7 +133,7 @@ class ModVendorRObj(BaseModel):
     id: str
     type: str = Vendor.__jsonapi_type_override__
     attributes: ModVendorAttrs
-    relationships: Optional[VendorRels] = {}
+    relationships: Optional[VendorRels] = None
 
 
 class ModVendor(BaseModel):
@@ -141,6 +141,7 @@ class ModVendor(BaseModel):
 
 
 class NewVendorRObj(BaseModel):
+    id: str
     type: str = Vendor.__jsonapi_type_override__
     attributes: ModVendorAttrs
 
@@ -209,7 +210,7 @@ class NewVendorsAttrRObj(BaseModel):
 
 
 class NewVendorsAttr(BaseModel):
-    data: VendorsAttrRObj
+    data: NewVendorsAttrRObj
 
 
 class RelatedVendorsAttrResp(VendorsAttrResp):
