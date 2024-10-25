@@ -925,6 +925,9 @@ class VendorPricingByClassAttrs(BaseModel):
 
 class VendorPricingByClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-classes"
     )
@@ -1663,6 +1666,10 @@ class VendorPricingByCustomerAttrAttrs(BaseModel):
 
 class VendorPricingByCustomerAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-by-customer"
     )
@@ -2009,6 +2016,9 @@ class CustomerLocationMappingAttrs(BaseModel):
 
 class CustomerLocationMappingRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_customers: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-customers"
     )
@@ -2415,6 +2425,9 @@ class VendorCustomerPricingClassAttrs(BaseModel):
 
 class VendorCustomerPricingClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-classes"
     )
@@ -2705,6 +2718,9 @@ class VendorCustomerAttrAttrs(BaseModel):
 
 class VendorCustomerAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_customers: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-customers"
     )
@@ -2938,6 +2954,9 @@ class CustomerPricingByClassAttrs(BaseModel):
 
 class CustomerPricingByClassRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-by-class"
     )
@@ -3033,6 +3052,9 @@ class CustomerPricingByCustomerAttrs(BaseModel):
 
 class CustomerPricingByCustomerRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-by-customer"
     )
