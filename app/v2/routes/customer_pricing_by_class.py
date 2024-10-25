@@ -10,7 +10,7 @@ PARENT_PREFIX = "/vendors"
 CUSTOMER_PRICING_BY_CLASS = CustomerPricingByClass.__jsonapi_type_override__
 
 customer_pricing_by_class = APIRouter(
-    prefix=f"/{CUSTOMER_PRICING_BY_CLASS}", tags=["v2", ""]
+    prefix=f"/{CUSTOMER_PRICING_BY_CLASS}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -28,9 +28,13 @@ async def new_customer_pricing_by_class(
     session: NewSession,
     new_obj: NewCustomerPricingByClass,
 ) -> CustomerPricingByClassResp:
+    vendor_pricing_by_class_id = (
+        new_obj.data.relationships.vendor_pricing_by_class.data.id
+    )
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorPricingByClassOperations(
-            token, CustomerPricingByClass, PARENT_PREFIX
+            token, CustomerPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -39,7 +43,7 @@ async def new_customer_pricing_by_class(
         .post(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_pricing_by_class.data.id,
+            primary_id=vendor_pricing_by_class_id,
         )
     )
 
@@ -53,10 +57,11 @@ async def del_customer_pricing_by_class(
     session: NewSession,
     customer_pricing_by_class_id: int,
     vendor_pricing_by_class_id: int,
+    vendor_id: str,
 ) -> None:
     return (
         auth.VendorPricingByClassOperations(
-            token, CustomerPricingByClass, PARENT_PREFIX
+            token, CustomerPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()

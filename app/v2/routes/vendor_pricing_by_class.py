@@ -13,9 +13,7 @@ from app.jsonapi.sqla_models import VendorPricingByClass
 PARENT_PREFIX = "/vendors"
 VENDOR_PRICING_BY_CLASS = VendorPricingByClass.__jsonapi_type_override__
 
-vendor_pricing_by_class = APIRouter(
-    prefix=f"/{VENDOR_PRICING_BY_CLASS}", tags=["v2", ""]
-)
+vendor_pricing_by_class = APIRouter(prefix=f"/{VENDOR_PRICING_BY_CLASS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -32,15 +30,19 @@ async def new_vendor_pricing_by_class(
     session: NewSession,
     new_obj: NewVendorPricingByClass,
 ) -> VendorPricingByClassResp:
+    vendor_pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorPricingClassOperations(token, VendorPricingByClass, PARENT_PREFIX)
+        auth.VendorPricingClassOperations(
+            token, VendorPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_pricing_classes.data.id,
+            primary_id=vendor_pricing_class_id,
         )
     )
 
@@ -57,8 +59,12 @@ async def mod_vendor_pricing_by_class(
     vendor_pricing_by_class_id: int,
     mod_data: ModVendorPricingByClass,
 ) -> VendorPricingByClassResp:
+    vendor_pricing_class_id = mod_data.data.relationships.vendor_pricing_classes.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorPricingClassOperations(token, VendorPricingByClass, PARENT_PREFIX)
+        auth.VendorPricingClassOperations(
+            token, VendorPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -66,7 +72,7 @@ async def mod_vendor_pricing_by_class(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_pricing_by_class_id,
-            primary_id=mod_data.data.relationships.vendor_pricing_classes.data.id,
+            primary_id=vendor_pricing_class_id,
         )
     )
 
@@ -79,17 +85,20 @@ async def del_vendor_pricing_by_class(
     token: Token,
     session: NewSession,
     vendor_pricing_by_class_id: int,
-    vendor_pricing_classe_id: int,
+    vendor_pricing_class_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorPricingClassOperations(token, VendorPricingByClass, PARENT_PREFIX)
+        auth.VendorPricingClassOperations(
+            token, VendorPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .delete(
             session,
             obj_id=vendor_pricing_by_class_id,
-            primary_id=vendor_pricing_classe_id,
+            primary_id=vendor_pricing_class_id,
         )
     )
 

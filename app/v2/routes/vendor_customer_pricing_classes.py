@@ -10,7 +10,7 @@ PARENT_PREFIX = "/vendors"
 VENDOR_CUSTOMER_PRICING_CLASSES = VendorCustomerPricingClass.__jsonapi_type_override__
 
 vendor_customer_pricing_classes = APIRouter(
-    prefix=f"/{VENDOR_CUSTOMER_PRICING_CLASSES}", tags=["v2", ""]
+    prefix=f"/{VENDOR_CUSTOMER_PRICING_CLASSES}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -28,15 +28,19 @@ async def new_vendor_customer_pricing_classes(
     session: NewSession,
     new_obj: NewVendorCustomerPricingClass,
 ) -> VendorCustomerPricingClassResp:
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorCustomerPricingClass, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -50,9 +54,12 @@ async def del_vendor_customer_pricing_classes(
     session: NewSession,
     vendor_customer_pricing_classes_id: int,
     vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorCustomerOperations(token, VendorCustomerPricingClass, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

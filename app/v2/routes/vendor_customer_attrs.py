@@ -13,7 +13,7 @@ from app.jsonapi.sqla_models import VendorCustomerAttr
 PARENT_PREFIX = "/vendors"
 VENDOR_CUSTOMER_ATTRS = VendorCustomerAttr.__jsonapi_type_override__
 
-vendor_customer_attrs = APIRouter(prefix=f"/{VENDOR_CUSTOMER_ATTRS}", tags=["v2", ""])
+vendor_customer_attrs = APIRouter(prefix=f"/{VENDOR_CUSTOMER_ATTRS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -30,8 +30,12 @@ async def new_vendor_customer_attr(
     session: NewSession,
     new_obj: NewVendorCustomerAttr,
 ) -> VendorCustomerAttrResp:
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorCustomerAttr, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -39,7 +43,7 @@ async def new_vendor_customer_attr(
         .patch(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -56,8 +60,12 @@ async def mod_vendor_customer_attr(
     vendor_customer_attr_id: int,
     mod_data: ModVendorCustomerAttr,
 ) -> VendorCustomerAttrResp:
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorCustomerAttr, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -66,7 +74,7 @@ async def mod_vendor_customer_attr(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_customer_attr_id,
-            primary_id=mod_data.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -80,9 +88,12 @@ async def del_vendor_customer_attr(
     session: NewSession,
     vendor_customer_attr_id: int,
     vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorCustomerOperations(token, VendorCustomerAttr, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

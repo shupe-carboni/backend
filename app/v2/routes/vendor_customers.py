@@ -9,7 +9,7 @@ from app.jsonapi.sqla_models import VendorCustomer
 PARENT_PREFIX = "/vendors"
 VENDOR_CUSTOMERS = VendorCustomer.__jsonapi_type_override__
 
-vendor_customers = APIRouter(prefix=f"/{VENDOR_CUSTOMERS}", tags=["v2", ""])
+vendor_customers = APIRouter(prefix=f"/{VENDOR_CUSTOMERS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
@@ -26,15 +26,18 @@ async def mod_vendor_customer(
     session: NewSession,
     new_obj: NewVendorCustomer,
 ) -> VendorCustomerResp:
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorCustomer, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, PARENT_PREFIX, id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -51,8 +54,11 @@ async def mod_vendor_customer(
     vendor_customer_id: int,
     mod_data: ModVendorCustomer,
 ) -> VendorCustomerResp:
+    vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, VendorCustomer, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, PARENT_PREFIX, id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -60,7 +66,7 @@ async def mod_vendor_customer(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_customer_id,
-            primary_id=mod_data.data.relationships.vendors.data.id,
+            primary_id=vendor_id,
         )
     )
 
@@ -73,10 +79,12 @@ async def del_vendor_customer(
     token: Token,
     session: NewSession,
     vendor_customer_id: int,
-    vendor_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VendorCustomerOperations(token, VendorCustomer, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorCustomer, PARENT_PREFIX, id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()

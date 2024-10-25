@@ -10,7 +10,7 @@ PARENT_PREFIX = "/vendors"
 CUSTOMER_PRICING_BY_CUSTOMER = CustomerPricingByCustomer.__jsonapi_type_override__
 
 customer_pricing_by_customer = APIRouter(
-    prefix=f"/{CUSTOMER_PRICING_BY_CUSTOMER}", tags=["v2", ""]
+    prefix=f"/{CUSTOMER_PRICING_BY_CUSTOMER}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -21,16 +21,20 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
     "",
     response_model=CustomerPricingByCustomerResp,
     response_model_exclude_none=True,
-    tags=["Not Implemented"],
+    tags=["jsonapi"],
 )
 async def new_customer_pricing_by_customer(
     token: Token,
     session: NewSession,
     new_obj: NewCustomerPricingByCustomer,
 ) -> CustomerPricingByCustomerResp:
+    vendor_pricing_by_customer_id = (
+        new_obj.data.relationships.vendor_pricing_by_customer.data.id
+    )
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorPricingByCustomerOperations(
-            token, CustomerPricingByCustomer, PARENT_PREFIX
+            token, CustomerPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -39,7 +43,7 @@ async def new_customer_pricing_by_customer(
         .post(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_pricing_by_customer.data.id,
+            primary_id=vendor_pricing_by_customer_id,
         )
     )
 
@@ -53,10 +57,11 @@ async def del_customer_pricing_by_customer(
     session: NewSession,
     customer_pricing_by_customer_id: int,
     vendor_pricing_by_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
         auth.VendorPricingByCustomerOperations(
-            token, CustomerPricingByCustomer, PARENT_PREFIX
+            token, CustomerPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()

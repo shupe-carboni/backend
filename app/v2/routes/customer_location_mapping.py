@@ -10,7 +10,7 @@ PARENT_PREFIX = "/vendors"
 CUSTOMER_LOCATION_MAPPING = CustomerLocationMapping.__jsonapi_type_override__
 
 customer_location_mapping = APIRouter(
-    prefix=f"/{CUSTOMER_LOCATION_MAPPING}", tags=["v2", ""]
+    prefix=f"/{CUSTOMER_LOCATION_MAPPING}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -26,15 +26,19 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 async def new_customer_location_mapping(
     token: Token, session: NewSession, new_obj: NewCustomerLocationMapping
 ) -> CustomerLocationMappingResp:
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorCustomerOperations(token, CustomerLocationMapping, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, CustomerLocationMapping, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .post(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_obj.data.relationships.vendor_customers.data.id,
+            primary_id=vendor_customer_id,
         )
     )
 
@@ -44,12 +48,12 @@ async def new_customer_location_mapping(
     tags=["jsonapi"],
 )
 async def del_customer_location_mapping(
-    token: Token,
-    session: NewSession,
-    customer_location_mapping_id: int,
+    token: Token, session: NewSession, customer_location_mapping_id: int, vendor_id: str
 ) -> None:
     return (
-        auth.VendorCustomerOperations(token, CustomerLocationMapping, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, CustomerLocationMapping, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
