@@ -119,7 +119,6 @@ v2_routes = [
     (v2.vendor_product_attrs.vendor_product_attrs, "/v2/vendors", app),
     (v2.vendor_pricing_classes.vendor_pricing_classes, "/v2/vendors", app),
     (v2.vendor_pricing_by_customer.vendor_pricing_by_customer, "/v2/vendors", app),
-    # TODO ROUTES BELOW HERE
     (
         v2.vendor_pricing_by_customer_attrs.vendor_pricing_by_customer_attrs,
         "/v2/vendors",
