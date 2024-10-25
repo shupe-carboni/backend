@@ -1276,7 +1276,7 @@ class VendorCustomer(Base):
         return q.where(exists_subquery)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, id: str) -> QuerySet:
+    def permitted_primary_resource_ids(email: str, id: str) -> tuple[Column, QuerySet]:
         return VendorCustomer.vendor_id, vendor_primary_id_queries(email=email, id=id)
 
 
