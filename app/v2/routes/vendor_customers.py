@@ -21,7 +21,7 @@ NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
-async def mod_vendor_customer(
+async def new_vendor_customer(
     token: Token,
     session: NewSession,
     new_obj: NewVendorCustomer,
