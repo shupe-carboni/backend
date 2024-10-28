@@ -289,7 +289,7 @@ class VendorProductAttrs(BaseModel):
 
 class VendorProductRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendors: Optional[JSONAPIRelationships] = Field(default=None, alias="vendors")
+    vendors: JSONAPIRelationships = Field(default=None, alias="vendors")
     vendor_pricing_by_class: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-pricing-by-class"
     )
@@ -1361,13 +1361,13 @@ class VendorCustomerResp(JSONAPIResponse):
     data: list[VendorCustomerRObj] | VendorCustomerRObj
 
 
-class NewVendorCustomerRObj(JSONAPIResponse):
+class NewVendorCustomerRObj(BaseModel):
     type: str = VendorCustomer.__jsonapi_type_override__
     attributes: VendorCustomerAttrs
     relationships: VendorCustomerRels
 
 
-class NewVendorCustomer(JSONAPIResponse):
+class NewVendorCustomer(BaseModel):
     data: NewVendorCustomerRObj
 
 
