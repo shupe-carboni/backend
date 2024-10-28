@@ -393,7 +393,8 @@ BEGIN
 	);
     
     -- Ensure they match
-    IF NOT (vp_vendor_id IS NOT DISTINCT FROM vc_vendor_id) THEN
+	
+    IF NEW.product_id IS NOT NULL AND NOT (vp_vendor_id IS NOT DISTINCT FROM vc_vendor_id) THEN
         RAISE EXCEPTION 'Vendor mismatch between product and customer quoted';
     END IF;
 	RETURN NEW;
