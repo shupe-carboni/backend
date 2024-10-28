@@ -39,6 +39,7 @@ async def new_vendor_quote_product(
         .allow_admin()
         .allow_sca()
         .allow_dev()
+        .allow_customer("std")
         .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
@@ -85,7 +86,7 @@ async def del_vendor_quote_product(
     token: Token,
     session: NewSession,
     vendor_quote_product_id: int,
-    vendor_quote_id: int,
+    vendor_quotes_id: int,
     vendor_id: str,
 ) -> None:
     return (
@@ -96,7 +97,7 @@ async def del_vendor_quote_product(
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, obj_id=vendor_quote_product_id, primary_id=vendor_quote_id)
+        .delete(session, obj_id=vendor_quote_product_id, primary_id=vendor_quotes_id)
     )
 
 
