@@ -32,9 +32,7 @@ async def mod_vendor_pricing_classe(
 ) -> VendorPricingClassResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(
-            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
-        )
+        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -60,9 +58,7 @@ async def mod_vendor_pricing_classe(
 ) -> VendorPricingClassResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(
-            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
-        )
+        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -83,9 +79,7 @@ async def del_vendor_pricing_classe(
     vendor_id: str,
 ) -> None:
     return (
-        auth.VendorOperations2(
-            token, VendorPricingClass, PARENT_PREFIX, vendor_id=vendor_id
-        )
+        auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
