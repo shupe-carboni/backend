@@ -251,6 +251,26 @@ class Data:
         self.attributes = {**self.attributes}
         self.relationships = {**self.relationships} if self.relationships else None
 
+    @staticmethod
+    def rand_num() -> int:
+        return int((random() + 1) * 1000000000)
+
+    def to_dict(self) -> dict:
+        id_ = self.id
+        attrs = self.attributes
+        rels = self.relationships
+        data_dict = asdict(self)
+
+        match id_:
+            case str():
+                data_dict["id"] = id_.format(self.rand_num())
+
+        if attrs:
+            for k, v in attrs.items():
+                if isinstance(v, str):
+                    data_dict["attributes"][k] = v.format(self.rand_num())
+        return dict(data=data_dict)
+
 
 @dataclass
 class Route:
@@ -259,10 +279,6 @@ class Route:
     post: Optional[Data] = None
     patch: Optional[Data] = None
     delete: Optional[dict[str, int | str]] = None
-
-
-def rand_num() -> int:
-    return int((random() + 1) * 1000000000)
 
 
 post_patch_delete_outline = [
@@ -365,6 +381,38 @@ post_patch_delete_outline = [
         ),
         delete={"vendor_id": "TEST_VENDOR"},
     ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-quotes",
+        status_codes=ALL_ALLOWED,
+        post=Data(
+            attributes=Attributes(vendor_quote_number="quote {0}", status="active"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": TEST_VENDOR_CUSTOMER_1_ID,
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(status="rejected"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": TEST_VENDOR_CUSTOMER_1_ID,
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
+        ),
+    ),
 ]
 
 Parameter = tuple[auth_overrides.Token, int, str, str, Data | dict]
@@ -391,23 +439,6 @@ def post_patch_delete_params() -> list[Parameter]:
     return params
 
 
-def convert_to_data_dict(data_obj: Data) -> dict:
-    id_ = data_obj.id
-    attrs = data_obj.attributes
-    rels = data_obj.relationships
-    data_dict = asdict(data_obj)
-
-    match id_:
-        case str():
-            data_dict["id"] = id_.format(rand_num())
-
-    if attrs:
-        for k, v in attrs.items():
-            if isinstance(v, str):
-                data_dict["attributes"][k] = v.format(rand_num())
-    return dict(data=data_dict)
-
-
 @mark.parametrize("perm,status_code,method,route,data", post_patch_delete_params())
 def test_post_patch_delete(
     shared: Shared,
@@ -432,7 +463,7 @@ def test_post_patch_delete(
     client_method = getattr(test_client, method)
     match HTTPReqType(method):
         case HTTPReqType.POST:
-            resp: Response = client_method(route, json=convert_to_data_dict(data))
+            resp: Response = client_method(route, json=data.to_dict())
             assert resp.status_code == status_code, try_return_json(resp)
             if status_code < 400:
                 shared.update((route, perm), resp.json()["data"]["id"])
@@ -446,13 +477,11 @@ def test_post_patch_delete(
             finally:
                 data_updated: Data = replace(data, id=id_)
             route += f"/{id_}"
-            resp: Response = client_method(
-                route, json=convert_to_data_dict(data_updated)
-            )
+            resp: Response = client_method(route, json=data_updated.to_dict())
             if resp.status_code == 422:
                 route = route[:-1] + "a"
                 data_updated: Data = replace(data, id="a")
-                resp = client_method(route, json=convert_to_data_dict(data_updated))
+                resp = client_method(route, json=data_updated.to_dict())
             assert resp.status_code == status_code, try_return_json(resp)
         case HTTPReqType.DELETE:
             new_id = shared.get((route, perm))
