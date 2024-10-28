@@ -54,7 +54,7 @@ async def mod_vendor_product(
 ) -> VendorProductResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
-        auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, vendor_id=vendor_id)
+        auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
