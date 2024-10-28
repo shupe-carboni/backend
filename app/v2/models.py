@@ -1876,9 +1876,7 @@ class VendorQuoteAttrs(BaseModel):
 
 class VendorQuoteRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_customers: Optional[JSONAPIRelationships] = Field(
-        default=None, alias="vendor-customers"
-    )
+    vendor_customers: JSONAPIRelationships = Field(alias="vendor-customers")
     vendor_quote_products: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-quote-products"
     )
