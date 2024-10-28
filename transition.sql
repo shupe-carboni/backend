@@ -483,7 +483,7 @@ EXECUTE FUNCTION vendor_customers_changelog_insert_fn();
 CREATE OR REPLACE FUNCTION vendor_customers_changelog_update_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	IF OLD.value != NEW.value THEN
+	IF OLD.name != NEW.name THEN
 		INSERT INTO vendor_customers_changelog (vendor_customer_id, name)
 		VALUES (OLD.id, NEW.name);
 	END IF;
