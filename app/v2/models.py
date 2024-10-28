@@ -2840,9 +2840,7 @@ class VendorQuoteAttrAttrs(BaseModel):
 
 class VendorQuoteAttrRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    vendor_quotes: Optional[JSONAPIRelationships] = Field(
-        default=None, alias="vendor-quotes"
-    )
+    vendor_quotes: JSONAPIRelationships = Field(default=None, alias="vendor-quotes")
     vendors: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendors", exclude=True
     )
