@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Union, Optional
 from dataclasses import dataclass, asdict, replace
 from enum import StrEnum
+from itertools import chain
 
 from app.main import app
 from app.auth import authenticate_auth0_token
@@ -15,7 +16,110 @@ from app.jsonapi.sqla_models import *
 
 test_client = TestClient(app)
 
-VENDOR_RESOURCE = Vendor.__jsonapi_type_override__
+ParameterizedStatusCodes = list[tuple[auth_overrides.Token, int]]
+
+
+class Arbitrary:
+    def __init__(self, *args, **kwargs) -> None:
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+        self.keys_ = [key for key in kwargs]
+
+    def keys(self) -> list:
+        return self.keys_
+
+    def items(self) -> list[tuple]:
+        return [(key, getattr(self, key)) for key in self.keys_]
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+        if key not in self.keys_:
+            self.keys_.append(key)
+
+    def __iter__(self):
+        return iter(self.keys())
+
+
+class Attributes(Arbitrary): ...
+
+
+class Relationships(Arbitrary): ...
+
+
+@dataclass
+class Data:
+    attributes: Attributes = None
+    relationships: Relationships = None
+    id: Optional[int | str] = None
+
+    def __post_init__(self):
+        self.attributes = {**self.attributes}
+        self.relationships = {**self.relationships} if self.relationships else None
+
+    @staticmethod
+    def rand_num() -> int:
+        return int((random() + 1) * 1000000000)
+
+    def to_dict(self) -> dict:
+        id_ = self.id
+        attrs = self.attributes
+        rels = self.relationships
+        data_dict = asdict(self)
+
+        match id_:
+            case str():
+                data_dict["id"] = id_.format(self.rand_num())
+
+        if attrs:
+            for k, v in attrs.items():
+                if isinstance(v, str):
+                    data_dict["attributes"][k] = v.format(self.rand_num())
+        return dict(data=data_dict)
+
+
+Parameter = tuple[auth_overrides.Token, int, str, str, Data | dict]
+
+
+@dataclass
+class Route:
+    route: Path
+    status_codes: tuple[ParameterizedStatusCodes, ParameterizedStatusCodes]
+    post: Optional[Data] = None
+    patch: Optional[Data] = None
+    delete: Optional[dict[str, int | str]] = None
+
+    def __post_init__(self) -> None:
+        self.post_delete_status_codes, self.patch_status_codes = self.status_codes
+
+    def parameterize(self) -> list[Parameter]:
+        params: list[Parameter] = []
+        post = self.post
+        patch = self.patch
+        delete = self.delete
+        for status_code in self.post_delete_status_codes:
+            perm, sc = status_code
+            if post:
+                new_item = (perm, sc, "post", str(self.route), post)
+                params.append(new_item)
+        for status_code in self.patch_status_codes:
+            perm, sc = status_code
+            if patch:
+                new_item = (perm, sc, "patch", str(self.route), patch)
+                params.append(new_item)
+        for status_code in self.post_delete_status_codes:
+            perm, sc = status_code
+            del_item = (
+                perm,
+                sc,
+                "delete",
+                str(self.route),
+                delete if delete else {},
+            )
+            params.append(del_item)
+        return params
 
 
 class HTTPReqType(StrEnum):
@@ -23,6 +127,9 @@ class HTTPReqType(StrEnum):
     POST = "post"
     PATCH = "patch"
     DELETE = "delete"
+
+
+VENDOR_RESOURCE = Vendor.__jsonapi_type_override__
 
 
 class Shared:
@@ -66,6 +173,7 @@ DEV_PERM = auth_overrides.DeveloperToken
 
 ALL_PERMS: list[auth_overrides.Token] = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
 
+TEST_VENDOR_QUOTE_ID = 1  # ASSOCIATED WITH TEST_VENDOR_CUSTOMER_1
 TEST_VENDOR_CUSTOMER_1_ID = 169
 TEST_VENDOR_CUSTOMER_2_ID = 176
 TEST_VENDOR_CUSTOMER_3_ID = 177
@@ -118,6 +226,7 @@ TEST_VENDOR_PRODUCT = str(2355)
 TEST_VENDOR_TEST_CUSTOMER = (
     TEST_VENDOR / "vendor-customers" / str(TEST_VENDOR_CUSTOMER_1_ID)
 )
+TEST_VENDOR_PRODUCT = str(2871)
 
 ALL_ROUTES = [
     VENDORS_PREFIX,
@@ -211,86 +320,16 @@ def test_vendor_endpoint_response_content(
                 assert returned_ids == ids
 
 
-class Arbitrary:
-    def __init__(self, *args, **kwargs) -> None:
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
-        self.keys_ = [key for key in kwargs]
-
-    def keys(self) -> list:
-        return self.keys_
-
-    def items(self) -> list[tuple]:
-        return [(key, getattr(self, key)) for key in self.keys_]
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
-        if key not in self.keys_:
-            self.keys_.append(key)
-
-    def __iter__(self):
-        return iter(self.keys())
-
-
-class Attributes(Arbitrary): ...
-
-
-class Relationships(Arbitrary): ...
-
-
-@dataclass
-class Data:
-    attributes: Attributes
-    relationships: Relationships = None
-    id: Optional[int | str] = None
-
-    def __post_init__(self):
-        self.attributes = {**self.attributes}
-        self.relationships = {**self.relationships} if self.relationships else None
-
-    @staticmethod
-    def rand_num() -> int:
-        return int((random() + 1) * 1000000000)
-
-    def to_dict(self) -> dict:
-        id_ = self.id
-        attrs = self.attributes
-        rels = self.relationships
-        data_dict = asdict(self)
-
-        match id_:
-            case str():
-                data_dict["id"] = id_.format(self.rand_num())
-
-        if attrs:
-            for k, v in attrs.items():
-                if isinstance(v, str):
-                    data_dict["attributes"][k] = v.format(self.rand_num())
-        return dict(data=data_dict)
-
-
-@dataclass
-class Route:
-    route: Path
-    status_codes: list[tuple[auth_overrides.Token, int]]
-    post: Optional[Data] = None
-    patch: Optional[Data] = None
-    delete: Optional[dict[str, int | str]] = None
-
-
 post_patch_delete_outline = [
     Route(
         route=VENDORS_PREFIX,
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(id="TEST VENDOR {0}", attributes=Attributes(name=f"TEST VENDOR")),
         patch=Data(id="{0}", attributes=Attributes(headquarters="{0}")),
     ),
     Route(
         route=VENDORS_PREFIX / "vendors-attrs",
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             attributes=Attributes(attr="test_attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
@@ -308,7 +347,7 @@ post_patch_delete_outline = [
     ),
     Route(
         route=VENDORS_PREFIX / "vendor-products",
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             attributes=Attributes(
                 vendor_product_identifier="test_id {0}",
@@ -329,7 +368,7 @@ post_patch_delete_outline = [
     ),
     Route(
         route=VENDORS_PREFIX / "vendor-product-classes",
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             attributes=Attributes(name="class {0}", rank=1),
             relationships=Relationships(
@@ -347,7 +386,7 @@ post_patch_delete_outline = [
     ),
     Route(
         route=VENDORS_PREFIX / "vendor-pricing-classes",
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             attributes=Attributes(name="class {0}"),
             relationships=Relationships(
@@ -365,7 +404,7 @@ post_patch_delete_outline = [
     ),
     Route(
         route=VENDORS_PREFIX / "vendor-customers",
-        status_codes=SCA_ONLY,
+        status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             attributes=Attributes(name="customer {0}"),
             relationships=Relationships(
@@ -383,7 +422,7 @@ post_patch_delete_outline = [
     ),
     Route(
         route=VENDORS_PREFIX / "vendor-quotes",
-        status_codes=ALL_ALLOWED,
+        status_codes=(ALL_ALLOWED, ALL_ALLOWED),
         post=Data(
             attributes=Attributes(vendor_quote_number="quote {0}", status="active"),
             relationships=Relationships(
@@ -413,30 +452,73 @@ post_patch_delete_outline = [
             vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
         ),
     ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-quotes-attrs",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(attr="test_attr {0}", type="INTEGER", value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_quotes={
+                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_quotes={
+                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                },
+            ),
+        ),
+        delete=dict(vendor_id="TEST_VENDOR", vendor_quotes_id=TEST_VENDOR_QUOTE_ID),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-quote-products",
+        status_codes=(ALL_ALLOWED, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(tag="test_product {0}", qty="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_quotes={
+                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(qty="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_quotes={
+                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                },
+            ),
+        ),
+        delete=dict(vendor_id="TEST_VENDOR", vendor_quotes_id=TEST_VENDOR_QUOTE_ID),
+    ),
+    # TODO FIND PRODUCT AND PRODUCT CLASS TO MAP TO
+    Route(
+        route=VENDORS_PREFIX / "vendor-product-to-class-mapping",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+            ),
+        ),
+        delete=dict(vendor_id="TEST_VENDOR"),
+    ),
 ]
-
-Parameter = tuple[auth_overrides.Token, int, str, str, Data | dict]
 
 
 def post_patch_delete_params() -> list[Parameter]:
-    params: list[Parameter] = []
-    for route in post_patch_delete_outline:
-        post = route.post
-        patch = route.patch
-        delete = route.delete
-        for status_code in route.status_codes:
-            perm, sc = status_code
-            if post:
-                new_item = (perm, sc, "post", str(route.route), post)
-                params.append(new_item)
-            if patch:
-                new_item = (perm, sc, "patch", str(route.route), patch)
-                params.append(new_item)
-        for status_code in route.status_codes:
-            perm, sc = status_code
-            del_item = (perm, sc, "delete", str(route.route), delete if delete else {})
-            params.append(del_item)
-    return params
+    params: list[list[Parameter]] = [
+        route.parameterize() for route in post_patch_delete_outline
+    ]
+    return chain(*params)
 
 
 @mark.parametrize("perm,status_code,method,route,data", post_patch_delete_params())
