@@ -211,11 +211,45 @@ def test_vendor_endpoint_response_content(
                 assert returned_ids == ids
 
 
+class Arbitrary:
+    def __init__(self, *args, **kwargs) -> None:
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+        self.keys_ = [key for key in kwargs]
+
+    def keys(self) -> list:
+        return self.keys_
+
+    def items(self) -> list[tuple]:
+        return [(key, getattr(self, key)) for key in self.keys_]
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+        if key not in self.keys_:
+            self.keys_.append(key)
+
+    def __iter__(self):
+        return iter(self.keys())
+
+
+class Attributes(Arbitrary): ...
+
+
+class Relationships(Arbitrary): ...
+
+
 @dataclass
 class Data:
-    attributes: dict[str, str | int | bool]
-    relationships: Optional[dict[str, str | int | bool]] = None
+    attributes: Attributes
+    relationships: Relationships = None
     id: Optional[int | str] = None
+
+    def __post_init__(self):
+        self.attributes = {**self.attributes}
+        self.relationships = {**self.relationships} if self.relationships else None
 
 
 @dataclass
@@ -235,36 +269,109 @@ post_patch_delete_outline = [
     Route(
         route=VENDORS_PREFIX,
         status_codes=SCA_ONLY,
-        post=Data(id="TEST VENDOR {0}", attributes={"name": f"TEST VENDOR"}),
-        patch=Data(id="{0}", attributes={"headquarters": f"{rand_num()}"}),
+        post=Data(id="TEST VENDOR {0}", attributes=Attributes(name=f"TEST VENDOR")),
+        patch=Data(id="{0}", attributes=Attributes(headquarters="{0}")),
     ),
     Route(
         route=VENDORS_PREFIX / "vendors-attrs",
         status_codes=SCA_ONLY,
         post=Data(
-            attributes={
-                "attr": f"test_attr {rand_num()}",
-                "type": "INTEGER",
-                "value": f"{rand_num()}",
-            },
-            relationships={
-                "vendors": {"data": {"id": "TEST_VENDOR", "type": "vendors"}}
-            },
+            attributes=Attributes(attr="test_attr {0}", type="INTEGER", value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
         ),
         patch=Data(
             id="{0}",
-            attributes={"value": f"{rand_num()}"},
-            relationships={
-                "vendors": {"data": {"id": "TEST_VENDOR", "type": "vendors"}}
-            },
+            attributes=Attributes(value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        delete={"vendor_id": "TEST_VENDOR"},
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-products",
+        status_codes=SCA_ONLY,
+        post=Data(
+            attributes=Attributes(
+                vendor_product_identifier="test_id {0}",
+                vendor_product_description="test_desc",
+            ),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(vendor_product_description="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        delete={"vendor_id": "TEST_VENDOR"},
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-product-classes",
+        status_codes=SCA_ONLY,
+        post=Data(
+            attributes=Attributes(name="class {0}", rank=1),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(rank=2),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        delete={"vendor_id": "TEST_VENDOR"},
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-pricing-classes",
+        status_codes=SCA_ONLY,
+        post=Data(
+            attributes=Attributes(name="class {0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(name="class {0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        delete={"vendor_id": "TEST_VENDOR"},
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-customers",
+        status_codes=SCA_ONLY,
+        post=Data(
+            attributes=Attributes(name="customer {0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(name="customer {0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}}
+            ),
         ),
         delete={"vendor_id": "TEST_VENDOR"},
     ),
 ]
 
+Parameter = tuple[auth_overrides.Token, int, str, str, Data | dict]
 
-def post_patch_delete_params() -> list[tuple]:
-    params: list[tuple] = []
+
+def post_patch_delete_params() -> list[Parameter]:
+    params: list[Parameter] = []
     for route in post_patch_delete_outline:
         post = route.post
         patch = route.patch
@@ -339,11 +446,13 @@ def test_post_patch_delete(
             finally:
                 data_updated: Data = replace(data, id=id_)
             route += f"/{id_}"
-            resp: Response = client_method(route, json=dict(data=asdict(data_updated)))
+            resp: Response = client_method(
+                route, json=convert_to_data_dict(data_updated)
+            )
             if resp.status_code == 422:
                 route = route[:-1] + "a"
                 data_updated: Data = replace(data, id="a")
-                resp = client_method(route, json=dict(data=asdict(data_updated)))
+                resp = client_method(route, json=convert_to_data_dict(data_updated))
             assert resp.status_code == status_code, try_return_json(resp)
         case HTTPReqType.DELETE:
             new_id = shared.get((route, perm))
