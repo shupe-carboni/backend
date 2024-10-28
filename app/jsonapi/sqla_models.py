@@ -1061,6 +1061,13 @@ class VendorProductClass(Base):
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
 
+    ## primary id lookup
+    def permitted_primary_resource_ids(email: str, id: str) -> tuple[Column, QuerySet]:
+        return (
+            VendorProductClass.vendor_id,
+            vendor_primary_id_queries(email=email, id=id),
+        )
+
 
 class VendorProductToClassMapping(Base):
     __tablename__ = "vendor_product_to_class_mapping"
@@ -1122,6 +1129,16 @@ class VendorPricingClass(Base):
     # GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         return q
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorPricingClass.vendor_id,
+            vendor_primary_id_queries(email=email, id=id),
+        )
+
 
 
 class VendorPricingByClass(Base):
