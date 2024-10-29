@@ -40,7 +40,7 @@ async def new_vendor_customer_attr(
         .allow_sca()
         .allow_dev()
         # .allow_customer("admin")
-        .patch(
+        .post(
             session=session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
             primary_id=vendor_customer_id,
