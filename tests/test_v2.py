@@ -174,6 +174,7 @@ DEV_PERM = auth_overrides.DeveloperToken
 ALL_PERMS: list[auth_overrides.Token] = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
 
 TEST_VENDOR_QUOTE_ID = 1  # ASSOCIATED WITH TEST_VENDOR_CUSTOMER_1
+TEST_VENDOR_PRICING_BY_CUSTOMER = 2696
 TEST_VENDOR_PRICING_CLASS = 9
 TEST_VENDOR_CUSTOMER_1_ID = 169
 TEST_VENDOR_CUSTOMER_2_ID = 176
@@ -637,6 +638,39 @@ post_patch_delete_outline = [
         ),
         delete=dict(
             vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-pricing-by-customer-attrs",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_pricing_by_customer={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                        "type": "vendor-pricing-by-customer",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_pricing_by_customer={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                        "type": "vendor-pricing-by-customer",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_pricing_by_customer_id=str(TEST_VENDOR_PRICING_BY_CUSTOMER),
         ),
     ),
 ]
