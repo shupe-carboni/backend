@@ -1413,7 +1413,7 @@ class VendorProductClassDiscount(Base):
 class VendorPricingByCustomerAttr(Base):
     __tablename__ = "vendor_pricing_by_customer_attrs"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = None
+    __modifiable_fields__ = ["value", "deleted_at"]
     __primary_ref__ = "vendor_pricing_by_customer"
 
     id = Column(Integer, primary_key=True)
@@ -1447,7 +1447,9 @@ class VendorPricingByCustomerAttr(Base):
         return q.where(exists_query)
 
     ## primary id lookup
-    def permitted_primary_resource_ids(email: str, vendor_id: str) -> QuerySet:
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
         return (
             VendorPricingByCustomerAttr.pricing_by_customer_id,
             vendor_pricing_by_customer_primary_id_queries(
