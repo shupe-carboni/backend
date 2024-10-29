@@ -174,6 +174,7 @@ DEV_PERM = auth_overrides.DeveloperToken
 ALL_PERMS: list[auth_overrides.Token] = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
 
 TEST_VENDOR_QUOTE_ID = 1  # ASSOCIATED WITH TEST_VENDOR_CUSTOMER_1
+TEST_VENDOR_PRICING_CLASS = 9
 TEST_VENDOR_CUSTOMER_1_ID = 169
 TEST_VENDOR_CUSTOMER_2_ID = 176
 TEST_VENDOR_CUSTOMER_3_ID = 177
@@ -501,7 +502,6 @@ post_patch_delete_outline = [
         ),
         delete=dict(vendor_id="TEST_VENDOR", vendor_quotes_id=TEST_VENDOR_QUOTE_ID),
     ),
-    # TODO FIND PRODUCT AND PRODUCT CLASS TO MAP TO
     Route(
         route=VENDORS_PREFIX / "vendor-product-to-class-mapping",
         status_codes=(SCA_ONLY, SCA_ONLY),
@@ -520,6 +520,124 @@ post_patch_delete_outline = [
             ),
         ),
         delete=dict(vendor_id="TEST_VENDOR", vendor_product_id=TEST_VENDOR_PRODUCT),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-product-class-discounts",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(discount="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+                vendor_product_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                        "type": "vendor-product-classes",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(discount="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+                vendor_product_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                        "type": "vendor-product-classes",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-product-attrs",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_products={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT),
+                        "type": "vendor-products",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_products={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT),
+                        "type": "vendor-products",
+                    }
+                },
+            ),
+        ),
+        delete=dict(vendor_id="TEST_VENDOR", vendor_product_id=TEST_VENDOR_PRODUCT),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-pricing-by-customer",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(use_as_override=False, price="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+                vendor_products={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT),
+                        "type": "vendor-products",
+                    }
+                },
+                vendor_pricing_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_CLASS),
+                        "type": "vendor-pricing-classes",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(use_as_override=True),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
+        ),
     ),
 ]
 
