@@ -1712,6 +1712,22 @@ class NewVendorPricingByCustomerAttr(BaseModel):
     data: NewVendorPricingByCustomerAttrRObj
 
 
+class ModVendorPricingByCustomerAttrAttrs(BaseModel):
+    value: Optional[str] = Field(default=None, alias="value")
+    deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
+
+
+class ModVendorPricingByCustomerAttrRObj(BaseModel):
+    id: int
+    type: str = VendorPricingByCustomerAttr.__jsonapi_type_override__
+    attributes: ModVendorPricingByCustomerAttrAttrs
+    relationships: VendorPricingByCustomerAttrRels
+
+
+class ModVendorPricingByCustomerAttr(BaseModel):
+    data: ModVendorPricingByCustomerAttrRObj
+
+
 class RelatedVendorPricingByCustomerAttrResp(VendorPricingByCustomerAttrResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
