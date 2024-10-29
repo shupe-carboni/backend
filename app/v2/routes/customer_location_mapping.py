@@ -48,7 +48,11 @@ async def new_customer_location_mapping(
     tags=["jsonapi"],
 )
 async def del_customer_location_mapping(
-    token: Token, session: NewSession, customer_location_mapping_id: int, vendor_id: str
+    token: Token,
+    session: NewSession,
+    customer_location_mapping_id: int,
+    vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
         auth.VendorCustomerOperations(
@@ -57,7 +61,9 @@ async def del_customer_location_mapping(
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .delete(session, obj_id=customer_location_mapping_id)
+        .delete(
+            session, primary_id=vendor_customer_id, obj_id=customer_location_mapping_id
+        )
     )
 
 
