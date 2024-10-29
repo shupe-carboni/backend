@@ -56,7 +56,7 @@ class Data:
     id: Optional[int | str] = None
 
     def __post_init__(self):
-        self.attributes = {**self.attributes}
+        self.attributes = {**self.attributes} if self.attributes else None
         self.relationships = {**self.relationships} if self.relationships else None
 
     @staticmethod
@@ -223,6 +223,7 @@ VENDORS_PREFIX = Path(f"/v2/{VENDOR_RESOURCE}")
 TEST_VENDOR = VENDORS_PREFIX / "TEST_VENDOR"
 TEST_VENDOR_ATTR = str(4)
 TEST_VENDOR_PRODUCT = str(2355)
+TEST_VENDOR_PRODUCT_CLASS = str(51)
 TEST_VENDOR_TEST_CUSTOMER = (
     TEST_VENDOR / "vendor-customers" / str(TEST_VENDOR_CUSTOMER_1_ID)
 )
@@ -507,9 +508,18 @@ post_patch_delete_outline = [
         post=Data(
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_products={
+                    "data": {"id": int(TEST_VENDOR_PRODUCT), "type": "vendor-products"}
+                },
+                vendor_product_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                        "type": "vendor-product-classes",
+                    }
+                },
             ),
         ),
-        delete=dict(vendor_id="TEST_VENDOR"),
+        delete=dict(vendor_id="TEST_VENDOR", vendor_product_id=TEST_VENDOR_PRODUCT),
     ),
 ]
 
