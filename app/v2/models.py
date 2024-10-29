@@ -2477,7 +2477,7 @@ class VendorCustomerPricingClassResp(JSONAPIResponse):
 
 class NewVendorCustomerPricingClassRObj(BaseModel):
     type: str = VendorCustomerPricingClass.__jsonapi_type_override__
-    attributes: VendorCustomerPricingClassAttrs
+    attributes: Optional[VendorCustomerPricingClassAttrs] = Field(default=False)
     relationships: VendorCustomerPricingClassRels
 
 
