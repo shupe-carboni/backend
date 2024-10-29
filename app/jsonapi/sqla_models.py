@@ -1095,7 +1095,7 @@ class VendorProductToClassMapping(Base):
         email: str, vendor_id: str
     ) -> tuple[Column, QuerySet]:
         return (
-            VendorProductToClassMapping.product_class_id,
+            VendorProductToClassMapping.product_id,
             vendor_product_primary_id_queries(email=email, vendor_id=vendor_id),
         )
 
@@ -1131,14 +1131,11 @@ class VendorPricingClass(Base):
         return q
 
     ## primary id lookup
-    def permitted_primary_resource_ids(
-        email: str, id: str
-    ) -> tuple[Column, QuerySet]:
+    def permitted_primary_resource_ids(email: str, id: str) -> tuple[Column, QuerySet]:
         return (
             VendorPricingClass.vendor_id,
             vendor_primary_id_queries(email=email, id=id),
         )
-
 
 
 class VendorPricingByClass(Base):
