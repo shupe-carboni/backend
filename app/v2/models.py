@@ -710,7 +710,7 @@ class VendorProductToClassMappingResp(JSONAPIResponse):
 
 class NewVendorProductToClassMappingRObj(BaseModel):
     type: str = VendorProductToClassMapping.__jsonapi_type_override__
-    attributes: VendorProductToClassMappingAttrs
+    attributes: Optional[VendorProductToClassMappingAttrs] = Field(default=None)
     relationships: VendorProductToClassMappingRels
 
 
