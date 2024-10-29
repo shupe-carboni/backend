@@ -174,11 +174,18 @@ DEV_PERM = auth_overrides.DeveloperToken
 ALL_PERMS: list[auth_overrides.Token] = [*SCA_PERMS, *CUSTOMER_PERMS, DEV_PERM]
 
 TEST_VENDOR_QUOTE_ID = 1  # ASSOCIATED WITH TEST_VENDOR_CUSTOMER_1
+TEST_USER_ID = 2
+TEST_CUSTOMER_LOCATION = 5
+TEST_VENDOR_PRICING_BY_CLASS = 3638
 TEST_VENDOR_PRICING_BY_CUSTOMER = 2696
 TEST_VENDOR_PRICING_CLASS = 9
 TEST_VENDOR_CUSTOMER_1_ID = 169
 TEST_VENDOR_CUSTOMER_2_ID = 176
 TEST_VENDOR_CUSTOMER_3_ID = 177
+TEST_VENDOR_ATTR = str(4)
+TEST_VENDOR_PRODUCT = str(2355)
+TEST_VENDOR_PRODUCT_CLASS = str(51)
+TEST_VENDOR_PRODUCT = str(2871)
 MANAGER_CUSTOMER_IDS = [TEST_VENDOR_CUSTOMER_1_ID, TEST_VENDOR_CUSTOMER_2_ID]
 ADMIN_CUSTOMER_IDS = [
     TEST_VENDOR_CUSTOMER_1_ID,
@@ -771,17 +778,82 @@ post_patch_delete_outline = [
             vendor_customer_id=str(TEST_VENDOR_CUSTOMER_1_ID),
         ),
     ),
+    Route(
+        route=VENDORS_PREFIX / "customer-pricing-by-customer",
+        status_codes=(ALL_ALLOWED, ALL_ALLOWED),
+        post=Data(
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                users={"data": {"id": int(TEST_USER_ID), "type": "users"}},
+                vendor_pricing_by_customer={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                        "type": "vendor-pricing-by-customer",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_pricing_by_customer_id=str(TEST_VENDOR_PRICING_BY_CUSTOMER),
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "customer-pricing-by-class",
+        status_codes=(ALL_ALLOWED, ALL_ALLOWED),
+        post=Data(
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                users={"data": {"id": int(TEST_USER_ID), "type": "users"}},
+                vendor_pricing_by_class={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_BY_CLASS),
+                        "type": "vendor-pricing-by-class",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_pricing_by_class_id=str(TEST_VENDOR_PRICING_BY_CLASS),
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "customer-location-mapping",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+                customer_locations={
+                    "data": {
+                        "id": int(TEST_CUSTOMER_LOCATION),
+                        "type": "customer-locations",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR", vendor_customer_id=TEST_VENDOR_CUSTOMER_1_ID
+        ),
+    ),
 ]
 
 
-def post_patch_delete_params() -> list[Parameter]:
+def post_patch_delete_params() -> tuple[str, list[Parameter]]:
+    post_patch_delete_param_str = "perm,status_code,method,route,data"
     params: list[list[Parameter]] = [
         route.parameterize() for route in post_patch_delete_outline
     ]
-    return chain(*params)
+    return post_patch_delete_param_str, chain(*params)
 
 
-@mark.parametrize("perm,status_code,method,route,data", post_patch_delete_params())
+@mark.parametrize(*post_patch_delete_params())
 def test_post_patch_delete(
     shared: Shared,
     perm: auth_overrides.Token,
