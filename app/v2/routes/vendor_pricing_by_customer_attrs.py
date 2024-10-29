@@ -6,6 +6,7 @@ from app.db import DB_V2, Session
 from app.v2.models import (
     VendorPricingByCustomerAttrResp,
     NewVendorPricingByCustomerAttr,
+    ModVendorPricingByCustomerAttr,
 )
 from app.jsonapi.sqla_models import VendorPricingByCustomerAttr
 
@@ -45,6 +46,38 @@ async def new_vendor_pricing_by_customer_attr(
         .post(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
+            primary_id=vendor_pricing_by_customer_id,
+        )
+    )
+
+
+@vendor_pricing_by_customer_attrs.patch(
+    "/{vendor_pricing_by_customer_attr_id}",
+    response_model=VendorPricingByCustomerAttrResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def mod_vendor_pricing_by_customer_attr(
+    token: Token,
+    session: NewSession,
+    vendor_pricing_by_customer_attr_id: int,
+    mod_obj: ModVendorPricingByCustomerAttr,
+) -> VendorPricingByCustomerAttrResp:
+    vendor_pricing_by_customer_id = (
+        mod_obj.data.relationships.vendor_pricing_by_customer.data.id
+    )
+    vendor_id = mod_obj.data.relationships.vendors.data.id
+    return (
+        auth.VendorPricingByCustomerOperations(
+            token, VendorPricingByCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session,
+            data=mod_obj.model_dump(exclude_none=True, by_alias=True),
+            obj_id=vendor_pricing_by_customer_attr_id,
             primary_id=vendor_pricing_by_customer_id,
         )
     )
