@@ -2068,7 +2068,7 @@ class CustomerLocationMappingResp(JSONAPIResponse):
 
 class NewCustomerLocationMappingRObj(BaseModel):
     type: str = CustomerLocationMapping.__jsonapi_type_override__
-    attributes: CustomerLocationMappingAttrs
+    attributes: Optional[CustomerLocationMappingAttrs] = Field(default=None)
     relationships: CustomerLocationMappingRels
 
 
@@ -2962,6 +2962,7 @@ class CustomerPricingByClassRelResp(JSONAPIRelationshipsResponse):
 
 class CustomerPricingByClassAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    # gets hard deleted
 
 
 class CustomerPricingByClassRels(BaseModel):
@@ -3001,7 +3002,7 @@ class CustomerPricingByClassResp(JSONAPIResponse):
 
 class NewCustomerPricingByClassRObj(BaseModel):
     type: str = CustomerPricingByClass.__jsonapi_type_override__
-    attributes: CustomerPricingByClassAttrs
+    attributes: Optional[CustomerPricingByClassAttrs] = Field(default=None)
     relationships: CustomerPricingByClassRels
 
 
@@ -3060,6 +3061,7 @@ class CustomerPricingByCustomerRelResp(JSONAPIRelationshipsResponse):
 
 class CustomerPricingByCustomerAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    # gets hard deleted
 
 
 class CustomerPricingByCustomerRels(BaseModel):
@@ -3089,7 +3091,7 @@ class CustomerPricingByCustomerFields(BaseModel):
 
 
 class CustomerPricingByCustomerRObj(CustomerPricingByCustomerRID):
-    attributes: CustomerPricingByCustomerAttrs
+    attributes: Optional[CustomerPricingByCustomerAttrs] = Field(default=None)
     relationships: CustomerPricingByCustomerRels
 
 
@@ -3104,7 +3106,7 @@ class RelatedCustomerPricingByCustomerResp(CustomerPricingByCustomerResp):
 
 class NewCustomerPricingByCustomerRObj(BaseModel):
     type: str = CustomerPricingByCustomer.__jsonapi_type_override__
-    attributes: CustomerPricingByCustomerAttrs
+    attributes: Optional[CustomerPricingByCustomerAttrs] = Field(default=None)
     relationships: CustomerPricingByCustomerRels
 
 
