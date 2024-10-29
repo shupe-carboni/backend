@@ -673,6 +673,104 @@ post_patch_delete_outline = [
             vendor_pricing_by_customer_id=str(TEST_VENDOR_PRICING_BY_CUSTOMER),
         ),
     ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-pricing-by-class",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(price="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_pricing_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_CLASS),
+                        "type": "vendor-pricing-classes",
+                    }
+                },
+                vendor_products={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRODUCT),
+                        "type": "vendor-products",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(price="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_pricing_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_CLASS),
+                        "type": "vendor-pricing-classes",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_pricing_class_id=str(TEST_VENDOR_PRICING_CLASS),
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-customer-pricing-classes",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(price="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_pricing_classes={
+                    "data": {
+                        "id": int(TEST_VENDOR_PRICING_CLASS),
+                        "type": "vendor-pricing-classes",
+                    }
+                },
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_customer_id=str(TEST_VENDOR_CUSTOMER_1_ID),
+        ),
+    ),
+    Route(
+        route=VENDORS_PREFIX / "vendor-customer-attrs",
+        status_codes=(SCA_ONLY, SCA_ONLY),
+        post=Data(
+            attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        patch=Data(
+            id="{0}",
+            attributes=Attributes(value="{0}"),
+            relationships=Relationships(
+                vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
+                vendor_customers={
+                    "data": {
+                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                        "type": "vendor-customers",
+                    }
+                },
+            ),
+        ),
+        delete=dict(
+            vendor_id="TEST_VENDOR",
+            vendor_customer_id=str(TEST_VENDOR_CUSTOMER_1_ID),
+        ),
+    ),
 ]
 
 
