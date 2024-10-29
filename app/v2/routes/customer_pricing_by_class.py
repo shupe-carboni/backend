@@ -18,7 +18,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
 @customer_pricing_by_class.post(
-    "/{customer_pricing_by_class_id}",
+    "",
     response_model=CustomerPricingByClassResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
