@@ -2,7 +2,6 @@ from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-import re
 import warnings
 from typing import Any
 from sqlalchemy_jsonapi import JSONAPI
@@ -33,12 +32,14 @@ GenericData = dict[str, dict[str, Any] | list[dict[str, Any]]]
 
 
 class SQLAlchemyModel:
-    """This class is for typing, so that the linter recognizes
-    my custom methods on SQLAlchemy Base models"""
+    """Generic Class representing SQLAlchemy models that pass through
+    the serializer"""
 
     __tablename__: str
+    __jsonapi_type__: str
     __jsonapi_type_override__: str
     __jsonapi_map_to_py__: dict[str, str]
+    __jsonapi_map_to_api__: dict[str, str]
     id = Column(primary_key=True)
 
     def apply_customer_location_filtering(
@@ -86,8 +87,8 @@ class JSONAPI_(JSONAPI):
         super().__init__(base, prefix)
 
     @staticmethod
-    def _apply_filter(
-        model: SQLAlchemyModel, sqla_query_obj: sqlQuery, query_params: dict
+    def _apply_filters(
+        model: SQLAlchemyModel, sqla_query_obj: sqlQuery, filters: dict[str, str]
     ) -> sqlQuery:
         """
         handler for filter parameters in the query string
@@ -100,16 +101,11 @@ class JSONAPI_(JSONAPI):
             WHERE field LIKE '%value_1%
             OR LIKE '%value_2%';
         """
-        filter_param = re.compile(r"^filter\[([^\[\]]+)\]$")
-        filters: list[tuple[str, str]] = [
-            (filter_param.match(key).group(1), query_params[key])
-            for key in query_params.keys()
-            if filter_param.match(key)
-        ]
+
         filter_query_args = []
-        for field, value in filters:
-            field_py = model.__jsonapi_map_to_py__[field]
-            if model_attr := getattr(model, field_py, None):
+        for field, value in filters.items():
+            if field_py := model.__jsonapi_map_to_py__.get(field):
+                model_attr: Column = getattr(model, field_py)
                 filter_query_args.append(or_(model_attr.like("%" + value + "%")))
             else:
                 warnings.warn(
@@ -134,14 +130,28 @@ class JSONAPI_(JSONAPI):
         else:
             return sqla_query_obj
 
+    @staticmethod
+    def _parse_filters(query: dict[str, str]) -> dict[str, list[str]]:
+        prefix = "filters["
+        field_args = {k: v for k, v in query.items() if k.startswith(prefix)}
+
+        filters = {}
+
+        for k, v in field_args.items():
+            k: str
+            v: str
+            filters[k[len(prefix) - 1 : -1]] = v.split(",")
+
+        return filters
+
     def _add_pagination(
-        self, query: dict, db: Session, resource_name: str, sa_query: sqlQuery
+        self, query: dict[str, str], db: Session, resource_name: str, sa_query: sqlQuery
     ) -> tuple[dict, dict]:
         size = MAX_PAGE_SIZE
         offset = 0
 
         class NoPagination:
-            def __init__(self, query: dict, row_count: int):
+            def __init__(self, query: dict[str, str], row_count: int):
                 pag_keys = [k for k in query.keys() if k.startswith("page")]
                 [query.pop(k) for k in pag_keys]
                 self.result = {
@@ -305,7 +315,8 @@ class JSONAPI_(JSONAPI):
             if statement
         }
         include = self._parse_include(includes_statements)
-        fields = self._parse_fields(query)
+        fields: dict[str, list[str]] = self._parse_fields(query)
+        filters = self._parse_filters(query)
         included = {}
         sorts = query.get("sort", "").split(",")
         order_by = []
@@ -314,15 +325,13 @@ class JSONAPI_(JSONAPI):
             sorts = [DEFAULT_SORT]
 
         collection: sqlQuery = session.query(model)
-        collection = self._apply_filter(model, collection, query)
+        collection = self._apply_filters(model, collection, filters)
         collection = self._filter_deleted(model, collection)
 
         # for pagination, use count query instead of pulling in all
         #   of the data just for a row count
         collection_count: sqlQuery = session.query(func.count(model.id))
-        collection_count = self._apply_filter(
-            model, collection_count, query_params=query
-        )
+        collection_count = self._apply_filters(model, collection_count, filters)
         collection_count = self._filter_deleted(model, collection_count)
 
         if vendor_filter:
@@ -409,7 +418,7 @@ class JSONAPI_(JSONAPI):
                 continue
 
             built = self._render_full_resource(
-                instance, include, fields, includes_permitted_ids
+                instance, include, fields, filters, includes_permitted_ids
             )
             included.update(built.pop("included"))
             response.data["data"].append(built)
@@ -453,6 +462,7 @@ class JSONAPI_(JSONAPI):
         }
         include = self._parse_include(includes_statements)
         fields = self._parse_fields(query)
+        filters = self._parse_filters(query)
         response = JSONAPIResponse()
         if includes_models:
             includes_permitted_ids = {
@@ -469,7 +479,7 @@ class JSONAPI_(JSONAPI):
             includes_permitted_ids = dict()
 
         built = self._render_full_resource(
-            resource, include, fields, includes_permitted_ids
+            resource, include, fields, filters, includes_permitted_ids
         )
 
         response.data["included"] = list(built.pop("included").values())
@@ -528,7 +538,7 @@ class JSONAPI_(JSONAPI):
                     response.data["data"] = None
                 else:
                     response.data["data"] = self._render_full_resource(
-                        related, {}, {}, permitted_ids_obj
+                        related, {}, {}, {}, permitted_ids_obj
                     )
             except PermissionDeniedError:
                 response.data["data"] = None
@@ -539,7 +549,7 @@ class JSONAPI_(JSONAPI):
                     continue
                 try:
                     response.data["data"].append(
-                        self._render_full_resource(item, {}, {}, permitted_ids_obj)
+                        self._render_full_resource(item, {}, {}, {}, permitted_ids_obj)
                     )
                 except PermissionDeniedError:
                     continue
@@ -658,10 +668,11 @@ class JSONAPI_(JSONAPI):
     def _render_full_resource(
         self,
         instance: SQLAlchemyModel,
-        include,
-        fields,
+        include: dict[str, str],
+        fields: dict[str, list[str]],
+        filters: dict[str, list[str]],
         permitted_ids: dict[str, set[int]],
-    ):
+    ) -> dict[str, dict | str | int]:
         """
         Generate a representation of a full resource to match JSON API spec.
 
@@ -676,26 +687,18 @@ class JSONAPI_(JSONAPI):
         """
         api_type = instance.__jsonapi_type__
         orm_desc_keys = instance.__mapper__.all_orm_descriptors.keys()
-        to_ret = {
-            "id": instance.id,
-            "type": api_type,
-            "attributes": {},
-            "relationships": {},
-            "included": {},
-        }
+        attributes = {}
+        relationships = {}
+        included = {}
         attrs_to_ignore = {"__mapper__", "id"}
         if api_type in fields.keys():
-            local_fields = list(
-                map((lambda x: instance.__jsonapi_map_to_py__[x]), fields[api_type])
-            )
+            local_fields = [instance.__jsonapi_map_to_py__[x] for x in fields[api_type]]
         else:
             local_fields = orm_desc_keys
 
         for key, relationship in instance.__mapper__.relationships.items():
             attrs_to_ignore |= set([c.name for c in relationship.local_columns]) | {key}
-
             api_key = instance.__jsonapi_map_to_api__[key]
-
             try:
                 desc = get_rel_desc(instance, key, RelationshipActions.GET)
             except PermissionDeniedError:
@@ -703,39 +706,45 @@ class JSONAPI_(JSONAPI):
 
             if relationship.direction == MANYTOONE:
                 if key in local_fields:
-                    to_ret["relationships"][api_key] = {
+                    relationships[api_key] = {
                         "links": self._lazy_relationship(api_type, instance.id, api_key)
                     }
 
                 if api_key in include.keys():
-                    related: SQLAlchemyModel = desc(instance)
-                    if permitted_ids and related:
-                        if related.id not in permitted_ids[related.__jsonapi_type__]:
-                            to_ret["relationships"][api_key]["data"] = None
-                            continue
-                    if related is not None:
-                        perm = get_permission_test(related, None, Permissions.VIEW)
-                    if key in local_fields and (related is None or not perm(related)):
-                        to_ret["relationships"][api_key]["data"] = None
+                    related_item: SQLAlchemyModel = desc(instance)
+                    is_deleted = getattr(related_item, "deleted_at", None) is not None
+                    not_permitted = False
+                    if permitted_ids and related_item:
+                        not_permitted = (
+                            related_item.id
+                            not in permitted_ids[related_item.__jsonapi_type__]
+                        )
+                    if not_permitted or is_deleted:
+                        relationships[api_key]["data"] = None
+                        continue
+
+                    if related_item is not None:
+                        perm = get_permission_test(related_item, None, Permissions.VIEW)
+                    if key in local_fields and (
+                        related_item is None or not perm(related_item)
+                    ):
+                        relationships[api_key]["data"] = None
                         continue
                     if key in local_fields:
-                        to_ret["relationships"][api_key]["data"] = (
-                            self._render_short_instance(related)
+                        relationships[api_key]["data"] = self._render_short_instance(
+                            related_item
                         )  # NOQA
                     new_include = self._parse_include(include[api_key])
                     built = self._render_full_resource(
-                        related, new_include, fields, permitted_ids
+                        related_item, new_include, fields, filters, permitted_ids
                     )
-                    included = built.pop("included")
-                    to_ret["included"].update(included)
-                    to_ret["included"][
-                        (related.__jsonapi_type__, related.id)
-                    ] = built  # NOQA
-
+                    built_included = built.pop("included")
+                    included.update(built_included)
+                    built_incl_key = (related_item.__jsonapi_type__, related_item.id)
+                    included[built_incl_key] = built  # NOQA
             else:
-
                 if key in local_fields:
-                    to_ret["relationships"][api_key] = {
+                    relationships[api_key] = {
                         "links": self._lazy_relationship(
                             api_type, instance.id, api_key
                         ),
@@ -745,7 +754,7 @@ class JSONAPI_(JSONAPI):
                     continue
 
                 if key in local_fields:
-                    to_ret["relationships"][api_key]["data"] = []
+                    relationships[api_key]["data"] = []
 
                 related: list[SQLAlchemyModel] = desc(instance)
                 ## reapply filtering if filtering was used for the query on the
@@ -755,8 +764,8 @@ class JSONAPI_(JSONAPI):
                         item
                         for item in related
                         if item.id in permitted_ids[item.__jsonapi_type__]
+                        and getattr(item, "deleted_at", None) is None
                     ]
-
                 for item in related:
                     try:
                         check_permission(item, None, Permissions.VIEW)
@@ -764,26 +773,33 @@ class JSONAPI_(JSONAPI):
                         continue
 
                     if key in local_fields:
-                        to_ret["relationships"][api_key]["data"].append(
+                        relationships[api_key]["data"].append(
                             self._render_short_instance(item)
                         )
 
                     new_include = self._parse_include(include[api_key])
                     built = self._render_full_resource(
-                        item, new_include, fields, permitted_ids
+                        item, new_include, fields, filters, permitted_ids
                     )
-                    included = built.pop("included")
-                    to_ret["included"].update(included)
-                    to_ret["included"][(item.__jsonapi_type__, item.id)] = built  # NOQA
+                    built_included = built.pop("included")
+                    built_incl_key = (item.__jsonapi_type__, item.id)
+                    included.update(included)
+                    included[built_incl_key] = built  # NOQA
 
         for key in set(orm_desc_keys) - attrs_to_ignore:
             try:
                 desc = get_attr_desc(instance, key, AttributeActions.GET)
                 if key in local_fields:
-                    to_ret["attributes"][instance.__jsonapi_map_to_api__[key]] = desc(
-                        instance
-                    )  # NOQA
+                    py_key = instance.__jsonapi_map_to_api__[key]
+                    attributes[py_key] = desc(instance)  # NOQA
             except PermissionDeniedError:
                 continue
 
+        to_ret = dict(
+            id=instance.id,
+            type=api_type,
+            attributes=attributes,
+            relationships=relationships,
+            included=included,
+        )
         return to_ret
