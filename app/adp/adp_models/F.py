@@ -71,7 +71,7 @@ class F(ModelSeries):
                 rf"""F{self.attributes['motor']}\*{s_code}\*{self.tonnage}\+TXV"""
             )
             self.ratings_piston = (
-                rf"""F{self.attributes['motor']}\*{s_code}\*{self.tonnage}"""
+                rf"""F{self.attributes['motor']}\*{s_code}1{self.tonnage}"""
             )
             self.ratings_hp_txv = self.ratings_field_txv = self.ratings_ac_txv
         else:

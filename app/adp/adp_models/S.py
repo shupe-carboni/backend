@@ -64,7 +64,7 @@ class S(ModelSeries):
         if self.rds_factory_installed or self.rds_field_installed:
             self.ratings_piston = (
                 rf"S{self.attributes['mat']}"
-                rf"{self.attributes['scode']}\*{self.tonnage}"
+                rf"{self.attributes['scode']}1{self.tonnage}"
             )
             self.ratings_ac_txv = self.ratings_hp_txv = self.ratings_field_txv = (
                 rf"S{self.attributes['mat']}"
