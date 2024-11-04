@@ -82,9 +82,16 @@ class JSONAPI_(JSONAPI):
     """
 
     def __init__(self, base, prefix=""):
+        self.recurse_depth = 0
         # JSONAPI's constructor is broken for SQLAchelmy 1.4.x
         setattr(base, "_decl_class_registry", base.registry._class_registry)
         super().__init__(base, prefix)
+
+    def _reset_recurse_count(self):
+        self.recurse_depth = 0
+
+    def _inc_recurse(self):
+        self.recurse_depth += 1
 
     @staticmethod
     def _apply_filters(
@@ -104,7 +111,8 @@ class JSONAPI_(JSONAPI):
 
         filter_query_args = []
         for field, value in filters.items():
-            if field_py := model.__jsonapi_map_to_py__.get(field):
+            resource, attr = field
+            if field_py := model.__jsonapi_map_to_py__.get(attr):
                 model_attr: Column = getattr(model, field_py)
                 filter_query_args.append(or_(model_attr.like("%" + value + "%")))
             else:
@@ -132,7 +140,7 @@ class JSONAPI_(JSONAPI):
 
     @staticmethod
     def _parse_filters(query: dict[str, str]) -> dict[str, list[str]]:
-        prefix = "filters["
+        prefix = "filter["
         field_args = {k: v for k, v in query.items() if k.startswith(prefix)}
 
         filters = {}
@@ -140,7 +148,20 @@ class JSONAPI_(JSONAPI):
         for k, v in field_args.items():
             k: str
             v: str
-            filters[k[len(prefix) - 1 : -1]] = v.split(",")
+            filter_key = k[len(prefix) : -1].split(".")
+            match len(filter_key):
+                case 1:
+                    key_tuple = (None, filter_key.pop())
+                case 2:
+                    key_tuple = tuple(filter_key)
+                case _:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Relationship filters should be formated [{resource}.{attribute}]"
+                        f"\nFilter Argument given: [{'.'.join(filter_key)}]",
+                    )
+
+            filters[key_tuple] = v.split(",")
 
         return filters
 
@@ -481,8 +502,9 @@ class JSONAPI_(JSONAPI):
         built = self._render_full_resource(
             resource, include, fields, filters, includes_permitted_ids
         )
-
+        self._reset_recurse_count()
         response.data["included"] = list(built.pop("included").values())
+
         response.data["data"] = built
         if obj_only:
             return response.data
@@ -670,7 +692,7 @@ class JSONAPI_(JSONAPI):
         instance: SQLAlchemyModel,
         include: dict[str, str],
         fields: dict[str, list[str]],
-        filters: dict[str, list[str]],
+        filters: dict[tuple[str | None, str], list[str]],
         permitted_ids: dict[str, set[int]],
     ) -> dict[str, dict | str | int]:
         """
@@ -685,12 +707,14 @@ class JSONAPI_(JSONAPI):
         Permitted ids are used to recursively filter the includes, preventing potential
         improper data exposure.
         """
+        self._inc_recurse()
         api_type = instance.__jsonapi_type__
         orm_desc_keys = instance.__mapper__.all_orm_descriptors.keys()
         attributes = {}
         relationships = {}
         included = {}
         attrs_to_ignore = {"__mapper__", "id"}
+
         if api_type in fields.keys():
             local_fields = [instance.__jsonapi_map_to_py__[x] for x in fields[api_type]]
         else:
@@ -712,6 +736,15 @@ class JSONAPI_(JSONAPI):
 
                 if api_key in include.keys():
                     related_item: SQLAlchemyModel = desc(instance)
+
+                    reject_instance = False
+                    for filter in filters:
+                        resource, attr = filter
+                        if api_key == resource:
+                            if attr_value := getattr(related_item, attr, None):
+                                if attr_value not in filters[filter]:
+                                    reject_instance = True
+
                     is_deleted = getattr(related_item, "deleted_at", None) is not None
                     not_permitted = False
                     if permitted_ids and related_item:
@@ -719,7 +752,7 @@ class JSONAPI_(JSONAPI):
                             related_item.id
                             not in permitted_ids[related_item.__jsonapi_type__]
                         )
-                    if not_permitted or is_deleted:
+                    if not_permitted or is_deleted or reject_instance:
                         relationships[api_key]["data"] = None
                         continue
 
@@ -757,6 +790,7 @@ class JSONAPI_(JSONAPI):
                     relationships[api_key]["data"] = []
 
                 related: list[SQLAlchemyModel] = desc(instance)
+
                 ## reapply filtering if filtering was used for the query on the
                 ## primary resource
                 if permitted_ids:
@@ -772,20 +806,29 @@ class JSONAPI_(JSONAPI):
                     except PermissionDeniedError:
                         continue
 
+                    reject_instance = False
+                    for filter in filters:
+                        resource, attr = filter
+                        if api_key == resource:
+                            if attr_value := getattr(item, attr, None):
+                                if attr_value not in filters[filter]:
+                                    reject_instance = True
+
+                    if reject_instance:
+                        continue
+
                     if key in local_fields:
                         relationships[api_key]["data"].append(
                             self._render_short_instance(item)
                         )
-
                     new_include = self._parse_include(include[api_key])
                     built = self._render_full_resource(
                         item, new_include, fields, filters, permitted_ids
                     )
                     built_included = built.pop("included")
                     built_incl_key = (item.__jsonapi_type__, item.id)
-                    included.update(included)
+                    included.update(built_included)
                     included[built_incl_key] = built  # NOQA
-
         for key in set(orm_desc_keys) - attrs_to_ignore:
             try:
                 desc = get_attr_desc(instance, key, AttributeActions.GET)
