@@ -1322,6 +1322,9 @@ class VendorCustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     filter_name: str = Field(default=None, alias="filter[name]")
     filter_deleted_at: str = Field(default=None, alias="filter[deleted-at]")
+    filter_vendor_pricing_classes__name: str = Field(
+        default=None, alias="filter[vendor-pricing-classes.name]"
+    )
 
 
 class VendorCustomerFields(BaseModel):
@@ -1376,26 +1379,20 @@ class RelatedVendorCustomerResp(VendorCustomerResp):
     links: Optional[dict] = Field(default=None, exclude=True)
 
 
+vendor_customer_field_and_filter_params = (
+    *VendorCustomerFields.model_fields.keys(),
+    *VendorCustomerFilters.model_fields.keys(),
+)
+standard_query_params = {
+    field: (field_info.annotation, field_info)
+    for field, field_info in Query.model_fields.items()
+}
+vendor_customer_query_params = {
+    field: (Optional[str], None) for field in vendor_customer_field_and_filter_params
+}
+
 _VendorCustomerQuery: type[BaseModel] = create_model(
-    "VendorCustomerQuery",
-    **{
-        field: (field_info.annotation, field_info)
-        for field, field_info in Query.model_fields.items()
-    },
-    **{
-        f"fields_{field}": (Optional[str], None)
-        for field in VendorCustomerRels.model_fields.keys()
-    },
-    **{
-        f"filter_{field}": (Optional[str], None)
-        for field in VendorCustomerAttrs.model_fields.keys()
-    },
-    **{
-        f"fields_vendor_customers": (
-            Optional[str],
-            None,
-        )
-    },
+    "VendorCustomerQuery", **standard_query_params, **vendor_customer_query_params
 )
 
 
