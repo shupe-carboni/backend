@@ -502,7 +502,6 @@ class JSONAPI_(JSONAPI):
         built = self._render_full_resource(
             resource, include, fields, filters, includes_permitted_ids
         )
-        self._reset_recurse_count()
         response.data["included"] = list(built.pop("included").values())
 
         response.data["data"] = built
@@ -707,7 +706,6 @@ class JSONAPI_(JSONAPI):
         Permitted ids are used to recursively filter the includes, preventing potential
         improper data exposure.
         """
-        self._inc_recurse()
         api_type = instance.__jsonapi_type__
         orm_desc_keys = instance.__mapper__.all_orm_descriptors.keys()
         attributes = {}
@@ -715,6 +713,8 @@ class JSONAPI_(JSONAPI):
         included = {}
         attrs_to_ignore = {"__mapper__", "id"}
 
+        if api_type == "vendor-product-attrs":
+            print("yes")
         if api_type in fields.keys():
             local_fields = [instance.__jsonapi_map_to_py__[x] for x in fields[api_type]]
         else:
