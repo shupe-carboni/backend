@@ -713,8 +713,6 @@ class JSONAPI_(JSONAPI):
         included = {}
         attrs_to_ignore = {"__mapper__", "id"}
 
-        if api_type == "vendor-product-attrs":
-            print("yes")
         if api_type in fields.keys():
             local_fields = [instance.__jsonapi_map_to_py__[x] for x in fields[api_type]]
         else:
