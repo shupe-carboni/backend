@@ -57,7 +57,11 @@ class Data:
 
     def __post_init__(self):
         self.attributes = {**self.attributes} if self.attributes else None
+        if self.attributes:
+            self.attributes = {k: v for k, v in self.attributes.items() if k}
         self.relationships = {**self.relationships} if self.relationships else None
+        if self.relationships:
+            self.relationships = {k: v for k, v in self.relationships.items() if k}
 
     @staticmethod
     def rand_num() -> int:
@@ -577,7 +581,7 @@ post_patch_delete_outline = [
         route=VENDORS_PREFIX / "vendor-product-attrs",
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
-            attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
+            attributes=Attributes(attr="attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
                 vendor_products={
