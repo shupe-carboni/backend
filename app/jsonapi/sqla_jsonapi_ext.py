@@ -713,6 +713,14 @@ class JSONAPI_(JSONAPI):
         included = {}
         attrs_to_ignore = {"__mapper__", "id"}
 
+        to_ret = dict(
+            id=instance.id,
+            type=api_type,
+            attributes=attributes,
+            relationships=relationships,
+            included=included,
+        )
+
         if api_type in fields.keys():
             local_fields = [instance.__jsonapi_map_to_py__[x] for x in fields[api_type]]
         else:
@@ -742,6 +750,8 @@ class JSONAPI_(JSONAPI):
                             if attr_value := getattr(related_item, attr, None):
                                 if attr_value not in filters[filter]:
                                     reject_instance = True
+                    if reject_instance:
+                        return to_ret
 
                     is_deleted = getattr(related_item, "deleted_at", None) is not None
                     not_permitted = False
@@ -750,7 +760,7 @@ class JSONAPI_(JSONAPI):
                             related_item.id
                             not in permitted_ids[related_item.__jsonapi_type__]
                         )
-                    if not_permitted or is_deleted or reject_instance:
+                    if not_permitted or is_deleted:
                         relationships[api_key]["data"] = None
                         continue
 
@@ -804,15 +814,15 @@ class JSONAPI_(JSONAPI):
                     except PermissionDeniedError:
                         continue
 
-                    reject_instance = False
+                    reject_related_item = False
                     for filter in filters:
                         resource, attr = filter
                         if api_key == resource:
                             if attr_value := getattr(item, attr, None):
                                 if attr_value not in filters[filter]:
-                                    reject_instance = True
+                                    reject_related_item = True
 
-                    if reject_instance:
+                    if reject_related_item:
                         continue
 
                     if key in local_fields:
@@ -835,12 +845,4 @@ class JSONAPI_(JSONAPI):
                     attributes[py_key] = desc(instance)  # NOQA
             except PermissionDeniedError:
                 continue
-
-        to_ret = dict(
-            id=instance.id,
-            type=api_type,
-            attributes=attributes,
-            relationships=relationships,
-            included=included,
-        )
         return to_ret
