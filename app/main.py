@@ -183,3 +183,4 @@ async def test_db():
 async def v2_available() -> None:
     """Feature flag endpoint for clients"""
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+    # return Response(status_code=status.HTTP_200_OK)
