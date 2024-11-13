@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import os
+from json import loads
 from pathlib import Path
 from copy import copy
 from io import BytesIO
@@ -624,16 +625,11 @@ class PriceBook:
             return self
 
         def set_series_name(oemseries: str) -> str:
-            # TODO abstract this to either environment variables, db entries, or a file
-            # extrnal to the code itself
-            if any([val in oemseries for val in ("4AC", "4HP", "7AC", "7HP")]):
+            shorter_prefixes: list = loads(os.getenv("SHORT_OEM_PREFIXES", "[]"))
+            longer_prefixes: list = loads(os.getenv("LONG_OEM_PREFIXES", "[]"))
+            if any([val in oemseries for val in longer_prefixes]):
                 start, end = (0, 5)
-            elif (
-                oemseries.startswith("YH")
-                or oemseries.startswith("AC0")
-                or oemseries.startswith("YC")
-                or oemseries.startswith("HH8")
-            ):
+            elif any(oemseries.startswith(prefix) for prefix in shorter_prefixes):
                 start, end = (0, 3)
             else:
                 start, end = (0, 4)
