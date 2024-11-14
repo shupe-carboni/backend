@@ -69,6 +69,7 @@ CREATE TABLE vendor_pricing_by_class (
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
 	product_id INT REFERENCES vendor_products(id),
 	price INT,
+	effective_date TIMESTAMP DEFAULT CURRENT_DATE,
 	deleted_at TIMESTAMP);
 CREATE TABLE vendor_pricing_by_customer (
 	id SERIAL PRIMARY KEY,
@@ -77,12 +78,14 @@ CREATE TABLE vendor_pricing_by_customer (
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	use_as_override BOOLEAN DEFAULT false,
 	price INT,
+	effective_date TIMESTAMP DEFAULT CURRENT_DATE,
 	deleted_at TIMESTAMP);
 CREATE TABLE vendor_product_class_discounts (
 	id SERIAL PRIMARY KEY,
 	product_class_id INT REFERENCES vendor_product_classes(id),
 	vendor_customer_id INT REFERENCES vendor_customers(id),
 	discount FLOAT,
+	effective_date TIMESTAMP DEFAULT CURRENT_DATE,
 	deleted_at TIMESTAMP);
 CREATE TABLE vendor_customer_pricing_classes (
 	id SERIAL PRIMARY KEY,
@@ -177,6 +180,7 @@ CREATE TABLE vendor_pricing_by_class_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_pricing_by_class_id INT REFERENCES vendor_pricing_by_class(id),
 	price INT,
+	effective_date TIMESTAMP,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 -- vendor pricing by customer changelog
@@ -184,6 +188,7 @@ CREATE TABLE vendor_pricing_by_customer_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_pricing_by_customer_id INT REFERENCES vendor_pricing_by_customer(id),
 	price INT,
+	effective_date TIMESTAMP,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 -- vendor product class discount changelog
@@ -191,6 +196,7 @@ CREATE TABLE vendor_product_class_discounts_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_product_class_discounts_id INT REFERENCES vendor_product_class_discounts(id),
 	discount FLOAT,
+	effective_date TIMESTAMP,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 -- vendor quote products changelog
@@ -501,8 +507,8 @@ EXECUTE FUNCTION vendor_customers_changelog_update_fn();
 CREATE OR REPLACE FUNCTION vendor_pricing_by_class_changelog_insert_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price)
-	VALUES (NEW.id, NEW.price);
+	INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price, effective_date)
+	VALUES (NEW.id, NEW.price, NEW.effective_date);
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -514,15 +520,15 @@ EXECUTE FUNCTION vendor_pricing_by_class_changelog_insert_fn();
 CREATE OR REPLACE FUNCTION vendor_pricing_by_class_changelog_update_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	IF OLD.price != NEW.price THEN
-		INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price)
-		VALUES (OLD.id, NEW.price);
+	IF OLD.price != NEW.price OR OLD.effective_date != NEW.effective_date THEN
+		INSERT INTO vendor_pricing_by_class_changelog (vendor_pricing_by_class_id, price, effective_date)
+		VALUES (OLD.id, NEW.price, NEW.effective_date);
 	END IF;
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER vendor_pricing_by_class_changelog_update
-BEFORE UPDATE ON vendor_pricing_by_class
+BEFORE UPDATE OF price, effective_date ON vendor_pricing_by_class
 FOR EACH ROW
 EXECUTE FUNCTION vendor_pricing_by_class_changelog_update_fn();
 
@@ -531,8 +537,8 @@ EXECUTE FUNCTION vendor_pricing_by_class_changelog_update_fn();
 CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_changelog_insert_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price)
-	VALUES (NEW.id, NEW.price);
+	INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price, effective_date)
+	VALUES (NEW.id, NEW.price, NEW.effective_date);
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -544,15 +550,15 @@ EXECUTE FUNCTION vendor_pricing_by_customer_changelog_insert_fn();
 CREATE OR REPLACE FUNCTION vendor_pricing_by_customer_changelog_update_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	IF OLD.price != NEW.price THEN
-		INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price)
-		VALUES (OLD.id, NEW.price);
+	IF OLD.price != NEW.price OR OLD.effective_date != NEW.effective_date THEN
+		INSERT INTO vendor_pricing_by_customer_changelog (vendor_pricing_by_customer_id, price, effective_date)
+		VALUES (OLD.id, NEW.price, NEW.effective_date);
 	END IF;
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER vendor_pricing_by_customer_changelog_update
-BEFORE UPDATE ON vendor_pricing_by_customer
+BEFORE UPDATE OF price, effective_date ON vendor_pricing_by_customer
 FOR EACH ROW
 EXECUTE FUNCTION vendor_pricing_by_customer_changelog_update_fn();
 
@@ -561,8 +567,8 @@ EXECUTE FUNCTION vendor_pricing_by_customer_changelog_update_fn();
 CREATE OR REPLACE FUNCTION vendor_product_class_discounts_changelog_insert_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount)
-	VALUES (NEW.id, NEW.discount);
+	INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount, effective_date)
+	VALUES (NEW.id, NEW.discount, NEW.effective_date);
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -574,15 +580,15 @@ EXECUTE FUNCTION vendor_product_class_discounts_changelog_insert_fn();
 CREATE OR REPLACE FUNCTION vendor_product_class_discounts_changelog_update_fn()
 RETURNS TRIGGER AS $$
 BEGIN
-	IF OLD.discount != NEW.discount THEN
-		INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount)
-		VALUES (OLD.id, NEW.discount);
+	IF OLD.discount != NEW.discount OR OLD.effective_date != NEW.effective_date THEN
+		INSERT INTO vendor_product_class_discounts_changelog (vendor_product_class_discounts_id, discount, effective_date)
+		VALUES (OLD.id, NEW.discount, NEW.effective_date);
 	END IF;
 	RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER vendor_product_class_discounts_changelog_update
-BEFORE UPDATE ON vendor_product_class_discounts
+BEFORE UPDATE OF discount, effective_date ON vendor_product_class_discounts
 FOR EACH ROW
 EXECUTE FUNCTION vendor_product_class_discounts_changelog_update_fn();
 
