@@ -920,6 +920,7 @@ class VendorPricingByClassRelResp(JSONAPIRelationshipsResponse):
 class VendorPricingByClassAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1024,6 +1025,7 @@ class VendorPricingByClassQueryJSONAPI(
 
 class ModVendorPricingByClassAttrs(BaseModel):
     price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1052,6 +1054,7 @@ class VendorPricingByClassChangelogRelResp(JSONAPIRelationshipsResponse):
 class VendorPricingByClassChangelogAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     timestamp: Optional[datetime] = Field(default=None, alias="timestamp")
 
 
@@ -1142,6 +1145,7 @@ class VendorPricingByCustomerAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     use_as_override: Optional[bool] = Field(default=None, alias="use-as-override")
     price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1436,6 +1440,7 @@ class VendorPricingByCustomerChangelogRelResp(JSONAPIRelationshipsResponse):
 class VendorPricingByCustomerChangelogAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     timestamp: Optional[datetime] = Field(default=None, alias="timestamp")
 
 
@@ -1530,6 +1535,7 @@ class VendorProductClassDiscountRelResp(JSONAPIRelationshipsResponse):
 class VendorProductClassDiscountAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     discount: Optional[float] = Field(default=None, alias="discount")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1628,6 +1634,7 @@ class VendorProductClassDiscountQueryJSONAPI(
 
 class ModVendorProductClassDiscountAttrs(BaseModel):
     discount: Optional[float] = Field(default=None, alias="discount")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1711,6 +1718,7 @@ class NewVendorPricingByCustomerAttr(BaseModel):
 
 class ModVendorPricingByCustomerAttrAttrs(BaseModel):
     value: Optional[str] = Field(default=None, alias="value")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 
@@ -1782,6 +1790,7 @@ class VendorProductClassDiscountsChangelogRelResp(JSONAPIRelationshipsResponse):
 class VendorProductClassDiscountsChangelogAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     discount: Optional[float] = Field(default=None, alias="discount")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     timestamp: Optional[datetime] = Field(default=None, alias="timestamp")
 
 

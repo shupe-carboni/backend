@@ -1148,6 +1148,7 @@ class VendorPricingByClass(Base):
     pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
     product_id = Column(Integer, ForeignKey("vendor_products.id"))
     price = Column(Integer)
+    effective_date = Column(DateTime)
     deleted_at = Column(DateTime)
 
     # relationships
@@ -1197,6 +1198,7 @@ class VendorPricingByClassChangelog(Base):
     id = Column(Integer, primary_key=True)
     vendor_pricing_class_id = Column(Integer, ForeignKey("vendor_pricing_by_class.id"))
     price = Column(Integer)
+    effective_date = Column(DateTime)
     timestamp = Column(DateTime)
 
     # relationships
@@ -1221,6 +1223,7 @@ class VendorPricingByCustomer(Base):
     vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
     use_as_override = Column(Boolean)
     price = Column(Integer)
+    effective_date = Column(DateTime)
     deleted_at = Column(DateTime)
 
     # relationships
@@ -1356,6 +1359,7 @@ class VendorPricingByCustomerChangelog(Base):
         Integer, ForeignKey("vendor_pricing_by_customer.id")
     )
     price = Column(Integer)
+    effective_date = Column(DateTime)
     timestamp = Column(DateTime)
 
     # relationships
@@ -1399,6 +1403,7 @@ class VendorProductClassDiscount(Base):
     product_class_id = Column(Integer, ForeignKey("vendor_product_classes.id"))
     vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
     discount = Column(Float)
+    effective_date = Column(DateTime)
     deleted_at = Column(DateTime)
 
     # relationships
@@ -1490,6 +1495,7 @@ class VendorProductClassDiscountsChangelog(Base):
         Integer, ForeignKey("vendor_product_class_discounts.id")
     )
     discount = Column(Float)
+    effective_date = Column(DateTime)
     timestamp = Column(DateTime)
 
     # relationships

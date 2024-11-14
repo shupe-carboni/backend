@@ -8,6 +8,7 @@ from typing import Union, Optional
 from dataclasses import dataclass, asdict, replace
 from enum import StrEnum
 from itertools import chain
+from datetime import datetime, timedelta
 
 from app.main import app
 from app.auth import authenticate_auth0_token
@@ -17,6 +18,8 @@ from app.jsonapi.sqla_models import *
 test_client = TestClient(app)
 
 ParameterizedStatusCodes = list[tuple[auth_overrides.Token, int]]
+
+FUTURE_DATE = datetime.today() + timedelta(days=60)
 
 
 class Arbitrary:
@@ -58,10 +61,14 @@ class Data:
     def __post_init__(self):
         self.attributes = {**self.attributes} if self.attributes else None
         if self.attributes:
-            self.attributes = {k: v for k, v in self.attributes.items() if k}
+            self.attributes = {
+                k.replace("_", "-"): v for k, v in self.attributes.items() if k
+            }
         self.relationships = {**self.relationships} if self.relationships else None
         if self.relationships:
-            self.relationships = {k: v for k, v in self.relationships.items() if k}
+            self.relationships = {
+                k.replace("_", "-"): v for k, v in self.relationships.items() if k
+            }
 
     @staticmethod
     def rand_num() -> int:
@@ -537,7 +544,7 @@ post_patch_delete_outline = [
         route=VENDORS_PREFIX / "vendor-product-class-discounts",
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
-            attributes=Attributes(discount="{0}"),
+            attributes=Attributes(discount="{0}", effective_date=str(FUTURE_DATE)),
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
                 vendor_customers={
@@ -611,7 +618,9 @@ post_patch_delete_outline = [
         route=VENDORS_PREFIX / "vendor-pricing-by-customer",
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
-            attributes=Attributes(use_as_override=False, price="{0}"),
+            attributes=Attributes(
+                use_as_override=False, price="{0}", effective_date=str(FUTURE_DATE)
+            ),
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
                 vendor_customers={
@@ -688,7 +697,7 @@ post_patch_delete_outline = [
         route=VENDORS_PREFIX / "vendor-pricing-by-class",
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
-            attributes=Attributes(price="{0}"),
+            attributes=Attributes(price="{0}", effective_date=str(datetime.today())),
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
                 vendor_pricing_classes={
@@ -707,7 +716,7 @@ post_patch_delete_outline = [
         ),
         patch=Data(
             id="{0}",
-            attributes=Attributes(price="{0}"),
+            attributes=Attributes(price="{0}", effective_date=str(FUTURE_DATE)),
             relationships=Relationships(
                 vendors={"data": {"id": "TEST_VENDOR", "type": "vendors"}},
                 vendor_pricing_classes={
