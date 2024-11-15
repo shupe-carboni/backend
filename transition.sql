@@ -1121,32 +1121,6 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	ON vpc.vendor_id = v.id
 	WHERE v.id = 'adp'
 	AND vpc.name = 'STANDARD_PARTS';
--- zero discount coils
-INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT DISTINCT vpc.id, vp.id, (acp.zero_discount_price*100)::INT
-	FROM adp_coil_programs AS acp
-	JOIN vendor_products AS vp
-	ON vp.vendor_product_identifier = acp.model_number
-	JOIN vendors AS v
-	ON v.id = vp.vendor_id
-	JOIN vendor_pricing_classes AS vpc
-	ON vpc.vendor_id = v.id
-	WHERE v.id = 'adp'
-	AND vpc.name = 'ZERO_DISCOUNT'
-	AND acp.stage::VARCHAR IN ('ACTIVE','PENDING');
--- zero discount air handlers
-INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
-	SELECT DISTINCT vpc.id, vp.id, (ahp.zero_discount_price*100)::INT
-	FROM adp_ah_programs AS ahp
-	JOIN vendor_products AS vp
-	ON vp.vendor_product_identifier = ahp.model_number
-	JOIN vendors AS v
-	ON v.id = vp.vendor_id
-	JOIN vendor_pricing_classes AS vpc
-	ON vpc.vendor_id = v.id
-	WHERE v.id = 'adp'
-	AND vpc.name = 'ZERO_DISCOUNT'
-	AND ahp.stage::VARCHAR IN ('ACTIVE','PENDING');
 
 -- friedrich
 INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
