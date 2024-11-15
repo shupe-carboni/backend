@@ -87,6 +87,13 @@ CREATE TABLE vendor_product_class_discounts (
 	discount FLOAT,
 	effective_date TIMESTAMP DEFAULT CURRENT_DATE,
 	deleted_at TIMESTAMP);
+CREATE TABLE vendor_product_discounts (
+	id SERIAL PRIMARY KEY,
+	product_id INT REFERENCES vendor_products(id),
+	vendor_customer_id INT REFERENCES vendor_customers(id),
+	discount FLOAT,
+	effective_date TIMESTAMP DEFAULT CURRENT_DATE,
+	deleted_at TIMESTAMP);
 CREATE TABLE vendor_customer_pricing_classes (
 	id SERIAL PRIMARY KEY,
 	pricing_class_id INT REFERENCES vendor_pricing_classes(id),
@@ -195,6 +202,14 @@ CREATE TABLE vendor_pricing_by_customer_changelog (
 CREATE TABLE vendor_product_class_discounts_changelog (
 	id SERIAL PRIMARY KEY,
 	vendor_product_class_discounts_id INT REFERENCES vendor_product_class_discounts(id),
+	discount FLOAT,
+	effective_date TIMESTAMP,
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+-- vendor product discount changelog
+CREATE TABLE vendor_product_discounts_changelog (
+	id SERIAL PRIMARY KEY,
+	vendor_product_discounts_id INT REFERENCES vendor_product_discounts(id),
 	discount FLOAT,
 	effective_date TIMESTAMP,
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -346,6 +361,34 @@ BEFORE INSERT ON vendor_product_class_discounts
 FOR EACH ROW
 EXECUTE FUNCTION vendor_product_class_discounts_consistency_fn();
 
+-- product class discounts
+CREATE OR REPLACE FUNCTION vendor_product_discounts_consistency_fn()
+RETURNS TRIGGER AS $$
+DECLARE
+    vc_vendor_id VARCHAR;
+    vp_vendor_id VARCHAR;
+BEGIN
+    -- customer
+    SELECT vendor_id INTO vc_vendor_id
+	FROM vendor_customers
+	WHERE vendor_customers.id = NEW.vendor_customer_id;
+    
+    -- product
+    SELECT vendor_id INTO vp_vendor_id
+	FROM vendor_products
+	WHERE vendor_products.id = NEW.product_id;
+    
+    -- Ensure they match
+    IF NOT (vc_vendor_id IS NOT DISTINCT FROM vp_vendor_id) THEN
+        RAISE EXCEPTION 'Vendor mismatch between product and customer';
+    END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_discounts_consistency
+BEFORE INSERT ON vendor_product_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_discounts_consistency_fn();
 
 -- product to class mapping
 CREATE OR REPLACE FUNCTION vendor_product_to_class_mapping_consistency_fn()
@@ -592,6 +635,37 @@ BEFORE UPDATE OF discount, effective_date ON vendor_product_class_discounts
 FOR EACH ROW
 EXECUTE FUNCTION vendor_product_class_discounts_changelog_update_fn();
 
+-- vendor product discount
+-- new values
+CREATE OR REPLACE FUNCTION vendor_product_discounts_changelog_insert_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO vendor_product_discounts_changelog (vendor_product_discounts_id, discount, effective_date)
+	VALUES (NEW.id, NEW.discount, NEW.effective_date);
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_discounts_changelog_insert
+AFTER INSERT ON vendor_product_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_discounts_changelog_insert_fn();
+
+-- updates
+CREATE OR REPLACE FUNCTION vendor_product_discounts_changelog_update_fn()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF OLD.discount != NEW.discount OR OLD.effective_date != NEW.effective_date THEN
+		INSERT INTO vendor_product_discounts_changelog (vendor_product_discounts_id, discount, effective_date)
+		VALUES (OLD.id, NEW.discount, NEW.effective_date);
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER vendor_product_discounts_changelog_update
+BEFORE UPDATE OF discount, effective_date ON vendor_product_discounts
+FOR EACH ROW
+EXECUTE FUNCTION vendor_product_discounts_changelog_update_fn();
+
 -- vendor quote products
 -- new values
 CREATE OR REPLACE FUNCTION vendor_quote_products_changelog_insert_fn()
@@ -730,9 +804,6 @@ INSERT INTO customer_location_mapping (vendor_customer_id, customer_location_id)
 	JOIN vendor_customers AS vc
 	ON vc.name = ac.adp_alias;
 
--- friedrich
--- no data
-
 -- customer terms
 INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	SELECT DISTINCT d.vendor_customer_id, 'ppf', 'NUMBER', ppf
@@ -764,6 +835,16 @@ INSERT INTO vendor_products (vendor_id, vendor_product_identifier)
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier)
 	SELECT DISTINCT 'adp', model_number
 	FROM adp_ah_programs;
+INSERT INTO vendor_products (vendor_id, vendor_product_identifier)
+	SELECT DISTINCT 'adp', model
+	FROM adp_snps
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM vendor_products
+		WHERE vendor_products.vendor_product_identifier = adp_snps.model
+		AND vendor_products.vendor_id = 'adp'
+	);
+
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
 	SELECT DISTINCT 'adp', adppp.part_number::VARCHAR, adppp.description
 	FROM adp_pricing_parts AS adppp;
@@ -977,6 +1058,31 @@ INSERT INTO vendor_product_class_discounts (product_class_id, vendor_customer_id
 	ON ac.id = adpmgd.customer_id
 	JOIN vendor_customers AS vc
 	ON vc.name = ac.adp_alias;
+
+-- migrate adp snp discounts to vendor product discounts
+INSERT INTO vendor_product_discounts (product_id, vendor_customer_id, discount)
+	SELECT p.id, vc.id, adp.discount
+	FROM (
+		SELECT snp.customer_id, snp.model,
+			ROUND((1-(snp.price::NUMERIC / (vpc.price/100)::NUMERIC))*100, 2) AS discount
+		FROM adp_snps AS snp
+		JOIN vendor_products AS p
+		ON p.vendor_product_identifier = snp.model
+		JOIN vendor_pricing_by_class AS vpc
+		ON vpc.product_id = p.id
+		JOIN vendor_pricing_classes AS classes
+		ON classes.id = vpc.pricing_class_id
+		WHERE classes.name = 'ZERO_DISCOUNT'
+		AND classes.vendor_id = 'adp'
+	) as adp
+	JOIN vendor_products AS p
+	ON p.vendor_product_identifier = adp.model
+	JOIN adp_customers AS ac
+	ON ac.id = adp.customer_id
+	JOIN vendor_customers AS vc
+	ON vc.name = ac.adp_alias
+	WHERE p.vendor_id = 'adp'
+	AND vc.vendor_id = 'adp';
 
 -- price classes
 INSERT INTO vendor_pricing_classes (vendor_id, name)
