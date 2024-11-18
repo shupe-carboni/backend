@@ -1329,6 +1329,9 @@ class VendorCustomerFilters(BaseModel):
     filter_vendor_pricing_classes__name: str = Field(
         default=None, alias="filter[vendor-pricing-classes.name]"
     )
+    filter_vendor_product_classes__name: str = Field(
+        default=None, alias="filter[vendor-product-classes.name]"
+    )
 
 
 class VendorCustomerFields(BaseModel):

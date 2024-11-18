@@ -693,7 +693,7 @@ class JSONAPI_(JSONAPI):
         fields: dict[str, list[str]],
         filters: dict[tuple[str | None, str], list[str]],
         permitted_ids: dict[str, set[int]],
-    ) -> dict[str, dict | str | int]:
+    ) -> tuple[dict[str, dict | str | int], bool]:
         """
         Generate a representation of a full resource to match JSON API spec.
 
@@ -751,7 +751,7 @@ class JSONAPI_(JSONAPI):
                                 if attr_value not in filters[filter]:
                                     reject_instance = True
                     if reject_instance:
-                        return to_ret
+                        return to_ret, reject_instance
 
                     is_deleted = getattr(related_item, "deleted_at", None) is not None
                     not_permitted = False
@@ -776,13 +776,17 @@ class JSONAPI_(JSONAPI):
                             related_item
                         )  # NOQA
                     new_include = self._parse_include(include[api_key])
-                    built = self._render_full_resource(
+                    built, rejected = self._render_full_resource(
                         related_item, new_include, fields, filters, permitted_ids
                     )
-                    built_included = built.pop("included")
-                    included.update(built_included)
-                    built_incl_key = (related_item.__jsonapi_type__, related_item.id)
-                    included[built_incl_key] = built  # NOQA
+                    if not rejected:
+                        built_included = built.pop("included")
+                        included.update(built_included)
+                        built_incl_key = (
+                            related_item.__jsonapi_type__,
+                            related_item.id,
+                        )
+                        included[built_incl_key] = built  # NOQA
             else:
                 if key in local_fields:
                     relationships[api_key] = {
@@ -830,13 +834,15 @@ class JSONAPI_(JSONAPI):
                             self._render_short_instance(item)
                         )
                     new_include = self._parse_include(include[api_key])
-                    built = self._render_full_resource(
+                    built, rejected = self._render_full_resource(
                         item, new_include, fields, filters, permitted_ids
                     )
-                    built_included = built.pop("included")
-                    built_incl_key = (item.__jsonapi_type__, item.id)
-                    included.update(built_included)
-                    included[built_incl_key] = built  # NOQA
+                    if not rejected:
+                        built_included = built.pop("included")
+                        built_incl_key = (item.__jsonapi_type__, item.id)
+                        included.update(built_included)
+                        included[built_incl_key] = built  # NOQA
+
         for key in set(orm_desc_keys) - attrs_to_ignore:
             try:
                 desc = get_attr_desc(instance, key, AttributeActions.GET)
@@ -845,4 +851,5 @@ class JSONAPI_(JSONAPI):
                     attributes[py_key] = desc(instance)  # NOQA
             except PermissionDeniedError:
                 continue
-        return to_ret
+
+        return to_ret, False
