@@ -438,7 +438,7 @@ class JSONAPI_(JSONAPI):
             if end is not None and (pos < start or pos > end):
                 continue
 
-            built = self._render_full_resource(
+            built, rejected = self._render_full_resource(
                 instance, include, fields, filters, includes_permitted_ids
             )
             included.update(built.pop("included"))
@@ -499,7 +499,7 @@ class JSONAPI_(JSONAPI):
         else:
             includes_permitted_ids = dict()
 
-        built = self._render_full_resource(
+        built, _ = self._render_full_resource(
             resource, include, fields, filters, includes_permitted_ids
         )
         response.data["included"] = list(built.pop("included").values())
@@ -558,7 +558,7 @@ class JSONAPI_(JSONAPI):
                 elif related.id not in permitted_ids_obj[related.__jsonapi_type__]:
                     response.data["data"] = None
                 else:
-                    response.data["data"] = self._render_full_resource(
+                    response.data["data"], _ = self._render_full_resource(
                         related, {}, {}, {}, permitted_ids_obj
                     )
             except PermissionDeniedError:
@@ -570,7 +570,9 @@ class JSONAPI_(JSONAPI):
                     continue
                 try:
                     response.data["data"].append(
-                        self._render_full_resource(item, {}, {}, {}, permitted_ids_obj)
+                        self._render_full_resource(item, {}, {}, {}, permitted_ids_obj)[
+                            0
+                        ]
                     )
                 except PermissionDeniedError:
                     continue
