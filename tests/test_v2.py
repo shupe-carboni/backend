@@ -964,4 +964,6 @@ def test_deep_filtering_within_includes(filter_arg: str, item_count: int):
     for include in included:
         if include["type"] == "vendor-products":
             the_count += 1
-    assert the_count == item_count
+    msg = lambda x, y: "Too many" if x > y else "Too few"
+    equal_counts = the_count == item_count
+    assert equal_counts, f"{msg(the_count,item_count)} products returned"
