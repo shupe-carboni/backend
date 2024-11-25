@@ -1326,11 +1326,11 @@ class VendorCustomerFilters(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     filter_name: str = Field(default=None, alias="filter[name]")
     filter_deleted_at: str = Field(default=None, alias="filter[deleted-at]")
-    filter_vendor_pricing_classes__name: str = Field(
-        default=None, alias="filter[vendor-pricing-classes.name]"
-    )
     filter_vendor_product_classes__name: str = Field(
         default=None, alias="filter[vendor-product-classes.name]"
+    )
+    filter_vendor_product_classes__rank: str = Field(
+        default=None, alias="filter[vendor-product-classes.rank]"
     )
 
 
