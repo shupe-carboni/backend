@@ -934,11 +934,13 @@ filter_to_none = "filter_vendor_product_classes__name=SomeName"
 filter_name_success = "filter_vendor_product_classes__name=Accessory"
 filter_name_and_rank_success = "filter_vendor_product_classes__name=Accessory&filter_vendor_product_classes__rank=1"
 filter_name_and_rank_none = "filter_vendor_product_classes__name=Accessory&filter_vendor_product_classes__rank=2"
+no_filter = ""
 filters = [
     (filter_to_none, 0),
     (filter_name_success, 1),
     (filter_name_and_rank_success, 1),
     (filter_name_and_rank_none, 0),
+    (no_filter, 12),
 ]
 
 
