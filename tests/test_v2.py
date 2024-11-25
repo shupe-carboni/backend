@@ -928,3 +928,36 @@ def test_post_patch_delete(
             if 199 < status_code < 300:
                 status_code = 204
             assert resp.status_code == status_code, try_return_json(resp)
+
+
+filter_to_none = "filter_vendor_product_classes__name=SomeName"
+filter_name_success = "filter_vendor_product_classes__name=Accessory"
+filter_name_and_rank_success = "filter_vendor_product_classes__name=Accessory&filter_vendor_product_classes__rank=1"
+filter_name_and_rank_none = "filter_vendor_product_classes__name=Accessory&filter_vendor_product_classes__rank=2"
+filters = [
+    (filter_to_none, 0),
+    (filter_name_success, 1),
+    (filter_name_and_rank_success, 1),
+    (filter_name_and_rank_none, 0),
+]
+
+
+@mark.parametrize("filter_arg,item_count", filters)
+def test_deep_filtering_within_includes(filter_arg: str, item_count: int):
+    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
+    base_route = str(TEST_VENDOR_TEST_CUSTOMER)
+    route_with_includes = (
+        base_route + "?include="
+        "vendor-pricing-by-customer.vendor-products.vendor-product-attrs,"
+        "vendor-pricing-by-customer.vendor-products.vendor-product-to-class-mapping"
+        ".vendor-product-classes"
+    )
+    full_route = route_with_includes + f"&{filter_arg}"
+    resp = test_client.get(full_route)
+    assert resp.status_code == 200, resp.text
+    included = resp.json()["included"]
+    the_count = 0
+    for include in included:
+        if include["type"] == "vendor-products":
+            the_count += 1
+    assert the_count == item_count

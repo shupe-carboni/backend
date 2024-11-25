@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import warnings
 from typing import Any
+from itertools import chain
 from sqlalchemy_jsonapi import JSONAPI
 from fastapi import HTTPException
 from sqlalchemy import or_, func, inspect, Column, select
@@ -142,7 +143,6 @@ class JSONAPI_(JSONAPI):
     def _parse_filters(query: dict[str, str]) -> dict[str, list[str]]:
         prefix = "filter["
         field_args = {k: v for k, v in query.items() if k.startswith(prefix)}
-
         filters = {}
 
         for k, v in field_args.items():
@@ -713,6 +713,11 @@ class JSONAPI_(JSONAPI):
         attributes = {}
         relationships = {}
         included = {}
+        rejected = False
+        all_keys_in_includes = set(
+            chain(*[e[-1].split(".") for e in include.values() if e])
+        )
+        filter_in_downstream = any(f[0] in all_keys_in_includes for f in filters)
         attrs_to_ignore = {"__mapper__", "id"}
 
         to_ret = dict(
@@ -750,10 +755,10 @@ class JSONAPI_(JSONAPI):
                         resource, attr = filter
                         if api_key == resource:
                             if attr_value := getattr(related_item, attr, None):
-                                if attr_value not in filters[filter]:
+                                if str(attr_value) not in filters[filter]:
                                     reject_instance = True
                     if reject_instance:
-                        return to_ret, reject_instance
+                        return {}, reject_instance
 
                     is_deleted = getattr(related_item, "deleted_at", None) is not None
                     not_permitted = False
@@ -805,6 +810,9 @@ class JSONAPI_(JSONAPI):
 
                 related: list[SQLAlchemyModel] = desc(instance)
 
+                if not related and filter_in_downstream:
+                    return {}, True
+
                 ## reapply filtering if filtering was used for the query on the
                 ## primary resource
                 if permitted_ids:
@@ -854,4 +862,4 @@ class JSONAPI_(JSONAPI):
             except PermissionDeniedError:
                 continue
 
-        return to_ret, False
+        return to_ret, rejected
