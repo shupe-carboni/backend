@@ -720,6 +720,16 @@ class JSONAPI_(JSONAPI):
         filter_in_downstream = any(f[0] in all_keys_in_includes for f in filters)
         attrs_to_ignore = {"__mapper__", "id"}
 
+        def apply_filter(item: SQLAlchemyModel) -> bool:
+            reject_instance = False
+            for filter in filters:
+                resource, attr = filter
+                if api_key == resource:
+                    if attr_value := getattr(item, attr, None):
+                        if str(attr_value) not in filters[filter]:
+                            reject_instance = True
+            return reject_instance
+
         to_ret = dict(
             id=instance.id,
             type=api_type,
@@ -750,15 +760,9 @@ class JSONAPI_(JSONAPI):
                 if api_key in include.keys():
                     related_item: SQLAlchemyModel = desc(instance)
 
-                    reject_instance = False
-                    for filter in filters:
-                        resource, attr = filter
-                        if api_key == resource:
-                            if attr_value := getattr(related_item, attr, None):
-                                if str(attr_value) not in filters[filter]:
-                                    reject_instance = True
-                    if reject_instance:
-                        return {}, reject_instance
+                    instance_rejected = apply_filter(related_item)
+                    if instance_rejected:
+                        return {}, instance_rejected
 
                     is_deleted = getattr(related_item, "deleted_at", None) is not None
                     not_permitted = False
@@ -828,15 +832,8 @@ class JSONAPI_(JSONAPI):
                     except PermissionDeniedError:
                         continue
 
-                    reject_related_item = False
-                    for filter in filters:
-                        resource, attr = filter
-                        if api_key == resource:
-                            if attr_value := getattr(item, attr, None):
-                                if attr_value not in filters[filter]:
-                                    reject_related_item = True
-
-                    if reject_related_item:
+                    item_rejected = apply_filter(item)
+                    if item_rejected:
                         continue
 
                     if key in local_fields:
