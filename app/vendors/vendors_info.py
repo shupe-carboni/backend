@@ -34,7 +34,7 @@ async def all_info(
     token: VendorsPerm, session: NewSession, query: VendorInfoQuery = Depends()
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -56,7 +56,7 @@ async def one_info(
     query: VendorInfoQuery = Depends(),
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -82,7 +82,7 @@ async def info_related_vendor(
     query: VendorInfoQuery = Depends(),
 ) -> RelatedVendorResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -109,7 +109,7 @@ async def info_vendors_relationships(
     query: VendorInfoQuery = Depends(),
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -136,7 +136,7 @@ async def add_info(
     body: NewVendorInfo,
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -161,7 +161,7 @@ async def modify_info(
     body: VendorInfoModification,
 ) -> VendorInfoResponse:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -179,7 +179,7 @@ async def delete_info(
     token: VendorsPerm, session: NewSession, info_id: int, vendor_id: str
 ) -> None:
     return (
-        auth.VendorOperations(token, INFO_RESOURCE)
+        auth.VendorOperations(token, SCAVendorInfo)
         .allow_admin()
         .allow_sca()
         .allow_dev()

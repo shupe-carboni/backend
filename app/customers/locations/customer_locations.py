@@ -18,7 +18,7 @@ from app.customers.locations.models import (
     RelatedADPAliasToSCACustomerLocation,
 )
 from app.db.db import SCA_DB
-from app.jsonapi.sqla_models import SCACustomer, SCACustomerLocation
+from app.jsonapi.sqla_models import SCACustomerLocation
 from app.jsonapi.core_models import convert_query
 
 PARENT_PREFIX = "/customers"
@@ -42,7 +42,7 @@ async def customer_locations_collection(
 ) -> LocationResponse:
 
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -64,7 +64,7 @@ async def customer_location(
     query: LocationQuery = Depends(),
 ) -> LocationResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -90,7 +90,7 @@ async def customer_location_adp_alias(
     query: LocationQuery = Depends(),
 ) -> RelatedADPAliasToSCACustomerLocation:
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -114,7 +114,7 @@ async def new_customer_location(
     session: NewSession, token: Token, new_customer_location: NewLocation
 ) -> LocationResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -140,7 +140,7 @@ async def mod_customer_location(
     mod_customer_location: ModLocation,
 ) -> LocationResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -159,7 +159,7 @@ async def del_customer_location(
     session: NewSession, token: Token, customer_location_id: int, customer_id: int
 ) -> None:
     return (
-        auth.CustomersOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

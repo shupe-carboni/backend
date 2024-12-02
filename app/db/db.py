@@ -46,6 +46,22 @@ class UserTypes(StrEnum):
     view_only = auto()
 
 
+class FriedrichPriceLevels(StrEnum):
+
+    NON_STOCKING = auto()
+    STOCKING = auto()
+    STANDARD = auto()
+
+
+class FriedrichMarketType(StrEnum):
+
+    HOTEL_LODGING = auto()
+    MULTI_FAMILY = auto()
+    HOSPITAL_ASSISTED_LIVING = auto()
+    SCHOOL = auto()
+    GOVERNMENT = auto()
+
+
 class S3:
     bucket = os.getenv("S3_BUCKET")
     client = boto3.client(
@@ -121,11 +137,9 @@ class Database:
     def __init__(self, database_name: str = "") -> None:
         self.PREFIX = database_name + "_" if database_name else None
         if TEST_DB:
-            logger.info("Connection set to local testing Database")
-            logger.info(f"DB -> {str(self)}")
+            logger.info("Database: local")
         else:
-            logger.info("Connection set to production Database")
-            logger.info(f"DB -> {str(self)}")
+            logger.info("Database: production")
 
     def __str__(self) -> str:
         if TEST_DB:

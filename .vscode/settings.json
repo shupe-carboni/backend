@@ -8,5 +8,17 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
-  }
+},
+"sqltools.connections": [
+    {
+        "previewLimit": 50,
+        "server": "localhost",
+        "port": 32768,
+        "driver": "PostgreSQL",
+        "name": "pglocal",
+        "database": "sca_transition",
+        "username": "postgres",
+        "password": ""
+    }
+]
 }

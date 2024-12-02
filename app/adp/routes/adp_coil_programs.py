@@ -102,7 +102,7 @@ def background_stage_update(
         )
         try:
             (
-                auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+                auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
                 .allow_admin()
                 .allow_sca()
                 .allow_dev()
@@ -134,7 +134,7 @@ def all_coil_programs(
     An SCA admin or employee will see all programs that exist.
     A customer will see only their own programs"""
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -158,7 +158,7 @@ def coil_program_product(
 ) -> CoilProgResp:
     """get a specific product from the coil programs"""
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -208,7 +208,7 @@ def add_to_coil_program(
     json_api_data = partial(build_full_model_obj, session, new_coil, token)
     adp_customer_id = new_coil.data.relationships.adp_customers.data.id
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -244,7 +244,7 @@ def change_product_status(
     adp_customer_id = new_stage.data.relationships.adp_customers.data.id
     set_other_active_models_to_removed = new_stage.data.attributes.stage == Stage.ACTIVE
     updated_model = CoilProgResp(
-        **auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        **auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -268,12 +268,12 @@ def permanently_delete_record(
     token: Token, session: NewSession, program_product_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .delete(session, program_product_id, adp_customer_id)
+        .delete(session, program_product_id, adp_customer_id, hard_delete=True)
     )
 
 
@@ -284,7 +284,7 @@ def get_related_customer(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE)
+        auth.ADPOperations(token, ADPCoilProgram)
         .allow_admin()
         .allow_sca()
         .allow_dev()
@@ -305,7 +305,7 @@ def get_customer_relationship(
     program_product_id: int,
 ):
     return (
-        auth.ADPOperations(token, ADP_COILS_RESOURCE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPCoilProgram, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()

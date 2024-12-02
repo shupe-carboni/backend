@@ -36,7 +36,7 @@ def customer_program_get_dl(
     """Generate one-time-use hash value for download"""
     if token.permissions < auth.Permissions.sca_employee:
         try:
-            auth.ADPOperations(token, "adp-customers").allow_dev().allow_customer(
+            auth.ADPOperations(token, ADPCustomer).allow_dev().allow_customer(
                 "std"
             ).get(session=session, obj_id=adp_customer_id)
         except HTTPException as e:
@@ -111,7 +111,7 @@ def parse_model_and_pricing(
     elif customer_id:
         try:
             (
-                auth.ADPOperations(token, ADPCustomer.__jsonapi_type_override__)
+                auth.ADPOperations(token, ADPCustomer)
                 .allow_dev()
                 .allow_customer("std")
                 .get(session, obj_id=customer_id)

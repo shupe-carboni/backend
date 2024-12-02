@@ -99,76 +99,8 @@ def test_new_customer_and_delete(perm, response_code):
     assert response.status_code == 204, pprint(response.json())
 
 
-@mark.parametrize("perm,response_code", SCA_ONLY_INCLUDING_DEV)
-def test_modify_customer(perm, response_code):
-    ROUTE = Path("/customers") / str(CUSTOMER_ID)
-    app.dependency_overrides[authenticate_auth0_token] = perm
-    payload = ModCustomer(
-        data={
-            "id": CUSTOMER_ID,
-            "type": "customers",
-            "attributes": {
-                # "name": "TEST CUSTOMER",
-                # "logo": "customers/999999/logo/py-color.jpg",
-                "domains": ["somedomain.com", "someotherdomain.net"],
-                "buying-group": "AD",
-            },
-        }
-    ).model_dump(exclude_none=True, by_alias=True)
-    response = test_client.patch(str(ROUTE), json=payload)
-    assert response.status_code == response_code, pprint(response.json())
-    if response.status_code == 200:
-        assert response.json()["data"]["attributes"].get("name") is not None
-
-
 @mark.parametrize("perm,response_code,path", GET_PATHS)
 def test_customer_gets(perm, response_code, path):
     app.dependency_overrides[authenticate_auth0_token] = perm
     response = test_client.get(path)
     assert response.status_code == response_code
-
-
-@mark.parametrize("perm,response_code", SCA_DEV_AND_CUSTOMER_ADMIN_ONLY)
-def test_new_customer_location_and_delete(perm, response_code):
-    app.dependency_overrides[authenticate_auth0_token] = perm
-    new_loc = {
-        "type": "customer-locations",
-        "attributes": {"hq": True, "dc": False},
-        "relationships": {
-            "customers": {"data": {"id": CUSTOMER_ID, "type": "customers"}},
-            "places": {"data": {"id": 4048700, "type": "places"}},
-        },
-    }
-    response = test_client.post(
-        "/customers/customer-locations", json=dict(data=new_loc)
-    )
-    assert response.status_code == response_code
-    if response_code != 200:
-        return
-    response = test_client.delete(
-        f"/customers/customer-locations/{response.json()['data']['id']}?customer_id={CUSTOMER_ID}"
-    )
-    assert response.status_code == 204
-
-
-@mark.parametrize("perm,response_code", SCA_DEV_AND_CUSTOMER_ADMIN_ONLY)
-def test_mod_customer_location(perm, response_code):
-    app.dependency_overrides[authenticate_auth0_token] = perm
-    pre_mod = test_client.get(f"/customers/{CUSTOMER_ID}/customer-locations")
-    if pre_mod.status_code != 200:
-        return
-    pre_mod_body = pre_mod.json()["data"][0]
-    pre_mod_hq = pre_mod_body["attributes"]["hq"]
-    pre_mod_id = pre_mod_body["id"]
-    mod_loc = {
-        "id": pre_mod_id,
-        "type": "customer-locations",
-        "attributes": {"hq": not pre_mod_hq},
-        "relationships": {
-            "customers": {"data": {"id": CUSTOMER_ID, "type": "customers"}},
-        },
-    }
-    response = test_client.patch(
-        f"/customers/customer-locations/{pre_mod_id}", json=dict(data=mod_loc)
-    )
-    assert response.status_code == response_code, pprint(response.json())

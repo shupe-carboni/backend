@@ -38,7 +38,7 @@ def mat_grp_disc_collection(
     token: Token, session: NewSession, query: MatGrpDiscQuery = Depends()
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_customer("std")
@@ -59,7 +59,7 @@ def mat_grp_disc_resource(
     query: MatGrpDiscQuery = Depends(),
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_customer("std")
@@ -80,7 +80,7 @@ def mat_grp_disc_related_mat_grp(
     query: Query = Depends(),
 ) -> ADPRelatedMatGrpResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_customer("std")
@@ -106,7 +106,7 @@ def mat_grp_disc_mat_grp_relationship(
     query: Query = Depends(),
 ) -> ADPMatGrpRelationshipResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_customer("std")
@@ -137,7 +137,7 @@ def new_mat_grp_disc(
             "The discount must fall between 0 and 100",
         )
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .post(
@@ -161,7 +161,7 @@ def mat_grp_disc_modification(
     new_stage: ModStageMatGrpDiscDiscReq,
 ) -> ADPMatGrpDiscResp:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .patch(
@@ -181,12 +181,10 @@ def del_mat_grp_disc(
     token: Token, session: NewSession, mat_grp_id: int, adp_customer_id: int
 ) -> None:
     return (
-        auth.ADPOperations(token, API_TYPE, prefix=PARENT_PREFIX)
+        auth.ADPOperations(token, ADPMaterialGroupDiscount, prefix=PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .delete(
-            session,
-            obj_id=mat_grp_id,
-            primary_id=adp_customer_id,
+            session, obj_id=mat_grp_id, primary_id=adp_customer_id, hard_delete=True
         )
     )

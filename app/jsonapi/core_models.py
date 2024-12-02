@@ -87,7 +87,7 @@ class Query(BaseModel):
     page_size: Optional[StringToNum] = None
 
 
-def convert_query(model_type: BaseModel) -> Callable[[BaseModel], dict[str, Any]]:
+def convert_query(model_type: type[BaseModel]) -> Callable[[BaseModel], dict[str, Any]]:
     """Use the model_type as a converter to transform a query from it's pydantic type
     into a dict of JSONAPI arguments"""
 

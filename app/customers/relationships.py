@@ -40,7 +40,7 @@ async def related_location(
     token: CustomersPerm,
 ) -> RelatedLocationResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
@@ -65,7 +65,7 @@ async def customer_location_relationships(
     token: CustomersPerm,
 ) -> LocationRelationshipsResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
@@ -90,7 +90,7 @@ async def related_adp_customers(
     token: CustomersPerm,
 ) -> RelatedCustomerResponse:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
@@ -115,7 +115,7 @@ async def adp_customer_relationships(
     token: CustomersPerm,
 ) -> CustomersRelResp:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
@@ -141,7 +141,7 @@ async def related_adp_customer_terms(
 ) -> RelatedADPCustomerTermsResp:
 
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
@@ -166,7 +166,7 @@ async def adp_customer_terms_relationships(
     token: CustomersPerm,
 ) -> ADPCustomerTermsRelationshipsResp:
     return (
-        auth.CustomersOperations(token, API_TYPE)
+        auth.CustomersOperations(token, SCACustomer)
         .allow_admin()
         .allow_dev()
         .allow_sca()
