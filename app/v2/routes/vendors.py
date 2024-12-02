@@ -1,6 +1,6 @@
 from enum import StrEnum, auto
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
