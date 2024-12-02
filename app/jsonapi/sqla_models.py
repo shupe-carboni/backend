@@ -161,6 +161,8 @@ class ADPAHProgram(Base):
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPAHProgram.customer_id,
@@ -239,6 +241,8 @@ class ADPCoilProgram(Base):
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
         adptoloc = aliased(ADPAliasToSCACustomerLocation)
         exists_subquery = exists().where(
             adptoloc.adp_customer_id == ADPCoilProgram.customer_id,
