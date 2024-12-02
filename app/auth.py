@@ -7,6 +7,7 @@ from abc import ABC
 from enum import Enum, IntEnum, StrEnum, auto
 from hashlib import sha256
 from dotenv import load_dotenv
+from logging import getLogger
 
 load_dotenv()
 from pydantic import BaseModel, field_validator
@@ -49,6 +50,7 @@ from app.jsonapi.sqla_jsonapi_ext import GenericData
 if TYPE_CHECKING:
     from app.jsonapi.sqla_models import JSONAPI_
 
+logger = getLogger("uvicorn.info")
 
 token_auth_scheme = HTTPBearer()
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
@@ -284,9 +286,9 @@ def standard_error_handler(func):
         except:
             import traceback as tb
 
-            raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR, detail=tb.format_exc()
-            )
+            traceback = tb.format_exc()
+            logger.critical(traceback)
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=traceback)
 
     return wrapper
 
