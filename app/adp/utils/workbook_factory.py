@@ -16,7 +16,7 @@ from app.adp.utils.programs import (
     EmptyProgram,
 )
 from app.adp.utils.pricebook import PriceBook
-from app.db import Session, ADP_DB, SCA_DB, Stage
+from app.db import Session, ADP_DB, SCA_DB, Stage, DB_V2
 
 
 logger = logging.getLogger("uvicorn.info")
@@ -76,22 +76,41 @@ def build_ah_program(
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
 
+def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFrame:
+    return ADP_DB.load_df(
+        session=session,
+        table_name="customer_terms_by_customer_id",
+        customer_id=customer_id,
+    )
+
+
+def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
+    return ADP_DB.load_df(
+        session=session, table_name="program_parts_expanded", customer_id=customer_id
+    )
+
+
+def pull_customer_alias_mapping(session: Session) -> pd.DataFrame:
+    return ADP_DB.load_df(session=session, table_name="customers")
+
+
+def pull_customer_parent_accounts(session: Session) -> pd.DataFrame:
+    return SCA_DB.load_df(session=session, table_name="customers")
+
+
 def add_customer_terms_parts_and_logo_path(
     session: Session,
     customer_id: int,
     coil_prog: CoilProgram,
     ah_prog: AirHandlerProgram,
 ) -> CustomerProgram:
-    footer = ADP_DB.load_df(
-        session=session,
-        table_name="customer_terms_by_customer_id",
-        customer_id=customer_id,
-    )
-    prog_parts = ADP_DB.load_df(
-        session=session, table_name="program_parts_expanded", customer_id=customer_id
-    )
-    alias_mapping = ADP_DB.load_df(session=session, table_name="customers")
-    parent_accounts = SCA_DB.load_df(session=session, table_name="customers")
+
+    # TODO - swap out the underlying method to use v2 tables
+    footer = pull_customer_payment_terms(session, customer_id)
+    prog_parts = pull_customer_parts(session, customer_id)
+    alias_mapping = pull_customer_alias_mapping(session)
+    parent_accounts = pull_customer_parent_accounts(session)
+
     alias_mapping = alias_mapping[alias_mapping["id"] == customer_id]
     alias_name = alias_mapping[Fields.ADP_ALIAS.value].item()
     ## parts
@@ -162,7 +181,10 @@ def add_customer_terms_parts_and_logo_path(
     )
 
 
-def generate_program(session: Session, customer_id: int, stage: Stage) -> ProgramFile:
+def pull_program_data(
+    session: Session, customer_id: int, stage: Stage
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+
     tables = ["coil_programs", "ah_programs", "program_ratings"]
     coil_prog_table, ah_prog_table, ratings = [
         ADP_DB.load_df(session=session, table_name=table, customer_id=customer_id)
@@ -184,6 +206,27 @@ def generate_program(session: Session, customer_id: int, stage: Stage) -> Progra
         case _:
             raise EmptyProgram
 
+    return coil_prog_table, ah_prog_table, ratings
+
+
+def pull_program_data_v2(
+    session: Session, customer_id: int
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    sql_pricing = """
+        SELECT id, product_id, price
+        FROM vendor_pricing_by_customer
+        WHERE vendor_customer_id = :customer_id"""
+    sql_product = """"""
+    sql_product_attrs = """"""
+    sql_ratings = """"""
+    return None, None, None
+
+
+def generate_program(session: Session, customer_id: int, stage: Stage) -> ProgramFile:
+    # TODO - swap out the underlying method to use v2 tables
+    coil_prog_table, ah_prog_table, ratings = pull_program_data(
+        session, customer_id, stage
+    )
     try:
         coil_prog = build_coil_program(coil_prog_table, ratings)
         ah_prog = build_ah_program(ah_prog_table, ratings)
@@ -213,10 +256,11 @@ def generate_program(session: Session, customer_id: int, stage: Stage) -> Progra
         import traceback as tb
 
         logger.info("Error occurred while trying to generate programs")
-        logger.info(tb.format_exc())
+        logger.critical(tb.format_exc())
     else:
-        tables.remove("program_ratings")
+        # tables.remove("program_ratings")
         try:
+            return new_program_file
             update_dates_in_tables(
                 session=session, tables=tables, customer_id=customer_id
             )
