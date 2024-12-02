@@ -9,7 +9,7 @@ class S(ModelSeries):
         (?P<series>S)
         (?P<mat>[M|K|L])
         (?P<scode>\d)
-        (?P<meter>[\d|A|B])
+        (?P<meter>[\d|A|B|C])
         (?P<ton>\d{2})
         (?P<heat>(\d{2}|(XX)))
         (?P<revision>[A]?)

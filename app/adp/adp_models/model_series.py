@@ -128,6 +128,7 @@ class ModelSeries:
         9: "Non-bleed HP-AC TXV (R-410a)",
         "A": "Non-bleed HP-AC TXV (R-454B)",
         "B": "Non-bleed HP-AC TXV (R-32)",
+        "C": "Bleed HP-AC TXV (R-454B)",
     }
 
     motors = {
