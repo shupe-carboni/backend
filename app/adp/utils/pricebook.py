@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import os
+from json import loads
 from pathlib import Path
 from copy import copy
 from io import BytesIO
@@ -189,6 +190,7 @@ class PriceBook:
         self.template_wb = opxl.load_workbook(template)
         self._9_col_template = self.template_wb["9-col"]
         self.parts_template = self.template_wb["parts-template"]
+        self.product_block: CellRange = self._9_col_template["B12:J15"]
         self.parts_block: tuple[tuple[Cell]] = self.parts_template["A1:D4"]
         self.nomenclatures = opxl.load_workbook(NOMENCLATURES)
         self.program = program
@@ -196,7 +198,7 @@ class PriceBook:
         self.active = self._9_col_template
         self.cursor = Cursor()
         adp_logo = ADPLogo(
-            price_pos=AnchorPosition("D2", offset_x=75, offset_y=0),
+            price_pos=AnchorPosition("E2", offset_x=0, offset_y=0),
             parts_pos=AnchorPosition("C2", offset_x=50, offset_y=0),
             ratings_pos=AnchorPosition("C2", offset_x=60, offset_y=0),
             nomen_long_pos=AnchorPosition("E2", offset_x=75, offset_y=0),
@@ -204,7 +206,7 @@ class PriceBook:
             nomen_short_pos=AnchorPosition("C2", offset_x=75, offset_y=0),
         )
         sca_logo = SCALogo(
-            price_pos=AnchorPosition("J1", offset_x=200, offset_y=0),
+            price_pos=AnchorPosition("I1", offset_x=100, offset_y=0),
             parts_pos=AnchorPosition("D1", offset_x=0, offset_y=0),
             ratings_pos=AnchorPosition("F1", offset_x=0, offset_y=0),
             nomen_long_pos=AnchorPosition("H1", offset_x=100, offset_y=0),
@@ -285,7 +287,6 @@ class PriceBook:
         (self.min_col, self.min_row, self.max_col, self.max_row) = range_boundaries(
             "B12:L15"
         )
-        self.product_block: CellRange = self._9_col_template["B12:L15"]
         new_sheet = self.new_sheet(
             template=new_sheet_template, title=title, sheet_type=sheet_type
         )
@@ -394,6 +395,10 @@ class PriceBook:
             model_nomenclature = re.match(
                 model_type.regex, model_example, re.VERBOSE
             ).groupdict()
+            if model_nomenclature.get("revision"):
+                model_nomenclature.pop("rds", None)
+            elif model_nomenclature.get("rds"):
+                model_nomenclature.pop("revision", None)
             ignore_custom_model_insertion = False
         except:
             ignore_custom_model_insertion = True
@@ -620,16 +625,11 @@ class PriceBook:
             return self
 
         def set_series_name(oemseries: str) -> str:
-            # TODO abstract this to either environment variables, db entries, or a file
-            # extrnal to the code itself
-            if any([val in oemseries for val in ("4AC", "4HP")]):
+            shorter_prefixes: list = loads(os.getenv("SHORT_OEM_PREFIXES", "[]"))
+            longer_prefixes: list = loads(os.getenv("LONG_OEM_PREFIXES", "[]"))
+            if any([val in oemseries for val in longer_prefixes]):
                 start, end = (0, 5)
-            elif (
-                oemseries.startswith("YH")
-                or oemseries.startswith("AC0")
-                or oemseries.startswith("YC")
-                or oemseries.startswith("HH8")
-            ):
+            elif any(oemseries.startswith(prefix) for prefix in shorter_prefixes):
                 start, end = (0, 3)
             else:
                 start, end = (0, 4)

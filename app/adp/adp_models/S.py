@@ -9,7 +9,7 @@ class S(ModelSeries):
         (?P<series>S)
         (?P<mat>[M|K|L])
         (?P<scode>\d)
-        (?P<meter>[\d|A|B])
+        (?P<meter>[\d|A|B|C])
         (?P<ton>\d{2})
         (?P<heat>(\d{2}|(XX)))
         (?P<revision>[A]?)
@@ -45,21 +45,6 @@ class S(ModelSeries):
             & (self.mat_grps["mat"].str.contains(self.attributes["mat"])),
             "mat_grp",
         ].item()
-        self.ratings_ac_txv = (
-            rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(6,9\){self.tonnage}"
-        )
-        self.ratings_hp_txv = (
-            rf"S{self.attributes['mat']}" rf"{self.attributes['scode']}9{self.tonnage}"
-        )
-        self.ratings_piston = (
-            rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(1,2\){self.tonnage}"
-        )
-        self.ratings_field_txv = (
-            rf"S{self.attributes['mat']}"
-            rf"{self.attributes['scode']}\(1,2\){self.tonnage}\+TXV"
-        )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
         self.rds_field_installed = False
@@ -76,6 +61,32 @@ class S(ModelSeries):
         except ValueError:
             pass
         self.metering = self.metering_mapping[metering]
+        if self.rds_factory_installed or self.rds_field_installed:
+            self.ratings_piston = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}1{self.tonnage}"
+            )
+            self.ratings_ac_txv = self.ratings_hp_txv = self.ratings_field_txv = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}\*{self.tonnage}\+TXV"
+            )
+        else:
+            self.ratings_ac_txv = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(6,9\)|\*){self.tonnage}"
+            )
+            self.ratings_hp_txv = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(9|\*){self.tonnage}"
+            )
+            self.ratings_piston = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}"
+            )
+            self.ratings_field_txv = (
+                rf"S{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}\+TXV"
+            )
 
     def category(self) -> str:
         motor = self.motor
