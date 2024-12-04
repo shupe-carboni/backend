@@ -4,6 +4,7 @@ load_dotenv()
 import os
 import pandas as pd
 import logging
+from enum import Enum
 from dataclasses import dataclass
 from typing import Iterable
 from datetime import datetime
@@ -22,6 +23,11 @@ from app.db import Session, ADP_DB, SCA_DB, Stage, DB_V2
 logger = logging.getLogger("uvicorn.info")
 TODAY = str(datetime.today().date())
 TEMPLATES = os.getenv("TEMPLATES")
+
+
+class AttrType(Enum):
+    NUMBER = int
+    STRING = str
 
 
 @dataclass
@@ -76,12 +82,55 @@ def build_ah_program(
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
 
-def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFrame:
-    return ADP_DB.load_df(
-        session=session,
-        table_name="customer_terms_by_customer_id",
-        customer_id=customer_id,
+def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.DataFrame:
+    sql_attrs = """
+        SELECT vendor_customers.id AS customer_id, vendor_customer_attrs.id as attr_id,
+            attr, value, type  
+        FROM vendor_customers 
+        JOIN vendor_customer_attrs 
+        ON vendor_customer_attrs.vendor_customer_id = vendor_customers.id
+        WHERE attr in ('ppf','terms')
+        AND vendor_id = 'adp'
+        AND vendor_customer_attrs.deleted_at IS NULL
+        AND vendor_customers.id = :customer_id;
+    """
+    customer_attrs = DB_V2.execute(session, sql_attrs, {"customer_id": customer_id})
+    customer_attrs_df = pd.DataFrame(
+        customer_attrs.fetchall(), columns=customer_attrs.keys()
     )
+
+    attr_ids = tuple(customer_attrs_df["attr_id"].to_list())
+    attr_types_by_col = customer_attrs_df[["attr", "type"]]
+    sql_last_eff_date_by_customer = """
+        SELECT b.id AS customer_id, DATE_TRUNC('second',max(timestamp)) AS effective_date
+        FROM vendor_customer_attrs_changelog
+        JOIN vendor_customer_attrs AS a
+        ON a.id = attr_id
+        JOIN vendor_customers AS b
+        ON b.id = a.vendor_customer_id
+        WHERE attr_id IN :attr_ids
+        GROUP BY b.id;
+    """
+    customer_latest_effective_date = DB_V2.execute(
+        session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
+    ).one()[-1]
+
+    # ought to be a one-row table now
+    customer_attrs_df = customer_attrs_df.pivot(
+        index="customer_id", columns="attr", values="value"
+    )
+    customer_attrs_df["effective_date"] = customer_latest_effective_date
+    for attr in attr_types_by_col.itertuples():
+        customer_attrs_df[attr.attr] = customer_attrs_df[attr.attr].astype(
+            AttrType[attr.type].value
+        )
+
+    customer_attrs_df = customer_attrs_df.infer_objects()
+    return customer_attrs_df
+
+
+def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFrame:
+    return pull_customer_payment_terms_v2(session, customer_id)
 
 
 def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
@@ -105,7 +154,6 @@ def add_customer_terms_parts_and_logo_path(
     ah_prog: AirHandlerProgram,
 ) -> CustomerProgram:
 
-    # TODO - swap out the underlying method to use v2 tables
     footer = pull_customer_payment_terms(session, customer_id)
     prog_parts = pull_customer_parts(session, customer_id)
     alias_mapping = pull_customer_alias_mapping(session)
@@ -181,6 +229,19 @@ def add_customer_terms_parts_and_logo_path(
     )
 
 
+def pull_program_data_v2(
+    session: Session, customer_id: int
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    sql_pricing = """
+        SELECT id, product_id, price
+        FROM vendor_pricing_by_customer
+        WHERE vendor_customer_id = :customer_id"""
+    sql_product = """"""
+    sql_product_attrs = """"""
+    sql_ratings = """"""
+    return None, None, None
+
+
 def pull_program_data(
     session: Session, customer_id: int, stage: Stage
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -207,19 +268,6 @@ def pull_program_data(
             raise EmptyProgram
 
     return coil_prog_table, ah_prog_table, ratings
-
-
-def pull_program_data_v2(
-    session: Session, customer_id: int
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    sql_pricing = """
-        SELECT id, product_id, price
-        FROM vendor_pricing_by_customer
-        WHERE vendor_customer_id = :customer_id"""
-    sql_product = """"""
-    sql_product_attrs = """"""
-    sql_ratings = """"""
-    return None, None, None
 
 
 def generate_program(session: Session, customer_id: int, stage: Stage) -> ProgramFile:
