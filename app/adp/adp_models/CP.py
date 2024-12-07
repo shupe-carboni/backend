@@ -9,21 +9,20 @@ from app.db import ADP_DB, Session
 
 
 class CP(ModelSeries):
-    text_len = (14, 13, 15, 16)
+    text_len = (14, 15)
     regex = r"""
         (?P<series>C)
         (?P<motor>[P|E])
         (?P<ton>\d{2})
         (?P<scode>\d{2})
         (?P<mat>[C|A])
-        (?P<meter>[A|H|1|B|C])
+        (?P<meter>[1|9|A|B|C])
         (?P<config>H)
         (?P<line_conn>[S|P])
         (?P<heat>\d{2})
         (?P<voltage>\d)
-        (?P<option>[U|C|R]?)
-        (?P<revision>[A]?)
-        (?P<rds>R?)
+        (?P<cased>[U|C])
+        (?P<revision_or_rds>[A|R])
         (?P<drain>R?)
     """
     metering_mapping_1 = {
@@ -32,6 +31,7 @@ class CP(ModelSeries):
     }
     metering_mapping_2 = {
         "1": "Piston (R-454B/R-32) w/ Access Port",
+        "9": "Non-bleed HP-A/C TXV (R-410a)",
         "A": "Non-bleed HP-A/C TXV (R-454B)",
         "B": "Non-bleed HP-A/C TXV (R-32)",
         "C": "Bleed HP-A/C TXV (R-454B)",
@@ -40,7 +40,7 @@ class CP(ModelSeries):
     def __init__(self, session: Session, re_match: re.Match):
         super().__init__(session, re_match)
         self.pallet_qty = 8
-        self.cased = self.attributes.get("option") == "C"
+        self.cased = self.attributes.get("cased") == "C"
         dims_sql = """
             SELECT weight, width, depth, height
             FROM cp_dims
@@ -81,30 +81,18 @@ class CP(ModelSeries):
             rf"{self.attributes['mat']}"
         )
         self.ratings_field_txv = self.ratings_ac_txv
-        rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
-        self.rds_field_installed = False
-        if option := self.attributes.get("option"):
-            if option != "R":
-                match rds_option:
-                    case "R":
-                        self.rds_factory_installed = True
-                        self.metering = self.metering_mapping_2[
-                            self.attributes["meter"]
-                        ]
-                    case "N":
-                        self.rds_field_installed = True
-                        self.metering = self.metering_mapping_2[
-                            self.attributes["meter"]
-                        ]
-                    case _:
-                        self.metering = self.metering_mapping_1[
-                            self.attributes["meter"]
-                        ]
-            else:
-                self.metering = self.metering_mapping_1[self.attributes["meter"]]
-        else:
-            self.metering = self.metering_mapping_1[self.attributes["meter"]]
+        match self.attributes.get("revision_or_rds"):
+            case "R":
+                self.rds_factory_installed = True
+            case "A" if self.attributes["meter"] not in ("1", "9"):
+                raise Exception(
+                    "invalid model. Revision 'A' is reserved for "
+                    "R-410a legacy models, metering 1 or 9. Nomenclature changes"
+                    " invalidated the A/H nomenclature for metering on this series."
+                )
+
+        self.metering = self.metering_mapping_2[self.attributes["meter"]]
         self.zero_disc_price = self.get_zero_disc_price()
         try:
             self.heat = int(self.attributes["heat"])
@@ -117,9 +105,7 @@ class CP(ModelSeries):
         motor = self.motor
         cased = "Uncased" if not self.cased else "Cased"
         value = f"Soffit Mount {cased} Air Handlers - {material} - {motor}"
-        if self.rds_field_installed:
-            value += " - FlexCoil"
-        elif self.rds_factory_installed:
+        if self.rds_factory_installed:
             value += " - A2L"
         if self.attributes.get("drain"):
             value += " - Right Hand Drain"
@@ -144,7 +130,6 @@ class CP(ModelSeries):
 
     def get_zero_disc_price(self) -> int:
         base_price, adders = self.load_pricing()
-        # result = base_price + adders["RDS"].get(self.attributes.get("rds"), 0)
         result = base_price
         return result
 
