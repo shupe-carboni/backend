@@ -1057,8 +1057,9 @@ INSERT INTO vendor_product_to_class_mapping (product_class_id, product_id)
 	)
 	and vp.vendor_id = 'adp';
 
+
 INSERT INTO vendor_product_to_class_mapping (product_class_id, product_id)
-	SELECT pc.id, p.id
+	SELECT DISTINCT pc.id, p.id
 	FROM vendor_product_classes AS pc
 	JOIN (
 		SELECT vp.id, vpa.value 
@@ -1066,7 +1067,19 @@ INSERT INTO vendor_product_to_class_mapping (product_class_id, product_id)
 		JOIN vendor_product_attrs AS vpa
 		ON vp.id = vpa.vendor_product_id
 		WHERE vpa.attr = 'mpg') AS p 
-	ON p.value = pc.name;
+	ON p.value = pc.name
+	WHERE pc.vendor_id = 'adp';
+
+INSERT INTO vendor_product_to_class_mapping (product_class_id, product_id)
+	select 5 AS product_class_id, vp.id AS product_id
+	FROM vendor_products AS vp
+	WHERE EXISTS (
+		select 1
+		from adp_program_parts a
+		where a.part_number = vp.vendor_product_identifier
+	)
+	AND vp.vendor_id = 'adp';
+
 
 -- migrate adp material group discounts to vendor product class discounts
 INSERT INTO vendor_product_class_discounts (product_class_id, vendor_customer_id, discount)
