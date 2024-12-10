@@ -33,7 +33,9 @@ class Validator:
                 )
                 return False
             except Exception as e:
-                print(e)
+                e_type = e.__class__.__name__
+                e_val = str(e)
+                logger.critical(f"{e_type}: {e_val}")
                 return False
         else:
             return False
