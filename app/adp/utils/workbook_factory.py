@@ -130,7 +130,18 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
 
 
 def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFrame:
-    return pull_customer_payment_terms_v2(session, customer_id)
+
+    try:
+        # NOTE temporarily wrapping this in try-except to fallback in v1 tables
+        # In my inifinte wisdown, I pushed this functionality half-baked and before
+        # the migration had been executed.
+        return pull_customer_payment_terms_v2(session, customer_id)
+    except:
+        return ADP_DB.load_df(
+            session=session,
+            table_name="customer_terms_by_customer_id",
+            customer_id=customer_id,
+        )
 
 
 def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
