@@ -9,7 +9,7 @@ from app.db import ADP_DB, Session
 
 
 class CP(ModelSeries):
-    text_len = (14, 15)
+    text_len = (15, 16)
     regex = r"""
         (?P<series>C)
         (?P<motor>[P|E])
