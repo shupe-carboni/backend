@@ -126,6 +126,7 @@ class ModelSeries:
         -1: "Piston (R-454B/R-32)",
         1: "Piston (R-410a)",
         9: "Non-bleed HP-AC TXV (R-410a)",
+        -9: "Non-bleed HP-AC TXV (R-410a)",
         "A": "Non-bleed HP-AC TXV (R-454B)",
         "B": "Non-bleed HP-AC TXV (R-32)",
         "C": "Bleed HP-AC TXV (R-454B)",
