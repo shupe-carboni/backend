@@ -121,9 +121,18 @@ class HD(ModelSeries):
         pricing_sql = f"""
             SELECT {'painted' if self.cabinet_config == Cabinet.PAINTED else 'embossed'}
             FROM pricing_hd_series
-            WHERE slab = :slab;
+            WHERE slab = :slab_1
+            OR slab = :slab_2;
         """
-        params = dict(slab=self.attributes["scode"])
+        try:
+            slab_1 = str(int(self.attributes["scode"]))
+            slab_2 = f"{int(self.attributes['scode']):02}"
+        except ValueError:
+            slab_1 = slab_2 = self.attributes["scode"]
+        params = dict(
+            slab_1=slab_1,
+            slab_2=slab_2,
+        )
         pricing = ADP_DB.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
