@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class SC(ModelSeries):
@@ -18,8 +18,8 @@ class SC(ModelSeries):
         "S": ("Horizontal Slab", "Copper"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT cased, width, depth, height, weight, pallet_qty
@@ -77,7 +77,7 @@ class SC(ModelSeries):
             FROM pricing_sc_series
             WHERE :model ~ model;
         """
-        return ADP_DB.execute(
+        return self.db.execute(
             session=self.session, sql=pricing_sql, params=dict(model=str(self))
         ).scalar_one()
 

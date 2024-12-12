@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     PriceByCategoryAndKey,
     NoBasePrice,
 )
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class CP(ModelSeries):
@@ -37,8 +37,8 @@ class CP(ModelSeries):
         "C": "Bleed HP-A/C TXV (R-454B)",
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         self.pallet_qty = 8
         self.cased = self.attributes.get("cased") == "C"
         dims_sql = """
@@ -119,7 +119,7 @@ class CP(ModelSeries):
         """
         model = str(self)
         params = dict(model=model)
-        result = ADP_DB.execute(
+        result = self.db.execute(
             session=self.session, sql=sql, params=params
         ).scalar_one_or_none()
         if not result:

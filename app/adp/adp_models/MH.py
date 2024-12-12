@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class MH(ModelSeries):
@@ -19,8 +19,8 @@ class MH(ModelSeries):
         (?P<rds>[R|N]?)
         """
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         spec_sql = """
             SELECT "HEIGHT", "WEIGHT", "PALLET_QTY"
             FROM mh_pallet_weight_height
@@ -93,7 +93,7 @@ class MH(ModelSeries):
             WHERE slab = :slab;
         """
         params = dict(slab=self.attributes["scode"])
-        pricing = ADP_DB.execute(
+        pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
         return pricing, self.get_adders()

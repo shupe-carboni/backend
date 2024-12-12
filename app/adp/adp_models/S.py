@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class S(ModelSeries):
@@ -17,8 +17,8 @@ class S(ModelSeries):
     """
     weight_by_material = {"K": "weight_cu", "L": "weight_cu", "M": "weight_al"}
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         self.tonnage = int(self.attributes["ton"])
         weight_col = self.weight_by_material[self.attributes["mat"]]
         specs_sql = f"""
@@ -106,7 +106,7 @@ class S(ModelSeries):
             WHERE :model_number ~ model;
         """
         params = dict(model_number=str(self))
-        pricing = ADP_DB.execute(
+        pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
         return pricing, self.get_adders()

@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class B(ModelSeries):
@@ -32,8 +32,8 @@ class B(ModelSeries):
         "4N": "4 row hot water coil without pump assembly",
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         self.min_qty = 4
         dims_sql = """
             SELECT weight, height, depth, width
@@ -117,7 +117,7 @@ class B(ModelSeries):
         """
         params = dict(tonnage=str(self.tonnage), slab=self.attributes["scode"])
         pricing = (
-            ADP_DB.execute(session=self.session, sql=pricing_sql, params=params)
+            self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
             .one_or_none()
         )

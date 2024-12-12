@@ -1,7 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class CE(ModelSeries):
@@ -24,8 +24,8 @@ class CE(ModelSeries):
         "V": ("Vertical", "CA"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         dims_sql = """
             SELECT adp_model, width, depth, height, length, weight,
                 pallet_qty

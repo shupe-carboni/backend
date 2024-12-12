@@ -1,5 +1,5 @@
 import re
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 from enum import StrEnum, auto
 from typing import TypeAlias, Literal, Any
 
@@ -151,13 +151,14 @@ class ModelSeries:
         20: "20 kW",
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
         self.mat_grps = ADP_DB.load_df(session=session, table_name="material_groups")
         self.mat_grps.rename(
             columns={"id": "mat_grp"}, inplace=True
         )  # HOT FIX FOR COLUMN NAME CHANGE IN DB
         self.attributes = re_match.groupdict()
         self.session = session
+        self.db = db
 
     def __str__(self) -> str:
         return "".join(self.attributes.values()).strip()
@@ -233,7 +234,7 @@ class ModelSeries:
         """
         params = dict(series=self.__series_name__())
         adders_ = (
-            ADP_DB.execute(session=self.session, sql=price_adders_sql, params=params)
+            self.db.execute(session=self.session, sql=price_adders_sql, params=params)
             .mappings()
             .all()
         )

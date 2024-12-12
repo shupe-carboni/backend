@@ -8,7 +8,8 @@ from app.db import Session, ADP_DB, Stage
 from app.adp.models import ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
 from app.adp.utils.programs import EmptyProgram
-from app.adp.extraction.models import parse_model_string, ParsingModes
+from app.adp.extraction.models import parse_model_string
+from app.adp.utils.models import ParsingModes
 from app.adp.utils.workbook_factory import generate_program
 from app.downloads import DownloadLink, XLSXFileResponse
 
@@ -88,7 +89,11 @@ def customer_program_dl_file(
     response_model_exclude_none=True,
 )
 def parse_model_and_pricing(
-    session: NewSession, token: Token, model_num: str, customer_id: int = 0
+    session: NewSession,
+    token: Token,
+    model_num: str,
+    customer_id: int = 0,
+    price_year: int = 2025,
 ) -> ProgAttrs:
     """Used for feature extraction parsed from the model number and price check
     based on the permissions.
@@ -107,7 +112,10 @@ def parse_model_and_pricing(
         if not customer_id:
             parse_mode = ParsingModes.BASE_PRICE
         else:
-            parse_mode = ParsingModes.CUSTOMER_PRICING
+            if price_year == 2025:
+                parse_mode = ParsingModes.CUSTOMER_PRICING
+            elif price_year == 2024:
+                parse_mode = ParsingModes.CUSTOMER_PRICING_2024
     elif customer_id:
         try:
             (
@@ -128,7 +136,10 @@ def parse_model_and_pricing(
             if adp_perm == auth.Permissions.developer:
                 parse_mode = ParsingModes.DEVELOPER
             elif adp_perm >= auth.Permissions.customer_manager:
-                parse_mode = ParsingModes.CUSTOMER_PRICING
+                if price_year == 2025:
+                    parse_mode = ParsingModes.CUSTOMER_PRICING
+                elif price_year == 2024:
+                    parse_mode = ParsingModes.CUSTOMER_PRICING_2024
             elif adp_perm >= auth.Permissions.customer_std:
                 parse_mode = ParsingModes.ATTRS_ONLY
             else:

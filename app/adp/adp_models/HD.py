@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class HD(ModelSeries):
@@ -25,8 +25,8 @@ class HD(ModelSeries):
     """
     material_weight = {"D": "WEIGHT_CU", "P": "WEIGHT_AL"}
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         specs_sql = f"""
             SELECT length, pallet_qty, "{self.material_weight[
                 self.attributes['mat']]}"
@@ -133,7 +133,7 @@ class HD(ModelSeries):
             slab_1=slab_1,
             slab_2=slab_2,
         )
-        pricing = ADP_DB.execute(
+        pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
         return pricing, self.get_adders()

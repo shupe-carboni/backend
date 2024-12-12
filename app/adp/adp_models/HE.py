@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class HE(ModelSeries):
@@ -51,8 +51,8 @@ class HE(ModelSeries):
         "22": ("Left Hand", "Multiposition"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         width: int = int(self.attributes["width"])
         if width % 10 == 2:
             self.width = width / 10 + 0.05
@@ -176,7 +176,7 @@ class HE(ModelSeries):
             WHERE slab = :slab;
         """
         params = dict(slab=str(self.attributes["scode"]))
-        pricing = ADP_DB.execute(
+        pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
 

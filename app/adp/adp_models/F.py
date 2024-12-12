@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class F(ModelSeries):
@@ -19,7 +19,7 @@ class F(ModelSeries):
         (?P<rds>[R]?)
         """
 
-    def __init__(self, session: Session, re_match: re.Match):
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
         super().__init__(session, re_match)
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
@@ -96,7 +96,7 @@ class F(ModelSeries):
         # values contained in the column "slab"
         params = dict(slab=self.attributes["scode"], ton=self.tonnage)
         pricing = (
-            ADP_DB.execute(session=self.session, sql=pricing_sql, params=params)
+            self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
             .one_or_none()
         )

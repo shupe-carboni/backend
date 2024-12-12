@@ -1,7 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Session
+from app.db import ADP_DB, Session, Database
 
 
 class CF(ModelSeries):
@@ -18,8 +18,8 @@ class CF(ModelSeries):
         (?P<rds>[R]?)
     """
 
-    def __init__(self, session: Session, re_match: re.Match):
-        super().__init__(session, re_match)
+    def __init__(self, session: Session, re_match: re.Match, db: Database):
+        super().__init__(session, re_match, db)
         self.tonnage = int(self.attributes["ton"])
         if rds := self.attributes.get("rds", ""):
             model_alias: str = str(self)[:-4] + rds

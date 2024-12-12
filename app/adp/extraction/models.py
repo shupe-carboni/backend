@@ -4,25 +4,18 @@ from random import random
 import pandas as pd
 import openpyxl as opxl
 from fastapi import HTTPException
-from enum import Enum, auto
 from datetime import datetime
 from openpyxl.worksheet.worksheet import Worksheet
 from app.auth import SecOp
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Stage, Session
+from app.db import ADP_DB, Stage, Session, ADP_DB_2024
+from app.adp.utils.models import ParsingModes
 import warnings
 
 warnings.simplefilter("ignore")
 
 # NOTE in `extract_models` replace with in-mem collection of files passed in from api
-
-
-class ParsingModes(Enum):
-    ATTRS_ONLY = auto()
-    BASE_PRICE = auto()
-    CUSTOMER_PRICING = auto()
-    DEVELOPER = auto()
 
 
 class InvalidParsingMode(Exception): ...
@@ -44,9 +37,18 @@ def build_model_attributes(
 def parse_model_string(
     session: Session, adp_customer_id: int, model: str, mode: ParsingModes
 ) -> pd.Series:
+
+    match mode:
+        case ParsingModes.CUSTOMER_PRICING:
+            zero_disc_price_strat = ParsingModes.BASE_PRICE
+        case ParsingModes.CUSTOMER_PRICING_2024:
+            zero_disc_price_strat = ParsingModes.BASE_PRICE_2024
+
     model_obj: ModelSeries = None
     for m in MODELS:
-        if matched_model := Validator(session, model, m).is_model():
+        if matched_model := Validator(session, model, m).is_model(
+            zero_disc_price_strat
+        ):
             model_obj = matched_model
     if not model_obj:
         raise HTTPException(
@@ -55,10 +57,13 @@ def parse_model_string(
     record = model_obj.record()
     record_series = pd.Series(record)
     match mode:
-        case ParsingModes.CUSTOMER_PRICING:
+        case ParsingModes.CUSTOMER_PRICING | ParsingModes.CUSTOMER_PRICING_2024:
             record_series["customer_id"] = adp_customer_id
             priced_model = price_models_by_customer_discounts(
-                session=session, model=record_series, adp_customer_id=adp_customer_id
+                session=session,
+                model=record_series,
+                adp_customer_id=adp_customer_id,
+                price_mode=mode,
             )
             priced_model.pop("customer_id")
             return priced_model
@@ -126,16 +131,30 @@ def extract_models_from_file(session: Session, file: str) -> set[ModelSeries]:
 
 
 def price_models_by_customer_discounts(
-    session: Session, model: pd.Series, adp_customer_id: int
+    session: Session,
+    model: pd.Series,
+    adp_customer_id: int,
+    price_mode: ParsingModes = ParsingModes.CUSTOMER_PRICING,
 ) -> pd.Series:
-    mat_grp_discounts = ADP_DB.load_df(
-        session=session,
-        table_name="material_group_discounts",
-        customer_id=adp_customer_id,
-    )
-    snps = ADP_DB.load_df(
-        session=session, table_name="snps", customer_id=adp_customer_id
-    ).drop_duplicates()
+    match price_mode:
+        case ParsingModes.CUSTOMER_PRICING:
+            mat_grp_discounts = ADP_DB.load_df(
+                session=session,
+                table_name="material_group_discounts",
+                customer_id=adp_customer_id,
+            )
+            snps = ADP_DB.load_df(
+                session=session, table_name="snps", customer_id=adp_customer_id
+            ).drop_duplicates()
+        case ParsingModes.CUSTOMER_PRICING_2024:
+            mat_grp_discounts = ADP_DB_2024.load_df(
+                session=session,
+                table_name="material_group_discounts",
+                customer_id=adp_customer_id,
+            )
+            snps = ADP_DB_2024.load_df(
+                session=session, table_name="snps", customer_id=adp_customer_id
+            ).drop_duplicates()
 
     no_disc_price = int(model["zero_discount_price"])
     mat_group: str = model["mpg"]
@@ -176,6 +195,3 @@ def price_models_by_customer_discounts(
     }
     model.update(result)
     return model
-
-
-def reprice_programs(session: Session) -> None: ...
