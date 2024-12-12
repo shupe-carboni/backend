@@ -20,7 +20,7 @@ class F(ModelSeries):
         """
 
     def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match)
+        super().__init__(session, re_match, db)
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT height, depth, width, weight
