@@ -38,8 +38,6 @@ class CE(ModelSeries):
             .mappings()
             .one()
         )
-        # BUG this will throw an error with the new nomenclature, and reference adp_model
-        #   needs to reflect the new txv nomenclature
         specs = {k: v for k, v in specs.items() if v}
         self.configuration = self.ce_configurations[self.attributes["config"]]
         self.mat_grp = self.configuration[1]
@@ -50,7 +48,22 @@ class CE(ModelSeries):
         self.weight = specs["weight"]
         self.real_model = specs["adp_model"]
         self.tonnage = int(self.attributes["ton"])
-        self.metering = self.metering_mapping[int(self.attributes["metering"])]
+        rds_option = self.attributes.get("rds")
+        self.rds_factory_installed = False
+        self.rds_field_installed = False
+        match rds_option:
+            case "R":
+                self.rds_factory_installed = True
+            case "N":
+                self.rds_field_installed = True
+        metering = self.attributes["metering"]
+        try:
+            metering = int(metering)
+            if self.rds_field_installed or self.rds_factory_installed:
+                metering = -metering
+        except ValueError:
+            pass
+        self.metering = self.metering_mapping[metering]
         match self.attributes["config"]:
             case "H":
                 from app.adp.adp_models.V import V
@@ -91,7 +104,7 @@ class CE(ModelSeries):
             rf"CE\(([P|V|S|H|M],){{1:4}}[P|V|S|H|M]\)"
             rf"{self.tonnage}{self.attributes['width_height']}"
             rf"{self.attributes['mat']}{self.attributes['scode']}"
-            rf"[{self.metering}|\*]"
+            r"\*"
         )
         self.ratings_hp_txv = self.ratings_ac_txv
         self.ratings_piston = None
