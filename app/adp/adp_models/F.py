@@ -21,6 +21,11 @@ class F(ModelSeries):
 
     def __init__(self, session: Session, re_match: re.Match, db: Database):
         super().__init__(session, re_match, db)
+        if not any([self.attributes.get("revision"), self.attributes.get("rds")]):
+            raise Exception(
+                "Invalid Model Number. Legacy R410a models now have a "
+                "trailing revision number."
+            )
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT height, depth, width, weight
