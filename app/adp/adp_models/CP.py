@@ -30,8 +30,9 @@ class CP(ModelSeries):
         "H": "Non-bleed HP-A/C TXV (R-410A)",
     }
     metering_mapping_2 = {
-        "1": "Piston (R-454B/R-32) w/ Access Port",
-        "9": "Non-bleed HP-A/C TXV (R-410a)",
+        -1: "Piston (R-410a) w/ Access Port",
+        1: "Piston (R-454B/R-32) w/ Access Port",
+        9: "Non-bleed HP-A/C TXV (R-410a)",
         "A": "Non-bleed HP-A/C TXV (R-454B)",
         "B": "Non-bleed HP-A/C TXV (R-32)",
         "C": "Bleed HP-A/C TXV (R-454B)",
@@ -85,14 +86,20 @@ class CP(ModelSeries):
         match self.attributes.get("revision_or_rds"):
             case "R":
                 self.rds_factory_installed = True
+                try:
+                    metering = int(self.attributes["meter"])
+                except ValueError:
+                    metering = self.attributes["meter"]
             case "A" if self.attributes["meter"] not in ("1", "9"):
                 raise Exception(
                     "invalid model. Revision 'A' is reserved for "
                     "R-410a legacy models, metering 1 or 9. Nomenclature changes"
                     " invalidated the A/H nomenclature for metering on this series."
                 )
+            case "A" if self.attributes["meter"] in ("1", "9"):
+                metering = -int(self.attributes["meter"])
 
-        self.metering = self.metering_mapping_2[self.attributes["meter"]]
+        self.metering = self.metering_mapping_2[metering]
         self.zero_disc_price = self.get_zero_disc_price()
         try:
             self.heat = int(self.attributes["heat"])
