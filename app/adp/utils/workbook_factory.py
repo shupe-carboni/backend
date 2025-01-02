@@ -95,6 +95,7 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
         AND vendor_customers.id = :customer_id;
     """
     customer_attrs = DB_V2.execute(session, sql_attrs, {"customer_id": customer_id})
+    logger.info(f"customer_id: {customer_id}")
     customer_attrs_df = pd.DataFrame(
         customer_attrs.fetchall(), columns=customer_attrs.keys()
     )
@@ -129,33 +130,120 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
     return customer_attrs_df
 
 
+def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
+    """
+    Tables:
+        - vendor-customers (id)
+        - vendor-products (vendor_product_identifier, vendor_product_description)
+        - vendor-product-attrs (attr='pkg_qty')
+        - vendor-pricing-by-customer (pricing class in 'PREFERRED_PARTS', 'STANDARD_PARTS')
+    """
+    sql = """
+        SELECT vc.id AS customer_id,
+            vp.vendor_product_identifier AS part_number,
+            vp.vendor_product_description AS description,
+            vpa.value AS pkg_qty,
+            vpbc.price::float / 100 as preferred,
+            vpbc.price::float / 100 as standard
+        FROM vendor_customers vc
+        JOIN vendor_pricing_by_customer vpbc ON vpbc.vendor_customer_id = vc.id
+        JOIN vendor_products vp ON vp.id = vpbc.product_id
+        JOIN vendor_product_attrs vpa ON vpa.vendor_product_id = vp.id
+        WHERE vc.id = :customer_id
+        AND vpa.attr = 'pkg_qty'
+        AND EXISTS (
+            SELECT 1
+            FROM vendor_pricing_classes vpc
+            WHERE vpc.id = vpbc.pricing_class_id
+            AND vpc.name IN ('PREFERRED_PARTS','STANDARD_PARTS')
+            AND vpc.vendor_id = 'adp'
+        );
+    """
+    result = DB_V2.execute(session, sql, {"customer_id": customer_id})
+    return pd.DataFrame(result.fetchall(), columns=result.keys())
+
+
+def pull_customer_aliases_v2(session: Session) -> pd.DataFrame:
+    sql = """
+        SELECT DISTINCT vc.name AS adp_alias, customers.name as customer,
+            customers.id as sca_id, vca.value::bool as preferred_parts
+        FROM vendor_customers vc
+        JOIN customer_location_mapping clm ON clm.vendor_customer_id = vc.id
+        JOIN sca_customer_locations scl ON scl.id = clm.customer_location_id
+        JOIN sca_customers customers ON customers.id = scl.customer_id
+        JOIN vendor_customer_attrs vca ON vca.vendor_customer_id = vc.id
+        WHERE vc.vendor_id = 'adp'
+        AND vca.attr = 'preferred_parts';
+    """
+    result = DB_V2.execute(session, sql)
+    return pd.DataFrame(result.fetchall(), columns=result.keys())
+
+
+def pull_customer_parents_v2(session: Session) -> pd.DataFrame:
+    return DB_V2.load_df(session=session, table_name="sca_customers")
+
+
 def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFrame:
 
     try:
-        # NOTE temporarily wrapping this in try-except to fallback in v1 tables
-        # In my inifinte wisdown, I pushed this functionality half-baked and before
-        # the migration had been executed.
-        return pull_customer_payment_terms_v2(session, customer_id)
-    except:
-        return ADP_DB.load_df(
+        result = pull_customer_payment_terms_v2(session, customer_id)
+    except Exception as e:
+        logger.warning(f"v2 payment terms method failed: {e}")
+        result = ADP_DB.load_df(
             session=session,
             table_name="customer_terms_by_customer_id",
             customer_id=customer_id,
         )
+    else:
+        logger.info("Used V2 for customer payment terms")
+    finally:
+        return result
 
 
 def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
-    return ADP_DB.load_df(
-        session=session, table_name="program_parts_expanded", customer_id=customer_id
-    )
+    try:
+        result = pull_customer_parts_v2(session, customer_id)
+    except Exception as e:
+        logger.warning(f"v2 parts method failed: {e}")
+        result = ADP_DB.load_df(
+            session=session,
+            table_name="program_parts_expanded",
+            customer_id=customer_id,
+        )
+    else:
+        logger.info("Used V2 for customer program parts")
+    finally:
+        return result
 
 
 def pull_customer_alias_mapping(session: Session) -> pd.DataFrame:
-    return ADP_DB.load_df(session=session, table_name="customers")
+    # NOTE while I could just write the query to pull the exact
+    # record I need. I'm going to not do that for right now
+    # because the method that uses this doesn't expect it
+    try:
+        result = pull_customer_aliases_v2(session)
+    except Exception as e:
+        logger.warning(f"v2 customer alias method failed: {e}")
+        result = ADP_DB.load_df(session=session, table_name="customers")
+    else:
+        logger.info("Used V2 for customer aliases")
+    finally:
+        return result
 
 
 def pull_customer_parent_accounts(session: Session) -> pd.DataFrame:
-    return SCA_DB.load_df(session=session, table_name="customers")
+    # NOTE while I could just write the query to pull the exact
+    # record I need. I'm going to not do that for right now
+    # because the method that uses this doesn't expect it
+    try:
+        result = pull_customer_parents_v2(session)
+    except Exception as e:
+        logger.warning(f"v2 customer parents method failed: {e}")
+        result = SCA_DB.load_df(session=session, table_name="customers")
+    else:
+        logger.info("Used V2 for customer parents")
+    finally:
+        return result
 
 
 def add_customer_terms_parts_and_logo_path(
@@ -243,14 +331,18 @@ def add_customer_terms_parts_and_logo_path(
 def pull_program_data_v2(
     session: Session, customer_id: int
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    sql_pricing = """
-        SELECT id, product_id, price
-        FROM vendor_pricing_by_customer
-        WHERE vendor_customer_id = :customer_id"""
-    sql_product = """"""
-    sql_product_attrs = """"""
-    sql_ratings = """"""
-    return None, None, None
+    """
+    Coil and AH product tables need
+    - vendor_products
+    - vendor_product_attrs
+    - vendor_pricing_by_customer (STRATEGY_PRICING)
+    -
+    """
+    sql_pricing = None
+    sql_product = None
+    sql_product_attrs = None
+    ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
+    return None, None, ratings
 
 
 def pull_program_data(
@@ -324,7 +416,7 @@ def generate_program(session: Session, customer_id: int, stage: Stage) -> Progra
                 session=session, tables=tables, customer_id=customer_id
             )
         except Exception as e:
-            logger.warning(
+            logger.warninging(
                 "File Generation dates unable to be updated " f"due to an error: {e}"
             )
         return new_program_file
