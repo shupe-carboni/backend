@@ -827,6 +827,16 @@ INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
 	ON d.customer_location_id = c.id
 	WHERE terms IS NOT NULL;
 
+-- adp preferred parts status
+INSERT INTO vendor_customer_attrs (vendor_customer_id, attr, type, value)
+	SELECT DISTINCT d.vendor_customer_id, 'preferred_parts', 'BOOLEAN', preferred_parts
+	FROM adp_customers AS a
+	JOIN sca_customers AS b
+	ON b.id = a.sca_id
+	JOIN sca_customer_locations AS c
+	ON c.customer_id = b.id
+	JOIN customer_location_mapping AS d
+	ON d.customer_location_id = c.id;
 -- products
 -- adp
 INSERT INTO vendor_products (vendor_id, vendor_product_identifier)
@@ -1176,6 +1186,7 @@ INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price)
 	
 -- pricing by customer (using pricing class as a tag)
 -- adp snps
+-- coils
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
 	SELECT DISTINCT 
 		p.id AS product_id, 
@@ -1200,6 +1211,7 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	AND v.id = 'adp'
 	AND a.snp_price IS NOT NULL;
 
+-- Ahs
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
 	SELECT DISTINCT 
 		p.id AS product_id, 
@@ -1225,6 +1237,7 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	AND a.snp_price IS NOT NULL;
 
 -- adp material group discount pricing
+-- coils
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
 	SELECT DISTINCT 
 		p.id AS product_id, 
@@ -1246,6 +1259,7 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	AND a.material_group_net_price IS NOT NULL
 	AND a.snp_price IS NULL;
 
+-- Ahs
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
 	SELECT DISTINCT 
 		p.id AS product_id, 
@@ -1266,6 +1280,93 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	AND v.id = 'adp'
 	AND a.material_group_net_price IS NOT NULL
 	AND a.snp_price IS NULL;
+
+-- adp zero_discount
+-- coils
+INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
+	SELECT DISTINCT 
+		p.id AS product_id, 
+		pc.id AS pricing_class_id, 
+		vc.id AS vendor_customer_id, 
+		true AS use_as_override, 
+		(a.zero_discount_price * 100)::INT AS price
+	FROM adp_coil_programs AS a
+	JOIN vendor_products AS p ON p.vendor_product_identifier = a.model_number
+	JOIN vendors AS v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes AS pc 
+		ON pc.vendor_id = v.id AND pc.name = 'STRATEGY_PRICING'
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b
+		ON b.adp_alias = vc.name
+		AND b.id = a.customer_id 
+	AND a.stage::VARCHAR IN ('ACTIVE','PROPOSED')
+	AND v.id = 'adp'
+	AND a.material_group_net_price IS NULL
+	AND a.snp_price IS NULL;
+
+-- Ahs
+INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
+	SELECT DISTINCT 
+		p.id AS product_id, 
+		pc.id AS pricing_class_id, 
+		vc.id AS vendor_customer_id, 
+		true AS use_as_override, 
+		(a.zero_discount_price * 100)::INT AS price
+	FROM adp_ah_programs AS a
+	JOIN vendor_products AS p ON p.vendor_product_identifier = a.model_number
+	JOIN vendors AS v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes AS pc 
+		ON pc.vendor_id = v.id AND pc.name = 'STRATEGY_PRICING'
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b
+		ON b.adp_alias = vc.name
+		AND b.id = a.customer_id 
+	AND a.stage::VARCHAR IN ('ACTIVE','PROPOSED')
+	AND v.id = 'adp'
+	AND a.material_group_net_price IS NULL
+	AND a.snp_price IS NULL;
+
+-- adp parts
+-- preferred
+INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
+	SELECT DISTINCT 
+		p.id AS product_id, 
+		pc.id AS pricing_class_id, 
+		vc.id AS vendor_customer_id, 
+		true AS use_as_override, 
+		(c.preferred * 100)::INT AS price
+	FROM adp_program_parts AS a
+	JOIN adp_pricing_parts AS c ON c.part_number = a.part_number
+	JOIN vendor_products AS p ON p.vendor_product_identifier = a.part_number
+	JOIN vendors AS v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes AS pc 
+		ON pc.vendor_id = v.id AND pc.name = 'PREFERRED_PARTS'
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b
+		ON b.adp_alias = vc.name
+		AND b.id = a.customer_id 
+	WHERE v.id = 'adp'
+	AND b.preferred_parts;
+-- standard
+INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
+	SELECT DISTINCT 
+		p.id AS product_id, 
+		pc.id AS pricing_class_id, 
+		vc.id AS vendor_customer_id, 
+		true AS use_as_override, 
+		(c.standard * 100)::INT AS price
+	FROM adp_program_parts AS a
+	JOIN adp_pricing_parts AS c ON c.part_number = a.part_number
+	JOIN vendor_products AS p ON p.vendor_product_identifier = a.part_number
+	JOIN vendors AS v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes AS pc 
+		ON pc.vendor_id = v.id AND pc.name = 'STANDARD_PARTS'
+	JOIN vendor_customers AS vc ON vc.vendor_id = v.id
+	JOIN adp_customers AS b
+		ON b.adp_alias = vc.name
+		AND b.id = a.customer_id 
+	WHERE v.id = 'adp'
+	AND NOT b.preferred_parts;
 
 -- friedrich special pricing
 INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_customer_id, use_as_override, price)
