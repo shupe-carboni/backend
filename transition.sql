@@ -1396,22 +1396,14 @@ INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type
 
 -- customer-specific "categories" for adp products
 INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type, value)
-	SELECT DISTINCT vpbc.id, 'category', 'STRING', category
-	FROM adp_coil_programs a
-	JOIN adp_customers b ON b.ic = a.customer_id
-
-
-
-	FROM friedrich_pricing_special a
-	JOIN friedrich_customers fc ON fc.id = a.customer_id
-	JOIN vendor_customers vc ON vc.name = fc.name
-	JOIN friedrich_products b ON a.model_number_id = b.id
-	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
-	JOIN vendors v ON v.id = p.vendor_id
-	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id
-	JOIN vendor_pricing_by_customer vpbc ON vpbc.product_id = p.id AND vpbc.pricing_class_id = pc.id AND vpbc.vendor_customer_id = vc.id
-	WHERE customer_model_number IS NOT NULL;
-
+	SELECT DISTINCT vpbc.id, 'custom_description' as attr, 'STRING' as type, a.category as value
+	FROM vendor_pricing_by_customer vpbc
+	JOIN vendor_products vp ON vp.id = vpbc.product_id
+	JOIN vendor_customers vc ON vc.id = vpbc.vendor_customer_id
+	JOIN adp_customers adpc ON adpc.adp_alias = vc.name
+	JOIN adp_coil_programs a ON a.customer_id = adpc.id 
+		AND a.model_number = vp.vendor_product_identifier
+	WHERE vc.vendor_id = 'adp';
 
 -- customer pricing classes
 -- adp preferred parts
