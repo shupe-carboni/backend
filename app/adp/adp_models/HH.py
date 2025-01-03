@@ -49,12 +49,6 @@ class HH(ModelSeries):
             (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
         ].item()
         self.tonnage = int(self.attributes["ton"])
-        self.ratings_ac_txv = rf"HH{self.attributes['scode']}(\(6,9\)|\*){self.tonnage}"
-        self.ratings_hp_txv = rf"HH{self.attributes['scode']}(9|\*){self.tonnage}"
-        self.ratings_piston = rf"HH{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}"
-        self.ratings_field_txv = (
-            rf"HH{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}\+TXV"
-        )
         rds_option = self.attributes.get("option")
         self.rds_factory_installed = False
         self.rds_field_installed = False
@@ -63,6 +57,7 @@ class HH(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
@@ -71,6 +66,24 @@ class HH(ModelSeries):
         except ValueError:
             pass
         self.metering = self.metering_mapping[metering]
+        if not a2l_coil:
+            self.ratings_ac_txv = (
+                rf"HH{self.attributes['scode']}(\(6,9\)){self.tonnage}"
+            )
+            self.ratings_hp_txv = rf"HH{self.attributes['scode']}(9){self.tonnage}"
+            self.ratings_piston = (
+                rf"HH{self.attributes['scode']}(\(1,2\)){self.tonnage}"
+            )
+            self.ratings_field_txv = (
+                rf"HH{self.attributes['scode']}(\(1,2\)){self.tonnage}\+TXV"
+            )
+        else:
+            self.ratings_ac_txv = rf"HH{self.attributes['scode']}\*{self.tonnage}\+TXV"
+            self.ratings_hp_txv = rf"HH{self.attributes['scode']}\*{self.tonnage}\+TXV"
+            self.ratings_piston = rf"HH{self.attributes['scode']}1{self.tonnage}"
+            self.ratings_field_txv = (
+                rf"HH{self.attributes['scode']}\*{self.tonnage}\+TXV"
+            )
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:

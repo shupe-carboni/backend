@@ -69,6 +69,7 @@ class V(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
@@ -77,45 +78,85 @@ class V(ModelSeries):
         except ValueError:
             pass
         self.metering = self.metering_mapping[metering]
-        if self.cabinet_config != Cabinet.PAINTED:
+        painted = self.cabinet_config == Cabinet.PAINTED
+        if not painted and not a2l_coil:
             self.ratings_ac_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(\(6,9\)|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(\(6,9\))"
             )
             self.ratings_hp_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(9|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(9)"
             )
             self.ratings_piston = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\)|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\))"
             )
             self.ratings_field_txv = (
                 rf"V,.{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\)|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\))"
                 rf"\+TXV"
             )
-        else:
+        elif not painted and a2l_coil:
+            self.ratings_ac_txv = (
+                rf"V,.{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_hp_txv = (
+                rf"V,.{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_piston = (
+                rf"V,.{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}1"
+            )
+            self.ratings_field_txv = (
+                rf"V,.{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}\*\+TXV"
+            )
+        elif painted and not a2l_coil:
             self.ratings_ac_txv = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(\(6,9\)|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(\(6,9\))"
             )
             self.ratings_hp_txv = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(9|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(9)"
             )
             self.ratings_piston = (
                 rf"V(,.){{0,2}},{self.attributes['paint']}"
                 rf"(,.){{0,1}}{self.tonnage}H{height_str}"
-                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\)|\*)"
+                rf"{self.attributes['mat']}{self.attributes['scode']}(\(1,2\))"
             )
             self.ratings_field_txv = (
                 rf"V(,.){{0,2}},"
                 rf"{self.attributes['paint']}(,.){{0,1}}{self.tonnage}"
                 rf"H{height_str}{self.attributes['mat']}"
-                rf"{self.attributes['scode']}(\(1,2\)|\*)\+TXV"
+                rf"{self.attributes['scode']}(\(1,2\))\+TXV"
+            )
+        elif painted and a2l_coil:
+            self.ratings_ac_txv = (
+                rf"V(,.){{0,2}},{self.attributes['paint']}"
+                rf"(,.){{0,1}}{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_hp_txv = (
+                rf"V(,.){{0,2}},{self.attributes['paint']}"
+                rf"(,.){{0,1}}{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_piston = (
+                rf"V(,.){{0,2}},{self.attributes['paint']}"
+                rf"(,.){{0,1}}{self.tonnage}H{height_str}"
+                rf"{self.attributes['mat']}{self.attributes['scode']}1"
+            )
+            self.ratings_field_txv = (
+                rf"V(,.){{0,2}},"
+                rf"{self.attributes['paint']}(,.){{0,1}}{self.tonnage}"
+                rf"H{height_str}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}\*\+TXV"
             )
         self.zero_disc_price = self.calc_zero_disc_price()
 

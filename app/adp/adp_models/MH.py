@@ -46,22 +46,6 @@ class MH(ModelSeries):
             (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
         ].item()
         self.tonnage = int(self.attributes["ton"])
-        self.ratings_ac_txv = (
-            rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}(\(6,9\)|\*)"
-        )
-        self.ratings_hp_txv = (
-            rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}(9|\*)"
-        )
-        self.ratings_piston = (
-            rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}(\(1,2\)|\*)"
-        )
-        self.ratings_field_txv = (
-            rf"M{self.tonnage}{self.attributes['mat']}"
-            rf"{self.attributes['scode']}(\(1,2\)|\*)\+TXV"
-        )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
         self.rds_field_installed = False
@@ -70,6 +54,7 @@ class MH(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
+        a2l_coil = self.rds_field_installed or self.rds_field_installed
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
@@ -78,6 +63,40 @@ class MH(ModelSeries):
         except ValueError:
             pass
         self.metering = self.metering_mapping[metering]
+        if not a2l_coil:
+            self.ratings_ac_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(6,9\))"
+            )
+            self.ratings_hp_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(9)"
+            )
+            self.ratings_piston = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(1,2\))"
+            )
+            self.ratings_field_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}(\(1,2\))\+TXV"
+            )
+        else:
+            self.ratings_ac_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_hp_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}\*\+TXV"
+            )
+            self.ratings_piston = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}1"
+            )
+            self.ratings_field_txv = (
+                rf"M{self.tonnage}{self.attributes['mat']}"
+                rf"{self.attributes['scode']}\*\+TXV"
+            )
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
