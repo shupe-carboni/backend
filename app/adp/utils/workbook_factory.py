@@ -336,11 +336,13 @@ def pull_program_data_v2(
     - vendor_products
     - vendor_product_attrs
     - vendor_pricing_by_customer (STRATEGY_PRICING)
-    -
+    - vendor_pricing_by_customer_attrs
     """
-    sql_pricing = None
-    sql_product = None
-    sql_product_attrs = None
+    sql = """
+        SELECT vpbca.value AS "Category",  
+            vp.vendor_product_identifier AS model_number,
+            vp
+    """
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
     return None, None, ratings
 
