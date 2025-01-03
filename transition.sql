@@ -904,12 +904,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 -- adp attrs
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['category','private_label','mpg',
+		unnest(array['private_label','mpg',
 			'series','metering','cabinet',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[category,private_label,mpg,series,metering,
+		unnest(array[private_label,mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -919,12 +919,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['category','private_label','mpg',
+		unnest(array['private_label','mpg',
 			'series','metering','cabinet',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[category,private_label,mpg,series,metering,
+		unnest(array[private_label,mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv
 			,ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -938,12 +938,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['category','private_label','mpg',
+		unnest(array['private_label','mpg',
 			'series','metering','motor','heat',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[category,private_label,mpg,series,
+		unnest(array[private_label,mpg,series,
 			metering,motor,heat,ratings_ac_txv,
 			ratings_hp_txv,ratings_piston,
 			ratings_field_txv]) value
@@ -954,12 +954,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['category','private_label','mpg',
+		unnest(array['private_label','mpg',
 			'series','metering','motor','heat',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[category,private_label,mpg,series,metering,
+		unnest(array[private_label,mpg,series,metering,
 			motor,heat,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_ah_programs a
@@ -1380,6 +1380,7 @@ INSERT INTO vendor_pricing_by_customer (product_id, pricing_class_id, vendor_cus
 	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id 
 	WHERE v.id = 'friedrich'
 	AND pc.name = 'STOCKING';
+
 -- customer-specific model numbers associated with products
 INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type, value)
 	SELECT DISTINCT vpbc.id, 'customer_model_number', 'STRING', customer_model_number
@@ -1392,6 +1393,25 @@ INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type
 	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id
 	JOIN vendor_pricing_by_customer vpbc ON vpbc.product_id = p.id AND vpbc.pricing_class_id = pc.id AND vpbc.vendor_customer_id = vc.id
 	WHERE customer_model_number IS NOT NULL;
+
+-- customer-specific "categories" for adp products
+INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type, value)
+	SELECT DISTINCT vpbc.id, 'category', 'STRING', category
+	FROM adp_coil_programs a
+	JOIN adp_customers b ON b.ic = a.customer_id
+
+
+
+	FROM friedrich_pricing_special a
+	JOIN friedrich_customers fc ON fc.id = a.customer_id
+	JOIN vendor_customers vc ON vc.name = fc.name
+	JOIN friedrich_products b ON a.model_number_id = b.id
+	JOIN vendor_products p ON p.vendor_product_identifier = b.model_number
+	JOIN vendors v ON v.id = p.vendor_id
+	JOIN vendor_pricing_classes pc ON pc.vendor_id = v.id
+	JOIN vendor_pricing_by_customer vpbc ON vpbc.product_id = p.id AND vpbc.pricing_class_id = pc.id AND vpbc.vendor_customer_id = vc.id
+	WHERE customer_model_number IS NOT NULL;
+
 
 -- customer pricing classes
 -- adp preferred parts
