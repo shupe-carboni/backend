@@ -54,11 +54,11 @@ class MH(ModelSeries):
                 self.rds_factory_installed = True
             case "N":
                 self.rds_field_installed = True
-        a2l_coil = self.rds_field_installed or self.rds_field_installed
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
-            if self.rds_field_installed or self.rds_factory_installed:
+            if a2l_coil:
                 metering = -metering
         except ValueError:
             pass
