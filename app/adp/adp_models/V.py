@@ -73,7 +73,7 @@ class V(ModelSeries):
         metering = self.attributes["meter"]
         try:
             metering = int(metering)
-            if self.rds_field_installed or self.rds_factory_installed:
+            if a2l_coil:
                 metering = -metering
         except ValueError:
             pass

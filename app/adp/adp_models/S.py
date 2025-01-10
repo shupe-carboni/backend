@@ -61,7 +61,8 @@ class S(ModelSeries):
         except ValueError:
             pass
         self.metering = self.metering_mapping[metering]
-        if self.rds_factory_installed or self.rds_field_installed:
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
+        if a2l_coil:
             self.ratings_piston = (
                 rf"S{self.attributes['mat']}"
                 rf"{self.attributes['scode']}1{self.tonnage}"

@@ -71,7 +71,8 @@ class F(ModelSeries):
                 metering = -metering
         except ValueError:
             pass
-        if self.rds_factory_installed or self.rds_field_installed:
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
+        if a2l_coil:
             self.ratings_ac_txv = (
                 rf"""F{self.attributes['motor']}\*{s_code}\*{self.tonnage}\+TXV"""
             )
@@ -80,12 +81,16 @@ class F(ModelSeries):
             )
             self.ratings_hp_txv = self.ratings_field_txv = self.ratings_ac_txv
         else:
-            self.ratings_ac_txv = rf"""F,P{self.attributes['motor']}\*{s_code}(\(6,9\)|\*){self.tonnage}"""
-            self.ratings_hp_txv = (
-                rf"""F,P{self.attributes['motor']}\*{s_code}(9|\*){self.tonnage}"""
+            self.ratings_ac_txv = (
+                rf"""F,P{self.attributes['motor']}\*{s_code}(\(6,9\)){self.tonnage}"""
             )
-            self.ratings_piston = rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)|\*){self.tonnage}"""
-            self.ratings_field_txv = rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)|\*){self.tonnage}\+TXV"""
+            self.ratings_hp_txv = (
+                rf"""F,P{self.attributes['motor']}\*{s_code}(9){self.tonnage}"""
+            )
+            self.ratings_piston = (
+                rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)){self.tonnage}"""
+            )
+            self.ratings_field_txv = rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)){self.tonnage}\+TXV"""
         self.metering = self.metering_mapping[metering]
         self.zero_disc_price = self.calc_zero_disc_price()
 

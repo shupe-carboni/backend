@@ -59,26 +59,6 @@ class B(ModelSeries):
             (self.mat_grps["series"] == self.__series_name__()), "mat_grp"
         ].item()
         self.tonnage = int(self.attributes["ton"])
-        self.ratings_ac_txv = (
-            rf"B{self.attributes['motor']}"
-            rf"\*\*{self.attributes['scode']}"
-            rf"(\(6,9\)|\*){self.tonnage}"
-        )
-        self.ratings_hp_txv = (
-            rf"B{self.attributes['motor']}"
-            rf"\*\*{self.attributes['scode']}"
-            rf"(9|\*){self.tonnage}"
-        )
-        self.ratings_piston = (
-            rf"B{self.attributes['motor']}"
-            rf"\*\*{self.attributes['scode']}"
-            rf"(\(1,2\)|\*){self.tonnage}"
-        )
-        self.ratings_field_txv = (
-            rf"B{self.attributes['motor']}"
-            rf"\*\*{self.attributes['scode']}"
-            rf"(\(1,2\)|\*){self.tonnage}\+TXV"
-        )
         rds_option = self.attributes.get("rds")
         self.rds_factory_installed = False
         self.rds_field_installed = False
@@ -94,8 +74,41 @@ class B(ModelSeries):
                 metering = -metering
         except ValueError:
             pass
-
         self.metering = self.metering_mapping[metering]
+        a2l_coil = self.rds_factory_installed or self.rds_field_installed
+        if a2l_coil:
+            self.ratings_ac_txv = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"\*{self.tonnage}+TXV"
+            )
+            self.ratings_hp_txv = self.ratings_field_txv = self.ratings_ac_txv
+            self.ratings_piston = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"1{self.tonnage}"
+            )
+        else:
+            self.ratings_ac_txv = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"(\(6,9\)){self.tonnage}"
+            )
+            self.ratings_hp_txv = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"(9){self.tonnage}"
+            )
+            self.ratings_piston = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"(\(1,2\)){self.tonnage}"
+            )
+            self.ratings_field_txv = (
+                rf"B{self.attributes['motor']}"
+                rf"\*\*{self.attributes['scode']}"
+                rf"(\(1,2\)){self.tonnage}\+TXV"
+            )
         self.zero_disc_price = self.calc_zero_disc_price()
 
     def category(self) -> str:
