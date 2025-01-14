@@ -166,6 +166,8 @@ class V(ModelSeries):
         value = f'Dedicated Horizontal "A" {material} Coils - {paint}'
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:

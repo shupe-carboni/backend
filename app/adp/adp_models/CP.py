@@ -114,6 +114,8 @@ class CP(ModelSeries):
         value = f"Soffit Mount {cased} Air Handlers - {material} - {motor}"
         if self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         if self.attributes.get("drain"):
             value += " - Right Hand Drain"
         return value

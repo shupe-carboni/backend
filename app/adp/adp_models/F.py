@@ -120,6 +120,8 @@ class F(ModelSeries):
             value += " - FlexCoil"
         elif self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         return value
 
     def calc_zero_disc_price(self) -> int:

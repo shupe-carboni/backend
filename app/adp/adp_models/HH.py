@@ -90,6 +90,8 @@ class HH(ModelSeries):
         value = "Horizontal Slab Coils"
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:

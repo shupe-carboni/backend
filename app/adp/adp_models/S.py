@@ -96,6 +96,8 @@ class S(ModelSeries):
             value += " - FlexCoil"
         elif self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:

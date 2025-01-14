@@ -209,6 +209,8 @@ class HE(ModelSeries):
         value = f"{orientation} {material} {connections} {additional} - {color}"
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
+        else:
+            value += " - A1"
         return value
 
     def load_pricing(self, config: str) -> tuple[int, PriceByCategoryAndKey]:
