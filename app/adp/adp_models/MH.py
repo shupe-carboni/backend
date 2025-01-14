@@ -13,7 +13,7 @@ class MH(ModelSeries):
     regex = r"""
         (?P<series>M)
         (?P<ton>\d{2})
-        (?P<mat>E)
+        (?P<mat>[E|G])
         (?P<scode>\d{2})
         (?P<meter>[\d|A|B])
         (?P<rds>[R|N]?)
@@ -36,7 +36,6 @@ class MH(ModelSeries):
             .one()
         )
         self.cabinet_config = Cabinet.UNCASED
-        self.material = "Copper"
         self.width = 18
         self.depth = 19.5
         self.height = specs["HEIGHT"]
@@ -101,6 +100,16 @@ class MH(ModelSeries):
 
     def category(self) -> str:
         value = "Manufactured Housing Coils"
+        match self.attributes["mat"]:
+            case "E":
+                material = "Copper"
+            case "G":
+                material = "Aluminum"
+            case _:
+                raise Exception("Invalid Nomenclature for Coil Material")
+
+        value += f" - {material}"
+
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         return value
