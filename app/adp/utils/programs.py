@@ -114,6 +114,8 @@ class EmptyProgram(Exception): ...
 class Program:
     def __init__(self, program_data: pd.DataFrame, ratings: pd.DataFrame) -> None:
         self._data = program_data
+        if program_data.empty:
+            return
         self.product_categories = program_data[Fields.CATEGORY.value].drop_duplicates()
         self.ratings = ratings
         if program_data[Fields.PRIVATE_LABEL.value].isna().all():
