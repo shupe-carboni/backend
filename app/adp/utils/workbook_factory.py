@@ -39,6 +39,9 @@ class ProgramFile:
 def build_coil_program(
     program_data: pd.DataFrame, ratings: pd.DataFrame
 ) -> CoilProgram:
+    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
+    if program_data.empty:
+        return CoilProgram(program_data=program_data, ratings=prog_ratings)
     program_data = program_data.drop(columns=["customer_id"])
     program_data = program_data.sort_values(
         by=[
@@ -51,13 +54,15 @@ def build_coil_program(
             Fields.HEIGHT.value,
         ]
     ).drop_duplicates()
-    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
     return CoilProgram(program_data=program_data, ratings=prog_ratings)
 
 
 def build_ah_program(
     program_data: pd.DataFrame, ratings: pd.DataFrame
 ) -> AirHandlerProgram:
+    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
+    if program_data.empty:
+        return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
     program_data = program_data.drop(columns=["customer_id"])
     temp_heat_num_col = "heat_num"
     program_data[temp_heat_num_col] = (
@@ -78,7 +83,6 @@ def build_ah_program(
         ]
     ).drop_duplicates()
     program_data = program_data.drop(columns=[temp_heat_num_col])
-    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
 
 
@@ -165,7 +169,7 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
 
 def pull_customer_aliases_v2(session: Session) -> pd.DataFrame:
     sql = """
-        SELECT DISTINCT vc.name AS adp_alias, customers.name as customer,
+        SELECT DISTINCT vc.id as id, vc.name AS adp_alias, customers.name as customer,
             customers.id as sca_id, vca.value::bool as preferred_parts
         FROM vendor_customers vc
         JOIN customer_location_mapping clm ON clm.vendor_customer_id = vc.id
@@ -338,16 +342,86 @@ def pull_program_data_v2(
     - vendor_pricing_by_customer (STRATEGY_PRICING)
     - vendor_pricing_by_customer_attrs
     """
-    sql = """
-        SELECT vpbca.value AS "Category",  
-            vp.vendor_product_identifier AS model_number,
-            vp
+
+    customer_strategy_sql = """
+        SELECT vpbc.id as price_id, vpbc.product_id, vpbc.vendor_customer_id as customer_id, 
+            classes.name as cat_1, vp.vendor_product_identifier as model_number, vpbc.price
+        FROM vendor_pricing_by_customer AS vpbc
+        JOIN vendor_products AS vp ON vp.id = vpbc.product_id
+        JOIN vendor_product_to_class_mapping AS mapping ON mapping.product_id = vp.id
+        JOIN vendor_product_classes AS classes ON classes.id = mapping.product_class_id
+        WHERE vpbc.vendor_customer_id = :customer_id
+        AND EXISTS (
+            SELECT 1
+            FROM vendor_pricing_classes AS vpc
+            WHERE vpc.id = vpbc.pricing_class_id
+            AND vpc.name = 'STRATEGY_PRICING'
+            AND vp.vendor_id = 'adp'
+        )
+        AND classes.rank = 1
+        AND vpbc.deleted_at IS NULL;
     """
+    strategy_product_custom_desc_sql = """
+        SELECT pricing_by_customer_id as price_id, value as "category"
+        FROM vendor_pricing_by_customer_attrs
+        WHERE pricing_by_customer_id IN :ids
+        AND attr = 'custom_description'; 
+    """
+    strategy_product_attrs = """
+        SELECT vendor_product_id AS product_id, attr, value
+        FROM vendor_product_attrs
+        WHERE vendor_product_id IN :product_ids
+        AND attr != 'category';
+    """
+    customer_strategy = pd.DataFrame(
+        DB_V2.execute(session, customer_strategy_sql, dict(customer_id=customer_id))
+        .mappings()
+        .fetchall()
+    )
+    strategy_product_desc = pd.DataFrame(
+        DB_V2.execute(
+            session,
+            strategy_product_custom_desc_sql,
+            dict(ids=tuple(customer_strategy["price_id"].tolist())),
+        )
+        .mappings()
+        .fetchall()
+    )
+    strategy_product_attrs = pd.DataFrame(
+        DB_V2.execute(
+            session,
+            strategy_product_attrs,
+            dict(product_ids=tuple(customer_strategy["product_id"].unique().tolist())),
+        )
+        .mappings()
+        .fetchall()
+    )
+    strat_prod_pivoted = strategy_product_attrs.pivot(
+        index="product_id", columns="attr", values="value"
+    )
+    customer_strategy_detailed = (
+        customer_strategy.merge(
+            strategy_product_desc,
+            on="price_id",
+        )
+        .merge(strat_prod_pivoted, on="product_id")
+        .rename(columns={"price": "net_price"})
+    )
+    customer_strategy_detailed["stage"] = "ACTIVE"
+    customer_strategy_detailed["net_price"] /= 100
+    coils = customer_strategy_detailed[
+        customer_strategy_detailed["cat_1"] == "Coils"
+    ].dropna(how="all", axis=1)
+    coils["private_label"] = None
+    ahs = customer_strategy_detailed[
+        customer_strategy_detailed["cat_1"] == "Air Handlers"
+    ].dropna(how="all", axis=1)
+    ahs["private_label"] = None
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
-    return None, None, ratings
+    return coils, ahs, ratings
 
 
-def pull_program_data(
+def pull_program_data_v1(
     session: Session, customer_id: int, stage: Stage
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
@@ -375,8 +449,21 @@ def pull_program_data(
     return coil_prog_table, ah_prog_table, ratings
 
 
+def pull_program_data(
+    session: Session, customer_id: int, stage: Stage
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    try:
+        result = pull_program_data_v2(session, customer_id)
+    except Exception as e:
+        logger.warning(f"v2 product data method failed: {e}")
+        result = pull_program_data_v1(session, customer_id, stage)
+    else:
+        logger.info("Used V2 for customer program products")
+    finally:
+        return result
+
+
 def generate_program(session: Session, customer_id: int, stage: Stage) -> ProgramFile:
-    # TODO - swap out the underlying method to use v2 tables
     coil_prog_table, ah_prog_table, ratings = pull_program_data(
         session, customer_id, stage
     )
@@ -418,7 +505,7 @@ def generate_program(session: Session, customer_id: int, stage: Stage) -> Progra
                 session=session, tables=tables, customer_id=customer_id
             )
         except Exception as e:
-            logger.warninging(
+            logger.warning(
                 "File Generation dates unable to be updated " f"due to an error: {e}"
             )
         return new_program_file
