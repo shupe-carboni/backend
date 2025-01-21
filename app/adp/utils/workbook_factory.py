@@ -335,12 +335,9 @@ def add_customer_terms_parts_and_logo_path(
 def pull_program_data_v2(
     session: Session, customer_id: int
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Coil and AH product tables need
-    - vendor_products
-    - vendor_product_attrs
-    - vendor_pricing_by_customer (STRATEGY_PRICING)
-    - vendor_pricing_by_customer_attrs
+    """Pull together pricing by customer, the product info, and the customer-specific
+    product info in order to reconstruct the ADP coils and Air Handlers schemas that
+    used to be pulled directly from the database tables in V1.
     """
 
     customer_strategy_sql = """
