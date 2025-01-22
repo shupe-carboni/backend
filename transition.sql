@@ -904,12 +904,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 -- adp attrs
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['private_label','mpg',
+		unnest(array['mpg',
 			'series','metering','cabinet',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -919,12 +919,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['private_label','mpg',
+		unnest(array['mpg',
 			'series','metering','cabinet',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[mpg,series,metering,
 			cabinet,ratings_ac_txv,ratings_hp_txv
 			,ratings_piston, ratings_field_txv]) value
 	FROM adp_coil_programs a
@@ -938,12 +938,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['private_label','mpg',
+		unnest(array['mpg',
 			'series','metering','motor','heat',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,
+		unnest(array[mpg,series,
 			metering,motor,heat,ratings_ac_txv,
 			ratings_hp_txv,ratings_piston,
 			ratings_field_txv]) value
@@ -954,12 +954,12 @@ INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 
 INSERT INTO vendor_product_attrs (vendor_product_id, attr, type, value)
 	SELECT DISTINCT b.id,
-		unnest(array['private_label','mpg',
+		unnest(array['mpg',
 			'series','metering','motor','heat',
 			'ratings_ac_txv','ratings_hp_txv',
 			'ratings_piston', 'ratings_field_txv']) AS attr,
 		'STRING' AS "type",
-		unnest(array[private_label,mpg,series,metering,
+		unnest(array[mpg,series,metering,
 			motor,heat,ratings_ac_txv,ratings_hp_txv,
 			ratings_piston, ratings_field_txv]) value
 	FROM adp_ah_programs a
