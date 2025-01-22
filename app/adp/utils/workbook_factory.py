@@ -406,22 +406,16 @@ def pull_program_data_v2(
     )
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
-    coils = (
-        customer_strategy_detailed[customer_strategy_detailed["cat_1"] == "Coils"]
-        .dropna(how="all", axis=1)
-        .fillna(0)
-    )
+    coils = customer_strategy_detailed[
+        customer_strategy_detailed["cat_1"] == "Coils"
+    ].dropna(how="all", axis=1)
     coils["private_label"] = None
-    ahs = (
-        customer_strategy_detailed[
-            customer_strategy_detailed["cat_1"] == "Air Handlers"
-        ]
-        .dropna(how="all", axis=1)
-        .fillna(0)
-    )
+    ahs = customer_strategy_detailed[
+        customer_strategy_detailed["cat_1"] == "Air Handlers"
+    ].dropna(how="all", axis=1)
     ahs["private_label"] = None
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
-    return coils.infer_objects(), ahs.infer_objects(), ratings
+    return coils, ahs, ratings
 
 
 def pull_program_data_v1(
