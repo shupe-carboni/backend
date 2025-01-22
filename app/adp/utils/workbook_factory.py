@@ -409,7 +409,7 @@ def pull_program_data_v2(
     coils = (
         customer_strategy_detailed[customer_strategy_detailed["cat_1"] == "Coils"]
         .dropna(how="all", axis=1)
-        .fillna(None)
+        .fillna(0)
     )
     coils["private_label"] = None
     ahs = (
@@ -417,11 +417,10 @@ def pull_program_data_v2(
             customer_strategy_detailed["cat_1"] == "Air Handlers"
         ]
         .dropna(how="all", axis=1)
-        .fillna(None)
+        .fillna(0)
     )
     ahs["private_label"] = None
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
-    print(coils.to_string())
     return coils.infer_objects(), ahs.infer_objects(), ratings
 
 
