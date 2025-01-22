@@ -1406,6 +1406,16 @@ BEGIN;
 			AND a.model_number = vp.vendor_product_identifier
 		WHERE vc.vendor_id = 'adp';
 
+	INSERT INTO vendor_pricing_by_customer_attrs (pricing_by_customer_id, attr, type, value)
+		SELECT DISTINCT vpbc.id, 'custom_description' as attr, 'STRING' as type, a.category as value
+		FROM vendor_pricing_by_customer vpbc
+		JOIN vendor_products vp ON vp.id = vpbc.product_id
+		JOIN vendor_customers vc ON vc.id = vpbc.vendor_customer_id
+		JOIN adp_customers adpc ON adpc.adp_alias = vc.name
+		JOIN adp_ah_programs a ON a.customer_id = adpc.id 
+			AND a.model_number = vp.vendor_product_identifier
+		WHERE vc.vendor_id = 'adp';
+		
 	-- customer pricing classes
 	-- adp preferred parts
 	INSERT INTO vendor_customer_pricing_classes (pricing_class_id, vendor_customer_id)
