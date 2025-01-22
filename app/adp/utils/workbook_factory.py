@@ -406,14 +406,37 @@ def pull_program_data_v2(
     )
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
+
     coils = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Coils"
     ].dropna(how="all", axis=1)
     coils["private_label"] = None
+    num_col_names = [
+        "width",
+        "depth",
+        "height",
+        "length",
+        "weight",
+        "pallet_qty",
+        "min_qty",
+    ]
+    num_col_types = [float, float, float, int, int, int, int]
+    num_cols = {n: t for n, t in zip(num_col_names, num_col_types)}
+    try:
+        num_cols_trimmed = {n: t for n, t in num_cols.items() if n in coils.columns}
+        coils = coils.astype(num_cols_trimmed, errors="ignore")
+    except Exception as e:
+        logger.info(f"Unable to convert num cols: {e}")
+
     ahs = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Air Handlers"
     ].dropna(how="all", axis=1)
     ahs["private_label"] = None
+    try:
+        num_cols_trimmed = {n: t for n, t in num_cols.items() if n in ahs.columns}
+        ahs = ahs.astype(num_cols_trimmed, errors="ignore")
+    except Exception as e:
+        logger.info(f"Unable to convert num cols: {e}")
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
     return coils, ahs, ratings
 
