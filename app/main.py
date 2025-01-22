@@ -1,4 +1,4 @@
-__version__ = "2.1.4"
+__version__ = "2.2.0"
 
 from dotenv import load_dotenv
 
@@ -7,7 +7,7 @@ import os
 import logging
 from random import randint
 from asyncio import sleep
-from fastapi import FastAPI, Request, status, Response, HTTPException
+from fastapi import FastAPI, Request, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
