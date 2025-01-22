@@ -406,16 +406,23 @@ def pull_program_data_v2(
     )
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
-    coils = customer_strategy_detailed[
-        customer_strategy_detailed["cat_1"] == "Coils"
-    ].dropna(how="all", axis=1)
+    coils = (
+        customer_strategy_detailed[customer_strategy_detailed["cat_1"] == "Coils"]
+        .dropna(how="all", axis=1)
+        .fillna(None)
+    )
     coils["private_label"] = None
-    ahs = customer_strategy_detailed[
-        customer_strategy_detailed["cat_1"] == "Air Handlers"
-    ].dropna(how="all", axis=1)
+    ahs = (
+        customer_strategy_detailed[
+            customer_strategy_detailed["cat_1"] == "Air Handlers"
+        ]
+        .dropna(how="all", axis=1)
+        .fillna(None)
+    )
     ahs["private_label"] = None
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
-    return coils, ahs, ratings
+    print(coils.to_string())
+    return coils.infer_objects(), ahs.infer_objects(), ratings
 
 
 def pull_program_data_v1(
@@ -442,7 +449,6 @@ def pull_program_data_v1(
             ah_prog_table = ah_prog_table[(active_ahs) | (proposed_ahs)]
         case _:
             raise EmptyProgram
-
     return coil_prog_table, ah_prog_table, ratings
 
 
