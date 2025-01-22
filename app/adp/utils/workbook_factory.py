@@ -397,10 +397,7 @@ def pull_program_data_v2(
         index="product_id", columns="attr", values="value"
     )
     customer_strategy_detailed = (
-        customer_strategy.merge(
-            strategy_product_desc,
-            on="price_id",
-        )
+        customer_strategy.merge(strategy_product_desc, on="price_id", how="outer")
         .merge(strat_prod_pivoted, on="product_id")
         .rename(columns={"price": "net_price"})
     )
@@ -432,6 +429,7 @@ def pull_program_data_v2(
         customer_strategy_detailed["cat_1"] == "Air Handlers"
     ].dropna(how="all", axis=1)
     ahs["private_label"] = None
+    print(ahs.to_string())
     try:
         num_cols_trimmed = {n: t for n, t in num_cols.items() if n in ahs.columns}
         ahs = ahs.astype(num_cols_trimmed, errors="ignore")
