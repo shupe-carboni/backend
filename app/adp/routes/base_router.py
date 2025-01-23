@@ -7,6 +7,7 @@ from app import auth, downloads
 from app.db import Session, ADP_DB, Stage
 from app.adp.models import ProgAttrs
 from app.jsonapi.sqla_models import ADPCustomer
+from app.v2.models import VendorCustomer
 from app.adp.utils.programs import EmptyProgram
 from app.adp.extraction.models import parse_model_string
 from app.adp.utils.models import ParsingModes
@@ -119,10 +120,10 @@ def parse_model_and_pricing(
     elif customer_id:
         try:
             (
-                auth.ADPOperations(token, ADPCustomer)
+                auth.VendorCustomerOperations(token, VendorCustomer, vendor_id="adp")
                 .allow_dev()
                 .allow_customer("std")
-                .get(session, obj_id=customer_id)
+                .get(session, obj=customer_id)
             )
         except HTTPException as e:
             if e.status_code < 500:

@@ -9,7 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from app.auth import SecOp
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Stage, Session, ADP_DB_2024
+from app.db import ADP_DB, Stage, Session, ADP_DB_2024, DB_V2
 from app.adp.utils.models import ParsingModes
 import warnings
 
@@ -136,17 +136,33 @@ def price_models_by_customer_discounts(
     adp_customer_id: int,
     price_mode: ParsingModes = ParsingModes.CUSTOMER_PRICING,
 ) -> pd.Series:
+    mat_grp_disc_sql = """
+        SELECT class.name AS mat_grp, discount, effective_date,
+            vendor_customer_id AS customer_id
+        FROM vendor_product_class_discounts a
+        JOIN vendor_product_classes as class on class.id = product_class_id
+        WHERE vendor_customer_id = :adp_customer_id;
+    """
+
+    # TODO
+    snps_sql = """
+    """
     match price_mode:
         case ParsingModes.CUSTOMER_PRICING:
-            mat_grp_discounts = ADP_DB.load_df(
-                session=session,
-                table_name="material_group_discounts",
-                customer_id=adp_customer_id,
+            mat_grp_discounts = pd.DataFrame(
+                DB_V2.execute(
+                    session=session,
+                    sql=mat_grp_disc_sql,
+                    params=dict(adp_customer_id=adp_customer_id),
+                )
+                .mappings()
+                .fetchall()
             )
             snps = ADP_DB.load_df(
                 session=session, table_name="snps", customer_id=adp_customer_id
             ).drop_duplicates()
         case ParsingModes.CUSTOMER_PRICING_2024:
+            raise Exception("No Longer Supported")
             mat_grp_discounts = ADP_DB_2024.load_df(
                 session=session,
                 table_name="material_group_discounts",
