@@ -9,6 +9,7 @@ from app.v2.models import (
     NewVendorPricingByCustomer,
 )
 from app.jsonapi.sqla_models import VendorPricingByCustomer
+from sqlalchemy_jsonapi.errors import ValidationError
 
 PARENT_PREFIX = "/vendors/v2"
 VENDOR_PRICING_BY_CUSTOMER = VendorPricingByCustomer.__jsonapi_type_override__
@@ -34,19 +35,53 @@ async def new_vendor_pricing_by_customer(
 ) -> VendorPricingByCustomerResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
-    return (
-        auth.VendorCustomerOperations(
-            token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+    try:
+        return (
+            auth.VendorCustomerOperations(
+                token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session=session,
+                data=new_obj.model_dump(exclude_none=True, by_alias=True),
+                primary_id=vendor_customer_id,
+            )
         )
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .post(
-            session=session,
-            data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=vendor_customer_id,
+    except ValidationError:
+        product_id = new_obj.data.relationships.vendor_products.data.id
+        pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data.id
+        new_price = new_obj.data.attributes.price
+        sql = """
+            SELECT id
+            FROM vendor_pricing_by_customer
+            WHERE vendor_customer_id = :vc_id
+            AND product_id = :p_id
+            AND pricing_class_id = :pc_id;
+        """
+        (existing_id,) = DB_V2.execute(
+            session,
+            sql,
+            dict(
+                vc_id=vendor_customer_id,
+                p_id=product_id,
+                pc_id=pricing_class_id,
+            ),
+        ).one()
+        data = {
+            "id": existing_id,
+            "type": "vendor-pricing-by-customer",
+            "attributes": {
+                "deleted-at": None,
+                "price": new_price,
+            },
+            "relationships": new_obj.data.relationships.model_dump(exclude_none=True)
+            | {"vendors": {"data": {"type": "vendors", "id": vendor_id}}},
+        }
+        return await mod_vendor_pricing_by_customer(
+            token, session, existing_id, ModVendorPricingByCustomer(data=data)
         )
-    )
 
 
 @vendor_pricing_by_customer.patch(
