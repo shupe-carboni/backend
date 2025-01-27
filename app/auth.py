@@ -46,6 +46,7 @@ from app.jsonapi.sqla_models import (
     VendorQuoteProduct,
 )
 from app.jsonapi.sqla_jsonapi_ext import GenericData
+from sqlalchemy_jsonapi.errors import ValidationError
 
 if TYPE_CHECKING:
     from app.jsonapi.sqla_models import JSONAPI_
@@ -283,6 +284,8 @@ def standard_error_handler(func):
             raise e
         except BadRequestError as e:
             raise HTTPException(e.status_code, e.detail)
+        except ValidationError as e:
+            raise e
         except:
             import traceback as tb
 
