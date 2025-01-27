@@ -96,7 +96,7 @@ class JSONAPI_(JSONAPI):
 
     @staticmethod
     def _apply_filters(
-        model: SQLAlchemyModel, sqla_query_obj: sqlQuery, filters: dict[str, str]
+        model: SQLAlchemyModel, sqla_query_obj: sqlQuery, filters: dict[str, list[str]]
     ) -> sqlQuery:
         """
         handler for filter parameters in the query string
@@ -115,7 +115,8 @@ class JSONAPI_(JSONAPI):
             resource, attr = field
             if field_py := model.__jsonapi_map_to_py__.get(attr):
                 model_attr: Column = getattr(model, field_py)
-                filter_query_args.append(or_(model_attr.like("%" + value + "%")))
+                for item in value:
+                    filter_query_args.append(or_(model_attr.like("%" + item + "%")))
             else:
                 warnings.warn(
                     f"Warning: filter field {field} with value {value} was ignored."
