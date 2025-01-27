@@ -174,12 +174,15 @@ def price_models_by_customer_discounts(
 
     no_disc_price = int(model["zero_discount_price"])
     mat_group: str = model["mpg"]
-    mat_group_disc: pd.Series = mat_grp_discounts.loc[
-        (mat_grp_discounts[Fields.CUSTOMER_ID.value] == adp_customer_id)
-        & (mat_grp_discounts["mat_grp"] == mat_group),
-        "discount",
-    ]
-    mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
+    if not mat_grp_discounts.empty:
+        mat_group_disc: pd.Series = mat_grp_discounts.loc[
+            (mat_grp_discounts[Fields.CUSTOMER_ID.value] == adp_customer_id)
+            & (mat_grp_discounts["mat_grp"] == mat_group),
+            "discount",
+        ]
+        mat_group_disc = mat_group_disc.item() if not mat_group_disc.empty else 0
+    else:
+        mat_group_disc = 0
     if not isinstance(model[Fields.PRIVATE_LABEL.value], str):
         model_num: str = model[Fields.MODEL_NUMBER.value]
     else:
