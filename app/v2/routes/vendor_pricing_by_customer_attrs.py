@@ -9,6 +9,7 @@ from app.v2.models import (
     ModVendorPricingByCustomerAttr,
 )
 from app.jsonapi.sqla_models import VendorPricingByCustomerAttr
+from sqlalchemy_jsonapi.errors import ValidationError
 
 PARENT_PREFIX = "/vendors"
 VENDOR_PRICING_BY_CUSTOMER_ATTRS = VendorPricingByCustomerAttr.__jsonapi_type_override__
@@ -36,19 +37,22 @@ async def new_vendor_pricing_by_customer_attr(
         new_obj.data.relationships.vendor_pricing_by_customer.data.id
     )
     vendor_id = new_obj.data.relationships.vendors.data.id
-    return (
-        auth.VendorPricingByCustomerOperations(
-            token, VendorPricingByCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+    try:
+        return (
+            auth.VendorPricingByCustomerOperations(
+                token, VendorPricingByCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session,
+                data=new_obj.model_dump(exclude_none=True, by_alias=True),
+                primary_id=vendor_pricing_by_customer_id,
+            )
         )
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .post(
-            session,
-            data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=vendor_pricing_by_customer_id,
-        )
-    )
+    except ValidationError:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
 
 
 @vendor_pricing_by_customer_attrs.patch(
