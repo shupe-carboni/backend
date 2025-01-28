@@ -388,7 +388,7 @@ class CustomerProgram:
                 return False
 
             def check_model_row(row: pd.Series) -> bool:
-                ratings_regexes = row[row.index.str.contains("ratings")]
+                ratings_regexes = row[row.index.str.contains("ratings")].dropna()
                 if ratings_regexes.isna().all():
                     return False
                 if ratings_regexes.apply(in_ratings).any():
