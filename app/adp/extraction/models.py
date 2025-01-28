@@ -144,8 +144,12 @@ def price_models_by_customer_discounts(
         WHERE vendor_customer_id = :adp_customer_id;
     """
 
-    # TODO
     snps_sql = """
+        SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
+            discount
+        FROM vendor_product_discounts AS a
+        JOIN vendor_products AS vp ON vp.id = a.product_id
+        WHERE vendor_customer_id = :adp_customer_id;
     """
     match price_mode:
         case ParsingModes.CUSTOMER_PRICING:
@@ -158,19 +162,25 @@ def price_models_by_customer_discounts(
                 .mappings()
                 .fetchall()
             )
-            snps = ADP_DB.load_df(
-                session=session, table_name="snps", customer_id=adp_customer_id
-            ).drop_duplicates()
+            snps = pd.DataFrame(
+                DB_V2.execute(
+                    session=session,
+                    sql=snps_sql,
+                    params=dict(adp_customer_id=adp_customer_id),
+                )
+                .mappings()
+                .fetchall()
+            )
         case ParsingModes.CUSTOMER_PRICING_2024:
             raise Exception("No Longer Supported")
-            mat_grp_discounts = ADP_DB_2024.load_df(
-                session=session,
-                table_name="material_group_discounts",
-                customer_id=adp_customer_id,
-            )
-            snps = ADP_DB_2024.load_df(
-                session=session, table_name="snps", customer_id=adp_customer_id
-            ).drop_duplicates()
+            # mat_grp_discounts = ADP_DB_2024.load_df(
+            #     session=session,
+            #     table_name="material_group_discounts",
+            #     customer_id=adp_customer_id,
+            # )
+            # snps = ADP_DB_2024.load_df(
+            #     session=session, table_name="snps", customer_id=adp_customer_id
+            # ).drop_duplicates()
 
     no_disc_price = int(model["zero_discount_price"])
     mat_group: str = model["mpg"]
@@ -188,17 +198,23 @@ def price_models_by_customer_discounts(
     else:
         model_num: str = model[Fields.PRIVATE_LABEL.value]
 
-    snp: pd.Series = snps.loc[
-        (snps[Fields.CUSTOMER_ID.value] == adp_customer_id)
-        & (snps["model"] == model_num)
-        & (snps["stage"].isin([Stage.ACTIVE.name, Stage.PROPOSED.name])),
-        "price",
-    ]
-    snp = snp.item() if not snp.empty else 0
-    snp_disc = f"{(1 - (snp / no_disc_price)) * 100:.1f}" if snp else 0
+    if not snps.empty:
+        snp_disc: pd.Series = snps.loc[
+            (snps[Fields.CUSTOMER_ID.value] == adp_customer_id)
+            & (snps["model"] == model_num),
+            "discount",
+        ]
+        snp_disc = snp_disc.item() if not snp_disc.empty else 0
+    else:
+        snp_disc = 0
+
     mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
     mat_group_price = int(math.floor(mat_group_price + 0.5))
     mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
+
+    snp_price = no_disc_price * (1 - snp_disc / 100)
+    snp_price = int(math.floor(snp_price + 0.5))
+    snp_price = 0 if snp_price == no_disc_price else snp_price
     result = {
         Fields.MATERIAL_GROUP_DISCOUNT.value: (
             mat_group_disc if mat_group_disc else None
@@ -207,9 +223,9 @@ def price_models_by_customer_discounts(
             mat_group_price if mat_group_price else None
         ),
         Fields.SNP_DISCOUNT.value: snp_disc if snp_disc else None,
-        Fields.SNP_PRICE.value: snp if snp else None,
+        Fields.SNP_PRICE.value: snp_price if snp_price else None,
         Fields.NET_PRICE.value: min(
-            [price for price in (snp, mat_group_price, no_disc_price) if price]
+            [price for price in (snp_price, mat_group_price, no_disc_price) if price]
         ),
     }
     model.update(result)
