@@ -47,7 +47,6 @@ def build_coil_program(
         by=[
             Fields.CATEGORY.value,
             Fields.SERIES.value,
-            Fields.MPG.value,
             Fields.METERING.value,
             Fields.TONNAGE.value,
             Fields.WIDTH.value,
@@ -76,7 +75,6 @@ def build_ah_program(
         by=[
             Fields.CATEGORY.value,
             Fields.SERIES.value,
-            Fields.MPG.value,
             Fields.TONNAGE.value,
             Fields.WIDTH.value,
             temp_heat_num_col,
