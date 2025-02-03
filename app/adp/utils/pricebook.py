@@ -438,7 +438,7 @@ class PriceBook:
         return self
 
     def attach_nomenclature_tab(self) -> "PriceBook":
-        long_nomens = {"HE", "HH", "B", "F", "CP"}
+        long_nomens = {"HE", "HH", "B", "F", "CP", "LS"}
         medium_nomens = {"V", "CE", "CF"}
         if self.program.series_contained.intersection(long_nomens):
             self.new_nomenclature_sheet("long").movey(1)

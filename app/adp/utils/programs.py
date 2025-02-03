@@ -149,7 +149,7 @@ class Program:
             )
             self.product_series_contained = set(pl_series + non_pl_series)
         else:
-            self.product_series_contained = {"CE", "CF"}
+            self.product_series_contained = {"CE", "CF", "LS"}
 
     def category_data(self, category) -> pd.DataFrame:
         data = self._data.loc[self._data[Fields.CATEGORY.value] == category, :]
