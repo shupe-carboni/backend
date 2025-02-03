@@ -362,11 +362,17 @@ def pull_program_data_v2(
         WHERE pricing_by_customer_id IN :ids
         AND attr = 'custom_description'; 
     """
+    strategy_product_private_label_sql = """
+        SELECT pricing_by_customer_id as price_id, value as "private_label"
+        FROM vendor_pricing_by_customer_attrs
+        WHERE pricing_by_customer_id IN :ids
+        AND attr = 'private_label'; 
+    """
     strategy_product_attrs = """
         SELECT vendor_product_id AS product_id, attr, value
         FROM vendor_product_attrs
         WHERE vendor_product_id IN :product_ids
-        AND attr != 'category';
+        AND attr NOT IN ('category','private_label');
     """
     customer_strategy = pd.DataFrame(
         DB_V2.execute(session, customer_strategy_sql, dict(customer_id=customer_id))
@@ -377,6 +383,15 @@ def pull_program_data_v2(
         DB_V2.execute(
             session,
             strategy_product_custom_desc_sql,
+            dict(ids=tuple(customer_strategy["price_id"].tolist())),
+        )
+        .mappings()
+        .fetchall()
+    )
+    strategy_private_labels = pd.DataFrame(
+        DB_V2.execute(
+            session,
+            strategy_product_private_label_sql,
             dict(ids=tuple(customer_strategy["price_id"].tolist())),
         )
         .mappings()
@@ -399,6 +414,11 @@ def pull_program_data_v2(
         .merge(strat_prod_pivoted, on="product_id")
         .rename(columns={"price": "net_price"})
     )
+    if not strategy_private_labels.empty:
+        customer_strategy_detailed = customer_strategy_detailed.merge(
+            strategy_private_labels, on="price_id", how="outer"
+        )
+
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
 
