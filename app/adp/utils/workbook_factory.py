@@ -405,7 +405,8 @@ def pull_program_data_v2(
     coils = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Coils"
     ].dropna(how="all", axis=1)
-    coils["private_label"] = None
+    if Fields.PRIVATE_LABEL.value not in coils.columns:
+        coils[Fields.PRIVATE_LABEL.value] = None
     num_col_names = [
         "width",
         "depth",
@@ -426,7 +427,8 @@ def pull_program_data_v2(
     ahs = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Air Handlers"
     ].dropna(how="all", axis=1)
-    ahs["private_label"] = None
+    if Fields.PRIVATE_LABEL.value not in ahs.columns:
+        ahs[Fields.PRIVATE_LABEL.value] = None
     try:
         num_cols_trimmed = {n: t for n, t in num_cols.items() if n in ahs.columns}
         ahs = ahs.astype(num_cols_trimmed, errors="ignore")
