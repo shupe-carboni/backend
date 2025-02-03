@@ -405,15 +405,20 @@ class CustomerProgram:
         for prog in self.progs:
             try:
                 sample_series = prog._data[Fields.SERIES.value] == series
-                sample = prog._data.loc[
-                    sample_series, Fields.MODEL_NUMBER.value
-                ].sample(n=1)
+                sample_m = prog._data.loc[sample_series, Fields.MODEL_NUMBER.value]
+                sample_m = sample_m.sample(n=min(len(sample_m, 1)))
+                sample_pl = prog._data.loc[sample_series, Fields.PRIVATE_LABEL.value]
+                sample_pl = sample_pl.sample(n=min(len(sample_pl, 1)))
+                sample: str
+                if not sample_pl.empty:
+                    sample = sample_pl.item()
+                else:
+                    sample = sample_m.item()
             except Exception as e:
                 logger.warning("unable to obtain sample from series " f"{series}: {e}")
                 continue
             else:
-                result: str = sample.item()
-                result = result.strip()
+                result = sample.strip()
                 if result[-1] not in ("R", "N"):
                     if series in ("MH", "V", "B", "F", "S", "CP", "CE", "CF"):
                         result += "R"
