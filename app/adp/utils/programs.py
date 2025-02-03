@@ -406,14 +406,18 @@ class CustomerProgram:
             try:
                 sample_series = prog._data[Fields.SERIES.value] == series
                 sample_m = prog._data.loc[sample_series, Fields.MODEL_NUMBER.value]
-                sample_m = sample_m.sample(n=min(len(sample_m, 1)))
+                sample_m = sample_m.sample(n=min(len(sample_m), 1))
                 sample_pl = prog._data.loc[sample_series, Fields.PRIVATE_LABEL.value]
-                sample_pl = sample_pl.sample(n=min(len(sample_pl, 1)))
+                sample_pl = sample_pl.sample(n=min(len(sample_pl), 1))
                 sample: str
                 if not sample_pl.empty:
                     sample = sample_pl.item()
-                else:
+                elif not sample_m.empty:
                     sample = sample_m.item()
+                else:
+                    raise Exception(
+                        "Both model number and private label samples returned empty"
+                    )
             except Exception as e:
                 logger.warning("unable to obtain sample from series " f"{series}: {e}")
                 continue
