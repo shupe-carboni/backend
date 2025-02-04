@@ -405,9 +405,22 @@ class CustomerProgram:
         for prog in self.progs:
             try:
                 sample_series = prog._data[Fields.SERIES.value] == series
-                sample_m = prog._data.loc[sample_series, Fields.MODEL_NUMBER.value]
+                if len(series) > 1:
+                    sample_series_alt_1 = prog._data[
+                        Fields.MODEL_NUMBER.value
+                    ].str.startswith(series)
+                    sample_series_alt_2 = prog._data[
+                        Fields.PRIVATE_LABEL.value
+                    ].str.startswith(series)
+                    mask = (
+                        (sample_series) | (sample_series_alt_1) | (sample_series_alt_2)
+                    )
+                else:
+                    mask = sample_series
+
+                sample_m = prog._data.loc[mask, Fields.MODEL_NUMBER.value].dropna()
                 sample_m = sample_m.sample(n=min(len(sample_m), 1))
-                sample_pl = prog._data.loc[sample_series, Fields.PRIVATE_LABEL.value]
+                sample_pl = prog._data.loc[mask, Fields.PRIVATE_LABEL.value].dropna()
                 sample_pl = sample_pl.sample(n=min(len(sample_pl), 1))
                 sample: str
                 if not sample_pl.empty:
