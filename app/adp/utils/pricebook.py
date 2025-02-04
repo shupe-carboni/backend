@@ -401,6 +401,9 @@ class PriceBook:
                 model_nomenclature.pop("revision", None)
             ignore_custom_model_insertion = False
         except:
+            logger.warning(
+                f"Error with sample {model_example}. Nomenclature will show its default"
+            )
             ignore_custom_model_insertion = True
         else:
             if "scode" in model_nomenclature and "mat" in model_nomenclature:
