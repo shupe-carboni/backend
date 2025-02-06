@@ -402,7 +402,24 @@ class CustomerProgram:
                 prog._data["rated"] = False
 
     def sample_from_program(self, series: str) -> str:
+        series_prog_map: dict[str, CoilProgram | AirHandlerProgram]
+        series_prog_map = {
+            "S": AirHandlerProgram,
+            "F": AirHandlerProgram,
+            "B": AirHandlerProgram,
+            "CP": AirHandlerProgram,
+            "CF": AirHandlerProgram,
+            "LS": AirHandlerProgram,
+            "HE": CoilProgram,
+            "MH": CoilProgram,
+            "HH": CoilProgram,
+            "V": CoilProgram,
+            "SC": CoilProgram,
+            "CE": CoilProgram,
+        }
         for prog in self.progs:
+            if not isinstance(prog, series_prog_map[series]):
+                continue
             try:
                 sample_series = prog._data[Fields.SERIES.value] == series
                 if len(series) > 1:

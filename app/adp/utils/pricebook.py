@@ -22,7 +22,7 @@ from openpyxl.utils.units import pixels_to_EMU
 from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from app.adp.utils.programs import CustomerProgram
 from app.adp.adp_models.model_series import Fields
-from app.adp.adp_models import MODELS
+from app.adp.adp_models import MODELS, HE, HH, MH, V, F, S, B, CE, CF, ModelSeries
 from app.db import Stage, S3
 
 from sqlalchemy.orm import Session
@@ -391,16 +391,31 @@ class PriceBook:
         nomenclature_sheet: Worksheet = self.nomenclatures[series]
         (model_type,) = tuple([e for e in MODELS if e.__name__ == series])
         model_example = self.program.sample_from_program(series=series)
+        pl_remapping: dict[ModelSeries, ModelSeries] = {
+            HE: CE,
+            V: CE,
+            MH: CE,
+            B: CF,
+            S: CF,
+            F: CF,
+        }
         try:
-            model_nomenclature = re.match(
-                model_type.regex, model_example, re.VERBOSE
-            ).groupdict()
+            if result := re.match(model_type.regex, model_example, re.VERBOSE):
+                model_nomenclature = result.groupdict()
+            else:
+                result = re.match(
+                    pl_remapping[model_type].regex, model_example, re.VERBOSE
+                )
+                if not result:
+                    raise Exception("Could not match model")
+                model_nomenclature = result.groupdict()
+
             if model_nomenclature.get("revision"):
                 model_nomenclature.pop("rds", None)
             elif model_nomenclature.get("rds"):
                 model_nomenclature.pop("revision", None)
             ignore_custom_model_insertion = False
-        except:
+        except Exception as e:
             logger.warning(
                 f"Error with sample {model_example}. Nomenclature will show its default"
             )
