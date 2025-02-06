@@ -363,10 +363,16 @@ def pull_program_data_v2(
         AND attr = 'custom_description'; 
     """
     strategy_product_private_label_sql = """
-        SELECT pricing_by_customer_id as price_id, value as "private_label"
+        SELECT pricing_by_customer_id as price_id, attr, value
         FROM vendor_pricing_by_customer_attrs
         WHERE pricing_by_customer_id IN :ids
-        AND attr = 'private_label'; 
+        AND attr IN (
+            'private_label',
+            'ratings_ac_txv',
+            'ratings_hp_txv',
+            'ratings_field_txv',
+            'ratings_piston'
+        ); 
     """
     strategy_product_attrs = """
         SELECT vendor_product_id AS product_id, attr, value
@@ -415,9 +421,31 @@ def pull_program_data_v2(
         .rename(columns={"price": "net_price"})
     )
     if not strategy_private_labels.empty:
+        # merge in private label data and swap out values for ratings comparisons
+        # with private label-specific ratings patterns
+        strategy_private_labels = strategy_private_labels.pivot(
+            index="price_id", columns="attr"
+        )
+        col_list: list[str] = strategy_private_labels.columns.get_level_values(
+            1
+        ).to_list()
+        strategy_private_labels.columns = [
+            col.replace("ratings", "pl_ratings") for col in col_list
+        ]
+        strategy_private_labels = strategy_private_labels.reset_index()
         customer_strategy_detailed = customer_strategy_detailed.merge(
             strategy_private_labels, on="price_id", how="outer"
         )
+        pl_ratings_cols: list[str] = customer_strategy_detailed.columns[
+            customer_strategy_detailed.columns.str.startswith("pl_ratings")
+        ].to_list()
+        for col in pl_ratings_cols:
+            target = col.replace("pl_", "")
+            mask = ~customer_strategy_detailed[col].isna()
+            customer_strategy_detailed.loc[mask, target] = (
+                customer_strategy_detailed.loc[mask, col]
+            )
+        customer_strategy_detailed.drop(columns=pl_ratings_cols, inplace=True)
 
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
@@ -492,7 +520,7 @@ def pull_program_data(
         result = pull_program_data_v2(session, customer_id)
     except Exception as e:
         logger.warning(f"v2 product data method failed: {e}")
-        result = pull_program_data_v1(session, customer_id, stage)
+        raise e
     else:
         logger.info("Used V2 for customer program products")
     finally:
