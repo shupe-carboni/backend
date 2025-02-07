@@ -14,6 +14,7 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match, Route
 
 ## Routers ##
+from app.glasfloss import glasfloss
 from app.hardcast import hardcast
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
@@ -143,6 +144,7 @@ app_misc_routes = [
     (places, "", app),
     (adp, "/vendors", app),
     (hardcast, "", app),
+    (glasfloss, "", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_misc_routes, *v2_routes)
 ## register all of the routes and avoid crashing due to a registration issue
