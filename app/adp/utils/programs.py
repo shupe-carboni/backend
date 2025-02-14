@@ -210,17 +210,6 @@ class CoilProgram(Program):
         data = data[self.features()].rename(
             columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
         )
-        # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
-        # apply_method = partial(price_flexcoil_version, customer_id, session)
-        # data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
-        #     [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
-        # ].apply(apply_method, axis=1, result_type="expand")
-        # data.insert(
-        #     1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
-        # )
-        # data.insert(
-        #     10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
-        # )
         return data
 
 
@@ -272,17 +261,6 @@ class AirHandlerProgram(Program):
         data = data[features].rename(
             columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
         )
-        # NOTE: STUFF IN FLEXCOIL MODEL AND PRICE HERE
-        # apply_method = partial(price_flexcoil_version, customer_id, session)
-        # data[[Fields.FLEXCOIL_MODEL, Fields.FLEXCOIL_PRICE]] = data[
-        #     [Fields.MODEL_NUMBER.value, Fields.SERIES.value]
-        # ].apply(apply_method, axis=1, result_type="expand")
-        # data.insert(
-        #     1, Fields.FLEXCOIL_MODEL.value, data.pop(Fields.FLEXCOIL_MODEL.value)
-        # )
-        # data.insert(
-        #     10, Fields.FLEXCOIL_PRICE.value, data.pop(Fields.FLEXCOIL_PRICE.value)
-        # )
         return data
 
 
