@@ -1,6 +1,7 @@
 from enum import StrEnum
 from dataclasses import dataclass
-from app.db import DB_V2
+from datetime import datetime
+from app.db import DB_V2, Session
 
 
 class ModelType(StrEnum):
@@ -9,6 +10,12 @@ class ModelType(StrEnum):
     HVP = "Z-LINE HV PLEAT FILTERS"
     M11 = "Z-LINE MERV 11 PLEAT FILTERS"
     M13 = "Z-LINE MERV 13 PLEAT FILTERS"
+
+
+class SecondOrderCategory(StrEnum):
+    SEMI_STANDARD = "SEMI-STANDARD"
+    STANDARD = "STANDARD"
+    GEO_THERMAL_REPLACEMENT = "GEO-THERMAL_REPLACEMENT"
 
     """
     How do I expect the data to be coming in? Will it be a full model number
@@ -32,6 +39,15 @@ class Filter:
     height: float
     depth: float
     exact: bool
+
+
+@dataclass
+class Pricing:
+    list_price: int
+    multiplier: float
+    net_price: int
+    net_price_broken_pallet: int
+    effective_date: datetime
 
 
 FRACTION_CODES = {
@@ -66,9 +82,10 @@ def convert_to_letter_code(dim: float) -> str:
 
 
 class FilterModel:
-    def __init__(self, model_type: ModelType, filter_dims: Filter):
+    def __init__(self, session: Session, model_type: ModelType, filter_dims: Filter):
         if not all((filter_dims.depth, filter_dims.height, filter_dims.width)):
             raise Exception("Invalid model dimensions given")
+        self.session = session
         self.width = filter_dims.width
         self.height = filter_dims.height
         self.depth = filter_dims.depth
@@ -211,9 +228,13 @@ class FilterModel:
             "double-size": self.double,
             "qty-per-case": None,
             "carton-weight": None,
+            "list-price": None,
+            "multiplier": None,
+            "net-price": None,
+            "net-price-broken-pallet": None,
         }
 
-    def calculate_pricing(self) -> dict:
+    def calculate_pricing(self) -> Pricing:
         """
         Look for the model as a standard model first
         If it's not a standard model, use the calculation methods.
@@ -221,4 +242,32 @@ class FilterModel:
 
         If a customer_id is passed, also return the customer's multiplier and net price
         """
-        ...
+        standard_filter_sql = """
+            SELECT price, effective_date
+            FROM vendor_pricing_by_class
+            WHERE exists (
+                SELECT 1 
+                FROM vendor_products a 
+                JOIN vendor_product_to_class_mapping b ON b.product_id = a.id 
+                JOIN vendor_product_classes c ON c.id = b.product_class_id 
+                WHERE c.name in :types 
+                AND a.vendor_id = 'glasfloss' 
+                AND a.id = vendor_pricing_by_class.product_id
+                AND a.vendor_product_identifier = :model_number);
+        """
+        customer_product_classs_multiplier_sql = """
+
+        """
+        customer_product_multiplier_sql = """
+
+        """
+        standard_filter = DB_V2.execute(
+            session=self.session,
+            sql=standard_filter_sql,
+            params=dict(
+                model_number=self.model_number,
+                types=tuple([v.value for v in SecondOrderCategory]),
+            ),
+        ).one_or_none()
+        if standard_filter:
+            ...
