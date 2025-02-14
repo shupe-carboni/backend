@@ -50,6 +50,7 @@ class Fields(StrEnum):
     STAGE = auto()
     FLEXCOIL_MODEL = "a2l_model"
     FLEXCOIL_PRICE = "a2l_price"
+    SORT_ORDER = auto()
 
     def formatted(self):
         if self.name == "ADP_ALIAS":
