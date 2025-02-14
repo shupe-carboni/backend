@@ -43,8 +43,15 @@ def build_coil_program(
     if program_data.empty:
         return CoilProgram(program_data=program_data, ratings=prog_ratings)
     program_data = program_data.drop(columns=["customer_id"])
+    if "sort_order" not in program_data.columns:
+        program_data["sort_order"] = 1
+    elif program_data["sort_order"].isna().all():
+        program_data["sort_order"] = 1
+    else:
+        program_data["sort_order"].fillna(value=(program_data["sort_order"].max() + 1))
     program_data = program_data.sort_values(
         by=[
+            Fields.SORT_ORDER,
             Fields.CATEGORY.value,
             Fields.SERIES.value,
             Fields.METERING.value,
@@ -71,8 +78,15 @@ def build_ah_program(
         .astype(float)
         .astype(int)
     )
+    if "sort_order" not in program_data.columns:
+        program_data["sort_order"] = 1
+    elif program_data["sort_order"].isna().all():
+        program_data["sort_order"] = 1
+    else:
+        program_data["sort_order"].fillna(value=(program_data["sort_order"].max() + 1))
     program_data = program_data.sort_values(
         by=[
+            Fields.SORT_ORDER,
             Fields.CATEGORY.value,
             Fields.SERIES.value,
             Fields.TONNAGE.value,
@@ -191,11 +205,7 @@ def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFr
         result = pull_customer_payment_terms_v2(session, customer_id)
     except Exception as e:
         logger.warning(f"v2 payment terms method failed: {e}")
-        result = ADP_DB.load_df(
-            session=session,
-            table_name="customer_terms_by_customer_id",
-            customer_id=customer_id,
-        )
+        raise e
     else:
         logger.info("Used V2 for customer payment terms")
     finally:
@@ -207,11 +217,7 @@ def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
         result = pull_customer_parts_v2(session, customer_id)
     except Exception as e:
         logger.warning(f"v2 parts method failed: {e}")
-        result = ADP_DB.load_df(
-            session=session,
-            table_name="program_parts_expanded",
-            customer_id=customer_id,
-        )
+        raise e
     else:
         logger.info("Used V2 for customer program parts")
     finally:
@@ -226,7 +232,7 @@ def pull_customer_alias_mapping(session: Session) -> pd.DataFrame:
         result = pull_customer_aliases_v2(session)
     except Exception as e:
         logger.warning(f"v2 customer alias method failed: {e}")
-        result = ADP_DB.load_df(session=session, table_name="customers")
+        raise e
     else:
         logger.info("Used V2 for customer aliases")
     finally:
@@ -362,7 +368,7 @@ def pull_program_data_v2(
         WHERE pricing_by_customer_id IN :ids
         AND attr = 'custom_description'; 
     """
-    strategy_product_private_label_sql = """
+    strategy_product_custom_feature_sql = """
         SELECT pricing_by_customer_id as price_id, attr, value
         FROM vendor_pricing_by_customer_attrs
         WHERE pricing_by_customer_id IN :ids
@@ -371,7 +377,8 @@ def pull_program_data_v2(
             'ratings_ac_txv',
             'ratings_hp_txv',
             'ratings_field_txv',
-            'ratings_piston'
+            'ratings_piston',
+            'sort_order'
         ); 
     """
     strategy_product_attrs = """
@@ -394,10 +401,10 @@ def pull_program_data_v2(
         .mappings()
         .fetchall()
     )
-    strategy_private_labels = pd.DataFrame(
+    strategy_custom_features = pd.DataFrame(
         DB_V2.execute(
             session,
-            strategy_product_private_label_sql,
+            strategy_product_custom_feature_sql,
             dict(ids=tuple(customer_strategy["price_id"].tolist())),
         )
         .mappings()
@@ -420,21 +427,21 @@ def pull_program_data_v2(
         .merge(strat_prod_pivoted, on="product_id")
         .rename(columns={"price": "net_price"})
     )
-    if not strategy_private_labels.empty:
+    if not strategy_custom_features.empty:
         # merge in private label data and swap out values for ratings comparisons
         # with private label-specific ratings patterns
-        strategy_private_labels = strategy_private_labels.pivot(
+        strategy_custom_features = strategy_custom_features.pivot(
             index="price_id", columns="attr"
         )
-        col_list: list[str] = strategy_private_labels.columns.get_level_values(
+        col_list: list[str] = strategy_custom_features.columns.get_level_values(
             1
         ).to_list()
-        strategy_private_labels.columns = [
+        strategy_custom_features.columns = [
             col.replace("ratings", "pl_ratings") for col in col_list
         ]
-        strategy_private_labels = strategy_private_labels.reset_index()
+        strategy_custom_features = strategy_custom_features.reset_index()
         customer_strategy_detailed = customer_strategy_detailed.merge(
-            strategy_private_labels, on="price_id", how="outer"
+            strategy_custom_features, on="price_id", how="outer"
         )
         pl_ratings_cols: list[str] = customer_strategy_detailed.columns[
             customer_strategy_detailed.columns.str.startswith("pl_ratings")
@@ -455,17 +462,17 @@ def pull_program_data_v2(
     ].dropna(how="all", axis=1)
     if Fields.PRIVATE_LABEL.value not in coils.columns:
         coils[Fields.PRIVATE_LABEL.value] = None
-    num_col_names = [
-        "width",
-        "depth",
-        "height",
-        "length",
-        "weight",
-        "pallet_qty",
-        "min_qty",
-    ]
-    num_col_types = [float, float, float, int, int, int, int]
-    num_cols = {n: t for n, t in zip(num_col_names, num_col_types)}
+    num_cols = {
+        "width": float,
+        "depth": float,
+        "height": float,
+        "length": float,
+        "depth": float,
+        "weight": int,
+        "pallet_qty": int,
+        "min_qty": int,
+        "sort_order": int,
+    }
     try:
         num_cols_trimmed = {n: t for n, t in num_cols.items() if n in coils.columns}
         coils = coils.astype(num_cols_trimmed, errors="ignore")
@@ -484,33 +491,6 @@ def pull_program_data_v2(
         logger.info(f"Unable to convert num cols: {e}")
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
     return coils, ahs, ratings
-
-
-def pull_program_data_v1(
-    session: Session, customer_id: int, stage: Stage
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-
-    tables = ["coil_programs", "ah_programs", "program_ratings"]
-    coil_prog_table, ah_prog_table, ratings = [
-        ADP_DB.load_df(session=session, table_name=table, customer_id=customer_id)
-        for table in tables
-    ]
-    match stage:
-        case Stage.ACTIVE:
-            active_coils = coil_prog_table["stage"] == stage.name
-            active_ahs = ah_prog_table["stage"] == stage.name
-            coil_prog_table = coil_prog_table[active_coils]
-            ah_prog_table = ah_prog_table[active_ahs]
-        case Stage.PROPOSED:
-            active_coils = coil_prog_table["stage"] == Stage.ACTIVE.name
-            active_ahs = ah_prog_table["stage"] == Stage.ACTIVE.name
-            proposed_coils = coil_prog_table["stage"] == stage.name
-            proposed_ahs = ah_prog_table["stage"] == stage.name
-            coil_prog_table = coil_prog_table[(active_coils) | (proposed_coils)]
-            ah_prog_table = ah_prog_table[(active_ahs) | (proposed_ahs)]
-        case _:
-            raise EmptyProgram
-    return coil_prog_table, ah_prog_table, ratings
 
 
 def pull_program_data(
