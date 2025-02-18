@@ -47,6 +47,10 @@ def build_coil_program(
         program_data["sort_order"] = 1
     elif program_data["sort_order"].isna().all():
         program_data["sort_order"] = 1
+    elif program_data["sort_order"].isna().any():
+        program_data["sort_order"].fillna(
+            value=(program_data["sort_order"].dropna().max() + 1)
+        )
     else:
         program_data["sort_order"].fillna(value=(program_data["sort_order"].max() + 1))
     program_data = program_data.sort_values(
