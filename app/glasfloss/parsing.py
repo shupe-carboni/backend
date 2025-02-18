@@ -1,7 +1,11 @@
+from typing import Any
 from enum import StrEnum
 from dataclasses import dataclass
 from datetime import datetime
 from app.db import DB_V2, Session
+from decimal import Decimal, ROUND_HALF_UP
+
+ROUNDING_SIG = Decimal("1.00")
 
 
 class ModelType(StrEnum):
@@ -81,6 +85,23 @@ def convert_to_letter_code(dim: float) -> str:
     return FRACTION_CODES[int((dim * significance) % significance)]
 
 
+def convert_attr_type(type_: str, value: str) -> Any:
+    match type_:
+        case "NUMBER":
+            result = float(value)
+            if not result % 1:
+                return int(result)
+            else:
+                return result
+        case "STRING":
+            return value
+        case "BOOLEN":
+            if value.lower().strip() == "true":
+                return True
+            else:
+                return False
+
+
 class FilterModel:
     def __init__(self, session: Session, model_type: ModelType, filter_dims: Filter):
         if not all((filter_dims.depth, filter_dims.height, filter_dims.width)):
@@ -91,6 +112,8 @@ class FilterModel:
         self.depth = filter_dims.depth
         self.exact = filter_dims.exact
         self.face_area = self.width * self.height
+        self.model_type = model_type
+        self.model_series = model_type.name
         self.desc = model_type.value
         self.exact = filter_dims.exact
         self.exact_nomen = "E" if filter_dims.exact else ""
@@ -202,6 +225,7 @@ class FilterModel:
             case _:
                 raise Exception("Invalid Model Type")
 
+        # BUG MADE-TO-ORDER SIZES MAY HAVE DIFFERENT PREFIX
         self.model_number = "".join(
             [
                 model_type.name,
@@ -217,24 +241,7 @@ class FilterModel:
         ## NEED TO GET OTHER DETAILS FROM THE DATABASE
         return
 
-    def to_dict(self) -> dict:
-        return {
-            "model-number": self.model_number,
-            "width": self.width,
-            "height": self.height,
-            "depth": self.depth,
-            "exact": self.exact,
-            "face-area": self.face_area,
-            "double-size": self.double,
-            "qty-per-case": None,
-            "carton-weight": None,
-            "list-price": None,
-            "multiplier": None,
-            "net-price": None,
-            "net-price-broken-pallet": None,
-        }
-
-    def calculate_pricing(self) -> Pricing:
+    def calculate_pricing(self, customer_id: int) -> "FilterModel":
         """
         Look for the model as a standard model first
         If it's not a standard model, use the calculation methods.
@@ -243,7 +250,7 @@ class FilterModel:
         If a customer_id is passed, also return the customer's multiplier and net price
         """
         standard_filter_sql = """
-            SELECT price, effective_date
+            SELECT product_id, price, effective_date
             FROM vendor_pricing_by_class
             WHERE exists (
                 SELECT 1 
@@ -255,11 +262,42 @@ class FilterModel:
                 AND a.id = vendor_pricing_by_class.product_id
                 AND a.vendor_product_identifier = :model_number);
         """
-        customer_product_classs_multiplier_sql = """
-
+        customer_product_class_multiplier_sql = """
+            SELECT (1-discount) as multiplier, effective_date
+            FROM vendor_product_class_discounts a
+            WHERE EXISTS (
+                SELECT 1
+                FROM vendor_customers b
+                WHERE a.vendor_customer_id = b.id
+                AND b.vendor_id = 'glasfloss'
+            )
+            AND EXISTS (
+                SELECT 1
+                FROM vendor_product_classes c
+                WHERE c.rank = 3
+                AND c.name = :rank_3_name
+                AND c.vendor_id = 'glasfloss'
+                AND c.id = a.product_class_id
+            )
+            AND a.vendor_customer_id = :customer_id;
         """
         customer_product_multiplier_sql = """
-
+            SELECT (1-discount) as multiplier, effective_date
+            FROM vendor_product_discounts a
+            WHERE EXISTS (
+                SELECT 1
+                FROM vendor_customers b
+                WHERE a.vendor_customer_id = b.id
+                AND b.vendor_id = 'glasfloss'
+            )
+            AND EXISTS (
+                SELECT 1
+                FROM vendor_products c
+                WHERE c.vendor_product_identifier = :model_number
+                AND c.vendor_id = 'glasfloss'
+                AND c.id = a.product_id
+            )
+            AND a.vendor_customer_id = :customer_id;
         """
         standard_filter = DB_V2.execute(
             session=self.session,
@@ -269,5 +307,76 @@ class FilterModel:
                 types=tuple([v.value for v in SecondOrderCategory]),
             ),
         ).one_or_none()
+
         if standard_filter:
-            ...
+            product_id, price, effective_date = standard_filter
+            filter_features_sql = """
+                SELECT attr, type, value
+                FROM vendor_product_attrs
+                WHERE vendor_product_id = :product_id;
+            """
+            filter_features = DB_V2.execute(
+                self.session,
+                sql=filter_features_sql,
+                params=dict(product_id=product_id),
+            ).fetchall()
+            attrs = {
+                attr: convert_attr_type(type, value)
+                for attr, type, value in filter_features
+            }
+            self.qty_per_case = attrs.get("qty_per_case")
+            self.carton_weight = attrs.get("carton_weight")
+            self.list_price = price / 100
+            self.effective_date = effective_date
+
+            if customer_id:
+                match self.model_type:
+                    case ModelType.GDS:
+                        if int(self.depth) in (1, 2):
+                            rank_3_name = f"{int(self.depth)} GDS DISPOSABLE"
+                    case ModelType.HVP:
+                        ...
+                    case ModelType.ZLP:
+                        ...
+                    case ModelType.M11:
+                        ...
+                    case ModelType.M13:
+                        ...
+
+                multiplier = DB_V2.execute(
+                    self.session,
+                    sql=customer_product_class_multiplier_sql,
+                    params=dict(rank_3_name=rank_3_name, customer_id=customer_id),
+                ).one_or_none()
+                self.multiplier, self.effective_date = multiplier
+                self.net_price = self.list_price * self.multiplier
+
+        else:
+            self.qty_per_case = None
+            self.carton_weight = None
+            self.list_price = None
+            self.effective_date = None
+            self.multiplier, self.effective_date = multiplier
+            self.net_price = self.list_price * self.multiplier
+
+        return self
+
+    def to_dict(self) -> dict:
+        return {
+            "model-number": self.model_number,
+            "width": self.width,
+            "height": self.height,
+            "depth": self.depth,
+            "exact": self.exact,
+            "face-area": self.face_area,
+            "double-size": self.double,
+            "qty-per-case": self.qty_per_case,
+            "carton-weight": self.carton_weight,
+            "list-price": self.list_price,
+            "multiplier": self.multiplier,
+            "net-price": Decimal(self.net_price).quantize(
+                ROUNDING_SIG, rounding=ROUND_HALF_UP
+            ),
+            "net-price-broken-pallet": None,
+            "effective-date": self.effective_date,
+        }

@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi.routing import APIRouter
 from fastapi import HTTPException, Depends, status
 
@@ -26,12 +26,16 @@ def parse_model_and_pricing(
     width: float,
     height: float,
     depth: float,
-    exact: bool,
+    exact: Optional[bool] = False,
     customer_id: int = 0,
 ) -> None:
     filter_obj = Filter(width=width, height=height, depth=depth, exact=exact)
     type_ = ModelType[series.upper().strip()]
     try:
-        return FilterModel(type_, filter_obj).to_dict()
+        return (
+            FilterModel(session, type_, filter_obj)
+            .calculate_pricing(customer_id)
+            .to_dict()
+        )
     except Exception as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
