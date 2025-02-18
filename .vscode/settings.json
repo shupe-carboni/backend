@@ -16,7 +16,7 @@
         "port": 32768,
         "driver": "PostgreSQL",
         "name": "pglocal",
-        "database": "sca_transition",
+        "database": "sca",
         "username": "postgres",
         "password": ""
     }
