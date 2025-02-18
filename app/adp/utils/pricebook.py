@@ -518,20 +518,27 @@ class PriceBook:
             for col in df:
                 if col == Fields.STAGE.formatted():
                     pass
+                elif col == Fields.PRICE_ID.formatted():
+                    pass
                 else:
                     self.active_cell(value=str(col))
                 self.cursor.move_by(cols=1)
             self.cursor.slam_left().move_by(rows=1).move_by(*offset)
 
         for label, data in df.iterrows():
-            for datum in data:
-                if datum == Stage.PROPOSED.name:
-                    cell = self.active_cell(value=datum.lower())
-                    cell.font = Font(italic=True, size=8.0, color="808080")
-                elif datum == Stage.ACTIVE.name:
-                    self.active_cell(value=None)
-                else:
-                    self.active_cell(value=datum)
+            for d_index, datum in data.items():
+                match d_index:
+                    case "Stage":
+                        if datum == Stage.PROPOSED.name:
+                            cell = self.active_cell(value=datum.lower())
+                            cell.font = Font(italic=True, size=8.0, color="808080")
+                        elif datum == Stage.ACTIVE.name:
+                            self.active_cell(value=None)
+                    case "Price Id":
+                        cell = self.active_cell(value=datum)
+                        cell.font = Font(italic=True, size=8.0, color="FFFFFF")
+                    case _:
+                        self.active_cell(value=datum)
                 self.cursor.move_by(cols=1)
             self.cursor.slam_left().move_by(rows=1).move_by(*offset)
         if headers:

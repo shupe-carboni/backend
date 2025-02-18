@@ -191,6 +191,7 @@ class CoilProgram(Program):
             Fields.RATED.value,
             Fields.SERIES.value,
             Fields.STAGE.value,
+            Fields.PRICE_ID.value,
         ]
 
     def category_data(
@@ -237,6 +238,7 @@ class AirHandlerProgram(Program):
             Fields.RATED.value,
             Fields.SERIES.value,
             Fields.STAGE.value,
+            Fields.PRICE_ID.value,
         ]
 
     def category_data(
