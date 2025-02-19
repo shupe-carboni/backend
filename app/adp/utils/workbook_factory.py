@@ -49,10 +49,6 @@ def fill_sort_order_field(df: pd.DataFrame) -> None:
         df["sort_order"] = df["sort_order"].astype(int)
     else:
         df["sort_order"] = df["sort_order"].astype(int)
-        df["sort_order"].fillna(
-            value=(df["sort_order"].max() + 1),
-            inplace=True,
-        )
     return
 
 
