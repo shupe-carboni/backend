@@ -36,6 +36,26 @@ class ProgramFile:
     file_data: bytes
 
 
+def fill_sort_order_field(df: pd.DataFrame) -> None:
+    if "sort_order" not in df.columns:
+        df["sort_order"] = 1
+    elif df["sort_order"].isna().all():
+        df["sort_order"] = 1
+    elif df["sort_order"].isna().any():
+        df["sort_order"].fillna(
+            value=(df["sort_order"].dropna().astype(int).max() + 1),
+            inplace=True,
+        )
+        df["sort_order"] = df["sort_order"].astype(int)
+    else:
+        df["sort_order"] = df["sort_order"].astype(int)
+        df["sort_order"].fillna(
+            value=(df["sort_order"].max() + 1),
+            inplace=True,
+        )
+    return
+
+
 def build_coil_program(
     program_data: pd.DataFrame, ratings: pd.DataFrame
 ) -> CoilProgram:
@@ -43,16 +63,7 @@ def build_coil_program(
     if program_data.empty:
         return CoilProgram(program_data=program_data, ratings=prog_ratings)
     program_data = program_data.drop(columns=["customer_id"])
-    if "sort_order" not in program_data.columns:
-        program_data["sort_order"] = 1
-    elif program_data["sort_order"].isna().all():
-        program_data["sort_order"] = 1
-    elif program_data["sort_order"].isna().any():
-        program_data["sort_order"].fillna(
-            value=(program_data["sort_order"].dropna().max() + 1)
-        )
-    else:
-        program_data["sort_order"].fillna(value=(program_data["sort_order"].max() + 1))
+    fill_sort_order_field(program_data)
     program_data = program_data.sort_values(
         by=[
             Fields.SORT_ORDER,
@@ -82,12 +93,7 @@ def build_ah_program(
         .astype(float)
         .astype(int)
     )
-    if "sort_order" not in program_data.columns:
-        program_data["sort_order"] = 1
-    elif program_data["sort_order"].isna().all():
-        program_data["sort_order"] = 1
-    else:
-        program_data["sort_order"].fillna(value=(program_data["sort_order"].max() + 1))
+    fill_sort_order_field(program_data)
     program_data = program_data.sort_values(
         by=[
             Fields.SORT_ORDER,
