@@ -29,9 +29,9 @@ def parse_model_and_pricing(
     exact: Optional[bool] = False,
     customer_id: int = 0,
 ) -> FilterBuilt:
-    filter_obj = Filter(width=width, height=height, depth=depth, exact=exact)
-    type_ = ModelType[series.upper().strip()]
     try:
+        filter_obj = Filter(width=width, height=height, depth=depth, exact=exact)
+        type_ = ModelType[series.upper().strip()]
         return (
             FilterModel(session, type_, filter_obj)
             .calculate_pricing(customer_id)
