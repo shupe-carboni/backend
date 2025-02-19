@@ -1,9 +1,11 @@
-from typing import Any
+from typing import Any, Optional
 from enum import StrEnum
 from dataclasses import dataclass
 from datetime import datetime
-from app.db import DB_V2, Session
 from decimal import Decimal, ROUND_HALF_UP
+from pydantic import BaseModel, Field, ConfigDict
+
+from app.db import DB_V2, Session
 
 ROUNDING_SIG = Decimal("1.00")
 
@@ -43,6 +45,62 @@ class Filter:
     height: float
     depth: float
     exact: bool
+
+
+class FilterModelNumber:
+    def __init__(
+        self,
+        prefix: str,
+        width: int,
+        height: int,
+        depth: int,
+        width_frac: Optional[str] = None,
+        height_frac: Optional[str] = None,
+        depth_frac: Optional[str] = None,
+        exact: Optional[str] = None,
+    ) -> None:
+        self.prefix = prefix
+        self.width = width
+        self.height = height
+        self.depth = depth
+        self.width_frac = width_frac
+        self.height_frac = height_frac
+        self.depth_frac = depth_frac
+        self.exact = exact
+
+    def __str__(self) -> str:
+        return "".join(
+            [
+                self.prefix,
+                str(self.width),
+                self.width_frac,
+                str(self.height),
+                self.height_frac,
+                str(self.depth),
+                self.depth_frac,
+                self.exact,
+            ]
+        )
+
+
+class FilterBuilt(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, protected_namespaces=())
+    model_number: str = Field(alias="model-number")
+    width: float = Field(alias="width")
+    height: float = Field(alias="height")
+    depth: float = Field(alias="depth")
+    exact: bool = Field(alias="exact")
+    face_area: float = Field(alias="face-area")
+    double_size: bool = Field(alias="double-size")
+    qty_per_case: int = Field(alias="qty-per-case")
+    carton_weight: str = Field(alias="carton-weight")
+    list_price: float = Field(alias="list-price")
+    multiplier: float = Field(alias="multiplier")
+    net_price: float = Field(alias="net-price")
+    net_price_broken_pallet: Optional[float] = Field(
+        default=None, alias="net-price-broken-pallet"
+    )
+    effective_date: datetime = Field(alias="effective-date")
 
 
 @dataclass
@@ -118,6 +176,7 @@ class FilterModel:
         self.exact = filter_dims.exact
         self.exact_nomen = "E" if filter_dims.exact else ""
         self.multiplier = 1
+        self.calculated = False
 
         width_part = int(self.width)
         height_part = int(self.height)
@@ -225,20 +284,16 @@ class FilterModel:
             case _:
                 raise Exception("Invalid Model Type")
 
-        # BUG MADE-TO-ORDER SIZES MAY HAVE DIFFERENT PREFIX
-        self.model_number = "".join(
-            [
-                model_type.name,
-                str(width_part),
-                width_frac,
-                str(height_part),
-                height_frac,
-                str(depth_part),
-                depth_frac,
-                self.exact_nomen,
-            ]
+        self.model_number = FilterModelNumber(
+            self.model_series,
+            width=width_part,
+            width_frac=width_frac,
+            height=height_part,
+            height_frac=height_frac,
+            depth=depth_part,
+            depth_frac=depth_frac,
+            exact=self.exact_nomen,
         )
-        ## NEED TO GET OTHER DETAILS FROM THE DATABASE
         return
 
     def calculate_pricing(self, customer_id: int) -> "FilterModel":
@@ -303,12 +358,13 @@ class FilterModel:
             session=self.session,
             sql=standard_filter_sql,
             params=dict(
-                model_number=self.model_number,
+                model_number=str(self.model_number),
                 types=tuple([v.value for v in SecondOrderCategory]),
             ),
         ).one_or_none()
 
         if standard_filter:
+            self.prefix = self.model_series
             product_id, price, effective_date = standard_filter
             filter_features_sql = """
                 SELECT attr, type, value
@@ -335,48 +391,61 @@ class FilterModel:
                         if int(self.depth) in (1, 2):
                             rank_3_name = f"{int(self.depth)} GDS DISPOSABLE"
                     case ModelType.HVP:
-                        ...
+                        if int(self.depth) in (1, 2, 4):
+                            rank_3_name = f"HV {int(self.depth)} PLEATS"
                     case ModelType.ZLP:
-                        ...
+                        if int(self.depth) in (1, 2, 4):
+                            rank_3_name = f"ZL {int(self.depth)} PLEAT"
                     case ModelType.M11:
-                        ...
+                        if int(self.depth) in (1, 2, 4):
+                            rank_3_name = f"MR-11 STANDARD SIZE {int(self.depth)}"
                     case ModelType.M13:
-                        ...
+                        if int(self.depth) in (1, 2, 4):
+                            rank_3_name = f"MR-13 STANDARD SIZE {int(self.depth)}"
 
-                multiplier = DB_V2.execute(
+                customer_multiplier = DB_V2.execute(
                     self.session,
                     sql=customer_product_class_multiplier_sql,
                     params=dict(rank_3_name=rank_3_name, customer_id=customer_id),
                 ).one_or_none()
-                self.multiplier, self.effective_date = multiplier
-                self.net_price = self.list_price * self.multiplier
-
-        else:
-            self.qty_per_case = None
-            self.carton_weight = None
-            self.list_price = None
-            self.effective_date = None
-            self.multiplier, self.effective_date = multiplier
+                if customer_multiplier:
+                    multiplier, self.effective_date = customer_multiplier
+                    self.multiplier *= multiplier
             self.net_price = self.list_price * self.multiplier
+        else:
+            self.prefix = self.model_series
+            self.qty_per_case = 0
+            self.carton_weight = ""
+            self.list_price = 0
+            self.effective_date = datetime.today()
+            self.net_price = 0
 
+        self.calculated = True
         return self
 
-    def to_dict(self) -> dict:
-        return {
-            "model-number": self.model_number,
-            "width": self.width,
-            "height": self.height,
-            "depth": self.depth,
-            "exact": self.exact,
-            "face-area": self.face_area,
-            "double-size": self.double,
-            "qty-per-case": self.qty_per_case,
-            "carton-weight": self.carton_weight,
-            "list-price": self.list_price,
-            "multiplier": self.multiplier,
-            "net-price": Decimal(self.net_price).quantize(
+    def to_obj(self) -> FilterBuilt:
+        if not self.calculated:
+            raise Exception(
+                "Apply method .calculate_pricing() before returning the "
+                "built filter object."
+            )
+        self.model_number.prefix = self.prefix
+        ret = dict(
+            model_number=str(self.model_number),
+            width=self.width,
+            height=self.height,
+            depth=self.depth,
+            exact=self.exact,
+            face_area=self.face_area,
+            double_size=self.double,
+            qty_per_case=self.qty_per_case,
+            carton_weight=self.carton_weight,
+            list_price=self.list_price,
+            multiplier=self.multiplier,
+            net_price=Decimal(self.net_price).quantize(
                 ROUNDING_SIG, rounding=ROUND_HALF_UP
             ),
-            "net-price-broken-pallet": None,
-            "effective-date": self.effective_date,
-        }
+            net_price_broken_pallet=None,
+            effective_date=self.effective_date,
+        )
+        return FilterBuilt(**ret)
