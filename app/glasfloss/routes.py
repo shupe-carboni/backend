@@ -6,7 +6,7 @@ from fastapi import HTTPException, Depends, status
 from app import auth
 from app.db import Session, DB_V2
 from app.v2.models import VendorCustomer
-from app.glasfloss.parsing import FilterModel, Filter, ModelType
+from app.glasfloss.parsing import FilterModel, Filter, ModelType, FilterBuilt
 
 glasfloss = APIRouter(prefix=f"/glasfloss", tags=["glasfloss"])
 logger = logging.getLogger("uvicorn.info")
@@ -16,7 +16,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @glasfloss.get(
     "/model-lookup",
-    response_model=None,
+    response_model=FilterBuilt,
     response_model_exclude_none=True,
 )
 def parse_model_and_pricing(
@@ -28,14 +28,14 @@ def parse_model_and_pricing(
     depth: float,
     exact: Optional[bool] = False,
     customer_id: int = 0,
-) -> None:
+) -> FilterBuilt:
     filter_obj = Filter(width=width, height=height, depth=depth, exact=exact)
     type_ = ModelType[series.upper().strip()]
     try:
         return (
             FilterModel(session, type_, filter_obj)
             .calculate_pricing(customer_id)
-            .to_dict()
+            .to_obj()
         )
     except Exception as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
