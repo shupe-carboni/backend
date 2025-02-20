@@ -9,7 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from app.auth import SecOp
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
-from app.db import ADP_DB, Stage, Session, ADP_DB_2024, DB_V2
+from app.db import Stage, Session, DB_V2
 from app.adp.utils.models import ParsingModes
 import warnings
 

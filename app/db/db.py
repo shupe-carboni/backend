@@ -244,6 +244,5 @@ class DatabaseV2(Database):
 
 
 ADP_DB = Database("adp")
-ADP_DB_2024 = Database("_2024_adp")
 SCA_DB = Database("sca")
 DB_V2 = DatabaseV2()

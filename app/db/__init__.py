@@ -6,6 +6,5 @@ from app.db.db import (
     File,
     S3,
     DB_V2,
-    ADP_DB_2024,
     Database,
 )
