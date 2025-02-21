@@ -23,21 +23,6 @@ class SecondOrderCategory(StrEnum):
     STANDARD = "STANDARD"
     GEO_THERMAL_REPLACEMENT = "GEO-THERMAL_REPLACEMENT"
 
-    """
-    How do I expect the data to be coming in? Will it be a full model number
-    (expecting the front end to do the model number construction from parts)?
-    Or will I get certain pieces, constructing it in the backend? 
-
-    ADP's approach uses a full model number coming from the client and parses it.
-    This has made bulk uploads from the client very easy, but I have to verify the 
-    model numbers in the backend (which I don't even do fully to catch bad ones).
-
-    I could take parts of it, like the model type/series and dimensions, and build the 
-    model and such from there. I'm thinking that may be the way to go for this.
-
-    i.e. ZLP, 10.5, 21, 2, true (for "exact")
-    """
-
 
 @dataclass
 class Filter:
@@ -442,6 +427,8 @@ class FilterModel:
                     SELECT MIN(upper_bnd_face_area)
                     FROM glasfloss_pricing_mto
                     WHERE upper_bnd_face_area >= :face_area
+                    AND series = :series
+                    AND size_type = :size_type
                 );
             """
             result = DB_V2.execute(
