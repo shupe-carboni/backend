@@ -22,7 +22,7 @@ FRACTION_CODES = {
 with open("/home/carboni/.local/share/shupe-carboni-backend-tui/token.txt") as file:
     token = dict(Authorization=file.read())
 
-data = pd.read_csv("./Desktop/gls-nets-mapped.csv")
+data = pd.read_csv("/home/carboni/Desktop/gls-nets-mapped.csv")
 
 unique_pns = data[data["pn"].str.slice(0, 3).isin(("GDS", "GTA", "ZLP", "M11", "M13"))][
     "pn"
@@ -76,13 +76,16 @@ def disect_model(m: str) -> tuple:
 
 def try_to_price(m: tuple) -> float:
     pn, s, w, h, d, e = m
-    url = f"https://api.shupecarboni.com/glasfloss/model-lookup?series={s}&width={w}&height={h}&depth={d}&exact={e}"
+    url = (
+        "https://api.shupecarboni.com/glasfloss/model-lookup"
+        f"?series={s}&width={w}&height={h}&depth={d}&exact={e}"
+    )
     resp = requests.get(url, headers=token)
     if resp.status_code == 200:
         print(f"priced {pn}")
         return resp.json()["list-price"]
     else:
-        print(f"failed on {pn}")
+        print(f"failed on {pn}: {resp.text}")
         return 0
 
 
@@ -91,4 +94,4 @@ if __name__ == "__main__":
     results = [(m[0], try_to_price(m)) for m in model_parts]
     results_df = pd.DataFrame(results, columns=["pn", "price"])
     merged = data.merge(results_df, how="left", on="pn")
-    merged.to_csv("~/Desktop/gls-nets-w-list.csv", index=False)
+    merged.to_csv("/home/carboni/Desktop/gls-nets-w-list.csv", index=False)
