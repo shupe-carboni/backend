@@ -359,15 +359,27 @@ class FilterModel:
                 case ModelType.M13 if not standard:
                     rank_3_name = f"MR-13 PLEAT - MADE-TO-ORDER"
 
-            customer_multiplier = DB_V2.execute(
+            customer_product_multiplier = DB_V2.execute(
                 self.session,
-                sql=customer_product_class_multiplier_sql,
-                params=dict(rank_3_name=rank_3_name, customer_id=customer_id),
+                sql=customer_product_multiplier_sql,
+                params=dict(
+                    model_number=str(self.model_number), customer_id=customer_id
+                ),
             ).one_or_none()
-            if customer_multiplier:
-                multiplier, self.effective_date = customer_multiplier
+            if customer_product_multiplier:
+                multiplier, self.effective_date = customer_product_multiplier
                 self.customer_multiplier = multiplier
                 self.multiplier *= multiplier
+            else:
+                customer_class_multiplier = DB_V2.execute(
+                    self.session,
+                    sql=customer_product_class_multiplier_sql,
+                    params=dict(rank_3_name=rank_3_name, customer_id=customer_id),
+                ).one_or_none()
+                if customer_class_multiplier:
+                    multiplier, self.effective_date = customer_class_multiplier
+                    self.customer_multiplier = multiplier
+                    self.multiplier *= multiplier
             return
 
         standard_filter_sql = """
@@ -394,7 +406,6 @@ class FilterModel:
         ).one_or_none()
 
         if standard_filter:
-            self.prefix = self.model_series
             product_id, price, effective_date = standard_filter
             filter_features_sql = """
                 SELECT attr, type, value
@@ -460,7 +471,7 @@ class FilterModel:
             ).one()
             (self.list_price, new_prefix) = result
             self.list_price *= adjustment
-            self.prefix = new_prefix[:-2]
+            self.model_number.prefix = new_prefix[:-2]
             self.qty_per_case = 12
             self.carton_weight = None
             self.effective_date = datetime.today()
@@ -477,7 +488,6 @@ class FilterModel:
                 "Apply method .calculate_pricing() before returning the "
                 "built filter object."
             )
-        self.model_number.prefix = self.prefix
         ret = dict(
             model_number=str(self.model_number),
             width=self.width,

@@ -1,4 +1,4 @@
-__version__ = "2.2.17"
+__version__ = "2.2.18"
 
 from dotenv import load_dotenv
 
@@ -144,7 +144,7 @@ app_misc_routes = [
     (places, "", app),
     (adp, "/vendors", app),
     (hardcast, "", app),
-    (glasfloss, "", app),
+    (glasfloss, "/vendors", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_misc_routes, *v2_routes)
 ## register all of the routes and avoid crashing due to a registration issue
