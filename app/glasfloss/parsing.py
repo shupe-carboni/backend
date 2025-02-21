@@ -431,17 +431,35 @@ class FilterModel:
                     AND size_type = :size_type
                 );
             """
+            match self.model_type:
+                case ModelType.GDS:
+                    size_type = "DOUBLE" if self.double else "SINGLE"
+                    face_area = self.face_area
+                    adjustment = 1
+                case (
+                    ModelType.ZLP | ModelType.HVP | ModelType.M11 | ModelType.M13
+                ) if self.double:
+                    size_type = "SINGLE"
+                    face_area = self.face_area / 2
+                    adjustment = 2
+                case (
+                    ModelType.ZLP | ModelType.HVP | ModelType.M11 | ModelType.M13
+                ) if not self.double:
+                    size_type = "SINGLE"
+                    face_area = self.face_area
+                    adjustment = 1
             result = DB_V2.execute(
                 self.session,
                 mto_lookup_sql,
                 params=dict(
                     series=self.model_series,
-                    size_type="DOUBLE" if self.double else "SINGLE",
+                    size_type=size_type,
                     depth=depth_placeholder,
-                    face_area=self.face_area,
+                    face_area=face_area,
                 ),
             ).one()
             (self.list_price, new_prefix) = result
+            self.list_price *= adjustment
             self.prefix = new_prefix[:-2]
             self.qty_per_case = 12
             self.carton_weight = None
