@@ -18,18 +18,7 @@ from app.glasfloss import glasfloss
 from app.hardcast import hardcast
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
-from app.adp import (
-    adp,
-    coil_progs,
-    ah_progs,
-    prog_parts,
-    prog_ratings,
-    ratings_admin,
-    adp_customers,
-    adp_material_groups,
-    adp_mat_grp_discs,
-    adp_snps,
-)
+from app.adp import adp, ratings_admin
 import app.v2 as v2
 
 logger = logging.getLogger("uvicorn.info")
@@ -89,17 +78,7 @@ app.add_middleware(
 ##          their parent resources helps with
 ##          ordering paths correctly
 customer_sub_routes = [(customer_rel, "", customers)]
-adp_sub_routes = [
-    (adp_customers, "", adp),
-    (coil_progs, "", adp),
-    (ah_progs, "", adp),
-    (prog_parts, "", adp),
-    (prog_ratings, "", adp),
-    (ratings_admin, "", adp),
-    (adp_material_groups, "", adp),
-    (adp_mat_grp_discs, "", adp),
-    (adp_snps, "", adp),
-]
+adp_sub_routes = [(ratings_admin, "", adp)]
 v2_routes = [
     (v2.vendors.vendors, "/v2", app),
     (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
@@ -168,11 +147,11 @@ async def home():
 
 @app.get("/test-db")
 async def test_db():
-    from app.db import SCA_DB
+    from app.db import DB_V2
 
     try:
-        session = next(SCA_DB.get_db())
-        test = SCA_DB.test(session=session)
+        session = next(DB_V2.get_db())
+        test = DB_V2.test(session=session)
         return {"db_version": test}
     except Exception:
         import traceback as tb
