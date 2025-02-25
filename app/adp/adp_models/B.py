@@ -109,7 +109,7 @@ class B(ModelSeries):
                 rf"\*\*{self.attributes['scode']}"
                 rf"(\(1,2\)){self.tonnage}\+TXV"
             )
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         orientation = "Multiposition"
@@ -120,23 +120,36 @@ class B(ModelSeries):
         elif self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
 
         return value
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
         pricing_sql = """
-            SELECT base, "2", "3", "4"
-            FROM pricing_b_series
-            WHERE tonnage = :tonnage
-            AND slab = :slab;
+            SELECT key, price
+            FROM vendor_product_series_pricing
+            WHERE vendor_id = 'adp'
+            AND series = 'B'
+            AND key IN :keys;
         """
-        params = dict(tonnage=str(self.tonnage), slab=self.attributes["scode"])
-        pricing = (
+        keys = tuple(
+            [
+                f"{self.tonnage}_{self.attributes['scode']}_{suffix}"
+                for suffix in ("base", "2", "3", "4")
+            ]
+        )
+        params = dict(keys=keys)
+        pricing_records: tuple[dict[str, str | int]] = (
             self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
-            .one_or_none()
+            .fetchall()
         )
+        pricing = dict()
+        for r in pricing_records:
+            if r.get("key").endswith("base"):
+                pricing["base"] = r.get("price")
+            elif r.get("key")[-1] in ("2", "3", "4"):
+                pricing[r.get("key")[-1]] = r.get("price")
         return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
@@ -147,8 +160,8 @@ class B(ModelSeries):
         result = pricing_["base"]
         try:
             heat_option = pricing_[heat[0]] if heat != "00" else 0
-        except:
-            raise self.InvalidHeatOption
+        except Exception as e:
+            raise self.InvalidHeatOption(e)
         result += heat_option
         result += adders_["metering"].get(self.attributes["meter"], 0)
         result += adders_["voltage"].get(self.attributes["voltage"], 0)
