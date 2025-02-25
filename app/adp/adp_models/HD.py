@@ -156,23 +156,28 @@ class HD(ModelSeries):
             & (self.mat_grps["mat"].str.contains(self.attributes["mat"])),
             "mat_grp",
         ].item()
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         pricing_sql = f"""
-            SELECT {'painted' if self.cabinet_config == Cabinet.PAINTED else 'embossed'}
-            FROM pricing_hd_series
-            WHERE slab = :slab_1
-            OR slab = :slab_2;
+            SELECT price
+            FROM vendor_product_series_pricing
+            WHERE (
+                key = :key_1
+                OR key = :key_2
+            ) AND (
+                series = 'HD'
+                AND vendor_id = 'adp'
+            );
         """
         try:
-            slab_1 = str(int(self.attributes["scode"]))
-            slab_2 = f"{int(self.attributes['scode']):02}"
+            key_1 = str(int(self.attributes["scode"]))
+            key_2 = f"{int(self.attributes['scode']):02}"
         except ValueError:
-            slab_1 = slab_2 = self.attributes["scode"]
+            key_1 = key_2 = self.attributes["scode"]
         params = dict(
-            slab_1=slab_1,
-            slab_2=slab_2,
+            key_1=key_1 + f"_{self.cabinet_config.value}".lower(),
+            key_2=key_2 + f"_{self.cabinet_config.value}".lower(),
         )
         pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
@@ -193,7 +198,7 @@ class HD(ModelSeries):
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
     def record(self) -> dict:

@@ -63,7 +63,7 @@ class SC(ModelSeries):
         self.ratings_hp_txv = None
         self.ratings_piston = None
         self.ratings_field_txv = None
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         seer = "10 SEER"
@@ -72,14 +72,25 @@ class SC(ModelSeries):
         return f"{seer} {config} Service Coils - {cased}"
 
     def load_pricing(self, col: int) -> int:
+        key_len = {
+            "R": 4,
+            "L": 4,
+            "H": 7,
+            "S": 4,
+        }
         pricing_sql = f"""
-            SELECT "{col}"
-            FROM pricing_sc_series
-            WHERE :model ~ model;
+            SELECT price
+            FROM vendor_product_series_pricing
+            WHERE :key ~ key
+            AND series = 'SC'
+            AND vendor_id = 'adp';
         """
-        return self.db.execute(
-            session=self.session, sql=pricing_sql, params=dict(model=str(self))
-        ).scalar_one()
+        key = f"{str(self)[:(key_len[self.attributes['mat']])]}_{col}"
+        return int(
+            self.db.execute(
+                session=self.session, sql=pricing_sql, params=dict(key=key)
+            ).scalar_one()
+        )
 
     def calc_zero_disc_price(self) -> int:
         match self.attributes["mat"]:

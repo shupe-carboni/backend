@@ -197,7 +197,20 @@ class HE(ModelSeries):
                 rf"{self.attributes['scode']}\*{self.tonnage}\+TXV"
             )
 
-        self.zero_disc_price = self.calc_zero_disc_price()
+        match self.attributes["config"]:
+            case "01" | "05":
+                self.muliposition = False
+                self.uncased = False
+            case "20" | "22":
+                self.muliposition = True
+                self.uncased = False
+            case _:
+                self.muliposition = False
+                self.uncased = True
+        if self.depth == 19.5:
+            self.muliposition = False
+            self.uncased = True
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         material = self.material
@@ -210,17 +223,31 @@ class HE(ModelSeries):
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
-    def load_pricing(self, config: str) -> tuple[int, PriceByCategoryAndKey]:
+    def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
 
         pricing_sql = f"""
-            SELECT "{config}"
-            FROM pricing_he_series 
-            WHERE slab = :slab;
+            SELECT price
+            FROM vendor_product_series_pricing 
+            WHERE key = :key
+            AND vendor_id = 'adp'
+            AND series = 'HE';
         """
-        params = dict(slab=str(self.attributes["scode"]))
+        key = f"{self.attributes['scode']}_"
+        if self.uncased:
+            key += "uncased"
+        else:
+            if self.attributes["paint"] == "H":
+                key += "embossed_"
+            else:
+                key += "painted_"
+            if self.muliposition:
+                key += "mp"
+            else:
+                key += "cased"
+        params = dict(key=key)
         pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
@@ -228,19 +255,8 @@ class HE(ModelSeries):
         return int(pricing), self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
-        if self.depth == 19.5:
-            col = "uncased"
-        else:
-            col = self.cabinet_config.name
-            match self.attributes["config"]:
-                case "01" | "05":
-                    col += "_CASED"
-                case "20" | "22":
-                    col += "_MP"
-                case _:
-                    col = "uncased"
         paint: str = str(self.attributes["paint"])
-        pricing_, adders_ = self.load_pricing(config=col)
+        pricing_, adders_ = self.load_pricing()
         core_configs_sql = """
             SELECT depth, hand
             FROM he_core_configs

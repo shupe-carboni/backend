@@ -84,24 +84,26 @@ class HH(ModelSeries):
             self.ratings_field_txv = (
                 rf"HH{self.attributes['scode']}\*{self.tonnage}\+TXV"
             )
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         value = "Horizontal Slab Coils"
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
 
         pricing_sql = """
             SELECT price
-            FROM pricing_hh_series
-            WHERE slab = :slab;
+            FROM vendor_product_series_pricing
+            WHERE key = :key
+            AND series = 'HH'
+            AND vendor_id = 'adp';
         """
-        params = dict(slab=self.attributes["scode"])
+        params = dict(key=self.attributes["scode"])
         pricing: int = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()

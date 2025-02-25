@@ -92,25 +92,32 @@ class F(ModelSeries):
             )
             self.ratings_field_txv = rf"""F,P{self.attributes['motor']}\*{s_code}(\(1,2\)){self.tonnage}\+TXV"""
         self.metering = self.metering_mapping[metering]
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
 
-        pricing_sql = """
-            SELECT base, "05", "07", "10", "15", "20"
-            FROM pricing_f_series
-            WHERE :slab ~ slab
-            AND tonnage = :ton;
-        """
         # NOTE the ~ operator in Postgres checks that :slab matches regex
-        # values contained in the column "slab"
-        params = dict(slab=self.attributes["scode"], ton=self.tonnage)
+        # values contained in the column "slab". The selection based on key
+        # ignores the key suffix that denotes the heat kit so that it grabs them all
+        pricing_sql = """
+            SELECT key, price
+            FROM vendor_product_series_pricing
+            WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
+            AND vendor_id = 'adp'
+            AND series = 'F';
+        """
+        key = f"{self.tonnage}_{self.attributes['scode']}_"
+        params = dict(key=key)
         pricing = (
             self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
-            .one_or_none()
+            .fetchall()
         )
-        return pricing, self.get_adders()
+        pricing_reorganized = dict()
+        for row in pricing:
+            option = row["key"].split("_")[-1]
+            pricing_reorganized[option] = row["price"]
+        return pricing_reorganized, self.get_adders()
 
     def category(self) -> str:
         orientation = "Multiposition"
@@ -121,7 +128,7 @@ class F(ModelSeries):
         elif self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
     def calc_zero_disc_price(self) -> int:

@@ -1,6 +1,6 @@
 import re
 from logging import getLogger
-from app.db import Session, ADP_DB
+from app.db import Session, DB_V2
 from app.adp.adp_models.model_series import ModelSeries, NoBasePrice
 from app.adp.utils.models import ParsingModes
 
@@ -26,7 +26,7 @@ class Validator:
         if self.text_len not in self.model_series.text_len or not self.raw_text:
             return False
         price_strat_map = {
-            ParsingModes.BASE_PRICE: ADP_DB,
+            ParsingModes.BASE_PRICE: DB_V2,
             # ParsingModes.BASE_PRICE_2024: ADP_DB_2024,
         }
         model = re.compile(self.model_series.regex, re.VERBOSE)

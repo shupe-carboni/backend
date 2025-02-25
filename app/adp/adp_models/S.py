@@ -97,22 +97,21 @@ class S(ModelSeries):
         elif self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        # NOTE the ~ operator compares the parameter str to the regex
-        # patterns in the column
         pricing_sql = f"""
-            SELECT "{self.attributes['heat']}"
-            FROM pricing_s_series
-            WHERE :model_number ~ model;
+            SELECT price
+            FROM vendor_product_series_pricing
+            WHERE key = :key;
         """
-        params = dict(model_number=str(self))
+        key = f"{self.attributes['mat']}{self.attributes['scode']}_{self.attributes['heat']}"
+        params = dict(key=key)
         pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).scalar_one()
-        return pricing, self.get_adders()
+        return int(pricing), self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
@@ -146,7 +145,7 @@ class S(ModelSeries):
             Fields.MOTOR.value: self.motor,
             Fields.METERING.value: self.metering,
             Fields.HEAT.value: self.heat,
-            Fields.ZERO_DISCOUNT_PRICE.value: self.calc_zero_disc_price(),
+            Fields.ZERO_DISCOUNT_PRICE.value: self.calc_zero_disc_price() / 100,
             Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,
             Fields.RATINGS_HP_TXV.value: self.ratings_hp_txv,
             Fields.RATINGS_PISTON.value: self.ratings_piston,

@@ -158,7 +158,7 @@ class V(ModelSeries):
                 rf"H{height_str}{self.attributes['mat']}"
                 rf"{self.attributes['scode']}\*\+TXV"
             )
-        self.zero_disc_price = self.calc_zero_disc_price()
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         material = self.material
@@ -167,22 +167,30 @@ class V(ModelSeries):
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         pricing_sql = f"""
-            SELECT "{self.cabinet_config.name}"
-            FROM pricing_v_series
-            WHERE slab = :scode;
+            SELECT price
+            FROM vendor_product_series_pricing
+            WHERE key = :key
+            AND series = 'V'
+            AND vendor_id = 'adp';
         """
+        key = f"{self.attributes['scode']}_"
+        if self.attributes["paint"] == "V":
+            key += "embossed"
+        else:
+            key += "painted"
+        print(key)
         pricing = self.db.execute(
             session=self.session,
             sql=pricing_sql,
-            params=dict(scode=self.attributes["scode"]),
+            params=dict(key=key),
         ).scalar_one()
 
-        return pricing, self.get_adders()
+        return int(pricing), self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()

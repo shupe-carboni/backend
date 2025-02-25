@@ -32,6 +32,7 @@ class CP(ModelSeries):
     metering_mapping_2 = {
         -1: "Piston (R-410a) w/ Access Port",
         1: "Piston (R-454B/R-32) w/ Access Port",
+        -9: "Non-bleed HP-A/C TXV (R-410a)",
         9: "Non-bleed HP-A/C TXV (R-410a)",
         "A": "Non-bleed HP-A/C TXV (R-454B)",
         "B": "Non-bleed HP-A/C TXV (R-32)",
@@ -73,13 +74,13 @@ class CP(ModelSeries):
         self.ratings_ac_txv = (
             rf"C{self.attributes['motor']}"
             rf"{self.tonnage}{self.attributes['scode']}"
-            rf"{self.attributes['mat']}\+TXV"
+            rf"{self.attributes['mat']}\*\+TXV"
         )
         self.ratings_hp_txv = self.ratings_ac_txv
         self.ratings_piston = (
             rf"C{self.attributes['motor']}"
             rf"{self.tonnage}{self.attributes['scode']}"
-            rf"{self.attributes['mat']}"
+            rf"{self.attributes['mat']}1"
         )
         self.ratings_field_txv = self.ratings_ac_txv
         self.rds_factory_installed = False
@@ -115,7 +116,7 @@ class CP(ModelSeries):
         if self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - A1"
+            value += " - R410a"
         if self.attributes.get("drain"):
             value += " - Right Hand Drain"
         return value
@@ -123,8 +124,10 @@ class CP(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         sql = f"""
             SELECT price
-            FROM pricing_cp_series
-            WHERE "{self.attributes['mat']}" = :model ;
+            FROM vendor_product_series_pricing
+            WHERE key = :model 
+            AND vendor_id = 'adp'
+            AND series = 'CP';
         """
         model = str(self)
         params = dict(model=model)

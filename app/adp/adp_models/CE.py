@@ -99,7 +99,7 @@ class CE(ModelSeries):
         self.real_model_obj = Validator(
             session, self.real_model, real_model_obj
         ).is_model()
-        self.zero_disc_price = self.real_model_obj.calc_zero_disc_price()
+        self.zero_disc_price = self.real_model_obj.calc_zero_disc_price() / 100
         self.ratings_ac_txv = (
             rf"CE\(([P|V|S|H|M],){{1:4}}[P|V|S|H|M]\)"
             rf"{self.tonnage}{self.attributes['width_height']}"

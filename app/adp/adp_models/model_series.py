@@ -230,18 +230,24 @@ class ModelSeries:
     def get_adders(self) -> PriceByCategoryAndKey:
 
         price_adders_sql = """
-            SELECT type, key, price
-            FROM price_adders
-            WHERE series = :series;
+            SELECT key, price
+            FROM vendor_product_series_pricing
+            WHERE series = :series
+            and vendor_id = 'adp'
+            and key like 'adder_%';
         """
+
         params = dict(series=self.__series_name__())
-        adders_ = (
+        adders_: list[dict[str, str | int]] = (
             self.db.execute(session=self.session, sql=price_adders_sql, params=params)
             .mappings()
             .all()
         )
         adders = dict()
         for adder in adders_:
-            adders.setdefault(adder["type"], {})
-            adders[adder["type"]] |= {adder["key"]: adder["price"]}
+            # adder_type is a container in case the type name itself has underscores
+            _, *adder_type, adder_key = adder["key"].split("_")
+            adder_type = "_".join(adder_type)
+            adders.setdefault(adder_type, {})
+            adders[adder_type] |= {adder_key: adder["price"]}
         return adders
