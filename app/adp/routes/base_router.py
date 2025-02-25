@@ -120,7 +120,7 @@ def parse_model_and_pricing(
     elif customer_id:
         try:
             (
-                auth.VendorCustomerOperations(token, VendorCustomer, vendor_id="adp")
+                auth.VendorCustomerOperations(token, VendorCustomer, id="adp")
                 .allow_dev()
                 .allow_customer("std")
                 .get(session, obj=customer_id)
