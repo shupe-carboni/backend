@@ -2,20 +2,10 @@ from pytest import mark
 from pathlib import Path
 from fastapi.testclient import TestClient
 from app.main import app
-from app.db import Stage
-from app.jsonapi.sqla_models import (
-    ADPCoilProgram,
-    ADPAHProgram,
-    ADPMaterialGroupDiscount,
-    ADPSNP,
-)
 from app.auth import authenticate_auth0_token
 from app.db import S3 as real_S3
 from tests import auth_overrides
-from datetime import datetime, timedelta
 import pandas as pd
-from pprint import pprint, pformat
-from random import randint
 
 # pytest doesn't like putting this under TYPE_CHECKING
 from app.auth import VerifiedToken
@@ -52,10 +42,6 @@ MAT_GRP_ID = "CA"
 SNP_ID = 365
 
 PATH_PREFIX = "/vendors/adp"
-COIL_PROGS = ADPCoilProgram.__jsonapi_type_override__
-AH_PROGS = ADPAHProgram.__jsonapi_type_override__
-ADP_MAT_GROUP_DISCOUNTS = ADPMaterialGroupDiscount.__jsonapi_type_override__
-ADP_SNPS = ADPSNP.__jsonapi_type_override__
 PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 TEST_AH_MODEL = "SM312500"
