@@ -29,6 +29,20 @@ def parse_model_and_pricing(
     exact: Optional[bool] = False,
     customer_id: int = 0,
 ) -> FilterBuilt:
+    gate = token.permissions < auth.Permissions.sca_employee and customer_id
+    if gate:
+        try:
+            (
+                auth.VendorCustomerOperations(token, VendorCustomer, id="glasfloss")
+                .allow_dev()
+                .allow_customer("std")
+                .get(session, {}, customer_id)
+            )
+        except:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+        else:
+            pass
+
     try:
         filter_obj = Filter(width=width, height=height, depth=depth, exact=exact)
         type_ = ModelType[series.upper().strip()]
