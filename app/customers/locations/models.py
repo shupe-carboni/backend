@@ -12,9 +12,7 @@ from app.jsonapi.sqla_models import (
     SCAPlace,
     # SCAManagerMap,
     # SCAUser,
-    ADPAliasToSCACustomerLocation,
     SCACustomer,
-    ADPQuote,
 )
 
 
@@ -44,12 +42,6 @@ class LocationRelationships(BaseModel):
     places: Optional[JSONAPIRelationships] = None
     # users: JSONAPIRelationships = Field(alias=SCAUser.__jsonapi_type_override__)
     # manager_map: JSONAPIRelationships = Field(alias=SCAManagerMap.__jsonapi_type_override__)
-    adp_alias_to_sca_customer_locations: Optional[JSONAPIRelationships] = Field(
-        default=None, alias=ADPAliasToSCACustomerLocation.__jsonapi_type_override__
-    )
-    adp_quotes: Optional[JSONAPIRelationships] = Field(
-        default=None, alias=ADPQuote.__jsonapi_type_override__
-    )
 
 
 class LocationFields(BaseModel):
@@ -118,24 +110,3 @@ class NewLocation(BaseModel):
 
 class ModLocation(BaseModel):
     data: LocationResourceObject
-
-
-## ADP
-class ADPATSLRID(JSONAPIResourceIdentifier):
-    type: str = ADPAliasToSCACustomerLocation.__jsonapi_type_override__
-
-
-class ADPATSLRels(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-    adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
-
-
-class ADPATSLRObj(ADPATSLRID):
-    attributes: Optional[dict]
-    relationships: ADPATSLRels
-
-
-class RelatedADPAliasToSCACustomerLocation(JSONAPIResponse):
-    data: list[ADPATSLRObj] | ADPATSLRObj
-    included: dict = {}
-    links: Optional[dict] = Field(exclude=True, default=None)

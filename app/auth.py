@@ -29,9 +29,6 @@ from app.jsonapi.sqla_models import (
     serializer,
     serializer_partial,
     SCACustomer,
-    SCAVendor,
-    ADPCustomer,
-    ADPQuote,
     permitted_customer_location_ids,
     Vendor,
     VendorsAttr,
@@ -685,91 +682,6 @@ class CustomersOperations(SecOp):
         self._primary_resource = SCACustomer
         self._associated_resource = resource != self._primary_resource
         self._serializer = serializer_partial(prefix=prefix)
-        self.version = 1
-
-
-class VendorOperations(SecOp):
-
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = SCAVendor
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix=prefix)
-        self.version = 1
-
-    def permitted_primary_resource_ids(self, session: Session) -> list[int]:
-        """The Vendors resource does not have underlying resources that need to
-        be gated by user. Customers can only view the info, and only SCA is allowed
-        to add, edit, or delete any vendor and its associated information.
-
-        The ids returned are strictly for the developer role, which still gets checked
-        for id association to the primary resource (Vendors)"""
-        dev_vendor_ids = f"""
-            SELECT id
-            FROM {self._primary_resource.__tablename__}
-            WHERE name LIKE 'RANDOM VENDOR%';
-        """
-        return session.execute(text(dev_vendor_ids)).scalars().all()
-
-    def post(
-        self,
-        session: Session,
-        data: GenericData | Callable,
-        obj_id: int | None = None,
-        primary_id: int | None = None,
-        related_resource: str | None = None,
-    ) -> GenericData | None:
-        """enforce the expectation that customers will not be allowed to perform
-        this action"""
-        if self._customer:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        return super().post(session, data, obj_id, primary_id, related_resource)
-
-    def patch(
-        self,
-        session: Session,
-        data: GenericData | Callable,
-        obj_id: int,
-        primary_id: int | None = None,
-        related_resource: str | None = None,
-    ) -> GenericData | None:
-        """enforce the expectation that customers will not be allowed to perform
-        this action"""
-        if self._customer:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        return super().patch(session, data, obj_id, primary_id, related_resource)
-
-    def delete(self, session: Session, obj_id: int, primary_id: int | None = None):
-        """enforce the expectation that customers will not be allowed to perform
-        this action"""
-        if self._customer:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        return super().delete(session, obj_id, primary_id)
-
-
-class ADPOperations(SecOp):
-
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = ADPCustomer
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix)
-        self.version = 1
-
-
-class ADPQuoteOperations(SecOp):
-
-    def __init__(
-        self, token: VerifiedToken, resource: SQLAlchemyModel, prefix: str = ""
-    ) -> None:
-        super().__init__(token, resource)
-        self._primary_resource = ADPQuote
-        self._associated_resource = resource != self._primary_resource
-        self._serializer = serializer_partial(prefix)
         self.version = 1
 
 

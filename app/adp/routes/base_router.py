@@ -6,7 +6,6 @@ from fastapi import HTTPException, Depends, status
 from app import auth, downloads
 from app.db import Session, ADP_DB, Stage
 from app.adp.models import ProgAttrs
-from app.jsonapi.sqla_models import ADPCustomer
 from app.v2.models import VendorCustomer
 from app.adp.utils.programs import EmptyProgram
 from app.adp.extraction.models import parse_model_string
@@ -37,15 +36,7 @@ def customer_program_get_dl(
 ) -> DownloadLink:
     """Generate one-time-use hash value for download"""
     if token.permissions < auth.Permissions.sca_employee:
-        try:
-            auth.ADPOperations(token, ADPCustomer).allow_dev().allow_customer(
-                "std"
-            ).get(session=session, obj_id=adp_customer_id)
-        except HTTPException as e:
-            if e.status_code == 204:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-            else:
-                raise e
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
     download_id = downloads.DownloadIDs.add_request(
         resource=f"vendors/adp/programs/{adp_customer_id}/download", stage=Stage(stage)

@@ -15,7 +15,6 @@ from app.customers.locations.models import (
     LocationQuery,
     NewLocation,
     ModLocation,
-    RelatedADPAliasToSCACustomerLocation,
 )
 from app.db.db import SCA_DB
 from app.jsonapi.sqla_models import SCACustomerLocation
@@ -73,33 +72,6 @@ async def customer_location(
             session=session,
             query=converter(query),
             obj_id=customer_location_id,
-        )
-    )
-
-
-@customer_locations.get(
-    "/{customer_location_id}/adp-alias-to-sca-customer-locations",
-    response_model=RelatedADPAliasToSCACustomerLocation,
-    response_model_exclude_none=True,
-    tags=["jsonapi"],
-)
-async def customer_location_adp_alias(
-    session: NewSession,
-    token: Token,
-    customer_location_id: int,
-    query: LocationQuery = Depends(),
-) -> RelatedADPAliasToSCACustomerLocation:
-    return (
-        auth.CustomersOperations(token, SCACustomerLocation, prefix=PARENT_PREFIX)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .allow_customer("manager")
-        .get(
-            session=session,
-            query=converter(query),
-            obj_id=customer_location_id,
-            related_resource="adp-alias-to-sca-customer-locations",
         )
     )
 

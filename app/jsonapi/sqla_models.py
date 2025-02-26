@@ -117,243 +117,6 @@ def permitted_customer_location_ids(email: str, version: int = 1) -> QuerySet:
             return permitted_customer_location_ids_v2(email=email)
 
 
-class ADPAHProgram(Base):
-    __tablename__ = "adp_ah_programs"
-    __jsonapi_type_override__ = "adp-ah-programs"
-    ## fields
-    category = Column(TEXT)
-    model_number = Column(TEXT)
-    private_label = Column(TEXT)
-    mpg = Column(TEXT)
-    series = Column(TEXT)
-    tonnage = Column(Integer)
-    pallet_qty = Column(Integer)
-    min_qty = Column(Integer)
-    width = Column(Float)
-    depth = Column(Float)
-    height = Column(Float)
-    weight = Column(Integer)
-    metering = Column(TEXT)
-    motor = Column(TEXT)
-    heat = Column(TEXT)
-    zero_discount_price = Column(Float)
-    material_group_discount = Column(Float)
-    material_group_net_price = Column(Float)
-    snp_discount = Column(Float)
-    snp_price = Column(Float)
-    net_price = Column(Float)
-    ratings_ac_txv = Column(TEXT)
-    ratings_hp_txv = Column(TEXT)
-    ratings_piston = Column(TEXT)
-    ratings_field_txv = Column(TEXT)
-    effective_date = Column(DateTime)
-    last_file_gen = Column(DateTime)
-    id = Column(Integer, primary_key=True)
-    stage: Mapped[Stage] = mapped_column()
-    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    adp_ah_programs_changelog = relationship(
-        "ADPAHProgramChangelog",
-        back_populates=__tablename__,
-        cascade="all,delete",
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPAHProgram.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPAHProgramChangelog(Base):
-    __tablename__ = "adp_ah_programs_changelog"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    ## fields
-    id = Column(Integer, primary_key=True)
-    record_id = Column(Integer, ForeignKey("adp_ah_programs.id"))
-    prior_status: Mapped[Stage] = mapped_column()
-    new_status: Mapped[Stage] = mapped_column()
-    date = Column(DateTime)
-    username = Column(String)
-    comment = Column(TEXT)
-    ## relationships
-    adp_ah_programs = relationship("ADPAHProgram", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> str:
-        return None, str()
-
-
-class ADPCoilProgram(Base):
-    __tablename__ = "adp_coil_programs"
-    __jsonapi_type_override__ = "adp-coil-programs"
-    ## fields
-    category = Column(TEXT)
-    model_number = Column(TEXT)
-    private_label = Column(TEXT)
-    mpg = Column(TEXT)
-    series = Column(TEXT)
-    tonnage = Column(Integer)
-    pallet_qty = Column(Integer)
-    width = Column(Float)
-    depth = Column(Float)
-    height = Column(Float)
-    length = Column(Float)
-    weight = Column(Integer)
-    metering = Column(TEXT)
-    cabinet = Column(TEXT)
-    zero_discount_price = Column(Float)
-    material_group_discount = Column(Float)
-    material_group_net_price = Column(Float)
-    snp_discount = Column(Float)
-    snp_price = Column(Float)
-    net_price = Column(Float)
-    ratings_ac_txv = Column(TEXT)
-    ratings_hp_txv = Column(TEXT)
-    ratings_piston = Column(TEXT)
-    ratings_field_txv = Column(TEXT)
-    effective_date = Column(DateTime)
-    last_file_gen = Column(DateTime)
-    id = Column(Integer, primary_key=True)
-    stage: Mapped[Stage] = mapped_column()
-    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    adp_coil_programs_changelog = relationship(
-        "ADPCoilProgramChangelog",
-        back_populates=__tablename__,
-        cascade="all,delete",
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPCoilProgram.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPCoilProgramChangelog(Base):
-    __tablename__ = "adp_coil_programs_changelog"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    ## fields
-    id = Column(Integer, primary_key=True)
-    record_id = Column(Integer, ForeignKey("adp_coil_programs.id"))
-    prior_status: Mapped[Stage] = mapped_column()
-    new_status: Mapped[Stage] = mapped_column()
-    date = Column(DateTime)
-    username = Column(String)
-    comment = Column(TEXT)
-    ## relationships
-    adp_coil_programs = relationship("ADPCoilProgram", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-
-class ADPAliasToSCACustomerLocation(Base):
-    __tablename__ = "adp_alias_to_sca_customer_locations"
-    __jsonapi_type_override__ = "adp-alias-to-sca-customer-locations"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    adp_customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    sca_customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    customer_locations = relationship(
-        "SCACustomerLocation", back_populates=__tablename__
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-
-class ADPCustomer(Base):
-    __tablename__ = "adp_customers"
-    __jsonapi_type_override__ = "adp-customers"
-    ## fields
-    adp_alias = Column(TEXT, unique=True)
-    customer = Column(TEXT)
-    sca_id = Column(Integer, ForeignKey("sca_customers.id"))
-    id = Column(Integer, primary_key=True)
-    preferred_parts = Column(Boolean)
-    ## relationships
-    customers = relationship("SCACustomer", back_populates=__tablename__)
-    adp_coil_programs = relationship("ADPCoilProgram", back_populates=__tablename__)
-    adp_ah_programs = relationship("ADPAHProgram", back_populates=__tablename__)
-    adp_program_ratings = relationship("ADPProgramRating", back_populates=__tablename__)
-    adp_alias_to_sca_customer_locations = relationship(
-        "ADPAliasToSCACustomerLocation", back_populates=__tablename__
-    )
-    adp_material_group_discounts = relationship(
-        "ADPMaterialGroupDiscount", back_populates=__tablename__
-    )
-    adp_snps = relationship("ADPSNP", back_populates=__tablename__)
-    adp_program_parts = relationship("ADPProgramPart", back_populates=__tablename__)
-    adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPCustomer.id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-
-class ADPCustomerTerms(Base):
-    __tablename__ = "adp_customer_terms"
-    __jsonapi_type_override__ = "adp-customer-terms"
-    ## fields
-    sca_id = Column(Integer, ForeignKey("sca_customers.id"))
-    terms = Column(TEXT)
-    ppf = Column(Integer)
-    effective_date = Column(DateTime)
-    id = Column(Integer, primary_key=True)
-    ## relationships
-    customers = relationship("SCACustomer", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        customer_locations = aliased(SCACustomerLocation)
-        exists_subquery = exists().where(
-            customer_locations.customer_id == ADPCustomerTerms.sca_id,
-            adptoloc.sca_customer_location_id == customer_locations.id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-
 class SCACustomer(Base):
     __tablename__ = "sca_customers"
     __jsonapi_type_override__ = "customers"
@@ -364,12 +127,6 @@ class SCACustomer(Base):
     domains = Column(ARRAY(String))
     buying_group = Column(String)
     ## relationships
-    adp_customer_terms = relationship(
-        "ADPCustomerTerms", back_populates=__jsonapi_type_override__
-    )
-    adp_customers = relationship(
-        "ADPCustomer", back_populates=__jsonapi_type_override__
-    )
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__jsonapi_type_override__
     )
@@ -385,66 +142,6 @@ class SCACustomer(Base):
         return q.where(exists_subquery)
 
 
-class ADPMaterialGroupDiscount(Base):
-    __tablename__ = "adp_material_group_discounts"
-    __jsonapi_type_override__ = "adp-material-group-discounts"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    mat_grp = Column(TEXT, ForeignKey("adp_material_groups.id"))
-    discount = Column(Float)
-    stage: Mapped[Stage] = mapped_column()
-    effective_date = Column(DateTime)
-    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    adp_material_groups = relationship("ADPMaterialGroup", back_populates=__tablename__)
-    adp_material_group_discounts_changelog = relationship(
-        "ADPMaterialGroupDiscountChangelog",
-        back_populates=__tablename__,
-        cascade="all,delete",
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPMaterialGroupDiscount.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPMaterialGroupDiscountChangelog(Base):
-    __tablename__ = "adp_material_group_discounts_changelog"
-    __jsonapi_type_override__ = "adp-material-group-discounts-changelog"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    record_id = Column(Integer, ForeignKey("adp_material_group_discounts.id"))
-    prior_status: Mapped[Stage] = mapped_column()
-    new_status: Mapped[Stage] = mapped_column()
-    date = Column(DateTime)
-    username = Column(String)
-    comment = Column(TEXT)
-    ## relationships
-    adp_material_group_discounts = relationship(
-        "ADPMaterialGroupDiscount", back_populates=__tablename__
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
 class ADPMaterialGroup(Base):
     __tablename__ = "adp_material_groups"
     __jsonapi_type_override__ = "adp-material-groups"
@@ -456,10 +153,6 @@ class ADPMaterialGroup(Base):
     mat = Column(TEXT)
     config = Column(TEXT)
     description = Column(TEXT)
-    ## relationships
-    adp_material_group_discounts = relationship(
-        "ADPMaterialGroupDiscount", back_populates=__tablename__
-    )
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
@@ -508,107 +201,23 @@ class ADPProgramRating(Base):
     capacity2_as_submitted = Column(Float)
     hspf2_as_submitted = Column(Float)
     id = Column(Integer, primary_key=True)
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
 
     ## GET request filtering
     def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
         if not ids:
             return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPProgramRating.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPPricingPart(Base):
-    __tablename__ = "adp_pricing_parts"
-    __jsonapi_type_override__ = "adp-pricing-parts"
-    ## fields
-    id = Column(Integer)
-    part_number = Column(String, nullable=False, primary_key=True)
-    description = Column(TEXT)
-    pkg_qty = Column(Integer)
-    preferred = Column(Integer)
-    standard = Column(Integer)
-    ## relationships
-    adp_program_parts = relationship("ADPProgramPart", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        # adptoloc = aliased(ADPAliasToSCACustomerLocation)
+        # exists_subquery = exists().where(
+        #     adptoloc.adp_customer_id == ADPProgramRating.customer_id,
+        #     adptoloc.sca_customer_location_id.in_(ids),
+        # )
+        # return q.where(exists_subquery)
         return q
 
-
-class ADPProgramPart(Base):
-    __tablename__ = "adp_program_parts"
-    __jsonapi_type_override__ = "adp-program-parts"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    part_number = Column(String, ForeignKey("adp_pricing_parts.part_number"))
-    ## relationships
-    adp_pricing_parts = relationship("ADPPricingPart", back_populates=__tablename__)
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPProgramPart.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## object id queries
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPQuote(Base):
-    __tablename__ = "adp_quotes"
-    __jsonapi_type_override__ = "adp-quotes"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    adp_quote_id = Column(String, unique=True)
-    place_id = Column(Integer, ForeignKey("sca_places.id"))
-    adp_customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    job_name = Column(String)
-    created_at = Column(DateTime)
-    expires_at = Column(DateTime)
-    status: Mapped[Stage] = mapped_column()
-    quote_doc = Column(TEXT, unique=True)
-    plans_doc = Column(TEXT)
-    customer_location_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
-    ## relationships
-    places = relationship("SCAPlace", back_populates=__tablename__)
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    customer_locations = relationship(
-        "SCACustomerLocation", back_populates=__tablename__
-    )
-    adp_quote_products = relationship("ADPQuoteProduct", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
     ## primary id lookup
     def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
+        ...
+        # return None, adp_customer_primary_id_queries(email=email)
 
 
 class SCACustomerLocation(Base):
@@ -624,17 +233,10 @@ class SCACustomerLocation(Base):
     serviced_by_id = Column(Integer, ForeignKey("sca_customer_locations.id"))
     ## relationships
     serviced_by = relationship("SCACustomerLocation")
-    adp_alias_to_sca_customer_locations = relationship(
-        "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
-    )
-    adp_quotes = relationship("ADPQuote", back_populates=__tablename_alt__)
     customers = relationship("SCACustomer", back_populates=__tablename_alt__)
     places = relationship("SCAPlace", back_populates=__tablename_alt__)
     manager_map = relationship("SCAManagerMap", back_populates=__tablename_alt__)
     users = relationship("SCAUser", back_populates=__tablename_alt__)
-    adp_alias_to_sca_customer_locations = relationship(
-        "ADPAliasToSCACustomerLocation", back_populates=__tablename_alt__
-    )
     customer_location_mapping = relationship(
         "CustomerLocationMapping", back_populates=__tablename_alt__
     )
@@ -650,82 +252,6 @@ class SCACustomerLocation(Base):
         return None, customers_primary_id_queries(email=email)
 
 
-class ADPSNP(Base):
-    __tablename__ = "adp_snps"
-    __jsonapi_type_override__ = "adp-snps"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    model = Column(TEXT)
-    price = Column(Float)
-    stage: Mapped[Stage] = mapped_column()
-    effective_date = Column(DateTime)
-    customer_id = Column(Integer, ForeignKey("adp_customers.id"))
-    ## relationships
-    adp_customers = relationship("ADPCustomer", back_populates=__tablename__)
-    adp_snps_changelog = relationship(
-        "ADPSNPChangelog",
-        back_populates=__tablename__,
-        cascade="all,delete",
-    )
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        if not ids:
-            return q
-        adptoloc = aliased(ADPAliasToSCACustomerLocation)
-        exists_subquery = exists().where(
-            adptoloc.adp_customer_id == ADPSNP.customer_id,
-            adptoloc.sca_customer_location_id.in_(ids),
-        )
-        return q.where(exists_subquery)
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_customer_primary_id_queries(email=email)
-
-
-class ADPSNPChangelog(Base):
-    __tablename__ = "adp_snps_changelog"
-    __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    ## fields
-    id = Column(Integer, primary_key=True)
-    record_id = Column(Integer, ForeignKey("adp_snps.id"))
-    prior_status: Mapped[Stage] = mapped_column()
-    new_status: Mapped[Stage] = mapped_column()
-    date = Column(DateTime)
-    username = Column(String)
-    comment = Column(TEXT)
-    ## relationships
-    adp_snps = relationship("ADPSNP", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-
-class ADPQuoteProduct(Base):
-    __tablename__ = "adp_quote_products"
-    __jsonapi_type_override__ = "adp-quote-products"
-    ## fields
-    id = Column(Integer, primary_key=True)
-    tag = Column(String, nullable=False)
-    qty = Column(Integer, nullable=False)
-    price = Column(Float)
-    model_number = Column(String)
-    comp_model = Column(String)
-    adp_quote_id = Column(Integer, ForeignKey("adp_quotes.id"))
-    ## relationships
-    adp_quotes = relationship("ADPQuote", back_populates=__tablename__)
-
-    ## GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-    ## primary id lookup
-    def permitted_primary_resource_ids(email: str) -> QuerySet:
-        return None, adp_quote_primary_id_queries(email=email)
-
-
 class SCAPlace(Base):
     __tablename__ = "sca_places"
     __jsonapi_type_override__ = "places"
@@ -736,7 +262,6 @@ class SCAPlace(Base):
     lat = Column(Float)
     long = Column(Float)
     ## relationships
-    adp_quotes = relationship("ADPQuote", back_populates=__jsonapi_type_override__)
     customer_locations = relationship(
         "SCACustomerLocation", back_populates=__jsonapi_type_override__
     )
@@ -797,58 +322,6 @@ class SCAUser(Base):
         if not ids:
             return q
         return q.where(SCAUser.customer_location_id.in_(ids))
-
-
-class SCAVendor(Base):
-    __tablename__ = "sca_vendors"
-    __jsonapi_type_override__ = "vendors"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    headquarters = Column(String)
-    description = Column(TEXT)
-    phone = Column(BigInteger)
-    logo_path = Column(String)
-    # relationships
-    info = relationship("SCAVendorInfo", back_populates=__jsonapi_type_override__)
-    vendor_resource_mapping = relationship(
-        "SCAVendorResourceMap", back_populates=__jsonapi_type_override__
-    )
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-
-class SCAVendorInfo(Base):
-    __tablename__ = "sca_vendors_info"
-    __jsonapi_type_override__ = "info"
-    id = Column(Integer, primary_key=True)
-    vendor_id = Column(Integer, ForeignKey("sca_vendors.id"))
-    category = Column(TEXT)
-    content = Column(TEXT)
-    # relationships
-    vendors = relationship("SCAVendor", back_populates=__jsonapi_type_override__)
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
-
-
-class SCAVendorResourceMap(Base):
-    __tablename__ = "sca_vendor_resource_mapping"
-    __tablename_alt__ = "vendor_resource_mapping"
-    __jsonapi_type_override__ = "vendor-resource-mapping"
-    id = Column(Integer, primary_key=True)
-    vendor_id = Column(String, ForeignKey("sca_vendors.id"), nullable=False)
-    resource_type = Column(String, nullable=False)
-    resource = Column(String, nullable=False)
-    category_name = Column(String)
-    # relationships
-    vendors = relationship("SCAVendor", back_populates=__tablename_alt__)
-
-    # GET request filtering
-    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
-        return q
 
 
 # V2
@@ -1970,98 +1443,6 @@ class VendorCustomerAttrChangelog(Base):
 
 serializer = JSONAPI_(Base)
 serializer_partial = partial(JSONAPI_, Base)
-
-
-def adp_customer_primary_id_queries(email: str, **filters) -> QuerySet:
-    adp_customers_alias = aliased(ADPCustomer)
-    adptoloc = aliased(ADPAliasToSCACustomerLocation)
-    users = aliased(SCAUser)
-    customer_locations = aliased(SCACustomerLocation)
-
-    user_query = select(adp_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPCustomer.id,
-        )
-    )
-
-    manager_map = aliased(SCAManagerMap)
-    manager_query = select(adp_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            manager_map.user_id == users.id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPCustomer.id,
-        )
-    )
-    customers_2 = aliased(ADPCustomer)
-    admin_query = select(adp_customers_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            customers_2.id == adptoloc.adp_customer_id,
-            customers_2.sca_id == ADPCustomer.sca_id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPCustomer.id,
-        )
-    )
-    querys: QuerySet = {
-        "sql_user_only": str(user_query),
-        "sql_manager": str(manager_query),
-        "sql_admin": str(admin_query),
-        "sql_sca_employee": str(),
-        "sql_sca_admin": str(),
-    }
-    return querys
-
-
-def adp_quote_primary_id_queries(email: str, **filters) -> QuerySet:
-    adp_quotes_alias = aliased(ADPQuote)
-    adptoloc = aliased(ADPAliasToSCACustomerLocation)
-    users = aliased(SCAUser)
-    customer_locations = aliased(SCACustomerLocation)
-
-    user_query = select(adp_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
-        )
-    )
-
-    manager_map = aliased(SCAManagerMap)
-    manager_query = select(adp_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            manager_map.user_id == users.id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
-        )
-    )
-    customers_2 = aliased(ADPQuote)
-    admin_query = select(adp_quotes_alias.id).where(
-        exists().where(
-            customer_locations.id == users.customer_location_id,
-            customer_locations.id == adptoloc.sca_customer_location_id,
-            customers_2.id == adptoloc.adp_customer_id,
-            customers_2.adp_customer_id == ADPQuote.adp_customer_id,
-            users.email == email,
-            adptoloc.adp_customer_id == ADPQuote.adp_customer_id,
-        )
-    )
-    querys: QuerySet = {
-        "sql_user_only": str(user_query),
-        "sql_manager": str(manager_query),
-        "sql_admin": str(admin_query),
-        "sql_sca_employee": str(),
-        "sql_sca_admin": str(),
-    }
-    return querys
 
 
 def customers_primary_id_queries(email: str, **filters) -> QuerySet:

@@ -9,18 +9,7 @@ from app.customers.locations.models import (
     RelatedLocationResponse,
     LocationRelationshipsResponse,
 )
-from app.adp.models import (
-    RelatedCustomerResponse,
-    CustomersRelResp,
-    RelatedADPCustomerTermsResp,
-    ADPCustomerTermsRelationshipsResp,
-)
-from app.jsonapi.sqla_models import (
-    SCACustomer,
-    SCACustomerLocation,
-    ADPCustomer,
-    ADPCustomerTerms,
-)
+from app.jsonapi.sqla_models import SCACustomer, SCACustomerLocation
 
 API_TYPE = SCACustomer.__jsonapi_type_override__
 customer_rel = APIRouter(tags=[API_TYPE])
@@ -75,106 +64,5 @@ async def customer_location_relationships(
             obj_id=customer_id,
             relationship=True,
             related_resource=SCACustomerLocation.__jsonapi_type_override__,
-        )
-    )
-
-
-@customer_rel.get(
-    "/{customer_id}/adp-customers",
-    response_model=RelatedCustomerResponse,
-    response_model_exclude_none=True,
-)
-async def related_adp_customers(
-    session: NewSession,
-    customer_id: int,
-    token: CustomersPerm,
-) -> RelatedCustomerResponse:
-    return (
-        auth.CustomersOperations(token, SCACustomer)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("admin")
-        .get(
-            session=session,
-            obj_id=customer_id,
-            relationship=False,
-            related_resource=ADPCustomer.__jsonapi_type_override__,
-        )
-    )
-
-
-@customer_rel.get(
-    "/{customer_id}/relationships/adp-customers",
-    response_model=CustomersRelResp,
-    response_model_exclude_none=True,
-)
-async def adp_customer_relationships(
-    session: NewSession,
-    customer_id: int,
-    token: CustomersPerm,
-) -> CustomersRelResp:
-    return (
-        auth.CustomersOperations(token, SCACustomer)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("admin")
-        .get(
-            session=session,
-            obj_id=customer_id,
-            relationship=True,
-            related_resource=ADPCustomer.__jsonapi_type_override__,
-        )
-    )
-
-
-@customer_rel.get(
-    "/{customer_id}/adp-customer-terms",
-    response_model=RelatedADPCustomerTermsResp,
-    response_model_exclude_none=True,
-)
-async def related_adp_customer_terms(
-    session: NewSession,
-    customer_id: int,
-    token: CustomersPerm,
-) -> RelatedADPCustomerTermsResp:
-
-    return (
-        auth.CustomersOperations(token, SCACustomer)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("admin")
-        .get(
-            session=session,
-            obj_id=customer_id,
-            relationship=False,
-            related_resource=ADPCustomerTerms.__jsonapi_type_override__,
-        )
-    )
-
-
-@customer_rel.get(
-    "/{customer_id}/relationships/adp-customer-terms",
-    response_model=ADPCustomerTermsRelationshipsResp,
-    response_model_exclude_none=True,
-)
-async def adp_customer_terms_relationships(
-    session: NewSession,
-    customer_id: int,
-    token: CustomersPerm,
-) -> ADPCustomerTermsRelationshipsResp:
-    return (
-        auth.CustomersOperations(token, SCACustomer)
-        .allow_admin()
-        .allow_dev()
-        .allow_sca()
-        .allow_customer("admin")
-        .get(
-            session=session,
-            obj_id=customer_id,
-            relationship=True,
-            related_resource=ADPCustomerTerms.__jsonapi_type_override__,
         )
     )
