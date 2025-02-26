@@ -280,7 +280,7 @@ class FilterModel:
         )
         return
 
-    def calculate_pricing(self, customer_id: int) -> "FilterModel":
+    def calculate_pricing(self, customer_id: int = 0) -> "FilterModel":
         """
         Look for the model as a standard model first
         If it's not a standard model, use the calculation methods.
@@ -429,6 +429,18 @@ class FilterModel:
         else:
             depth_placeholder = self.depth if 4 >= self.depth else 4
             mto_lookup_sql = """
+                WITH glasfloss_pricing_mto AS (
+                    SELECT 
+                        id,
+                        series,
+                        split_part(key,'_',1) as size_type,
+                        split_part(key,'_',2) as part_number,
+                        split_part(key,'_',3)::float / 100 as depth,
+                        split_part(key,'_',4)::int as upper_bnd_face_area,
+                        price
+                    FROM vendor_product_series_pricing
+                    WHERE vendor_id = 'glasfloss'
+                )
                 SELECT price, part_number
                 FROM glasfloss_pricing_mto
                 WHERE series = :series
