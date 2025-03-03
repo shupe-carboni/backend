@@ -159,6 +159,7 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
         - vendor-products (vendor_product_identifier, vendor_product_description)
         - vendor-product-attrs (attr='pkg_qty')
         - vendor-pricing-by-customer (pricing class in 'PREFERRED_PARTS', 'STANDARD_PARTS')
+        - vendor-pricing-by-customer-attrs (attr='sort_order')
     """
     sql = """
         SELECT vc.id AS customer_id,
@@ -171,6 +172,8 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
         JOIN vendor_pricing_by_customer vpbc ON vpbc.vendor_customer_id = vc.id
         JOIN vendor_products vp ON vp.id = vpbc.product_id
         JOIN vendor_product_attrs vpa ON vpa.vendor_product_id = vp.id
+        LEFT JOIN vendor_pricing_by_customer_attrs vpca
+            ON vpca.pricing_by_customer_id = vpbc.id and vpca.attr = 'sort_order'
         WHERE vc.id = :customer_id
         AND vpa.attr = 'pkg_qty'
         AND EXISTS (
@@ -179,7 +182,8 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
             WHERE vpc.id = vpbc.pricing_class_id
             AND vpc.name IN ('PREFERRED_PARTS','STANDARD_PARTS')
             AND vpc.vendor_id = 'adp'
-        );
+        )
+        ORDER BY vpca.value::int;
     """
     result = DB_V2.execute(session, sql, {"customer_id": customer_id})
     return pd.DataFrame(result.fetchall(), columns=result.keys())
