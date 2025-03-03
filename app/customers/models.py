@@ -41,8 +41,6 @@ class CustomerFilterSelector(BaseModel):
 class CustomerRelationships(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     customer_locations: JSONAPIRelationships = Field(alias="customer-locations")
-    adp_customers: JSONAPIRelationships = Field(alias="adp-customers")
-    adp_customer_terms: JSONAPIRelationships = Field(alias="adp-customer-terms")
 
 
 class CustomerRelationshipsFieldsSelectors(BaseModel):
