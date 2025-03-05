@@ -9,7 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 import warnings
 
 warnings.simplefilter("ignore")
-from app.db import ADP_DB, Session
+from app.db import DB_V2, Session
 from app.adp.models import Ratings
 
 logger = logging.getLogger("uvicorn.info")
@@ -132,7 +132,7 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
             1 IS NOT DISTINCT FROM NULL → f (rather than NULL)
             NULL IS NOT DISTINCT FROM NULL → t (rather than NULL)
     """
-    temp_table_name = "temp_ratings"
+    temp_table_name = "adp_temp_ratings"
     my_ratings = ratings
     try:
         my_ratings["AHRINumber"] = my_ratings["AHRINumber"].str.replace(
@@ -145,7 +145,7 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
         pass
     my_ratings["AHRINumber"] = my_ratings["AHRINumber"].fillna(0).astype(int)
     logger.info("creating temp ratings table")
-    ADP_DB.upload_df(
+    DB_V2.upload_df(
         session=session,
         data=my_ratings,
         table_name=temp_table_name,
@@ -164,7 +164,7 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
             OR (mr."AHRINumber" = r."AHRI Ref Number");
             """
     logger.info("executing query for search")
-    enriched_ratings: CursorResult = ADP_DB.execute(session=session, sql=enrich_ratings)
+    enriched_ratings: CursorResult = DB_V2.execute(session=session, sql=enrich_ratings)
     logger.info("query done")
     ratings_df = pd.DataFrame(enriched_ratings.mappings().fetchall())
     ratings_df["AHRI Ref Number"] = pd.to_numeric(
@@ -178,24 +178,24 @@ def find_ratings_in_reference(session: Session, ratings: pd.DataFrame) -> pd.Dat
 def find_ratings_in_reference_and_update_file(
     session: Session, ratings: pd.DataFrame
 ) -> None:
-    temp_table_name = "temp_ratings"
+    temp_table_name = "adp_temp_ratings"
     with session.begin():
         ratings_df: pd.DataFrame = find_ratings_in_reference(
             session=session, ratings=ratings
         )
-        ADP_DB.upload_df(
+        DB_V2.upload_df(
             session=session,
             data=ratings_df,
-            table_name="program_ratings",
+            table_name="adp_program_ratings",
             primary_key=False,
             if_exists="append",
         )
-        ADP_DB.execute(session=session, sql=f"DROP TABLE {temp_table_name};")
+        DB_V2.execute(session=session, sql=f"DROP TABLE {temp_table_name};")
     return
 
 
 def update_all_unregistered_program_ratings(session: Session) -> None:
-    program_ratings = ADP_DB.load_df(session=session, table_name="program_ratings")
+    program_ratings = DB_V2.load_df(session=session, table_name="adp_program_ratings")
     program_ratings["AHRI Ref Number"] = program_ratings["AHRI Ref Number"].astype(int)
     missing_ratings = program_ratings.loc[
         program_ratings["AHRI Ref Number"] == 0,
@@ -216,9 +216,11 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
     result = pd.DataFrame.infer_objects(result)
     logger.info("Ratings found to update")
     tuple_names = ["Index"] + result.columns.to_list()
+    logger.info(tuple_names)
     for record in result.itertuples():
         record: NamedTuple
-        logger.info(str(record))
+        logging_msg = f"{record.AHRINumber}"
+        logger.info(logging_msg)
         update_sets = "SET "
         for field, value in zip(tuple_names, record._asdict().values()):
             if field in ("Index", "id"):
@@ -233,12 +235,12 @@ def update_all_unregistered_program_ratings(session: Session) -> None:
                 update_sets += f""""{field}" = '{value}',"""
         update_sets = update_sets[:-1]
         sql = f"""
-            UPDATE program_ratings
+            UPDATE adp_program_ratings
             {update_sets}
             WHERE id = :record_id
         """
         with session:
-            ADP_DB.execute(session=session, sql=sql, params={"record_id": record.id})
+            DB_V2.execute(session=session, sql=sql, params={"record_id": record.id})
             session.commit()
 
 
@@ -266,10 +268,10 @@ def upload_ratings_data(session: Session, ratings: pd.DataFrame):
     try:
         with session.begin():
             logger.info("Replacing Database table")
-            ADP_DB.upload_df(
+            DB_V2.upload_df(
                 session=session,
                 data=ratings,
-                table_name="all_ratings",
+                table_name="adp_all_ratings",
                 primary_key=False,
                 if_exists="replace",
             )
@@ -281,7 +283,7 @@ def upload_ratings_data(session: Session, ratings: pd.DataFrame):
                 "AHRI Ref Number",
             ):
                 logger.info(f"Creating index for {ind_col}")
-                ADP_DB.execute(
+                DB_V2.execute(
                     session=session,
                     sql=f"""CREATE INDEX ON adp_all_ratings("{ind_col}");""",
                 )

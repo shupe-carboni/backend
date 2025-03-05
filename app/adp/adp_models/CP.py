@@ -101,7 +101,7 @@ class CP(ModelSeries):
                 metering = -int(self.attributes["meter"])
 
         self.metering = self.metering_mapping_2[metering]
-        self.zero_disc_price = self.get_zero_disc_price()
+        self.zero_disc_price = self.get_zero_disc_price() / 100
         try:
             self.heat = int(self.attributes["heat"])
             self.heat = self.kw_heat[self.heat]
