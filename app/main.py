@@ -19,6 +19,7 @@ from app.hardcast import hardcast
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import adp, ratings_admin
+from app.admin import price_updates
 import app.v2 as v2
 
 logger = logging.getLogger("uvicorn.info")
@@ -124,6 +125,7 @@ app_misc_routes = [
     (adp, "/vendors", app),
     (hardcast, "", app),
     (glasfloss, "/vendors", app),
+    (price_updates, "", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_misc_routes, *v2_routes)
 ## register all of the routes and avoid crashing due to a registration issue

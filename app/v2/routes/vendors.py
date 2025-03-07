@@ -1,6 +1,6 @@
 from enum import StrEnum, auto
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
@@ -677,6 +677,41 @@ async def vendor_customer_obj(
         .allow_customer("std")
         .get(session, converters[VendorCustomerQuery](query), customer_id)
     )
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/pricing",
+    response_model=None,
+    response_model_exclude_none=True,
+    tags=["special"],
+)
+async def vendor_customer_obj(
+    token: Token,
+    session: NewSession,
+    vendor_id: str,
+    customer_id: int,
+) -> None:
+    # TODO SET UP CUSTOM LOGIC TO GET CUSTOMER PRICING
+    """
+    Getting pricing can be challenging to generalize on the front end, so logic here
+    will do special method routing by-vendor one if the request passes the auth
+    check
+    """
+    try:
+        (
+            auth.VendorCustomerOperations(token, VendorCustomer, id=vendor_id)
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .allow_customer("std")
+            .get(session, obj_id=customer_id)
+        )
+    except HTTPException as e:
+        raise e
+
+    ### REST OF LOCIC ###
+
+    return
 
 
 @vendors.get(

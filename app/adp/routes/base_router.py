@@ -119,7 +119,7 @@ def parse_model_and_pricing(
                 auth.VendorCustomerOperations(token, VendorCustomer, id="adp")
                 .allow_dev()
                 .allow_customer("std")
-                .get(session, obj=customer_id)
+                .get(session, obj_id=customer_id)
             )
         except HTTPException as e:
             if e.status_code < 500:
