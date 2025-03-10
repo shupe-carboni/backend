@@ -1,13 +1,32 @@
 BEGIN;
     -- add new product
     INSERT INTO vendor_products (vendor_id, vendor_product_identifier, vendor_product_description)
-    SELECT 'atco', ap.part_number, ap.description
+    SELECT DISTINCT 'atco', ap.part_number, ap.description
     FROM atco_pricing AS ap
     WHERE NOT EXISTS (
         SELECT 1
         FROM vendor_products
         WHERE vendor_products.vendor_product_identifier = ap.part_number
         AND vendor_products.vendor_id = 'atco'
+    );
+
+    -- associate any product to a product class where not associated
+    INSERT INTO vendor_product_to_class_mapping(product_id, product_class_id)
+    SELECT DISTINCT vp.id, vp_class.id
+    FROM atco_pricing ap
+    JOIN vendor_products vp
+        ON vp.vendor_product_identifier = ap.part_number
+        AND vp.vendor_id = 'atco'
+    JOIN vendor_product_classes vp_class
+        ON vp_class.name = ap.product_category_name
+        AND vp_class.vendor_id = 'atco'
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM vendor_products a
+        JOIN vendor_product_to_class_mapping b
+            ON b.product_id = a.id
+            AND a.vendor_id = 'atco'
+        WHERE a.vendor_product_identifier = ap.part_number
     );
 
     -- update LIST_PRICE
