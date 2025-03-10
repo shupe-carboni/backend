@@ -10,22 +10,12 @@ from numpy import nan
 from pandas import read_csv, ExcelFile, DataFrame, concat
 import logging
 import os
-import json
+from app.admin.models import VendorId
 
 price_updates = APIRouter(prefix=f"/admin/price-updates", tags=["admin"])
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 logger = logging.getLogger("uvicorn.info")
-
-
-class VendorId(StrEnum):
-    ADP = "adp"
-    ATCO = "atco"
-    BERRY = "berry"
-    FRIEDRICH = "friedrich"
-    GLASFLOSS = "glasfloss"
-    MILWAUKEE = "milwaukee"
-    SOUTHWIRE = "southwire"
 
 
 @price_updates.post("/{vendor_id}")
@@ -128,6 +118,11 @@ def atco_price_update(
     dfs = {sheet_name_conversion.get(sn, sn): df for sn, df in dfs.items()}
 
     multiplier_dfs = []
+    pricing_dfs = []
+    # Split pricing and multipliers
+    # manipulate the index of multipliers in order to fill
+    # the product class name in for pricing
+    # which will be needed to map new products to classes
     for sheet, df in dfs.items():
         multiplier_df = df.iloc[5:, :4]
         multiplier_df = (
@@ -135,25 +130,36 @@ def atco_price_update(
         )
         multiplier_df.columns = ["product_class_name", "multiplier"]
         multiplier_df["pricing_class_name"] = sheet
+        multiplier_df.index = multiplier_df.index + 1
         multiplier_dfs.append(multiplier_df)
-    multipliers = concat(multiplier_dfs)
-    m_records: list[dict] = multipliers.to_dict("records")
-    logger.info("New multiplier records created")
 
-    pricing_dfs = []
-    for sheet, df in dfs.items():
         pricing_df = df.iloc[6:, [0, 1, 3, 12]]
         pricing_df = pricing_df[
             ~(pricing_df.iloc[:, 2].isna())
             & ~(pricing_df.iloc[:, 2] == "Type Description")
         ].iloc[:, [0, 1, 3]]
+        pricing_df["product_category_name"] = multiplier_df["product_class_name"]
+        pricing_df.loc[:, "product_category_name"] = pricing_df[
+            "product_category_name"
+        ].ffill()
+        pricing_df.columns = [
+            "part_number",
+            "description",
+            "price",
+            "product_category_name",
+        ]
+        pricing_df["price"] *= 100
+        pricing_df["price"] = pricing_df["price"].astype(int)
         pricing_dfs.append(pricing_df)
+
+    multipliers = concat(multiplier_dfs)
+    m_records: list[dict] = multipliers.to_dict("records")
+    logger.info("New multiplier records created")
+
     pricing = concat(pricing_dfs).drop_duplicates()
-    pricing.iloc[:, -1] *= 100
-    pricing.iloc[:, -1] = pricing.iloc[:, -1].astype(int)
-    pricing.columns = ["part_number", "description", "price"]
     p_records: list[dict] = pricing.to_dict("records")
     logger.info("New pricing records created")
+
     temp_table_multipliers = """
     -- load in new data
         CREATE TEMPORARY TABLE atco_multipliers (
@@ -170,12 +176,13 @@ def atco_price_update(
         CREATE TEMPORARY TABLE atco_pricing (
             part_number varchar,
             description varchar,
-            price int
+            price int,
+            product_category_name varchar
         );
     """
     insert_pricing = """
         INSERT INTO atco_pricing
-        VALUES (:part_number, :description, :price);
+        VALUES (:part_number, :description, :price, :product_category_name);
     """
     sql_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "atco_price_updates.sql"
@@ -198,3 +205,9 @@ def atco_price_update(
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return 200
+    finally:
+        drop_ = """
+            DROP TABLE IF EXISTS atco_multipliers;
+            DROP TABLE IF EXISTS atco_pricing;
+        """
+        DB_V2.execute(session, drop_)
