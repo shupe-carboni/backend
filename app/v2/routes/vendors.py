@@ -5,7 +5,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import *
-
+from app.admin.models import VendorId, FullPricing, Pricing
 from app.jsonapi.sqla_models import Vendor
 
 PARENT_PREFIX = "/vendors"
@@ -681,21 +681,20 @@ async def vendor_customer_obj(
 
 @vendors.get(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing",
-    response_model=None,
+    response_model=FullPricing,
     response_model_exclude_none=True,
-    tags=["special"],
+    tags=["special", "pricing"],
 )
 async def vendor_customer_obj(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
-) -> None:
-    # TODO SET UP CUSTOM LOGIC TO GET CUSTOMER PRICING
+) -> FullPricing:
     """
     Getting pricing can be challenging to generalize on the front end, so logic here
     will do special method routing by-vendor one if the request passes the auth
-    check
+    check.
     """
     try:
         (
@@ -709,9 +708,138 @@ async def vendor_customer_obj(
     except HTTPException as e:
         raise e
 
-    ### REST OF LOCIC ###
+    pricing_by_class_sql = """
+        WITH formatted_pricing AS (
+            SELECT 
+                vpc.id as id,
+                json_build_object(
+                    'id', vendor_pricing_classes.id,
+                    'name', vendor_pricing_classes.name
+                )::jsonb as category,
+                json_build_object(
+                    'id', vp.id,
+                    'part_id', vp.vendor_product_identifier,
+                    'description', vp.vendor_product_description
+                )::jsonb as product,
+                vpc.price,
+                vpc.effective_date
+            FROM vendor_pricing_by_class vpc
+            JOIN vendor_pricing_classes
+                ON vendor_pricing_classes.id = vpc.pricing_class_id
+                AND vendor_pricing_classes.vendor_id = :vendor_id
+            JOIN vendor_products vp
+                ON vp.id = product_id
+                AND vp.vendor_id=:vendor_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM vendor_customers a
+                JOIN vendor_customer_pricing_classes b
+                ON b.vendor_customer_id = a.id
+                WHERE b.pricing_class_id = vpc.pricing_class_id
+                AND a.id = :customer_id
+                AND a.vendor_id = :vendor_id
+            )
+        )
+        SELECT 
+            formatted_pricing.id,
+            category,
+            product,
+            formatted_pricing.price,
+            formatted_pricing.effective_date,
+            json_agg(
+                json_build_object(
+                    'id', h.id,
+                    'price', h.price,
+                    'effective_date', h.effective_date,
+                    'timestamp', h.timestamp
+                )
+            ) as history
+        FROM formatted_pricing
+        LEFT JOIN vendor_pricing_by_class_changelog AS h
+            ON vendor_pricing_by_class_id = formatted_pricing.id
+        GROUP BY 
+            formatted_pricing.id, 
+            category,
+            product,
+            formatted_pricing.price,
+            formatted_pricing.effective_date;
+    """
+    pricing_by_customer_sql = """
+        WITH formatted_pricing AS (
+            SELECT 
+                vpc.id as id,
+                vpc.use_as_override as override,
+                json_build_object(
+                    'id', vendor_pricing_classes.id,
+                    'name', vendor_pricing_classes.name
+                )::jsonb as category,
+                json_build_object(
+                    'id', vp.id,
+                    'part_id', vp.vendor_product_identifier,
+                    'description', vp.vendor_product_description
+                )::jsonb as product,
+                vpc.price,
+                vpc.effective_date
+            FROM vendor_pricing_by_customer vpc
+            JOIN vendor_pricing_classes
+                ON vendor_pricing_classes.id = vpc.pricing_class_id
+                AND vendor_pricing_classes.vendor_id = :vendor_id
+            JOIN vendor_products vp
+                ON vp.id = product_id
+                AND vp.vendor_id= :vendor_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM vendor_customers a
+                WHERE a.id = vpc.vendor_customer_id
+                AND a.id = :customer_id
+                AND a.vendor_id = :vendor_id
+            )
+        )
+        SELECT 
+            formatted_pricing.id,
+            formatted_pricing.override,
+            category,
+            product,
+            formatted_pricing.price,
+            formatted_pricing.effective_date,
+            json_agg(
+                json_build_object(
+                    'id', h.id,
+                    'price', h.price,
+                    'effective_date', h.effective_date,
+                    'timestamp', h.timestamp
+                )
+            ) as history
+        FROM formatted_pricing
+        LEFT JOIN vendor_pricing_by_class_changelog AS h
+            ON vendor_pricing_by_class_id = formatted_pricing.id
+        GROUP BY 
+            formatted_pricing.id, 
+            formatted_pricing.override,
+            category,
+            product,
+            formatted_pricing.price,
+            formatted_pricing.effective_date;
+    """
+    match vendor_id:
+        case VendorId.ATCO:
+            params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
+            customer_pricing = (
+                DB_V2.execute(session, pricing_by_customer_sql, params=params)
+                .mappings()
+                .fetchall()
+            )
+            customer_class_pricing = (
+                DB_V2.execute(session, pricing_by_class_sql, params=params)
+                .mappings()
+                .fetchall()
+            )
+            pricing = dict(
+                customer_pricing=Pricing(data=customer_pricing),
+                category_pricing=Pricing(data=customer_class_pricing),
+            )
 
-    return
+            return FullPricing(**pricing)
 
 
 @vendors.get(
