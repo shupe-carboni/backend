@@ -27,7 +27,6 @@ class Validator:
             return False
         price_strat_map = {
             ParsingModes.BASE_PRICE: DB_V2,
-            # ParsingModes.BASE_PRICE_2024: ADP_DB_2024,
         }
         model = re.compile(self.model_series.regex, re.VERBOSE)
         model_parsed = model.match(self.raw_text)
@@ -47,6 +46,9 @@ class Validator:
                 e_type = e.__class__.__name__
                 e_val = str(e)
                 logger.critical(f"{e_type}: {e_val}")
+                import traceback as tb
+
+                logger.info(tb.format_exc())
                 return False
         else:
             return False

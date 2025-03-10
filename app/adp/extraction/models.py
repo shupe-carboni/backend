@@ -39,8 +39,6 @@ def parse_model_string(
 ) -> pd.Series:
 
     match mode:
-        case ParsingModes.CUSTOMER_PRICING_2024:
-            zero_disc_price_strat = ParsingModes.BASE_PRICE_2024
         case _:
             zero_disc_price_strat = ParsingModes.BASE_PRICE
 

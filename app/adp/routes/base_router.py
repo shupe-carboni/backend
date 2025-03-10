@@ -109,10 +109,7 @@ def parse_model_and_pricing(
         if not customer_id:
             parse_mode = ParsingModes.BASE_PRICE
         else:
-            if price_year == 2025:
-                parse_mode = ParsingModes.CUSTOMER_PRICING
-            elif price_year == 2024:
-                parse_mode = ParsingModes.CUSTOMER_PRICING_2024
+            parse_mode = ParsingModes.CUSTOMER_PRICING
     elif customer_id:
         try:
             (
@@ -133,10 +130,7 @@ def parse_model_and_pricing(
             if adp_perm == auth.Permissions.developer:
                 parse_mode = ParsingModes.DEVELOPER
             elif adp_perm >= auth.Permissions.customer_manager:
-                if price_year == 2025:
-                    parse_mode = ParsingModes.CUSTOMER_PRICING
-                elif price_year == 2024:
-                    parse_mode = ParsingModes.CUSTOMER_PRICING_2024
+                parse_mode = ParsingModes.CUSTOMER_PRICING
             elif adp_perm >= auth.Permissions.customer_std:
                 parse_mode = ParsingModes.ATTRS_ONLY
             else:

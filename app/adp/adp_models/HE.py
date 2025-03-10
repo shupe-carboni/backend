@@ -1,11 +1,15 @@
 import re
+import logging
 from app.adp.adp_models.model_series import (
     ModelSeries,
     Fields,
     Cabinet,
     PriceByCategoryAndKey,
+    NoBasePrice,
 )
 from app.db import ADP_DB, Session, Database
+
+logger = logging.getLogger("uvicorn.info")
 
 
 class HE(ModelSeries):
@@ -40,6 +44,10 @@ class HE(ModelSeries):
         "A": {
             "00": "CU_UNC",
             "04": "CU_UNC",
+            "01": "CU_VERT",
+            "05": "CU_VERT",
+            "20": "CU_MP",
+            "22": "CU_MP",
         },
     }
     orientations = {
@@ -67,9 +75,12 @@ class HE(ModelSeries):
             WHERE width = :width;
         """
         pallet_params = dict(width=self.width)
-        self.pallet_qty = ADP_DB.execute(
-            session=session, sql=pallet_sql, params=pallet_params
-        ).scalar_one()
+        try:
+            self.pallet_qty = ADP_DB.execute(
+                session=session, sql=pallet_sql, params=pallet_params
+            ).scalar_one()
+        except:
+            self.pallet_qty = None
         material_orientation_col_mask = self.mat_config_map[self.attributes["mat"]][
             self.attributes["config"]
         ]
@@ -82,9 +93,12 @@ class HE(ModelSeries):
         weight_params = dict(
             mat=f"%{self.attributes['mat']}%", scode=self.attributes["scode"]
         )
-        self.weight = ADP_DB.execute(
-            session=session, sql=weights_sql, params=weight_params
-        ).scalar_one()
+        try:
+            self.weight = ADP_DB.execute(
+                session=session, sql=weights_sql, params=weight_params
+            ).scalar_one()
+        except:
+            self.weight = None
         if self.attributes["paint"] == "H":
             self.cabinet_config = Cabinet.EMBOSSED
         else:
@@ -96,7 +110,8 @@ class HE(ModelSeries):
             & (self.mat_grps["mat"].str.contains(self.attributes["mat"]))
             & (self.mat_grps["config"].str.contains(self.attributes["config"])),
             "mat_grp",
-        ].item()
+        ]
+        self.mat_grp = self.mat_grp.item() if not self.mat_grp.empty else None
         self.tonnage = int(self.attributes["ton"])
         rds_option = self.attributes.get("option")
         self.rds_factory_installed = False
@@ -210,7 +225,12 @@ class HE(ModelSeries):
         if self.depth == 19.5:
             self.muliposition = False
             self.uncased = True
-        self.zero_disc_price = self.calc_zero_disc_price() / 100
+        try:
+            self.zero_disc_price = self.calc_zero_disc_price() / 100
+        except NoBasePrice as e:
+            self.zero_disc_price = None
+            logger.critical(str(e))
+        return
 
     def category(self) -> str:
         material = self.material
@@ -222,8 +242,10 @@ class HE(ModelSeries):
         value = f"{orientation} {material} {connections} {additional} - {color}"
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
-        else:
+        elif "410a" in self.metering:
             value += " - R410a"
+        elif "R-22" in self.metering:
+            value += " - R-22"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
@@ -248,9 +270,12 @@ class HE(ModelSeries):
             else:
                 key += "cased"
         params = dict(key=key)
-        pricing = self.db.execute(
-            session=self.session, sql=pricing_sql, params=params
-        ).scalar_one()
+        try:
+            pricing = self.db.execute(
+                session=self.session, sql=pricing_sql, params=params
+            ).scalar_one()
+        except Exception as e:
+            raise NoBasePrice(str(e))
 
         return int(pricing), self.get_adders()
 
