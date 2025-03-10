@@ -47,9 +47,9 @@ class ProductCategory(BaseModel):
 class Product(BaseModel):
     id: int
     part_id: str
-    description: str
-    # categories: list[ProductCategory]
-    # attrs: list[ProductAttr]
+    description: Optional[str] = ""
+    categories: list[ProductCategory]
+    attrs: list[ProductAttr]
 
 
 class PriceHistory(BaseModel):
@@ -74,5 +74,5 @@ class Pricing(BaseModel):
 
 
 class FullPricing(BaseModel):
-    customer_pricing: Pricing
-    category_pricing: Pricing
+    customer_pricing: Optional[Pricing] = None
+    category_pricing: Optional[Pricing] = None
