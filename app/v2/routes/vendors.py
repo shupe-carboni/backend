@@ -939,12 +939,13 @@ async def vendor_customer_obj(
 
 @vendors.get(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing/download",
-    response_class=Union[FileResponse, XLSXFileResponse],
+    response_class=StreamingResponse,
+    response_model=None,
     tags=["special", "pricing", "download"],
 )
 async def download_price_file(
     vendor_id: VendorId, customer_id: int, download_id: str
-) -> StreamingResponse:
+) -> Union[FileResponse, XLSXFileResponse]:
     resource_path = (
         f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
     )
