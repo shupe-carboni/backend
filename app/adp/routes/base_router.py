@@ -77,7 +77,7 @@ def customer_program_dl_file(
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     else:
-        return XLSXFileResponse(content=file.file_data, filename=file.file_name)
+        return file
 
 
 @adp.get(
