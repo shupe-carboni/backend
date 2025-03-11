@@ -1,7 +1,4 @@
-#### Disclaimer
->~~*Although public, no license has been applied to this code. Default copyright laws apply, meaning no one may reproduce, distribute, or create derivative works from this code. Under Github Terms of Service, you are allowed to view the code and fork the repository **and nothing more**.*~~
-
-See [LICENSE](https://github.com/shupe-carboni/backend/blob/main/LICENSE)
+#### [LICENSE](https://github.com/shupe-carboni/backend/blob/main/LICENSE)
 
 ## Purpose
 This application is an API that serves as an extensible platform for business logic required in day-to-day customer service operations at [Shupe, Carboni & Associates](https://shupecarboni.com) (SCA).  
