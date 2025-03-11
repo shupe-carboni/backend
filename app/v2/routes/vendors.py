@@ -841,7 +841,7 @@ async def vendor_customer_obj(
                 prices_formatted.append(df)
             return concat(prices_formatted, ignore_index=True)
 
-        match bool(customer_pricing_dict), bool(category_pricing_dict):
+        match bool(customer_pricing_dict["data"]), bool(category_pricing_dict["data"]):
             case True, True:
                 customer_pricing_df = flatten(customer_pricing_dict)
                 category_pricing_df = flatten(category_pricing_dict)
@@ -862,9 +862,9 @@ async def vendor_customer_obj(
                     ]
                 )
             case True, False:
-                customer_pricing_df = flatten(customer_pricing_dict)
+                result = flatten(customer_pricing_dict)
             case False, True:
-                category_pricing_df = flatten(category_pricing_dict)
+                result = flatten(category_pricing_dict)
             case False, False:
                 return
 
