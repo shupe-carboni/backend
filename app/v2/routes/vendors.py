@@ -1,5 +1,7 @@
 from io import StringIO
+from time import time
 from enum import StrEnum, auto
+from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Literal
 from fastapi import Depends, HTTPException, status
@@ -18,6 +20,7 @@ PARENT_PREFIX = "/vendors"
 VENDOR_PREFIX = "/{vendor}"
 VENDORS = Vendor.__jsonapi_type_override__
 
+logger = getLogger("uvicorn.info")
 vendors = APIRouter(prefix=f"/{VENDORS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -734,6 +737,7 @@ async def vendor_customer_obj(
 
     def fetch_pricing(mode: Literal["both", "customer", "class"]) -> FullPricing:
         params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
+        start = time()
         match mode:
             case "both":
                 customer_pricing = (
@@ -768,6 +772,7 @@ async def vendor_customer_obj(
                 pricing = dict(
                     category_pricing=Pricing(data=customer_class_pricing),
                 )
+        logger.info(f"query execution: {time() - start}")
         return FullPricing(**pricing)
 
     def transform(data: FullPricing | Callable, remove_cols=list[str]) -> FileResponse:
@@ -782,6 +787,7 @@ async def vendor_customer_obj(
         timestamp.
 
         """
+        start = time()
         if isinstance(data, Callable):
             data = data()
         customer_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
@@ -833,6 +839,7 @@ async def vendor_customer_obj(
         buffer = StringIO()
         result.to_csv(buffer, index=False)
         buffer.seek(0)
+        logger.info(f"transform: {time() - start}")
         return FileResponse(
             content=buffer,
             status_code=200,
