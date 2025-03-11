@@ -79,8 +79,8 @@ SELECT
         )
     ) as history
 FROM formatted_pricing
-LEFT JOIN vendor_pricing_by_class_changelog AS h
-    ON vendor_pricing_by_class_id = formatted_pricing.id
+LEFT JOIN vendor_pricing_by_customer_changelog AS h
+    ON vendor_pricing_by_customer_id = formatted_pricing.id
 GROUP BY 
     formatted_pricing.id, 
     formatted_pricing.override,
