@@ -6,7 +6,7 @@ from os import getenv
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 from uuid import uuid4, UUID  # uuid4 is for random generation
-from typing import Optional, Mapping, Any
+from typing import Optional, Mapping, Any, Callable
 from starlette.background import BackgroundTask
 from fastapi.responses import StreamingResponse
 from fastapi import HTTPException, status
@@ -86,6 +86,7 @@ class DownloadRequest:
     resource: str
     stage: Optional[Stage] = None
     s3_path: Optional[str] = None
+    callback: Optional[Callable] = None
 
     def __hash__(self) -> int:
         return self.download_id.__hash__()
@@ -107,12 +108,14 @@ class DownloadIDs:
 
     @classmethod
     def add_request(
-        cls, resource: str, stage: Stage = None, s3_path: str = None
+        cls,
+        resource: str,
+        stage: Stage = None,
+        s3_path: str = None,
+        callback: Callable = None,
     ) -> str:
         request = DownloadRequest(
-            resource=resource,
-            stage=stage,
-            s3_path=s3_path,
+            resource=resource, stage=stage, s3_path=s3_path, callback=callback
         )
         cls.active_requests.update({hash(request): request})
         return str(request.download_id)

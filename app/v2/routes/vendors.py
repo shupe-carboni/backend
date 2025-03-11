@@ -1,12 +1,17 @@
+from io import StringIO
 from enum import StrEnum, auto
-from typing import Annotated
+from functools import partial
+from typing import Annotated, Callable, Literal
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
+from enum import StrEnum
+from pandas import json_normalize, concat, DataFrame
 from app.db import DB_V2, Session
 from app.v2.models import *
 from app.admin import pricing_by_class, pricing_by_customer
-from app.admin.models import VendorId, FullPricing, Pricing
+from app.admin.models import VendorId, FullPricing, Pricing, FullPricingWithLink
+from app.downloads import DownloadLink, XLSXFileResponse, FileResponse, DownloadIDs
 from app.jsonapi.sqla_models import Vendor
 
 PARENT_PREFIX = "/vendors"
@@ -19,11 +24,28 @@ Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
+class ReturnType(StrEnum):
+    JSON = "json"
+    CSV = "csv"
+
+
 class GetType(StrEnum):
     Collection = auto()
     Resource = auto()
     Related = auto()
     Relationships = auto()
+
+
+def generate_pricing_dl_link(
+    vendor_id: str, customer_id: int, callback: Callable
+) -> DownloadLink:
+    resource_path = (
+        f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
+    )
+    download_id = DownloadIDs.add_request(resource=resource_path, callback=callback)
+    query = f"?download_id={download_id}"
+    link = DownloadLink(downloadLink=resource_path + query)
+    return link
 
 
 @vendors.get(
@@ -682,7 +704,7 @@ async def vendor_customer_obj(
 
 @vendors.get(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing",
-    response_model=FullPricing,
+    response_model=FullPricingWithLink,
     response_model_exclude_none=True,
     tags=["special", "pricing"],
 )
@@ -691,7 +713,8 @@ async def vendor_customer_obj(
     session: NewSession,
     vendor_id: VendorId,
     customer_id: int,
-) -> FullPricing:
+    return_type: ReturnType = ReturnType.JSON,
+) -> FullPricingWithLink:
     """
     Getting pricing can be challenging to generalize on the front end, so logic here
     will do special method routing by-vendor one if the request passes the auth
@@ -709,38 +732,160 @@ async def vendor_customer_obj(
     except HTTPException as e:
         raise e
 
-    match vendor_id:
-        case VendorId.ATCO:
-            params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
-            customer_pricing = (
-                DB_V2.execute(session, pricing_by_customer, params=params)
-                .mappings()
-                .fetchall()
-            )
-            customer_class_pricing = (
-                DB_V2.execute(session, pricing_by_class, params=params)
-                .mappings()
-                .fetchall()
-            )
-            pricing = dict(
-                customer_pricing=Pricing(data=customer_pricing),
-                category_pricing=Pricing(data=customer_class_pricing),
-            )
-            return FullPricing(**pricing)
-        case VendorId.ADP:
-            params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
-            customer_pricing = (
-                DB_V2.execute(session, pricing_by_customer, params=params)
-                .mappings()
-                .fetchall()
-            )
-            pricing = dict(
-                customer_pricing=Pricing(data=customer_pricing),
-            )
+    def fetch_pricing(mode: Literal["both", "customer", "class"]) -> FullPricing:
+        params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
+        match mode:
+            case "both":
+                customer_pricing = (
+                    DB_V2.execute(session, pricing_by_customer, params=params)
+                    .mappings()
+                    .fetchall()
+                )
+                customer_class_pricing = (
+                    DB_V2.execute(session, pricing_by_class, params=params)
+                    .mappings()
+                    .fetchall()
+                )
+                pricing = dict(
+                    customer_pricing=Pricing(data=customer_pricing),
+                    category_pricing=Pricing(data=customer_class_pricing),
+                )
+            case "customer":
+                customer_pricing = (
+                    DB_V2.execute(session, pricing_by_customer, params=params)
+                    .mappings()
+                    .fetchall()
+                )
+                pricing = dict(
+                    customer_pricing=Pricing(data=customer_pricing),
+                )
+            case "class":
+                customer_class_pricing = (
+                    DB_V2.execute(session, pricing_by_class, params=params)
+                    .mappings()
+                    .fetchall()
+                )
+                pricing = dict(
+                    category_pricing=Pricing(data=customer_class_pricing),
+                )
+        return FullPricing(**pricing)
 
-            return FullPricing(**pricing)
+    def transform(data: FullPricing | Callable, remove_cols=list[str]) -> FileResponse:
+        """
+        Takes pricing and formats into a CSV for return as a file to the client.
+        Although price history is included in the JSON response, the file
+        contains only the current listing in the pricing tables, even if
+        the effective_date is in the future
+
+        TODO: set up a flag to prefer a historical price if given a date that falls
+        between the current effective date and a historical date, most recent
+        timestamp.
+
+        """
+        if isinstance(data, Callable):
+            data = data()
+        customer_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
+        # TODO incorporate class based pricing, swapping records with customer overrides
+        # where needed
+        category_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
+
+        prices_formatted = []
+        if customer_pricing_dict:
+            for price in customer_pricing_dict["data"]:
+                product_info = {
+                    "part_id": price["product"]["part_id"],
+                    "description": price["product"]["description"],
+                }
+                product_attrs = {
+                    item["attr"]: item["value"] for item in price["product"]["attrs"]
+                }
+                product_categories = {
+                    f"category_{item['rank']}": item["name"]
+                    for item in price["product"]["categories"]
+                }
+                price_category = {"Price Category": price["category"]["name"]}
+                # don't include history for the file return
+                df = DataFrame(
+                    [
+                        {
+                            "price_id": price["id"],
+                            **price_category,
+                            "price_override": price["override"],
+                            **product_info,
+                            **product_categories,
+                            **product_attrs,
+                            "effective_date": price["effective_date"],
+                            "price": price["price"],
+                            # "history": price[
+                            #     "history"
+                            # ],
+                        }
+                    ]
+                )
+                prices_formatted.append(df)
+        result = concat(prices_formatted, ignore_index=True)
+        result["price"] /= 100
+        try:
+            result = result.drop(columns=remove_cols)
+        except:
+            pass
+        result.columns = list(result.columns.str.replace("_", " ").str.title())
+        buffer = StringIO()
+        result.to_csv(buffer, index=False)
+        buffer.seek(0)
+        return FileResponse(
+            content=buffer,
+            status_code=200,
+            media_type="text/csv",
+            filename="pricing.csv",
+        )
+
+    # ReturnType.JSON: return pricing along with a download link to a CSV file
+    # ReturnType.CSV: return a download link with deferred execution of pricing fetch
+    match vendor_id, return_type:
+        case VendorId.ATCO, ReturnType.JSON:
+            pricing = fetch_pricing(mode="both")
+            remove_cols = ["fp_ean", "upc_code"]
+            cb = partial(transform, pricing, remove_cols)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+        case VendorId.ATCO, ReturnType.CSV:
+            pricing = partial(fetch_pricing, mode="both")
+            remove_cols = ["fp_ean", "upc_code"]
+            cb = partial(transform, pricing, remove_cols)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link)
+        case VendorId.ADP, ReturnType.JSON:
+            # TODO set up use of custom price generation method
+            return fetch_pricing(mode="customer")
+        case VendorId.ADP, ReturnType.CSV:
+            ...
         case _:
             raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+@vendors.get(
+    "/{vendor_id}/vendor-customers/{customer_id}/pricing/download",
+    response_class=FileResponse,
+    tags=["special", "pricing", "download"],
+)
+async def download_price_file(
+    vendor_id: VendorId, customer_id: int, download_id: str
+) -> FileResponse:
+    resource_path = (
+        f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
+    )
+    dl_obj = DownloadIDs.use_download(
+        resource=resource_path,
+        id_value=download_id,
+    )
+    try:
+        file = dl_obj.callback()
+    except Exception as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    else:
+        return file
 
 
 @vendors.get(
