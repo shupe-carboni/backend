@@ -3,18 +3,26 @@ from time import time
 from enum import StrEnum, auto
 from logging import getLogger
 from functools import partial
-from typing import Annotated, Callable, Literal
+from typing import Annotated, Callable, Literal, Union
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
-from app import auth
 from enum import StrEnum
-from pandas import json_normalize, concat, DataFrame
+from pandas import concat, DataFrame
+
+from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import *
 from app.admin import pricing_by_class, pricing_by_customer
 from app.admin.models import VendorId, FullPricing, Pricing, FullPricingWithLink
-from app.downloads import DownloadLink, XLSXFileResponse, FileResponse, DownloadIDs
+from app.downloads import (
+    DownloadLink,
+    XLSXFileResponse,
+    FileResponse,
+    DownloadIDs,
+    StreamingResponse,
+)
 from app.jsonapi.sqla_models import Vendor
+from app.adp.utils.workbook_factory import generate_program
 
 PARENT_PREFIX = "/vendors"
 VENDOR_PREFIX = "/{vendor}"
@@ -30,6 +38,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 class ReturnType(StrEnum):
     JSON = "json"
     CSV = "csv"
+    XLSX = "xlsx"
 
 
 class GetType(StrEnum):
@@ -724,7 +733,7 @@ async def vendor_customer_obj(
     check.
     """
     try:
-        (
+        customer = (
             auth.VendorCustomerOperations(token, VendorCustomer, id=vendor_id)
             .allow_admin()
             .allow_sca()
@@ -775,7 +784,9 @@ async def vendor_customer_obj(
         logger.info(f"query execution: {time() - start}")
         return FullPricing(**pricing)
 
-    def transform(data: FullPricing | Callable, remove_cols=list[str]) -> FileResponse:
+    def transform(
+        data: FullPricing | Callable, remove_cols: list[str] = None
+    ) -> FileResponse:
         """
         Takes pricing and formats into a CSV for return as a file to the client.
         Although price history is included in the JSON response, the file
@@ -791,13 +802,12 @@ async def vendor_customer_obj(
         if isinstance(data, Callable):
             data = data()
         customer_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
-        # TODO incorporate class based pricing, swapping records with customer overrides
-        # where needed
-        category_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
+        category_pricing_dict = data.category_pricing.model_dump(exclude_none=True)
 
-        prices_formatted = []
-        if customer_pricing_dict:
-            for price in customer_pricing_dict["data"]:
+        def flatten(pricing: dict) -> DataFrame:
+            prices_formatted = []
+            for price in pricing["data"]:
+                price: dict
                 product_info = {
                     "part_id": price["product"]["part_id"],
                     "description": price["product"]["description"],
@@ -810,75 +820,131 @@ async def vendor_customer_obj(
                     for item in price["product"]["categories"]
                 }
                 price_category = {"Price Category": price["category"]["name"]}
-                # don't include history for the file return
                 df = DataFrame(
                     [
                         {
-                            "price_id": price["id"],
-                            **price_category,
-                            "price_override": price["override"],
                             **product_info,
+                            **price_category,
                             **product_categories,
                             **product_attrs,
                             "effective_date": price["effective_date"],
                             "price": price["price"],
+                            "price_override": price.get("override", False),
+                            # don't include history for the file return
                             # "history": price[
                             #     "history"
                             # ],
                         }
                     ]
                 )
+                df["price"] /= 100
                 prices_formatted.append(df)
-        result = concat(prices_formatted, ignore_index=True)
-        result["price"] /= 100
-        try:
-            result = result.drop(columns=remove_cols)
-        except:
-            pass
+            return concat(prices_formatted, ignore_index=True)
+
+        match bool(customer_pricing_dict), bool(category_pricing_dict):
+            case True, True:
+                customer_pricing_df = flatten(customer_pricing_dict)
+                category_pricing_df = flatten(category_pricing_dict)
+                customer_overrides = customer_pricing_df[
+                    customer_pricing_df["price_override"] == True
+                ].copy()
+                i_cols = ["Price Category", "part_id"]
+                customer_overrides.set_index(i_cols, inplace=True)
+                category_pricing_df.set_index(i_cols, inplace=True)
+                category_pricing_df.update(customer_overrides)
+                category_pricing_df.reset_index(inplace=True)
+                result = concat(
+                    [
+                        category_pricing_df,
+                        customer_pricing_df[
+                            customer_pricing_df["price_override"] == False
+                        ],
+                    ]
+                )
+            case True, False:
+                customer_pricing_df = flatten(customer_pricing_dict)
+            case False, True:
+                category_pricing_df = flatten(category_pricing_dict)
+            case False, False:
+                return
+
+        if remove_cols:
+            try:
+                result = result.drop(columns=remove_cols)
+            except:
+                pass
         result.columns = list(result.columns.str.replace("_", " ").str.title())
         buffer = StringIO()
         result.to_csv(buffer, index=False)
         buffer.seek(0)
+
+        customer_name = customer["data"]["attributes"]["name"]
+        vendor_name = vendor_id.value.title()
+        today_ = str(datetime.now().today())
+        filename = f"{customer_name} {vendor_name} Pricing {today_}"
         logger.info(f"transform: {time() - start}")
         return FileResponse(
             content=buffer,
             status_code=200,
             media_type="text/csv",
-            filename="pricing.csv",
+            filename=f"{filename}.csv",
         )
 
-    # ReturnType.JSON: return pricing along with a download link to a CSV file
-    # ReturnType.CSV: return a download link with deferred execution of pricing fetch
     match vendor_id, return_type:
+        # ReturnType.JSON: return pricing along with a download link to a CSV file
+        # ReturnType.CSV: return a download link with deferred execution
         case VendorId.ATCO, ReturnType.JSON:
-            pricing = fetch_pricing(mode="both")
             remove_cols = ["fp_ean", "upc_code"]
+            pricing = fetch_pricing(mode="both")
             cb = partial(transform, pricing, remove_cols)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
         case VendorId.ATCO, ReturnType.CSV:
-            pricing = partial(fetch_pricing, mode="both")
             remove_cols = ["fp_ean", "upc_code"]
+            pricing = partial(fetch_pricing, mode="both")
             cb = partial(transform, pricing, remove_cols)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
+
         case VendorId.ADP, ReturnType.JSON:
-            # TODO set up use of custom price generation method
-            return fetch_pricing(mode="customer")
-        case VendorId.ADP, ReturnType.CSV:
-            ...
+            remove_cols = None
+            pricing = fetch_pricing(mode="customer")
+            # ADP uses a special file generation method
+            cb = partial(
+                generate_program,
+                session=session,
+                customer_id=customer_id,
+                stage=Stage.PROPOSED,
+            )
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
+        case VendorId.ADP, ReturnType.XLSX:
+            remove_cols = None
+            pricing = partial(fetch_pricing, mode="customer")
+            # ADP uses a special file generation method
+            cb = partial(
+                generate_program,
+                session=session,
+                customer_id=customer_id,
+                stage=Stage.PROPOSED,
+            )
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
         case _:
             raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
 @vendors.get(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing/download",
-    response_class=FileResponse,
+    response_class=Union[FileResponse, XLSXFileResponse],
     tags=["special", "pricing", "download"],
 )
 async def download_price_file(
     vendor_id: VendorId, customer_id: int, download_id: str
-) -> FileResponse:
+) -> StreamingResponse:
     resource_path = (
         f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
     )
