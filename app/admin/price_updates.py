@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Annotated
-from enum import StrEnum
 from fastapi import HTTPException, Depends, UploadFile, status, Response
 from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
@@ -44,7 +43,7 @@ async def new_pricing(
     logger.info("Price Update request recieved")
     if token.permissions < auth.Permissions.sca_admin:
         logger.info("Insufficient permissions. Rejected.")
-        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     file_data = await file.read()
     match file.content_type:
         case "text/csv":
