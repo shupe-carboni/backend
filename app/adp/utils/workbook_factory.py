@@ -4,6 +4,7 @@ load_dotenv()
 import os
 import pandas as pd
 import logging
+from time import time
 from enum import Enum
 from dataclasses import dataclass
 from typing import Iterable
@@ -18,6 +19,7 @@ from app.adp.utils.programs import (
 )
 from app.adp.utils.pricebook import PriceBook
 from app.db import Session, ADP_DB, SCA_DB, Stage, DB_V2
+from app.downloads import XLSXFileResponse
 
 
 logger = logging.getLogger("uvicorn.info")
@@ -517,7 +519,10 @@ def pull_program_data(
         return result
 
 
-def generate_program(session: Session, customer_id: int, stage: Stage) -> ProgramFile:
+def generate_program(
+    session: Session, customer_id: int, stage: Stage
+) -> XLSXFileResponse:
+    start = time()
     coil_prog_table, ah_prog_table, ratings = pull_program_data(
         session, customer_id, stage
     )
@@ -552,17 +557,10 @@ def generate_program(session: Session, customer_id: int, stage: Stage) -> Progra
         logger.info("Error occurred while trying to generate programs")
         logger.critical(tb.format_exc())
     else:
-        # tables.remove("program_ratings")
-        try:
-            return new_program_file
-            update_dates_in_tables(
-                session=session, tables=tables, customer_id=customer_id
-            )
-        except Exception as e:
-            logger.warning(
-                "File Generation dates unable to be updated " f"due to an error: {e}"
-            )
-        return new_program_file
+        logger.info(f"transform time: {time()-start}")
+        return XLSXFileResponse(
+            content=new_program_file.file_data, filename=new_program_file.file_name
+        )
 
 
 def update_dates_in_tables(
