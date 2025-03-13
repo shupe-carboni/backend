@@ -50,13 +50,13 @@ class GetType(StrEnum):
 
 def generate_pricing_dl_link(
     vendor_id: str, customer_id: int, callback: Callable
-) -> DownloadLink:
+) -> str:
     resource_path = (
         f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
     )
     download_id = DownloadIDs.add_request(resource=resource_path, callback=callback)
     query = f"?download_id={download_id}"
-    link = DownloadLink(downloadLink=resource_path + query)
+    link = resource_path + query
     return link
 
 
@@ -749,6 +749,8 @@ async def vendor_customer_pricing(
         )
     except HTTPException as e:
         raise e
+
+    NestedKeys = list[tuple[Literal["part_id", "category"]]]
 
     def fetch_pricing(mode: Literal["both", "customer", "class"]) -> FullPricing:
         params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
