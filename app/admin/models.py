@@ -82,3 +82,21 @@ class FullPricing(BaseModel):
 class FullPricingWithLink(BaseModel):
     download_link: DownloadLink
     pricing: Optional[FullPricing] = None
+
+
+class ADPProductSheet(StrEnum):
+    B = "B Series"
+    CP_A1 = "CP Series A1"
+    CP_A2L = "CP Series A2L"
+    F = "F Series"
+    S = "S Series"
+    M_FURNACE = "mFurnace"
+
+
+class ADPSeries(StrEnum):
+    B = "B"
+    CP_A1 = "CP"
+    CP_A2L = "CP"
+    F = "F"
+    S = "S"
+    M_FURNACE = "AMH"

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app import auth
 from app.db import DB_V2
 from numpy import nan
-from pandas import read_csv, ExcelFile, DataFrame, concat
+from pandas import read_csv, ExcelFile, DataFrame, concat, Series
 import logging
 import os
 from app.admin.models import VendorId
@@ -51,9 +51,9 @@ async def new_pricing(
         case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
             with ExcelFile(file_data) as excel_file:
                 file_df_collection = {
-                    sheet.title: excel_file.parse(sheet.title, data_only=True).replace(
-                        {nan: None}
-                    )
+                    sheet.title.strip(): excel_file.parse(
+                        sheet.title, data_only=True
+                    ).replace({nan: None})
                     for sheet in excel_file.book.worksheets
                     if sheet.sheet_state == "visible"
                 }
@@ -65,7 +65,7 @@ async def new_pricing(
         case VendorId.ATCO:
             atco_price_update(session, file_df_collection, effective_date)
         case VendorId.ADP:
-            ...
+            adp_price_update(session, file_df_collection, effective_date)
         case VendorId.BERRY:
             ...
         case VendorId.FRIEDRICH:
@@ -105,6 +105,7 @@ def atco_price_update(
         vendor-product-class-discounts (assuming here that these were not changed as
         part of the pricing adjustment) and product classes.
 
+    TODO: CIRCLE BACK WITH ERROR HANDLING
     """
     sheet_name_conversion = {
         "Alabama": "AL",
@@ -210,3 +211,135 @@ def atco_price_update(
             DROP TABLE IF EXISTS atco_pricing;
         """
         DB_V2.execute(session, drop_)
+
+
+def adp_price_update(
+    session: Session, dfs: dict[str, DataFrame], effective_date: datetime
+):
+    """
+    ADP keeps separate files for air handlers and coils. This method will handle either
+    one, but ultimately two requests will be needed to complete a full update on
+    products PLUS an additional request just for parts/accessories.
+
+    Each file will have stylized pricing that needs to be formatted for updates to
+    *vendor_product_series_pricing*. This table schema has product Series
+    """
+    from app.admin.models import ADPProductSheet, ADPSeries
+
+    product_pricing_sheets = {
+        ADPSeries[ADPProductSheet(sn).name]: df
+        for sn, df in dfs.items()
+        if sn in ADPProductSheet.__members__.values()
+    }
+    results = []
+    for series, df in product_pricing_sheets.items():
+        match series:
+            case ADPSeries.B:
+                __composed_attrs = {
+                    (
+                        "130 deg F Aquastat (for HW coil only)",
+                        "120V [1]",
+                    ): "adder_voltage_4"
+                }
+                __adder_name_mapping = {
+                    "HP-AC TXV (All)": [
+                        "adder_metering_A",
+                        "adder_metering_B",
+                        "adder_metering_9",
+                    ],
+                    "Variable Speed Motor": ["adder_motor_V"],
+                    "120V [1]": ["adder_voltage_3"],
+                    "HW Pump Assy": ["adder_heat_P"],
+                    "Refrigerant Detection System": ["adder_RDS_R"],
+                }
+                product_1_rows, product_1_cols = ((9, 57), (1, 8))
+                product_2_rows, product_2_cols = ((9, 49), (10, 17))
+                adder_rows, adder_cols = ((52, 58), (9, 17))
+
+                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
+                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
+                adders = df.iloc[slice(*adder_rows), slice(*adder_cols)]
+
+                product_1.dropna(axis=1, how="all", inplace=True)
+                product_2.dropna(axis=1, how="all", inplace=True)
+                adders.dropna(axis=1, how="all", inplace=True)
+
+                product_cols = ["tonnage", "slab", "base", "2", "3", "4"]
+                product_1.columns = product_cols
+                product_2.columns = product_cols
+                adders.columns = ["description", "price"]
+
+                product_1.loc[:, "slab"] = product_1["slab"].str.strip().str.slice(0, 2)
+                product_2.loc[:, "slab"] = product_2["slab"].str.strip().str.slice(0, 2)
+
+                product_1.dropna(how="all", inplace=True)
+                product_2.dropna(how="all", inplace=True)
+
+                product_1.loc[:, "tonnage"].ffill(inplace=True)
+                product_2.loc[:, "tonnage"].ffill(inplace=True)
+
+                for composed, name in __composed_attrs.items():
+                    new_adder = Series(
+                        adders[adders["description"].isin(composed)]["price"].sum(),
+                        index=[name],
+                        name="price",
+                    ).reset_index()
+                    new_adder["description"] = new_adder.pop("index")
+                    adders = concat([adders, new_adder])
+                adder_name_mapping = DataFrame(
+                    [
+                        (k, v)
+                        for k, v_list in __adder_name_mapping.items()
+                        for v in v_list
+                    ],
+                    columns=["description", "key"],
+                )
+                adders_result = adders.merge(
+                    adder_name_mapping,
+                    on="description",
+                    how="left",
+                ).explode("key")
+                adders_result["key"] = adders_result["key"].fillna(
+                    adders_result["description"]
+                )
+                adders_result = adders_result[
+                    ~adders_result["description"].str.contains("Aquastat")
+                ][["key", "price"]]
+
+                result = concat(
+                    [
+                        product_1.melt(
+                            id_vars=["tonnage", "slab"],
+                            var_name="suffix",
+                            value_name="price",
+                        ),
+                        product_2.melt(
+                            id_vars=["tonnage", "slab"],
+                            var_name="suffix",
+                            value_name="price",
+                        ),
+                    ]
+                )
+                result.loc[:, "key"] = (
+                    result["tonnage"].astype(str)
+                    + "_"
+                    + result["slab"]
+                    + "_"
+                    + result["suffix"]
+                )
+                result = concat([result[["key", "price"]], adders_result])
+                result["vendor_id"] = VendorId.ADP.value
+                result["series"] = series.value
+                result["price"] *= 100
+
+            case ADPSeries.CP_A1:
+                ...
+            case ADPSeries.CP_A2L:
+                ...
+            case ADPSeries.F:
+                ...
+            case ADPSeries.S:
+                ...
+            case ADPSeries.M_FURNACE:
+                ...
+    return
