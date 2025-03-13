@@ -720,7 +720,7 @@ async def vendor_customer_obj(
     response_model_exclude_none=True,
     tags=["special", "pricing"],
 )
-async def vendor_customer_obj(
+async def vendor_customer_pricing(
     token: Token,
     session: NewSession,
     vendor_id: VendorId,
@@ -729,8 +729,14 @@ async def vendor_customer_obj(
 ) -> FullPricingWithLink:
     """
     Getting pricing can be challenging to generalize on the front end, so logic here
-    will do special method routing by-vendor one if the request passes the auth
+    will do special method routing by-vendor if the request passes the auth
     check.
+
+    Non-default return_types set in the query will still return JSON but only
+    the download_link (no JSON pricing object).
+
+    Execution of pricing file generation in this case is deferred
+    to the return process in the route where the link is redeemed.
     """
     try:
         customer = (

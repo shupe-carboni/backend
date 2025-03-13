@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Any, Optional
 from enum import StrEnum
 from pydantic import BaseModel
-from app.downloads import DownloadLink
 
 
 class VendorId(StrEnum):
@@ -29,14 +28,14 @@ class ProductAttr(BaseModel):
     id: int
     attr: str
     type: str
-    value: Any
+    value: str
 
 
 class PriceAttr(BaseModel):
     id: int
     attr: str
     type: str
-    value: Any
+    value: str
 
 
 class ProductCategory(BaseModel):
@@ -80,7 +79,7 @@ class FullPricing(BaseModel):
 
 
 class FullPricingWithLink(BaseModel):
-    download_link: DownloadLink
+    download_link: str
     pricing: Optional[FullPricing] = None
 
 
