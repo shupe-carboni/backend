@@ -89,13 +89,18 @@ class ADPProductSheet(StrEnum):
     CP_A2L = "CP Series A2L"
     F = "F Series"
     S = "S Series"
-    M_FURNACE = "mFurnace"
+    AMH = "mFurnace"
+    HE = "HE Series"
+    HH = "HH Series"
+    MH = "M Series"
+    V = "V Series"
+    HD = "HD Series"
+    SC = "SC Series"
 
 
-class ADPSeries(StrEnum):
-    B = "B"
-    CP_A1 = "CP"
-    CP_A2L = "CP"
-    F = "F"
-    S = "S"
-    M_FURNACE = "AMH"
+class ADPCustomerRefSheet(StrEnum):
+    ZERO_DISCOUNT = "Zero Disc"
+    CUSTOMER_DISCOUNT = "Customer Discount"
+    SPECIAL_NET = "Special Net"
+    COMBINED = "Combined"
+    OO = "OO"
