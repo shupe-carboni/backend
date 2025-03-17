@@ -239,8 +239,9 @@ class DatabaseV2(Database):
         session: Session,
         sql: str,
         params: Iterable[dict | str | int | None] = None,
+        **kwargs,
     ) -> Result:
-        return session.execute(text(sql), params=params)
+        return session.execute(text(sql), params=params, **kwargs)
 
 
 ADP_DB = Database("adp")
