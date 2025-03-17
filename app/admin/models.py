@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Any, Optional
-from enum import StrEnum
+from enum import StrEnum, auto
 from pydantic import BaseModel
 
 
@@ -96,6 +96,7 @@ class ADPProductSheet(StrEnum):
     V = "V Series"
     HD = "HD Series"
     SC = "SC Series"
+    PARTS = "Parts"
 
 
 class ADPCustomerRefSheet(StrEnum):
@@ -104,3 +105,13 @@ class ADPCustomerRefSheet(StrEnum):
     SPECIAL_NET = "Special Net"
     COMBINED = "Combined"
     OO = "OO"
+
+
+class DBOps(StrEnum):
+    SETUP = auto()
+    POPULATE_TEMP = auto()
+    UPDATE_EXISTING = auto()
+    INSERT_NEW_PRODUCT = auto()
+    SETUP_ATTRS = auto()
+    INSERT_NEW_PRODUCT_PRICING = auto()
+    UPDATE_CUSTOMER_PRICING = auto()

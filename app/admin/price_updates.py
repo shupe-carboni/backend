@@ -1,6 +1,5 @@
 import os
 import logging
-import threading
 from datetime import datetime
 from typing import Annotated
 from fastapi import (
@@ -17,9 +16,11 @@ from app import auth
 from app.db import DB_V2
 from app.adp.extraction.models import parse_model_string, ParsingModes
 from numpy import nan
-from pandas import read_csv, ExcelFile, DataFrame, concat, Series
+from pandas import read_csv, ExcelFile, DataFrame, concat, Series, to_numeric
 from app.admin.models import VendorId
-from app.admin.models import ADPProductSheet, ADPCustomerRefSheet
+from app.admin.models import ADPProductSheet, ADPCustomerRefSheet, DBOps
+from app.admin.price_update_sql import SQL
+
 
 price_updates = APIRouter(prefix=f"/admin/price-updates", tags=["admin"])
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -263,7 +264,7 @@ def _adp_cp_series_handler(sheet: ADPProductSheet, df: DataFrame):
         addition_right_hand["key"] += "R"
         result = concat([result, addition_right_hand], ignore_index=True)
     result["vendor_id"] = VendorId.ADP.value
-    result["series"] = sheet.name[:2]
+    result["series"] = "CP"
     result["price"] *= 100
     return result
 
@@ -366,7 +367,8 @@ async def _adp_update_customer_prices(
 ) -> None:
     logger.info("Background Update Process begun")
     all_models_sql = """
-        SELECT vpbc.id, vp.vendor_product_identifier, vpbc.vendor_customer_id, a.value private_label
+        SELECT vpbc.id, vp.vendor_product_identifier, vpbc.vendor_customer_id, 
+            a.value private_label
         FROM vendor_pricing_by_customer vpbc
         JOIN vendor_products vp
             ON vp.id = vpbc.product_id
@@ -455,7 +457,6 @@ def adp_price_update(
         could come in before that's finished
     """
 
-    global ADP_UPDATE_RUNNING
     product_pricing_sheets = {
         ADPProductSheet(sn): df
         for sn, df in dfs.items()
@@ -1018,6 +1019,71 @@ def adp_price_update(
                     result["series"] = series.name
                     result["price"] *= 100
                     results.append(result)
+                case ADPProductSheet.PARTS:
+                    df = df.iloc[4:, :5]
+                    df.columns = [
+                        "part_number",
+                        "description",
+                        "pkg_qty",
+                        "preferred",
+                        "standard",
+                    ]
+                    df.loc[:, "preferred"] = (
+                        to_numeric(df["preferred"], errors="coerce") * 100
+                    )
+                    df.loc[:, "standard"] = (
+                        to_numeric(df["standard"], errors="coerce") * 100
+                    )
+                    df.dropna(subset="part_number", inplace=True)
+                    df.replace({nan: None}, inplace=True)
+                    df_records = df.to_dict(orient="records")
+
+                    sql_resources = SQL[series]
+                    setup_ = sql_resources[DBOps.SETUP]
+                    populate_parts_temp = sql_resources[DBOps.POPULATE_TEMP]
+                    update_parts = sql_resources[DBOps.UPDATE_EXISTING]
+                    insert_new_parts = sql_resources[DBOps.INSERT_NEW_PRODUCT]
+                    # expecting returned ids from prior insert for next queries
+                    define_pkg_qtys_for_new_parts = sql_resources[DBOps.SETUP_ATTRS]
+                    insert_new_prices = sql_resources[DBOps.INSERT_NEW_PRODUCT_PRICING]
+                    update_customer_prices = sql_resources[
+                        DBOps.UPDATE_CUSTOMER_PRICING
+                    ]
+                    eff_date_param = dict(ed=effective_date)
+
+                    session.begin()
+                    try:
+                        DB_V2.execute(session, setup_)
+                        DB_V2.execute(session, populate_parts_temp, df_records)
+                        DB_V2.execute(session, update_parts, eff_date_param)
+                        new_ids = tuple(
+                            [
+                                rec[0]
+                                for rec in DB_V2.execute(
+                                    session, insert_new_parts
+                                ).fetchall()
+                            ]
+                        )
+                        if new_ids:
+                            new_ids_param = dict(new_part_ids=new_ids)
+                            DB_V2.execute(
+                                session, define_pkg_qtys_for_new_parts, new_ids_param
+                            )
+                            DB_V2.execute(
+                                session,
+                                insert_new_prices,
+                                new_ids_param | eff_date_param,
+                            )
+                        DB_V2.execute(session, update_customer_prices, eff_date_param)
+                    except Exception as e:
+                        import traceback as tb
+
+                        logger.error(tb.format_exc())
+                        session.rollback()
+                    else:
+                        session.commit()
+                    finally:
+                        session.close()
 
         all_keys = concat(results, ignore_index=True)
         all_keys.loc[:, "effective_date"] = effective_date
@@ -1048,10 +1114,10 @@ def adp_price_update(
             DROP TABLE IF EXISTS adp_product_series_pricing_update;
         """
         records = all_keys.dropna().to_dict(orient="records")
+        logger.info("updating records")
         session.begin()
         DB_V2.execute(session, setup_)
         DB_V2.execute(session, additional_setup, params=records)
-        logger.info("updating recordes")
         update_result = DB_V2.execute(session, key_update_sql).mappings().fetchall()
         logger.info("tearing down")
         DB_V2.execute(session, teardown)
@@ -1141,6 +1207,25 @@ def adp_price_update(
                             )
                         RETURNING *;
                     """
+                    delete_missing_discounts = """
+                        UPDATE vendor_product_class_discounts
+                        SET deleted_at = CURRENT_TIMESTAMP
+                        WHERE NOT EXISTS (
+                            SELECT 1 
+                            FROM vendor_product_class_discounts a
+                            JOIN vendor_product_classes vp_class
+                                ON vp_class.rank = 2
+                                AND vp_class.vendor_id = 'adp'
+                                AND vp_class.id = a.product_class_id
+                            JOIN vendor_customers vc
+                                ON vc.vendor_id = 'adp'
+                                AND a.vendor_customer_id = vc.id
+                            JOIN adp_mgds as new
+                                ON vp_class.name = new.mg
+                                AND vc.name = new.customer
+                            WHERE a.id = vendor_product_class_discounts.id
+                            );
+                    """
 
                     session.begin()
                     eff_date_param = dict(ed=effective_date)
@@ -1165,6 +1250,7 @@ def adp_price_update(
                             add_new_customer_discounts,
                             params=eff_date_param,
                         )
+                        DB_V2.execute(session, delete_missing_discounts)
                         DB_V2.execute(session, teardown)
                     except Exception as e:
                         import traceback as tb
@@ -1212,7 +1298,8 @@ def adp_price_update(
                     """
                     update_snps = """
                         UPDATE vendor_product_discounts
-                        SET discount = (1-(new.price::float / class_price.price::float))*100, effective_date = :ed
+                        SET discount = (1-(new.price::float / class_price.price::float))*100,
+                            effective_date = :ed
                         FROM adp_snps AS new
                         JOIN vendor_customers vc
                             ON vc.name = new.customer
@@ -1234,8 +1321,14 @@ def adp_price_update(
                     """
                     # TODO figure out how to incorporate private labels
                     add_new_snps = """
-                        INSERT INTO vendor_product_discounts (product_id, vendor_customer_id, discount, effective_date)
-                        SELECT vp.id, vc.id, (1-(new.price::float / class_price.price::float))*100, :ed
+                        INSERT INTO vendor_product_discounts (
+                            product_id, 
+                            vendor_customer_id,
+                            discount,
+                            effective_date
+                        )
+                        SELECT vp.id, vc.id,
+                            (1-(new.price::float / class_price.price::float))*100, :ed
                         FROM adp_snps AS new
                         JOIN vendor_customers vc
                             ON vc.name = new.customer
@@ -1252,6 +1345,24 @@ def adp_price_update(
                             and z.vendor_customer_id = vc.id
                         );
                     """
+                    delete_missing_snps = """
+                    UPDATE vendor_product_discounts
+                    SET deleted_at = CURRENT_TIMESTAMP
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM vendor_product_discounts vp_discounts
+                        JOIN vendor_customers vc
+                            ON vc.vendor_id = 'adp'
+                            AND vc.id = vp_discounts.vendor_customer_id
+                        JOIN vendor_products vp
+                            ON vp.vendor_id = 'adp'
+                            AND vp.id = vp_discounts.product_id
+                        JOIN adp_snps AS new
+                            ON vp.vendor_product_identifier = new.description
+                            AND vc.name = new.customer
+                        WHERE vp_discounts.id = vendor_product_discounts.id
+                    );
+                    """
                     logger.info("updating SNPs")
                     session.begin()
                     try:
@@ -1259,10 +1370,10 @@ def adp_price_update(
                         DB_V2.execute(session, populate_snp_update, params=df_records)
                         DB_V2.execute(session, update_snps, params=eff_date_param)
                         DB_V2.execute(session, add_new_snps, params=eff_date_param)
+                        DB_V2.execute(session, delete_missing_snps)
                         DB_V2.execute(
                             session,
                             "DROP TABLE IF EXISTS adp_snps;",
-                            params=eff_date_param,
                         )
                     except Exception as e:
                         import traceback as tb
