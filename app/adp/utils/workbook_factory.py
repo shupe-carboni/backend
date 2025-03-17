@@ -136,9 +136,12 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
         WHERE attr_id IN :attr_ids
         GROUP BY b.id;
     """
-    customer_latest_effective_date = DB_V2.execute(
-        session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
-    ).one()[-1]
+    try:
+        customer_latest_effective_date = DB_V2.execute(
+            session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
+        ).one()[-1]
+    except:
+        customer_latest_effective_date = "1900-01-01"
 
     # ought to be a one-row table now
     customer_attrs_df = customer_attrs_df.pivot(
@@ -187,8 +190,14 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
         )
         ORDER BY vpca.value::int;
     """
-    result = DB_V2.execute(session, sql, {"customer_id": customer_id})
-    return pd.DataFrame(result.fetchall(), columns=result.keys())
+    try:
+        result = DB_V2.execute(session, sql, {"customer_id": customer_id})
+    except Exception as e:
+        logger.error(f"parts_query failure: {e}")
+        session.close()
+        raise e
+    else:
+        return pd.DataFrame(result.fetchall(), columns=result.keys())
 
 
 def pull_customer_aliases_v2(session: Session) -> pd.DataFrame:
@@ -220,7 +229,6 @@ def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFr
         raise e
     else:
         logger.info("Used V2 for customer payment terms")
-    finally:
         return result
 
 
@@ -232,7 +240,6 @@ def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
         raise e
     else:
         logger.info("Used V2 for customer program parts")
-    finally:
         return result
 
 
@@ -523,10 +530,10 @@ def generate_program(
     session: Session, customer_id: int, stage: Stage
 ) -> XLSXFileResponse:
     start = time()
-    coil_prog_table, ah_prog_table, ratings = pull_program_data(
-        session, customer_id, stage
-    )
     try:
+        coil_prog_table, ah_prog_table, ratings = pull_program_data(
+            session, customer_id, stage
+        )
         coil_prog = build_coil_program(coil_prog_table, ratings)
         ah_prog = build_ah_program(ah_prog_table, ratings)
         full_program = add_customer_terms_parts_and_logo_path(
@@ -554,8 +561,10 @@ def generate_program(
     except Exception:
         import traceback as tb
 
+        session.close()
         logger.info("Error occurred while trying to generate programs")
-        logger.critical(tb.format_exc())
+        # logger.critical(tb.format_exc())
+        raise EmptyProgram("No program data to return")
     else:
         logger.info(f"transform time: {time()-start}")
         return XLSXFileResponse(
