@@ -183,7 +183,6 @@ class V(ModelSeries):
             key += "embossed"
         else:
             key += "painted"
-        print(key)
         pricing = self.db.execute(
             session=self.session,
             sql=pricing_sql,
