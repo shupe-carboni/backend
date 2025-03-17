@@ -19,6 +19,19 @@ logger = getLogger("uvicorn.info")
 TEST_DB = os.getenv("TEST_DATABASE")
 
 
+class CACHE:
+    _data = {}
+
+    @classmethod
+    def add_or_update(cls, key: str, new_data: dict):
+        cls._data[key] = new_data
+
+    @classmethod
+    def get(cls, key: str) -> dict:
+        ret = cls._data.get(key)
+        return ret if ret else None
+
+
 @dataclass
 class File:
     file_name: str

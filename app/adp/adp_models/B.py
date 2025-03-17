@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session, Database
+from app.db import ADP_DB, Session, Database, CACHE
 
 
 class B(ModelSeries):
@@ -35,20 +35,24 @@ class B(ModelSeries):
     def __init__(self, session: Session, re_match: re.Match, db: Database):
         super().__init__(session, re_match, db)
         self.min_qty = 4
-        dims_sql = """
-            SELECT weight, height, depth, width
-            FROM b_dims
-            WHERE tonnage = :tonnage;
-        """
-        specs = (
-            ADP_DB.execute(
-                session=session,
-                sql=dims_sql,
-                params={"tonnage": int(self.attributes["ton"])},
+        cache_key = f'adp_b_specs_{self.attributes["ton"]}'
+        specs = CACHE.get(cache_key)
+        if not specs:
+            dims_sql = """
+                SELECT weight, height, depth, width
+                FROM b_dims
+                WHERE tonnage = :tonnage;
+            """
+            specs = (
+                ADP_DB.execute(
+                    session=session,
+                    sql=dims_sql,
+                    params={"tonnage": int(self.attributes["ton"])},
+                )
+                .mappings()
+                .one_or_none()
             )
-            .mappings()
-            .one_or_none()
-        )
+            CACHE.add_or_update(cache_key, specs)
         self.width = specs["width"]
         self.depth = specs["depth"]
         self.height = specs["height"]
@@ -125,32 +129,34 @@ class B(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
-        pricing_sql = """
-            SELECT key, price
-            FROM vendor_product_series_pricing
-            WHERE vendor_id = 'adp'
-            AND series = 'B'
-            AND key IN :keys;
-        """
-        keys = tuple(
-            [
-                f"{self.tonnage}_{self.attributes['scode']}_{suffix}"
-                for suffix in ("base", "2", "3", "4")
-            ]
-        )
-        params = dict(keys=keys)
-        pricing_records: tuple[dict[str, str | int]] = (
-            self.db.execute(session=self.session, sql=pricing_sql, params=params)
-            .mappings()
-            .fetchall()
-        )
-        pricing = dict()
-        for r in pricing_records:
-            if r.get("key").endswith("base"):
-                pricing["base"] = r.get("price")
-            elif r.get("key")[-1] in ("2", "3", "4"):
-                pricing[r.get("key")[-1]] = r.get("price")
-        return pricing, self.get_adders()
+        key_first_part = f"{self.tonnage}_{self.attributes['scode']}_"
+        if pricing := CACHE.get(key_first_part):
+            return pricing
+        else:
+            keys = tuple(
+                [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
+            )
+            pricing_sql = """
+                SELECT key, price
+                FROM vendor_product_series_pricing
+                WHERE vendor_id = 'adp'
+                AND series = 'B'
+                AND key IN :keys;
+            """
+            params = dict(keys=keys)
+            pricing_records: tuple[dict[str, str | int]] = (
+                self.db.execute(session=self.session, sql=pricing_sql, params=params)
+                .mappings()
+                .fetchall()
+            )
+            pricing = dict()
+            for r in pricing_records:
+                if r.get("key").endswith("base"):
+                    pricing["base"] = r.get("price")
+                elif r.get("key")[-1] in ("2", "3", "4"):
+                    pricing[r.get("key")[-1]] = r.get("price")
+            CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
+            return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()
