@@ -3,7 +3,7 @@ from time import time
 from enum import StrEnum, auto
 from logging import getLogger
 from functools import partial
-from typing import Annotated, Callable, Literal, Union
+from typing import Annotated, Callable, Literal, Union, TypeAlias
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from enum import StrEnum
@@ -750,45 +750,75 @@ async def vendor_customer_pricing(
     except HTTPException as e:
         raise e
 
-    NestedKeys = list[tuple[Literal["part_id", "category"]]]
+    NestedKeys: TypeAlias = list[tuple[Literal["part_id", "category", "product"]]]
+    FetchMode: TypeAlias = Literal["both", "customer", "class"]
 
-    def fetch_pricing(mode: Literal["both", "customer", "class"]) -> FullPricing:
+    def fetch_pricing(mode: FetchMode, replace_on: NestedKeys = None) -> FullPricing:
+        """
+        Fetch either category-based pricing, customer-specific pricing, or both.
+        In the case 'both' are fetched, customer-specific pricing may replace
+        categorical price records. replace_on supplies a list of tuples containing key
+        names to apply the filter with jointly (an AND relationship)
+
+        Ex. replace_on = [('product', 'part_id'), ('category')]
+            Replaces categorical pricing with customer-specific pricing based on
+            matching the nested key 'part_id' under 'product' AND the top-level
+            key 'category'.
+        """
         params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
         start = time()
-        match mode:
-            case "both":
-                customer_pricing = (
-                    DB_V2.execute(session, pricing_by_customer, params=params)
-                    .mappings()
-                    .fetchall()
-                )
-                customer_class_pricing = (
-                    DB_V2.execute(session, pricing_by_class, params=params)
-                    .mappings()
-                    .fetchall()
-                )
-                pricing = dict(
-                    customer_pricing=Pricing(data=customer_pricing),
-                    category_pricing=Pricing(data=customer_class_pricing),
-                )
-            case "customer":
-                customer_pricing = (
-                    DB_V2.execute(session, pricing_by_customer, params=params)
-                    .mappings()
-                    .fetchall()
-                )
-                pricing = dict(
-                    customer_pricing=Pricing(data=customer_pricing),
-                )
-            case "class":
-                customer_class_pricing = (
-                    DB_V2.execute(session, pricing_by_class, params=params)
-                    .mappings()
-                    .fetchall()
-                )
-                pricing = dict(
-                    category_pricing=Pricing(data=customer_class_pricing),
-                )
+        try:
+            match mode:
+                case "both" if replace_on:
+                    customer_pricing = (
+                        DB_V2.execute(session, pricing_by_customer, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    customer_class_pricing = (
+                        DB_V2.execute(session, pricing_by_class, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    pricing = dict(
+                        customer_pricing=Pricing(data=customer_pricing),
+                        category_pricing=Pricing(data=customer_class_pricing),
+                    )
+                case "both" if not replace_on:
+                    customer_pricing = (
+                        DB_V2.execute(session, pricing_by_customer, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    customer_class_pricing = (
+                        DB_V2.execute(session, pricing_by_class, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    pricing = dict(
+                        customer_pricing=Pricing(data=customer_pricing),
+                        category_pricing=Pricing(data=customer_class_pricing),
+                    )
+                case "customer":
+                    customer_pricing = (
+                        DB_V2.execute(session, pricing_by_customer, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    pricing = dict(
+                        customer_pricing=Pricing(data=customer_pricing),
+                    )
+                case "class":
+                    customer_class_pricing = (
+                        DB_V2.execute(session, pricing_by_class, params=params)
+                        .mappings()
+                        .fetchall()
+                    )
+                    pricing = dict(
+                        category_pricing=Pricing(data=customer_class_pricing),
+                    )
+        finally:
+            session.close()
         logger.info(f"query execution: {time() - start}")
         return FullPricing(**pricing)
 
@@ -939,7 +969,7 @@ async def vendor_customer_pricing(
                 stage=Stage.PROPOSED,
             )
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
-            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+            return FullPricingWithLink(download_link=dl_link)
 
         case _:
             raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
