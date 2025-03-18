@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Iterable
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, numbers
+from fastapi import HTTPException
 from app.adp.adp_models import Fields
 from app.adp.utils.programs import (
     CoilProgram,
@@ -126,21 +127,25 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
 
     attr_ids = tuple(customer_attrs_df["attr_id"].to_list())
     attr_types_by_col = customer_attrs_df[["attr", "type"]]
-    sql_last_eff_date_by_customer = """
-        SELECT b.id AS customer_id, DATE_TRUNC('second',max(timestamp)) AS effective_date
-        FROM vendor_customer_attrs_changelog
-        JOIN vendor_customer_attrs AS a
-        ON a.id = attr_id
-        JOIN vendor_customers AS b
-        ON b.id = a.vendor_customer_id
-        WHERE attr_id IN :attr_ids
-        GROUP BY b.id;
-    """
-    try:
-        customer_latest_effective_date = DB_V2.execute(
-            session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
-        ).one()[-1]
-    except:
+    if attr_ids:
+        sql_last_eff_date_by_customer = """
+            SELECT b.id AS customer_id, DATE_TRUNC('second',max(timestamp)) AS effective_date
+            FROM vendor_customer_attrs_changelog
+            JOIN vendor_customer_attrs AS a
+            ON a.id = attr_id
+            JOIN vendor_customers AS b
+            ON b.id = a.vendor_customer_id
+            WHERE attr_id IN :attr_ids
+            GROUP BY b.id;
+        """
+        try:
+            customer_latest_effective_date = DB_V2.execute(
+                session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
+            ).one()[-1]
+        except Exception as e:
+            logger.error(e)
+            raise e
+    else:
         customer_latest_effective_date = "1900-01-01"
 
     # ought to be a one-row table now
@@ -194,7 +199,6 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
         result = DB_V2.execute(session, sql, {"customer_id": customer_id})
     except Exception as e:
         logger.error(f"parts_query failure: {e}")
-        session.close()
         raise e
     else:
         return pd.DataFrame(result.fetchall(), columns=result.keys())
@@ -202,8 +206,12 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
 
 def pull_customer_aliases_v2(session: Session) -> pd.DataFrame:
     sql = """
-        SELECT DISTINCT vc.id as id, vc.name AS adp_alias, customers.name as customer,
-            customers.id as sca_id, vca.value::bool as preferred_parts
+        SELECT DISTINCT
+            vc.id as id, 
+            vc.name AS adp_alias,
+            customers.name as customer,
+            customers.id as sca_id, 
+            vca.value::bool as preferred_parts
         FROM vendor_customers vc
         JOIN customer_location_mapping clm ON clm.vendor_customer_id = vc.id
         JOIN sca_customer_locations scl ON scl.id = clm.customer_location_id
@@ -286,7 +294,8 @@ def add_customer_terms_parts_and_logo_path(
     parent_accounts = pull_customer_parent_accounts(session)
 
     alias_mapping = alias_mapping[alias_mapping["id"] == customer_id]
-    alias_name = alias_mapping[Fields.ADP_ALIAS.value].item()
+    if not alias_mapping.empty:
+        alias_name = alias_mapping[Fields.ADP_ALIAS.value].item()
     ## parts
     customer_parts = prog_parts.drop(columns="customer_id")
     customer_preferred = alias_mapping["preferred_parts"].item() == True
@@ -411,6 +420,8 @@ def pull_program_data_v2(
         .mappings()
         .fetchall()
     )
+    if customer_strategy.empty:
+        raise EmptyProgram("No customer strategy exists")
     strategy_product_desc = pd.DataFrame(
         DB_V2.execute(
             session,
@@ -518,11 +529,10 @@ def pull_program_data(
     try:
         result = pull_program_data_v2(session, customer_id)
     except Exception as e:
-        logger.warning(f"v2 product data method failed: {e}")
+        logger.warning(f"v2 product data method failed")
         raise e
     else:
         logger.info("Used V2 for customer program products")
-    finally:
         return result
 
 
@@ -557,19 +567,20 @@ def generate_program(
             file_data=price_book, file_name=full_program.new_file_name()
         )
     except EmptyProgram:
-        raise EmptyProgram("No program data to return")
-    except Exception:
+        raise HTTPException(status_code=404, detail="No program data to return")
+    except Exception as e:
         import traceback as tb
 
-        session.close()
-        logger.info("Error occurred while trying to generate programs")
-        # logger.critical(tb.format_exc())
-        raise EmptyProgram("No program data to return")
+        trace = tb.format_exc()
+        logger.error("Error occurred while trying to generate programs")
+        raise HTTPException(status_code=404, detail="No program data to return")
     else:
         logger.info(f"transform time: {time()-start}")
         return XLSXFileResponse(
             content=new_program_file.file_data, filename=new_program_file.file_name
         )
+    finally:
+        session.close()
 
 
 def update_dates_in_tables(

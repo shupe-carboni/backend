@@ -931,6 +931,7 @@ async def vendor_customer_pricing(
     match vendor_id, return_type:
         # ReturnType.JSON: return pricing along with a download link to a CSV file
         # ReturnType.CSV: return a download link with deferred execution
+        # ReturnType.XLSX: return a download link with deferred execution
         case VendorId.ATCO, ReturnType.JSON:
             remove_cols = ["fp_ean", "upc_code"]
             pricing = fetch_pricing(mode="both")
@@ -960,7 +961,7 @@ async def vendor_customer_pricing(
 
         case VendorId.ADP, ReturnType.XLSX:
             remove_cols = None
-            pricing = partial(fetch_pricing, mode="customer")
+            # pricing = partial(fetch_pricing, mode="customer")
             # ADP uses a special file generation method
             cb = partial(
                 generate_program,
@@ -994,7 +995,10 @@ async def download_price_file(
     try:
         file = dl_obj.callback()
     except Exception as e:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        if isinstance(e, HTTPException):
+            raise e
+        else:
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
     else:
         return file

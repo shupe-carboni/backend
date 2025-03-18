@@ -393,12 +393,13 @@ class CustomerProgram:
             "HE": CoilProgram,
             "MH": CoilProgram,
             "HH": CoilProgram,
+            "HD": CoilProgram,
             "V": CoilProgram,
             "SC": CoilProgram,
             "CE": CoilProgram,
         }
         for prog in self.progs:
-            if not isinstance(prog, series_prog_map[series]):
+            if not isinstance(prog, series_prog_map.get(series, type(None))):
                 continue
             try:
                 sample_series = prog._data[Fields.SERIES.value] == series
