@@ -1129,26 +1129,11 @@ def adp_price_update(
         return 202
     else:
         for sheet, df in customer_reference_sheets.items():
-            setup_new_customers = """
-                CREATE TEMPORARY TABLE adp_customers (customer varchar);
-            """
-            populate_new_customers = """
-                INSERT INTO adp_customers VALUES (:customer);
-            """
-            add_new_customers = """
-                INSERT INTO vendor_customers (vendor_id, name)
-                SELECT 'adp' vendor_id, customer
-                FROM adp_customers
-                WHERE adp_customers.customer NOT IN (
-                    SELECT DISTINCT name
-                    FROM vendor_customers a
-                    WHERE vendor_id = 'adp'
-                );
-            """
-            teardown = """
-                DROP TABLE IF EXISTS adp_customers;
-                DROP TABLE IF EXISTS adp_mgds;
-            """
+            sql_resources = SQL["adp_customers"]
+            setup_new_customers = sql_resources[DBOps.SETUP]
+            populate_new_customers = sql_resources[DBOps.POPULATE_TEMP]
+            add_new_customers = sql_resources[DBOps.INSERT_NEW_CUSTOMERS]
+            teardown = sql_resources[DBOps.TEARDOWN]
             clear_ = teardown
             logger.info(f"processing sheet: {sheet}")
             match sheet:
@@ -1161,71 +1146,13 @@ def adp_price_update(
                     # ADPs discounts are provided in 0.01-base
                     # ADPs discounts are stored in 0.01-base
                     # df["discount"] /= 100
-                    setup_mg_update = """
-                        CREATE TEMPORARY TABLE adp_mgds (
-                            customer varchar,
-                            mg char(2),
-                            discount float);
-                    """
-                    populate_mg_update = """
-                        INSERT INTO adp_mgds
-                        VALUES (:customer, :mg, :discount);
-                    """
-                    update_discounts = """
-                        UPDATE vendor_product_class_discounts
-                        SET discount = new.discount, effective_date = :ed
-                        FROM adp_mgds as new
-                        JOIN vendor_product_classes vp_class
-                            ON vp_class.name = new.mg
-                            AND vp_class.rank = 2
-                            AND vp_class.vendor_id = 'adp'
-                        JOIN vendor_customers vc
-                            ON vc.name = new.customer
-                            AND vc.vendor_id = 'adp'
-                        WHERE vp_class.id = product_class_id
-                            AND vc.id = vendor_customer_id
-                        RETURNING *;
-                    """
-                    add_new_customer_discounts = """
-                        INSERT INTO vendor_product_class_discounts (
-                            product_class_id, vendor_customer_id, 
-                            discount, effective_date)
-                        SELECT vp_class.id, vc.id, new.discount, :ed
-                        FROM adp_mgds as new
-                        JOIN vendor_product_classes vp_class
-                            ON vp_class.name = new.mg
-                            AND vp_class.rank = 2
-                            AND vp_class.vendor_id = 'adp'
-                        JOIN vendor_customers vc
-                            ON vc.name = new.customer
-                            AND vc.vendor_id = 'adp'
-                        WHERE NOT EXISTS (
-                            SELECT 1 
-                            FROM vendor_product_class_discounts a
-                            WHERE a.vendor_customer_id = vc.id
-                                AND a.product_class_id = vp_class.id
-                            )
-                        RETURNING *;
-                    """
-                    delete_missing_discounts = """
-                        UPDATE vendor_product_class_discounts
-                        SET deleted_at = CURRENT_TIMESTAMP
-                        WHERE NOT EXISTS (
-                            SELECT 1 
-                            FROM vendor_product_class_discounts a
-                            JOIN vendor_product_classes vp_class
-                                ON vp_class.rank = 2
-                                AND vp_class.vendor_id = 'adp'
-                                AND vp_class.id = a.product_class_id
-                            JOIN vendor_customers vc
-                                ON vc.vendor_id = 'adp'
-                                AND a.vendor_customer_id = vc.id
-                            JOIN adp_mgds as new
-                                ON vp_class.name = new.mg
-                                AND vc.name = new.customer
-                            WHERE a.id = vendor_product_class_discounts.id
-                            );
-                    """
+                    setup_mg_update = sql_resources[DBOps.SETUP]
+                    populate_mg_update = sql_resources[DBOps.POPULATE_TEMP]
+                    update_discounts = sql_resources[DBOps.UPDATE_EXISTING]
+                    add_new_customer_discounts = sql_resources[
+                        DBOps.INSERT_NEW_DISCOUNTS
+                    ]
+                    delete_missing_discounts = sql_resources[DBOps.REMOVE_MISSING]
 
                     session.begin()
                     eff_date_param = dict(ed=effective_date)
@@ -1284,85 +1211,14 @@ def adp_price_update(
                     df_records = df.to_dict(orient="records")
                     eff_date_param = dict(ed=effective_date)
 
-                    setup_snp_update = """
-                        DROP TABLE IF EXISTS adp_snps;
-                        CREATE TEMPORARY TABLE adp_snps (
-                            customer varchar,
-                            description varchar,
-                            price int
-                        );
-                    """
-                    populate_snp_update = """
-                        INSERT INTO adp_snps
-                        VALUES (:customer, :description, :price);
-                    """
-                    update_snps = """
-                        UPDATE vendor_product_discounts
-                        SET discount = (1-(new.price::float / class_price.price::float))*100,
-                            effective_date = :ed
-                        FROM adp_snps AS new
-                        JOIN vendor_customers vc
-                            ON vc.name = new.customer
-                            AND vc.vendor_id = 'adp'
-                        JOIN vendor_products vp
-                            ON vp.vendor_product_identifier = new.description
-                            AND vp.vendor_id = 'adp'
-                        JOIN vendor_pricing_by_class AS class_price
-                            ON class_price.product_id = vp.id
-                        WHERE EXISTS (
-                            SELECT 1
-                            FROM vendor_pricing_classes pricing_classes
-                            WHERE pricing_classes.id = class_price.pricing_class_id
-                            AND pricing_classes.name = 'ZERO_DISCOUNT'
-                            AND pricing_classes.vendor_id = 'adp'
-                        )
-                        AND vendor_product_discounts.product_id = vp.id
-                        AND vendor_product_discounts.vendor_customer_id = vc.id;
-                    """
+                    sql_resources = SQL[sheet]
+                    setup_snp_update = sql_resources[DBOps.SETUP]
+                    populate_snp_update = sql_resources[DBOps.POPULATE_TEMP]
+                    update_snps = sql_resources[DBOps.UPDATE_EXISTING]
                     # TODO figure out how to incorporate private labels
-                    add_new_snps = """
-                        INSERT INTO vendor_product_discounts (
-                            product_id, 
-                            vendor_customer_id,
-                            discount,
-                            effective_date
-                        )
-                        SELECT vp.id, vc.id,
-                            (1-(new.price::float / class_price.price::float))*100, :ed
-                        FROM adp_snps AS new
-                        JOIN vendor_customers vc
-                            ON vc.name = new.customer
-                            AND vc.vendor_id = 'adp'
-                        JOIN vendor_products vp
-                            ON vp.vendor_product_identifier = new.description
-                            AND vp.vendor_id = 'adp'
-                        JOIN vendor_pricing_by_class AS class_price
-                            ON class_price.product_id = vp.id
-                        WHERE NOT EXISTS (
-                            select 1
-                            from vendor_product_discounts z
-                            where z.product_id = vp.id
-                            and z.vendor_customer_id = vc.id
-                        );
-                    """
-                    delete_missing_snps = """
-                    UPDATE vendor_product_discounts
-                    SET deleted_at = CURRENT_TIMESTAMP
-                    WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM vendor_product_discounts vp_discounts
-                        JOIN vendor_customers vc
-                            ON vc.vendor_id = 'adp'
-                            AND vc.id = vp_discounts.vendor_customer_id
-                        JOIN vendor_products vp
-                            ON vp.vendor_id = 'adp'
-                            AND vp.id = vp_discounts.product_id
-                        JOIN adp_snps AS new
-                            ON vp.vendor_product_identifier = new.description
-                            AND vc.name = new.customer
-                        WHERE vp_discounts.id = vendor_product_discounts.id
-                    );
-                    """
+                    add_new_snps = sql_resources[DBOps.INSERT_NEW_DISCOUNTS]
+                    delete_missing_snps = sql_resources[DBOps.REMOVE_MISSING]
+                    teardown = sql_resources[DBOps.TEARDOWN]
                     logger.info("updating SNPs")
                     session.begin()
                     try:
@@ -1371,10 +1227,7 @@ def adp_price_update(
                         DB_V2.execute(session, update_snps, params=eff_date_param)
                         DB_V2.execute(session, add_new_snps, params=eff_date_param)
                         DB_V2.execute(session, delete_missing_snps)
-                        DB_V2.execute(
-                            session,
-                            "DROP TABLE IF EXISTS adp_snps;",
-                        )
+                        DB_V2.execute(session, teardown)
                     except Exception as e:
                         import traceback as tb
 
