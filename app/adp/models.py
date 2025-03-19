@@ -31,6 +31,7 @@ class ProgAttrs(BaseModel):
     cabinet: Optional[str] = None
     motor: Optional[str] = None
     heat: Optional[str] = None
+    cfm: Optional[str] = None
     zero_discount_price: Optional[int] = Field(
         default=None, alias="zero-discount-price"
     )

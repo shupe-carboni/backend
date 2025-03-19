@@ -35,6 +35,7 @@ class Fields(StrEnum):
     HEAT = auto()
     MIN_QTY = auto()
     CABINET = auto()
+    CFM = auto()
     LENGTH = auto()
     ZERO_DISCOUNT_PRICE = auto()
     MATERIAL_GROUP_DISCOUNT = auto()
@@ -151,6 +152,7 @@ class ModelSeries:
         7: "7.5 kW",
         8: "8 kW",
         10: "10 kW",
+        12: "12.5 kW",
         15: "15 kW",
         20: "20 kW",
     }
@@ -210,6 +212,7 @@ class ModelSeries:
             Fields.MOTOR.value: None,
             Fields.HEAT.value: None,
             Fields.CABINET.value: None,
+            Fields.CFM.value: None,
             Fields.ZERO_DISCOUNT_PRICE.value: None,
             Fields.MATERIAL_GROUP_DISCOUNT.value: None,
             Fields.MATERIAL_GROUP_NET_PRICE.value: None,

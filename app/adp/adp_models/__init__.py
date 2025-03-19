@@ -11,6 +11,7 @@ from app.adp.adp_models.HH import HH
 from app.adp.adp_models.HD import HD
 from app.adp.adp_models.HE import HE
 from app.adp.adp_models.LS import LS
+from app.adp.adp_models.AMH import AMH
 from app.adp.adp_models.model_series import Cabinet, Fields, ModelSeries
 
-MODELS = (HE, HD, HH, V, MH, SC, F, B, S, CP, CE, CF, LS)
+MODELS = (HE, HD, HH, V, MH, SC, F, B, S, CP, CE, CF, LS, AMH)
