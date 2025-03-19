@@ -15,6 +15,7 @@ from app.jsonapi.sqla_models import ADPProgramRating
 class ProgAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True, protected_namespaces={})
     category: Optional[str] = None
+    description: Optional[str] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
     private_label: Optional[str] = Field(default=None, alias="private-label")
     mpg: Optional[str] = None

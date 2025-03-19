@@ -5,7 +5,7 @@ from app.db import Session
 
 class PartOrAccessory(ModelSeries):
     text_len = tuple(range(8, 13))
-    regex = r"""(?P<part_number>\d{8,11}[A|B])"""
+    regex = r"""(?P<part_number>\d{8,11}[A|B]?)"""
 
     def __init__(self, session: Session, re_match: re.Match, db: Session):
         super().__init__(session, re_match, db)
