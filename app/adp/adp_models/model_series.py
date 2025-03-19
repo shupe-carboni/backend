@@ -1,5 +1,6 @@
 import re
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database, CACHE
+from pandas import DataFrame
 from enum import StrEnum, auto
 from typing import TypeAlias, Literal, Any
 
@@ -19,6 +20,7 @@ class Fields(StrEnum):
     CUSTOMER_ID = auto()
     ADP_ALIAS = auto()
     PROGRAM = auto()
+    DESCRIPTION = auto()
     CATEGORY = auto()
     MODEL_NUMBER = auto()
     PRIVATE_LABEL = auto()
@@ -38,6 +40,8 @@ class Fields(StrEnum):
     CFM = auto()
     LENGTH = auto()
     ZERO_DISCOUNT_PRICE = auto()
+    STANDARD_PRICE = auto()
+    PREFERRED_PRICE = auto()
     MATERIAL_GROUP_DISCOUNT = auto()
     MATERIAL_GROUP_NET_PRICE = auto()
     SNP_DISCOUNT = auto()
@@ -158,10 +162,20 @@ class ModelSeries:
     }
 
     def __init__(self, session: Session, re_match: re.Match, db: Database):
-        self.mat_grps = ADP_DB.load_df(session=session, table_name="material_groups")
-        self.mat_grps.rename(
-            columns={"id": "mat_grp"}, inplace=True
-        )  # HOT FIX FOR COLUMN NAME CHANGE IN DB
+        key_ = "adp_material_groups"
+        cached = CACHE.get(key_)
+        match cached:
+            case DataFrame() if not cached.empty:
+                self.mat_grps = cached
+            case _ if cached:
+                self.mat_grps = cached
+            case _:
+                self.mat_grps = DB_V2.load_df(session=session, table_name=key_)
+                self.mat_grps.rename(
+                    columns={"id": "mat_grp"}, inplace=True
+                )  # HOT FIX FOR COLUMN NAME CHANGE IN DB
+                CACHE.add_or_update(key=key_, new_data=self.mat_grps)
+
         self.attributes = re_match.groupdict()
         self.session = session
         self.db = db
@@ -196,6 +210,7 @@ class ModelSeries:
     def record(self) -> dict[StrEnum, Any]:
         return {
             Fields.CATEGORY.value: None,
+            Fields.DESCRIPTION.value: None,
             Fields.MODEL_NUMBER.value: None,
             Fields.PRIVATE_LABEL.value: None,
             Fields.MPG.value: None,
@@ -214,6 +229,8 @@ class ModelSeries:
             Fields.CABINET.value: None,
             Fields.CFM.value: None,
             Fields.ZERO_DISCOUNT_PRICE.value: None,
+            Fields.STANDARD_PRICE.value: None,
+            Fields.PREFERRED_PRICE.value: None,
             Fields.MATERIAL_GROUP_DISCOUNT.value: None,
             Fields.MATERIAL_GROUP_NET_PRICE.value: None,
             Fields.SNP_DISCOUNT.value: None,
@@ -233,26 +250,32 @@ class ModelSeries:
             return False
 
     def get_adders(self) -> PriceByCategoryAndKey:
+        key_ = f"adp_series_{self.__series_name__()}"
+        if adders := CACHE.get(key_):
+            return adders
+        else:
+            price_adders_sql = """
+                SELECT key, price
+                FROM vendor_product_series_pricing
+                WHERE series = :series
+                and vendor_id = 'adp'
+                and key like 'adder_%';
+            """
 
-        price_adders_sql = """
-            SELECT key, price
-            FROM vendor_product_series_pricing
-            WHERE series = :series
-            and vendor_id = 'adp'
-            and key like 'adder_%';
-        """
-
-        params = dict(series=self.__series_name__())
-        adders_: list[dict[str, str | int]] = (
-            self.db.execute(session=self.session, sql=price_adders_sql, params=params)
-            .mappings()
-            .all()
-        )
-        adders = dict()
-        for adder in adders_:
-            # adder_type is a container in case the type name itself has underscores
-            _, *adder_type, adder_key = adder["key"].split("_")
-            adder_type = "_".join(adder_type)
-            adders.setdefault(adder_type, {})
-            adders[adder_type] |= {adder_key: adder["price"]}
-        return adders
+            params = dict(series=self.__series_name__())
+            adders_: list[dict[str, str | int]] = (
+                self.db.execute(
+                    session=self.session, sql=price_adders_sql, params=params
+                )
+                .mappings()
+                .all()
+            )
+            adders = dict()
+            for adder in adders_:
+                # adder_type is a container in case the type name itself has underscores
+                _, *adder_type, adder_key = adder["key"].split("_")
+                adder_type = "_".join(adder_type)
+                adders.setdefault(adder_type, {})
+                adders[adder_type] |= {adder_key: adder["price"]}
+            CACHE.add_or_update(key_, adders)
+            return adders

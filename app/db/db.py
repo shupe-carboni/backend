@@ -9,7 +9,7 @@ from logging import getLogger
 from dataclasses import dataclass
 from io import BytesIO
 from enum import StrEnum, auto
-from typing import Iterable
+from typing import Iterable, Any
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text, URL, Result
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,16 +20,16 @@ TEST_DB = os.getenv("TEST_DATABASE")
 
 
 class CACHE:
-    _data = {}
+    _data: dict[str, Any] = {}
 
     @classmethod
-    def add_or_update(cls, key: str, new_data: dict):
+    def add_or_update(cls, key: str, new_data: dict) -> None:
         cls._data[key] = new_data
 
     @classmethod
-    def get(cls, key: str) -> dict:
+    def get(cls, key: str) -> Any | None:
         ret = cls._data.get(key)
-        return ret if ret else None
+        return ret
 
 
 @dataclass

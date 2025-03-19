@@ -35,6 +35,8 @@ class ProgAttrs(BaseModel):
     zero_discount_price: Optional[int] = Field(
         default=None, alias="zero-discount-price"
     )
+    standard_price: Optional[int] = Field(default=None, alias="standard-price")
+    preferred_price: Optional[int] = Field(default=None, alias="preferred-price")
     material_group_discount: Optional[float] = Field(
         default=None, alias="material-group-discount"
     )

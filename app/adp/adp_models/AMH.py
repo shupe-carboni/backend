@@ -1,9 +1,5 @@
 import re
-from app.adp.adp_models.model_series import (
-    ModelSeries,
-    Fields,
-    NoBasePrice,
-)
+from app.adp.adp_models.model_series import ModelSeries, Fields, NoBasePrice
 from app.db import Session
 
 
