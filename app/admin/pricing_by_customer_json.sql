@@ -1,5 +1,21 @@
 -- get customer-specific pricing
-WITH product_attrs_agg AS (
+WITH notes_agg AS (
+    SELECT
+        pricing_by_customer_id,
+        COALESCE(
+            json_agg(
+                json_build_object(
+                    'id', id,
+                    'attr', attr,
+                    'type', type,
+                    'value', value
+                )
+            )::jsonb,
+            '[]'::jsonb
+        ) AS notes
+    FROM vendor_pricing_by_customer_attrs
+    GROUP BY pricing_by_customer_id
+), product_attrs_agg AS (
     SELECT
         vendor_product_id as product_id,
         COALESCE(
@@ -68,6 +84,7 @@ WITH product_attrs_agg AS (
         AND a.id = vpc.vendor_customer_id
         AND a.vendor_id = :vendor_id
     )
+    AND vpc.deleted_at IS NULL
 )
 SELECT 
     formatted_pricing.id,
@@ -84,26 +101,17 @@ SELECT
             'timestamp', h.timestamp
         )
     ) as history,
-    COALESCE(
-        json_agg(
-            json_build_object(
-                'id', notes.id,
-                'attr', notes.attr,
-                'type', notes.type,
-                'value', notes.value
-            )
-        )::jsonb,
-        '[]'::jsonb
-    ) as notes
+    COALESCE( na.notes, '[]'::jsonb) as notes
 FROM formatted_pricing
 LEFT JOIN vendor_pricing_by_customer_changelog AS h
     ON vendor_pricing_by_customer_id = formatted_pricing.id
-LEFT JOIN vendor_pricing_by_customer_attrs AS notes
-    ON notes.pricing_by_customer_id = formatted_pricing.id
+LEFT JOIN notes_agg AS na
+    ON na.pricing_by_customer_id = formatted_pricing.id
 GROUP BY 
     formatted_pricing.id, 
     formatted_pricing.override,
     category,
     product,
     formatted_pricing.price,
-    formatted_pricing.effective_date;
+    formatted_pricing.effective_date,
+    na.notes;
