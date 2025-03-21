@@ -32,10 +32,10 @@ class ProductAttr(BaseModel):
 
 
 class PriceAttr(BaseModel):
-    id: int
-    attr: str
-    type: str
-    value: str
+    id: Optional[int] = None
+    attr: Optional[str] = None
+    type: Optional[str] = None
+    value: Optional[str] = None
 
 
 class ProductCategory(BaseModel):
@@ -67,20 +67,16 @@ class PriceItem(BaseModel):
     price: int
     effective_date: datetime
     history: list[PriceHistory]
+    notes: Optional[list[PriceAttr]] = None
 
 
 class Pricing(BaseModel):
     data: list[PriceItem]
 
 
-class FullPricing(BaseModel):
-    customer_pricing: Optional[Pricing] = None
-    category_pricing: Optional[Pricing] = None
-
-
 class FullPricingWithLink(BaseModel):
     download_link: str
-    pricing: Optional[FullPricing] = None
+    pricing: Optional[Pricing] = None
 
 
 class ADPProductSheet(StrEnum):
