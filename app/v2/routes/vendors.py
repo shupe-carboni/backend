@@ -820,6 +820,8 @@ async def vendor_customer_pricing(
         finally:
             session.close()
         logger.info(f"query execution: {time() - start}")
+        if not any(p.data for p in pricing.values()):
+            raise HTTPException(404)
         return FullPricing(**pricing)
 
     def transform(
@@ -969,6 +971,20 @@ async def vendor_customer_pricing(
                 customer_id=customer_id,
                 stage=Stage.PROPOSED,
             )
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link)
+
+        case VendorId.BERRY, ReturnType.JSON:
+            remove_cols = []
+            pricing = fetch_pricing(mode="both")
+            cb = partial(transform, pricing, remove_cols)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
+        case VendorId.BERRY, ReturnType.CSV:
+            remove_cols = []
+            pricing = partial(fetch_pricing, mode="both")
+            cb = partial(transform, pricing, remove_cols)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
