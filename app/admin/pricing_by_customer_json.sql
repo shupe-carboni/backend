@@ -83,10 +83,23 @@ SELECT
             'effective_date', h.effective_date,
             'timestamp', h.timestamp
         )
-    ) as history
+    ) as history,
+    COALESCE(
+        json_agg(
+            json_build_object(
+                'id', notes.id,
+                'attr', notes.attr,
+                'type', notes.type,
+                'value', notes.value
+            )
+        )::jsonb,
+        '[]'::jsonb
+    ) as notes
 FROM formatted_pricing
 LEFT JOIN vendor_pricing_by_customer_changelog AS h
     ON vendor_pricing_by_customer_id = formatted_pricing.id
+LEFT JOIN vendor_pricing_by_customer_attrs AS notes
+    ON notes.pricing_by_customer_id = formatted_pricing.id
 GROUP BY 
     formatted_pricing.id, 
     formatted_pricing.override,
