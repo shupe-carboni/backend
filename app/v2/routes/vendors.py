@@ -792,7 +792,7 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
-        case VendorId.BERRY, ReturnType.JSON:
+        case VendorId.VYBOND, ReturnType.JSON:
             remove_cols = ["ucc", "upc"]
             pricing = price_fetch(mode="both", override_key="STATE_CPD")
             pivot = False
@@ -800,7 +800,7 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
-        case VendorId.BERRY, ReturnType.CSV:
+        case VendorId.VYBOND, ReturnType.CSV:
             remove_cols = ["ucc", "upc"]
             pricing = partial(price_fetch, mode="both", override_key="STATE_CPD")
             pivot = False
