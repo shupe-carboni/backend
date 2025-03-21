@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class VendorId(StrEnum):
     ADP = "adp"
     ATCO = "atco"
-    BERRY = "berry"
+    VYBOND = "vybond"
     FRIEDRICH = "friedrich"
     GLASFLOSS = "glasfloss"
     MILWAUKEE = "milwaukee"
