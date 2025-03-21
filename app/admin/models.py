@@ -49,7 +49,7 @@ class Product(BaseModel):
     part_id: str
     description: Optional[str] = ""
     categories: list[ProductCategory]
-    attrs: list[ProductAttr]
+    attrs: Optional[list[ProductAttr]] = None
 
 
 class PriceHistory(BaseModel):
