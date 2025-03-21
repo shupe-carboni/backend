@@ -30,12 +30,12 @@ WITH product_attrs_agg AS (
             'attrs', pa.attrs
         )::jsonb AS product
     FROM vendor_products vp
-    JOIN vendor_product_to_class_mapping vp_class_map
+    LEFT JOIN vendor_product_to_class_mapping vp_class_map
         ON vp_class_map.product_id = vp.id
-    JOIN vendor_product_classes product_class
+    LEFT JOIN vendor_product_classes product_class
         ON product_class.id = vp_class_map.product_class_id
         AND product_class.vendor_id = :vendor_id
-    JOIN product_attrs_agg pa
+    LEFT JOIN product_attrs_agg pa
         ON pa.product_id = vp.id
     WHERE vp.vendor_id = :vendor_id
     GROUP BY vp.id, vp.vendor_product_identifier, vp.vendor_product_description, pa.attrs
@@ -50,10 +50,10 @@ WITH product_attrs_agg AS (
         vpc.price,
         vpc.effective_date
     FROM vendor_pricing_by_class vpc
-    JOIN vendor_pricing_classes
+    LEFT JOIN vendor_pricing_classes
         ON vendor_pricing_classes.id = vpc.pricing_class_id
         AND vendor_pricing_classes.vendor_id = :vendor_id
-    JOIN product_details
+    LEFT JOIN product_details
         ON product_details.product_id = vpc.product_id
     WHERE EXISTS (
         SELECT 1

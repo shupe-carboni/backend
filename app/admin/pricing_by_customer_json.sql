@@ -2,14 +2,17 @@
 WITH product_attrs_agg AS (
     SELECT
         vendor_product_id as product_id,
-        json_agg(
-            json_build_object(
-                'id', id,
-                'attr', attr,
-                'type', type,
-                'value', value
-            )
-        )::jsonb as attrs
+        COALESCE(
+            json_agg(
+                json_build_object(
+                    'id', id,
+                    'attr', attr,
+                    'type', type,
+                    'value', value
+                )
+            )::jsonb,
+            '[]'::jsonb
+        ) as attrs
         FROM vendor_product_attrs
         GROUP BY vendor_product_id
 ), product_details as (
@@ -19,19 +22,22 @@ WITH product_attrs_agg AS (
             'id', vp.id,
             'part_id', vp.vendor_product_identifier,
             'description', vp.vendor_product_description,
-            'categories', json_agg(
-                json_build_object(
-                    'id', product_class.id,
-                    'name', product_class.name,
-                    'rank', product_class.rank
-                )
+            'categories', COALESCE(
+                json_agg (
+                    json_build_object(
+                        'id', product_class.id,
+                        'name', product_class.name,
+                        'rank', product_class.rank
+                    )
+                ) FILTER (WHERE product_class.id IS NOT NULL)::jsonb,
+                '[]'::jsonb
             ),
-            'attrs', pa.attrs
+            'attrs', COALESCE(pa.attrs, '[]'::jsonb)
         )::jsonb AS product
     FROM vendor_products vp
-    JOIN vendor_product_to_class_mapping vp_class_map
+    LEFT JOIN vendor_product_to_class_mapping vp_class_map
         ON vp_class_map.product_id = vp.id
-    JOIN vendor_product_classes product_class
+    LEFT JOIN vendor_product_classes product_class
         ON product_class.id = vp_class_map.product_class_id
         AND product_class.vendor_id = :vendor_id
     LEFT JOIN product_attrs_agg as pa
@@ -53,7 +59,7 @@ WITH product_attrs_agg AS (
     JOIN vendor_pricing_classes
         ON vendor_pricing_classes.id = vpc.pricing_class_id
         AND vendor_pricing_classes.vendor_id = :vendor_id
-    JOIN product_details
+    LEFT JOIN product_details
         ON product_details.product_id = vpc.product_id
     WHERE EXISTS (
         SELECT 1
