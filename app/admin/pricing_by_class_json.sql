@@ -64,6 +64,7 @@ WITH product_attrs_agg AS (
         AND a.id = :customer_id
         AND a.vendor_id = :vendor_id
     )
+    AND vpc.deleted_at IS NULL
 )
 SELECT 
     formatted_pricing.id,
