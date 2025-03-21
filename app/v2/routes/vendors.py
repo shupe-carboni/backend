@@ -1,21 +1,17 @@
-from io import StringIO
-from time import time
 from enum import StrEnum, auto
 from logging import getLogger
 from functools import partial
-from typing import Annotated, Callable, Literal, Union, TypeAlias
+from typing import Annotated, Callable, Union
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from enum import StrEnum
-from pandas import concat, DataFrame
 
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import *
-from app.admin import pricing_by_class, pricing_by_customer
-from app.admin.models import VendorId, FullPricing, Pricing, FullPricingWithLink
+from app.v2.pricing import transform, fetch_pricing
+from app.admin.models import VendorId, FullPricingWithLink
 from app.downloads import (
-    DownloadLink,
     XLSXFileResponse,
     FileResponse,
     DownloadIDs,
@@ -750,207 +746,29 @@ async def vendor_customer_pricing(
     except HTTPException as e:
         raise e
 
-    NestedKeys: TypeAlias = list[tuple[Literal["part_id", "category", "product"]]]
-    FetchMode: TypeAlias = Literal["both", "customer", "class"]
-
-    def fetch_pricing(mode: FetchMode, replace_on: NestedKeys = None) -> FullPricing:
-        """
-        Fetch either category-based pricing, customer-specific pricing, or both.
-        In the case 'both' are fetched, customer-specific pricing may replace
-        categorical price records. replace_on supplies a list of tuples containing key
-        names to apply the filter with jointly (an AND relationship)
-
-        Ex. replace_on = [('product', 'part_id'), ('category')]
-            Replaces categorical pricing with customer-specific pricing based on
-            matching the nested key 'part_id' under 'product' AND the top-level
-            key 'category'.
-        """
-        params = dict(vendor_id=vendor_id.value, customer_id=customer_id)
-        start = time()
-        try:
-            match mode:
-                case "both" if replace_on:
-                    customer_pricing = (
-                        DB_V2.execute(session, pricing_by_customer, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    customer_class_pricing = (
-                        DB_V2.execute(session, pricing_by_class, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    pricing = dict(
-                        customer_pricing=Pricing(data=customer_pricing),
-                        category_pricing=Pricing(data=customer_class_pricing),
-                    )
-                case "both" if not replace_on:
-                    customer_pricing = (
-                        DB_V2.execute(session, pricing_by_customer, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    customer_class_pricing = (
-                        DB_V2.execute(session, pricing_by_class, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    pricing = dict(
-                        customer_pricing=Pricing(data=customer_pricing),
-                        category_pricing=Pricing(data=customer_class_pricing),
-                    )
-                case "customer":
-                    customer_pricing = (
-                        DB_V2.execute(session, pricing_by_customer, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    pricing = dict(
-                        customer_pricing=Pricing(data=customer_pricing),
-                    )
-                case "class":
-                    customer_class_pricing = (
-                        DB_V2.execute(session, pricing_by_class, params=params)
-                        .mappings()
-                        .fetchall()
-                    )
-                    pricing = dict(
-                        category_pricing=Pricing(data=customer_class_pricing),
-                    )
-        finally:
-            session.close()
-        logger.info(f"query execution: {time() - start}")
-        if not any(p.data for p in pricing.values()):
-            raise HTTPException(404)
-        return FullPricing(**pricing)
-
-    def transform(
-        data: FullPricing | Callable, remove_cols: list[str] = None
-    ) -> FileResponse:
-        """
-        Takes pricing and formats into a CSV for return as a file to the client.
-        Although price history is included in the JSON response, the file
-        contains only the current listing in the pricing tables, even if
-        the effective_date is in the future
-
-        TODO: set up a flag to prefer a historical price if given a date that falls
-        between the current effective date and a historical date, most recent
-        timestamp.
-
-        """
-        start = time()
-        if isinstance(data, Callable):
-            data = data()
-        customer_pricing_dict = data.customer_pricing.model_dump(exclude_none=True)
-        category_pricing_dict = data.category_pricing.model_dump(exclude_none=True)
-
-        def flatten(pricing: dict) -> DataFrame:
-            prices_formatted = []
-            for price in pricing["data"]:
-                price: dict
-                product_info = {
-                    "part_id": price["product"]["part_id"],
-                    "description": price["product"]["description"],
-                }
-                product_attrs = {
-                    item["attr"]: item["value"] for item in price["product"]["attrs"]
-                }
-                product_categories = {
-                    f"category_{item['rank']}": item["name"]
-                    for item in price["product"]["categories"]
-                }
-                price_category = {"Price Category": price["category"]["name"]}
-                df = DataFrame(
-                    [
-                        {
-                            **product_info,
-                            **price_category,
-                            **product_categories,
-                            **product_attrs,
-                            "effective_date": price["effective_date"],
-                            "price": price["price"],
-                            "price_override": price.get("override", False),
-                            # don't include history for the file return
-                            # "history": price[
-                            #     "history"
-                            # ],
-                        }
-                    ]
-                )
-                df["price"] /= 100
-                prices_formatted.append(df)
-            return concat(prices_formatted, ignore_index=True)
-
-        match bool(customer_pricing_dict["data"]), bool(category_pricing_dict["data"]):
-            case True, True:
-                customer_pricing_df = flatten(customer_pricing_dict)
-                category_pricing_df = flatten(category_pricing_dict)
-                customer_overrides = customer_pricing_df[
-                    customer_pricing_df["price_override"] == True
-                ].copy()
-                i_cols = ["Price Category", "part_id"]
-                customer_overrides.set_index(i_cols, inplace=True)
-                category_pricing_df.set_index(i_cols, inplace=True)
-                category_pricing_df.update(customer_overrides)
-                category_pricing_df.reset_index(inplace=True)
-                result = concat(
-                    [
-                        category_pricing_df,
-                        customer_pricing_df[
-                            customer_pricing_df["price_override"] == False
-                        ],
-                    ]
-                )
-            case True, False:
-                result = flatten(customer_pricing_dict)
-            case False, True:
-                result = flatten(category_pricing_dict)
-            case False, False:
-                return
-
-        if remove_cols:
-            try:
-                result = result.drop(columns=remove_cols)
-            except:
-                pass
-        result.columns = list(result.columns.str.replace("_", " ").str.title())
-        buffer = StringIO()
-        result.to_csv(buffer, index=False)
-        buffer.seek(0)
-
-        customer_name = customer["data"]["attributes"]["name"]
-        vendor_name = vendor_id.value.title()
-        today_ = str(datetime.now().today())
-        filename = f"{customer_name} {vendor_name} Pricing {today_}"
-        logger.info(f"transform: {time() - start}")
-        return FileResponse(
-            content=buffer,
-            status_code=200,
-            media_type="text/csv",
-            filename=f"{filename}.csv",
-        )
-
+    price_fetch = partial(fetch_pricing, session, vendor_id, customer_id)
+    transform_ = partial(transform, customer, vendor_id)
     match vendor_id, return_type:
         # ReturnType.JSON: return pricing along with a download link to a CSV file
         # ReturnType.CSV: return a download link with deferred execution
         # ReturnType.XLSX: return a download link with deferred execution
         case VendorId.ATCO, ReturnType.JSON:
             remove_cols = ["fp_ean", "upc_code"]
-            pricing = fetch_pricing(mode="both")
-            cb = partial(transform, pricing, remove_cols)
+            pricing = price_fetch(mode="both")
+            cb = partial(transform_, pricing, remove_cols)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
         case VendorId.ATCO, ReturnType.CSV:
             remove_cols = ["fp_ean", "upc_code"]
-            pricing = partial(fetch_pricing, mode="both")
-            cb = partial(transform, pricing, remove_cols)
+            pricing = partial(price_fetch, mode="both")
+            cb = partial(transform_, pricing, remove_cols)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
         case VendorId.ADP, ReturnType.JSON:
             remove_cols = None
-            pricing = fetch_pricing(mode="customer")
+            pricing = price_fetch(mode="customer")
             # ADP uses a special file generation method
             cb = partial(
                 generate_program,
@@ -975,16 +793,18 @@ async def vendor_customer_pricing(
             return FullPricingWithLink(download_link=dl_link)
 
         case VendorId.BERRY, ReturnType.JSON:
-            remove_cols = []
-            pricing = fetch_pricing(mode="both")
-            cb = partial(transform, pricing, remove_cols)
+            remove_cols = ["ucc", "upc"]
+            pricing = price_fetch(mode="both", override_key="STATE_CPD")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
         case VendorId.BERRY, ReturnType.CSV:
-            remove_cols = []
-            pricing = partial(fetch_pricing, mode="both")
-            cb = partial(transform, pricing, remove_cols)
+            remove_cols = ["ucc", "upc"]
+            pricing = partial(price_fetch, mode="both", override_key="STATE_CPD")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
