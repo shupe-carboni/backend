@@ -4,7 +4,7 @@
 /tests/*.pdf
 /tests/*.PDF
 add_vendor_customers.py
-dl_all_adp_progs.py
+dl_all_price_files.py
 # need prefix slashes for rsync to work correctly with dot-prefix directories
 /.ebextensions/*
 /.platform/*

@@ -19,8 +19,10 @@ class MH(ModelSeries):
         (?P<rds>[R|N]?)
         """
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         spec_sql = """
             SELECT "HEIGHT", "WEIGHT", "PALLET_QTY"
             FROM mh_pallet_weight_height
@@ -117,13 +119,24 @@ class MH(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        pricing_sql = """
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE key = :key
-            AND series = 'MH'
-            AND vendor_id = 'adp';
-        """
+        if self.use_future:
+            pricing_sql = """
+                SELECT future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                ON future.price_id = vendor_product_series_pricing.id
+                AND key = :key
+                AND series = 'MH'
+                AND vendor_id = 'adp';
+            """
+        else:
+            pricing_sql = """
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE key = :key
+                AND series = 'MH'
+                AND vendor_id = 'adp';
+            """
         params = dict(key=self.attributes["scode"])
         pricing = self.db.execute(
             session=self.session, sql=pricing_sql, params=params

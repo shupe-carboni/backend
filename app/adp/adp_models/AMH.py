@@ -34,8 +34,10 @@ class AMH(ModelSeries):
         60: 100,
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Session):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Session, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.tonnage = int(self.attributes["tonnage"]) * 12
         self.cfm = self.cfm_mapping[self.tonnage]
         self.heat = self.kw_heat[int(self.attributes["heat"])]
@@ -59,23 +61,44 @@ class AMH(ModelSeries):
         return value
 
     def calc_zero_disc_price(self) -> int:
-        sql = """
-            SELECT price
-            FROM vendor_pricing_by_class AS a
-            WHERE EXISTS (
-                SELECT 1
-                FROM vendor_products b
-                WHERE b.vendor_product_identifier = :model
-                AND b.id = a.product_id
-                AND b.vendor_id = 'adp'
-            ) AND EXISTS (
-                SELECT 1
-                FROM vendor_pricing_classes c
-                WHERE c.id = a.pricing_class_id
-                AND c.name = 'ZERO_DISCOUNT'
-                AND c.vendor_id = 'adp'
-            );
-        """
+        if self.use_future:
+            sql = """
+                SELECT future.price
+                FROM vendor_pricing_by_class_future AS future
+                JOIN vendor_pricing_by_class AS a
+                ON future.price_id = a.id
+                AND EXISTS (
+                    SELECT 1
+                    FROM vendor_products b
+                    WHERE b.vendor_product_identifier = :model
+                    AND b.id = a.product_id
+                    AND b.vendor_id = 'adp'
+                ) AND EXISTS (
+                    SELECT 1
+                    FROM vendor_pricing_classes c
+                    WHERE c.id = a.pricing_class_id
+                    AND c.name = 'ZERO_DISCOUNT'
+                    AND c.vendor_id = 'adp'
+                );
+            """
+        else:
+            sql = """
+                SELECT price
+                FROM vendor_pricing_by_class AS a
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM vendor_products b
+                    WHERE b.vendor_product_identifier = :model
+                    AND b.id = a.product_id
+                    AND b.vendor_id = 'adp'
+                ) AND EXISTS (
+                    SELECT 1
+                    FROM vendor_pricing_classes c
+                    WHERE c.id = a.pricing_class_id
+                    AND c.name = 'ZERO_DISCOUNT'
+                    AND c.vendor_id = 'adp'
+                );
+            """
         price = self.db.execute(
             self.session, sql, dict(model=str(self))
         ).scalar_one_or_none()

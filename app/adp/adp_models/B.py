@@ -32,8 +32,10 @@ class B(ModelSeries):
         "4N": "4 row hot water coil without pump assembly",
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.min_qty = 4
         cache_key = f'adp_b_specs_{self.attributes["ton"]}'
         specs = CACHE.get(cache_key)
@@ -132,10 +134,17 @@ class B(ModelSeries):
         key_first_part = f"{self.tonnage}_{self.attributes['scode']}_"
         if pricing := CACHE.get(key_first_part):
             return pricing
+        elif self.use_future:
+            pricing_sql = """
+                SELECT key, future.price
+                FROM vendor_product_series_pricing_future as future
+                JOIN vendor_product_series_pricing
+                    ON future.price_id = vendor_product_series_pricing.id
+                    AND vendor_id = 'adp'
+                    AND series = 'B'
+                    AND key IN :keys;
+            """
         else:
-            keys = tuple(
-                [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
-            )
             pricing_sql = """
                 SELECT key, price
                 FROM vendor_product_series_pricing
@@ -143,20 +152,24 @@ class B(ModelSeries):
                 AND series = 'B'
                 AND key IN :keys;
             """
-            params = dict(keys=keys)
-            pricing_records: tuple[dict[str, str | int]] = (
-                self.db.execute(session=self.session, sql=pricing_sql, params=params)
-                .mappings()
-                .fetchall()
-            )
-            pricing = dict()
-            for r in pricing_records:
-                if r.get("key").endswith("base"):
-                    pricing["base"] = r.get("price")
-                elif r.get("key")[-1] in ("2", "3", "4"):
-                    pricing[r.get("key")[-1]] = r.get("price")
-            CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
-            return pricing, self.get_adders()
+
+        keys = tuple(
+            [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
+        )
+        params = dict(keys=keys)
+        pricing_records: tuple[dict[str, str | int]] = (
+            self.db.execute(session=self.session, sql=pricing_sql, params=params)
+            .mappings()
+            .fetchall()
+        )
+        pricing = dict()
+        for r in pricing_records:
+            if r.get("key").endswith("base"):
+                pricing["base"] = r.get("price")
+            elif r.get("key")[-1] in ("2", "3", "4"):
+                pricing[r.get("key")[-1]] = r.get("price")
+        CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
+        return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
         pricing_, adders_ = self.load_pricing()

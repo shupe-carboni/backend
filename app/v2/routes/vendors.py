@@ -1,4 +1,5 @@
 from enum import StrEnum, auto
+from datetime import date, time
 from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Union
@@ -26,6 +27,13 @@ VENDORS = Vendor.__jsonapi_type_override__
 
 logger = getLogger("uvicorn.info")
 vendors = APIRouter(prefix=f"/{VENDORS}", tags=["v2"])
+
+
+def date_to_datetime(d: date) -> Optional[datetime]:
+    if not d:
+        return
+    return datetime.combine(d, time(0, 0))
+
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
@@ -721,6 +729,7 @@ async def vendor_customer_pricing(
     session: NewSession,
     vendor_id: VendorId,
     customer_id: int,
+    effective_date: date = None,
     return_type: ReturnType = ReturnType.JSON,
 ) -> FullPricingWithLink:
     """
@@ -746,8 +755,10 @@ async def vendor_customer_pricing(
     except HTTPException as e:
         raise e
 
+    if effective_date:
+        effective_date = date_to_datetime(effective_date)
     price_fetch = partial(fetch_pricing, session, vendor_id, customer_id)
-    transform_ = partial(transform, customer, vendor_id)
+    transform_ = partial(transform, customer, vendor_id, effective_date=effective_date)
     match vendor_id, return_type:
         # ReturnType.JSON: return pricing along with a download link to a CSV file
         # ReturnType.CSV: return a download link with deferred execution
@@ -774,7 +785,7 @@ async def vendor_customer_pricing(
                 generate_program,
                 session=session,
                 customer_id=customer_id,
-                stage=Stage.PROPOSED,
+                effective_date=effective_date,
             )
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
@@ -787,7 +798,7 @@ async def vendor_customer_pricing(
                 generate_program,
                 session=session,
                 customer_id=customer_id,
-                stage=Stage.PROPOSED,
+                effective_date=effective_date,
             )
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)

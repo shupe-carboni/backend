@@ -18,8 +18,10 @@ class SC(ModelSeries):
         "S": ("Horizontal Slab", "Copper"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT cased, width, depth, height, weight, pallet_qty
@@ -78,13 +80,24 @@ class SC(ModelSeries):
             "H": 7,
             "S": 4,
         }
-        pricing_sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE :key ~ key
-            AND series = 'SC'
-            AND vendor_id = 'adp';
-        """
+        if self.use_future:
+            pricing_sql = f"""
+                SELECT future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                ON future.price_id = vendor_product_series_pricing.id
+                AND :key ~ key
+                AND series = 'SC'
+                AND vendor_id = 'adp';
+            """
+        else:
+            pricing_sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE :key ~ key
+                AND series = 'SC'
+                AND vendor_id = 'adp';
+            """
         key = f"{str(self)[:(key_len[self.attributes['mat']])]}_{col}"
         return int(
             self.db.execute(

@@ -90,7 +90,7 @@ def parse_model_and_pricing(
     token: Token,
     model_num: str,
     customer_id: int = 0,
-    price_year: int = 2025,
+    future: bool = False,
 ) -> ProgAttrs:
     """Used for feature extraction parsed from the model number and price check
     based on the permissions.
@@ -106,8 +106,12 @@ def parse_model_and_pricing(
     """
     adp_perm = token.permissions
     if adp_perm >= auth.Permissions.sca_employee:
-        if not customer_id:
+        if not customer_id and future:
+            parse_mode = ParsingModes.BASE_PRICE_FUTURE
+        elif not customer_id and not future:
             parse_mode = ParsingModes.BASE_PRICE
+        elif future:
+            parse_mode = ParsingModes.CUSTOMER_PRICING_FUTURE
         else:
             parse_mode = ParsingModes.CUSTOMER_PRICING
     elif customer_id:

@@ -306,15 +306,16 @@ class CustomerProgram:
     def __str__(self) -> str:
         return self.new_file_name()
 
-    def new_file_name(self) -> str:
+    def new_file_name(self, effective_date: datetime | None = None) -> str:
         TODAY = datetime.today().date()
         customer_name = self.customer_name.title()
+        file_date = TODAY if not effective_date else effective_date.date()
         if "'" in customer_name:
             # title() capitalizes or leaves alone letters after an apostrophe
             customer_name = re.sub(
                 r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name
             )
-        return f"{customer_name} {TODAY.year} ADP Product Strategy {TODAY}".replace(
+        return f"{customer_name} {file_date.year} ADP Product Strategy {file_date}".replace(
             "/", "_"
         )
 

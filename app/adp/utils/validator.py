@@ -25,18 +25,28 @@ class Validator:
     ) -> ModelSeries | bool:
         if self.text_len not in self.model_series.text_len or not self.raw_text:
             return False
-        price_strat_map = {
-            ParsingModes.BASE_PRICE: DB_V2,
-        }
         model = re.compile(self.model_series.regex, re.VERBOSE)
         model_parsed = model.match(self.raw_text)
         if model_parsed:
             try:
-                return self.model_series(
-                    session=self.session,
-                    re_match=model_parsed,
-                    db=price_strat_map[price_strat],
-                )
+                match price_strat:
+                    case (
+                        ParsingModes.BASE_PRICE_FUTURE
+                        | ParsingModes.CUSTOMER_PRICING_FUTURE
+                    ):
+                        return self.model_series(
+                            session=self.session,
+                            re_match=model_parsed,
+                            db=DB_V2,
+                            use_future=True,
+                        )
+                    case _:
+                        return self.model_series(
+                            session=self.session,
+                            re_match=model_parsed,
+                            db=DB_V2,
+                            use_future=False,
+                        )
             except NoBasePrice as np:
                 logger.error(
                     f"Model {model_parsed.group(0)} unable to be produced due to an error: {np.reason}"

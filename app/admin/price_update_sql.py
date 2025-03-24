@@ -15,35 +15,39 @@ SQL = {
             INSERT INTO adp_parts
             VALUES (:part_number, :description, :pkg_qty, :preferred, :standard)
         """,
-        DBOps.UPDATE_EXISTING: """
+        DBOps.ESTABLISH_FUTURE: """
             -- preferred
-            UPDATE vendor_pricing_by_class
-            SET price = new.preferred, effective_date = :ed
-            FROM adp_parts as new
-            JOIN vendor_products vp
-                ON vp.vendor_product_identifier = new.part_number
+            INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
+            SELECT vpc.id, preferred, :ed
+            FROM adp_parts
+            JOIN vendor_products AS vp
+                ON vp.vendor_product_identifier = part_number
                 AND vp.vendor_id = 'adp'
-            WHERE vp.id = vendor_pricing_by_class.product_id
-            AND EXISTS (
+            JOIN vendor_pricing_by_class vpc
+                ON vpc.product_id = vp.id
+            WHERE EXISTS (
                 SELECT 1
-                FROM vendor_pricing_classes a
-                WHERE a.id = pricing_class_id
-                AND a.name = 'PREFERRED_PARTS'
+                FROM vendor_pricing_classes
+                WHERE vendor_pricing_classes.id = vpc.pricing_class_id
+                AND vendor_pricing_classes.vendor_id = 'adp'
+                AND vendor_pricing_classes.name = 'PREFERRED_PARTS'
             );
             -- standard
-            UPDATE vendor_pricing_by_class
-            SET price = new.standard, effective_date = :ed
-            FROM adp_parts as new
-            JOIN vendor_products vp
-                ON vp.vendor_product_identifier = new.part_number
+            INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
+            SELECT vpc.id, standard, :ed
+            FROM adp_parts
+            JOIN vendor_products AS vp
+                ON vp.vendor_product_identifier = part_number
                 AND vp.vendor_id = 'adp'
-            WHERE vp.id = vendor_pricing_by_class.product_id
-            AND EXISTS (
+            JOIN vendor_pricing_by_class vpc
+                ON vpc.product_id = vp.id
+            WHERE EXISTS (
                 SELECT 1
-                FROM vendor_pricing_classes a
-                WHERE a.id = pricing_class_id
-                AND a.name = 'STANDARD_PARTS'
-            );
+                FROM vendor_pricing_classes
+                WHERE vendor_pricing_classes.id = vpc.pricing_class_id
+                AND vendor_pricing_classes.vendor_id = 'adp'
+                AND vendor_pricing_classes.name = 'STANDARD_PARTS'
+            )
         """,
         DBOps.INSERT_NEW_PRODUCT: """
             INSERT INTO vendor_products (
@@ -69,6 +73,7 @@ SQL = {
                 AND vp.vendor_id = 'adp'
             WHERE vp.id IN :new_part_ids
         """,
+        # set the future price as the current price effective today
         DBOps.INSERT_NEW_PRODUCT_PRICING: """
             -- preferred
             INSERT INTO vendor_pricing_by_class (
@@ -83,7 +88,7 @@ SQL = {
                     WHERE vendor_id = 'adp' 
                     AND name = 'PREFERRED_PARTS'
                 ), 
-                vp.id, preferred, :ed
+                vp.id, preferred, CURRENT_TIMESTAMP
             FROM adp_parts
             JOIN vendor_products AS vp
                 ON vp.vendor_product_identifier = part_number
@@ -103,7 +108,7 @@ SQL = {
                     WHERE vendor_id = 'adp' 
                     AND name = 'STANDARD_PARTS'
                 ), 
-                vp.id, standard, :ed
+                vp.id, standard, CURRENT_TIMESTAMP
             FROM adp_parts
             JOIN vendor_products AS vp
                 ON vp.vendor_product_identifier = part_number
@@ -111,9 +116,10 @@ SQL = {
             WHERE vp.id in :new_part_ids
             AND standard IS NOT NULL;
         """,
+        # Use when establishing the future as the current
         DBOps.UPDATE_CUSTOMER_PRICING: """
             UPDATE vendor_pricing_by_customer
-            SET price = new.price, effective_date = :ed
+            SET price = new.price, effective_date = new.effective_date
             FROM vendor_pricing_by_class AS new
             JOIN vendor_pricing_classes
                 ON vendor_pricing_classes.id = new.pricing_class_id
@@ -139,26 +145,11 @@ SQL = {
             INSERT INTO adp_mgds
             VALUES (:customer, :mg, :discount);
         """,
-        DBOps.UPDATE_EXISTING: """
-            UPDATE vendor_product_class_discounts
-            SET discount = new.discount, effective_date = :ed
-            FROM adp_mgds as new
-            JOIN vendor_product_classes vp_class
-                ON vp_class.name = new.mg
-                AND vp_class.rank = 2
-                AND vp_class.vendor_id = 'adp'
-            JOIN vendor_customers vc
-                ON vc.name = new.customer
-                AND vc.vendor_id = 'adp'
-            WHERE vp_class.id = product_class_id
-                AND vc.id = vendor_customer_id
-            RETURNING *;
-        """,
         DBOps.INSERT_NEW_DISCOUNTS: """
             INSERT INTO vendor_product_class_discounts (
                 product_class_id, vendor_customer_id, 
                 discount, effective_date)
-            SELECT vp_class.id, vc.id, new.discount, :ed
+            SELECT vp_class.id, vc.id, new.discount, CURRENT_TIMESTAMP
             FROM adp_mgds as new
             JOIN vendor_product_classes vp_class
                 ON vp_class.name = new.mg
@@ -175,29 +166,24 @@ SQL = {
                 )
             RETURNING *;
         """,
-        DBOps.REMOVE_MISSING: """
-            UPDATE vendor_product_class_discounts
-            SET deleted_at = CURRENT_TIMESTAMP
-            WHERE NOT EXISTS (
-                SELECT 1 
-                FROM vendor_product_class_discounts a
-                JOIN vendor_product_classes vp_class
-                    ON vp_class.rank = 2
-                    AND vp_class.vendor_id = 'adp'
-                    AND vp_class.id = a.product_class_id
-                JOIN vendor_customers vc
-                    ON vc.vendor_id = 'adp'
-                    AND a.vendor_customer_id = vc.id
-                JOIN adp_mgds as new
-                    ON vp_class.name = new.mg
-                    AND vc.name = new.customer
-                WHERE a.id = vendor_product_class_discounts.id
-            ) AND EXISTS (
-                SELECT 1
-                FROM vendor_customers vc_1
-                WHERE vc_1.id = vendor_product_discounts.vendor_customer_id
-                AND vc_1.vendor_id = 'adp'
-            );
+        DBOps.ESTABLISH_FUTURE: """
+            INSERT INTO vendor_product_class_discounts_future (
+                discount_id,
+                discount,
+                effective_date
+            )
+            SELECT vpc_discount.id, discount, :ed
+            FROM adp_mgds
+            JOIN vendor_product_classes vp_class
+                ON vp_class.name = adp_mgds.mg
+                AND vp_class.rank = 2
+                AND vp_class.vendor_id = 'adp'
+            JOIN vendor_customers vc
+                ON vc.name = adp_mgds.customer
+                AND vc.vendor_id = 'adp'
+        """,
+        DBOps.TEARDOWN: """
+            DROP TABLE IF EXISTS adp_mgds;
         """,
     },
     "adp_customers": {
@@ -219,7 +205,6 @@ SQL = {
         """,
         DBOps.TEARDOWN: """
             DROP TABLE IF EXISTS adp_customers;
-            DROP TABLE IF EXISTS adp_mgds;
         """,
     },
     ADPCustomerRefSheet.SPECIAL_NET: {
@@ -235,29 +220,6 @@ SQL = {
             INSERT INTO adp_snps
             VALUES (:customer, :description, :price);
         """,
-        DBOps.UPDATE_EXISTING: """
-            UPDATE vendor_product_discounts
-            SET discount = (1-(new.price::float / class_price.price::float))*100,
-                effective_date = :ed
-            FROM adp_snps AS new
-            JOIN vendor_customers vc
-                ON vc.name = new.customer
-                AND vc.vendor_id = 'adp'
-            JOIN vendor_products vp
-                ON vp.vendor_product_identifier = new.description
-                AND vp.vendor_id = 'adp'
-            JOIN vendor_pricing_by_class AS class_price
-                ON class_price.product_id = vp.id
-            WHERE EXISTS (
-                SELECT 1
-                FROM vendor_pricing_classes pricing_classes
-                WHERE pricing_classes.id = class_price.pricing_class_id
-                AND pricing_classes.name = 'ZERO_DISCOUNT'
-                AND pricing_classes.vendor_id = 'adp'
-            )
-            AND vendor_product_discounts.product_id = vp.id
-            AND vendor_product_discounts.vendor_customer_id = vc.id;
-        """,
         DBOps.INSERT_NEW_DISCOUNTS: """
             INSERT INTO vendor_product_discounts (
                 product_id, 
@@ -266,7 +228,7 @@ SQL = {
                 effective_date
             )
             SELECT vp.id, vc.id,
-                (1-(new.price::float / class_price.price::float))*100, :ed
+                (1-(new.price::float / class_price.price::float))*100, CURRENT_TIMESTAMP
             FROM adp_snps AS new
             JOIN vendor_customers vc
                 ON vc.name = new.customer
@@ -283,28 +245,28 @@ SQL = {
                 and z.vendor_customer_id = vc.id
             );
         """,
-        DBOps.REMOVE_MISSING: """
-            UPDATE vendor_product_discounts
-            SET deleted_at = CURRENT_TIMESTAMP
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM vendor_product_discounts vp_discounts
-                JOIN vendor_customers vc
-                    ON vc.vendor_id = 'adp'
-                    AND vc.id = vp_discounts.vendor_customer_id
-                JOIN vendor_products vp
-                    ON vp.vendor_id = 'adp'
-                    AND vp.id = vp_discounts.product_id
-                JOIN adp_snps AS new
-                    ON vp.vendor_product_identifier = new.description
-                    AND vc.name = new.customer
-                WHERE vp_discounts.id = vendor_product_discounts.id
-            ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_customers vc_1
-                    WHERE vc_1.id = vendor_product_discounts.vendor_customer_id
-                    AND vc_1.vendor_id = 'adp'
-                );
+        DBOps.ESTABLISH_FUTURE: """
+            INSERT INTO vendor_product_discounts_future (
+                discount_id,
+                discount,
+                effective_date
+            )
+            SELECT 
+                class_price.id,
+                (1-(new.price::float / class_price_future.price::float))*100, 
+                :ed
+            FROM adp_snps AS new
+            JOIN vendor_customers vc
+                ON vc.name = new.customer
+                AND vc.vendor_id = 'adp'
+            JOIN vendor_products vp
+                ON vp.vendor_product_identifier = new.description
+                AND vp.vendor_id = 'adp'
+            JOIN vendor_pricing_by_class AS class_price
+                ON class_price.product_id = vp.id
+            JOIN vendor_pricing_by_class_future AS class_price_future
+                ON class_price_future.price_id = class_price.id
+                WHERE class_price_future.effective_date = :ed
         """,
         DBOps.TEARDOWN: """
             DROP TABLE IF EXISTS adp_snps;

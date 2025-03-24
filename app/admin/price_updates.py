@@ -111,6 +111,103 @@ async def new_pricing(
     return Response(status_code=status.HTTP_200_OK)
 
 
+@price_updates.get("/{vendor_id}")
+async def establish_current_from_current_futures(session: NewSession, token: Token):
+    if token.permissions < auth.Permissions.sca_admin:
+        logger.info("Insufficient permissions. Rejected.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    today_date = datetime.today().date()
+    any_class = """
+        SELECT id
+        FROM vendor_pricing_by_class_future
+        WHERE effective_date <= :today_date
+        LIMIT 1;
+    """
+    any_customer = """
+        SELECT id
+        FROM vendor_pricing_by_customer_future
+        WHERE effective_date <= :today_date
+        LIMIT 1;
+    """
+    any_product_class_disc = """
+        SELECT id
+        FROM vendor_product_class_discounts_future
+        WHERE effective_date <= :today_date
+        LIMIT 1;
+    """
+    any_product_disc = """
+        SELECT id
+        FROM vendor_product_discounts_future
+        WHERE effective_date <= :today_date
+        LIMIT 1;
+    """
+    class_pricing_update = """
+        UPDATE vendor_pricing_by_class
+        SET price = future.price, effective_date = future.effective_date
+        FROM vendor_pricing_by_class_future as future
+        WHERE future.price_id = vendor_pricing_by_class.id
+        AND future.effective_date::DATE <= :today_date
+        AND vendor_pricing_by_class.deleted_at IS NULL;
+
+        DELETE FROM vendor_pricing_by_class_future 
+        WHERE effective_date::DATE <= :today_date;
+    """
+    customer_pricing_update = """
+        UPDATE vendor_pricing_by_customer
+        SET price = future.price, effective_date = future.effective_date
+        FROM vendor_pricing_by_customer_future as future
+        WHERE future.price_id = vendor_pricing_by_customer.id
+        AND future.effective_date::DATE <= :today_date
+        AND vendor_pricing_by_customer.deleted_at IS NULL;
+
+        DELETE FROM vendor_pricing_by_customer_future 
+        WHERE effective_date::DATE <= :today_date;
+    """
+    customer_product_class_discount_update = """
+        UPDATE vendor_product_class_discounts
+        SET discount = future.discount, effective_date = future.effective_date
+        FROM vendor_product_class_discounts_future as future
+        WHERE future.discount_id = vendor_product_class_discounts.id
+        AND future.effective_date::DATE <= :today_date
+        AND vendor_product_class_discounts.deleted_at IS NULL;
+
+        DELETE FROM vendor_product_class_discounts_future 
+        WHERE effective_date::DATE <= :today_date;
+    """
+    customer_product_discount_update = """
+        UPDATE vendor_product_discounts
+        SET discount = future.discount, effective_date = future.effective_date
+        FROM vendor_product_discounts_future as future
+        WHERE future.discount_id = vendor_product_discounts.id
+        AND future.effective_date::DATE <= :today_date
+        AND vendor_product_discounts.deleted_at IS NULL;
+
+        DELETE FROM vendor_product_discounts_future 
+        WHERE effective_date::DATE <= :today_date;
+    """
+    session.begin()
+    try:
+        param = dict(today_date=today_date)
+        if DB_V2.execute(any_class, param).scalar_one_or_none():
+            DB_V2.execute(class_pricing_update, param)
+        if DB_V2.execute(any_customer, param).scalar_one_or_none():
+            DB_V2.execute(customer_pricing_update, param)
+        if DB_V2.execute(any_product_class_disc, param).scalar_one_or_none():
+            DB_V2.execute(customer_product_class_discount_update, param)
+        if DB_V2.execute(any_product_disc, param).scalar_one_or_none():
+            DB_V2.execute(customer_product_discount_update, param)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        logger.info("Prices and discounts updated")
+        session.commit()
+        return Response(status_code=status.HTTP_200_OK)
+    finally:
+        session.close()
+
+
 def apply_percentage(
     session: Session,
     vendor_id: VendorId,
@@ -124,23 +221,31 @@ def apply_percentage(
     Discounts are not expected to change, just the underlying price points.
     """
     class_pricing_update = """
-        UPDATE vendor_pricing_by_class
-        SET price = CAST(ROUND(price * :multiplier) AS INTEGER), effective_date = :ed
+        INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
+        SELECT 
+            class_price.id, 
+            CAST(ROUND(price * :multiplier) AS INTEGER),
+            :ed
+        FROM vendor_pricing_by_class AS class_price
         WHERE EXISTS (
             SELECT 1
             FROM vendor_products
-            WHERE vendor_products.id = vendor_pricing_by_class.product_id
+            WHERE vendor_products.id = class_price.product_id
             AND vendor_products.vendor_id = :vendor_id
         ) 
         AND deleted_at IS NULL;
     """
     customer_pricing_update = """
-        UPDATE vendor_pricing_by_customer
-        SET price = CAST(ROUND(price * :multiplier) AS INTEGER), effective_date = :ed
+        INSERT INTO vendor_pricing_by_customer_future (price_id, price, effective_date)
+        SELECT 
+            customer_price.id, 
+            CAST(ROUND(price * :multiplier) AS INTEGER),
+            :ed
+        FROM vendor_pricing_by_customer AS customer_price
         WHERE EXISTS (
             SELECT 1
             FROM vendor_products
-            WHERE vendor_products.id = vendor_pricing_by_customer.product_id
+            WHERE vendor_products.id = customer_price.product_id
             AND vendor_products.vendor_id = :vendor_id
         ) 
         AND deleted_at IS NULL;
@@ -158,8 +263,13 @@ def apply_percentage(
         DB_V2.execute(session, class_pricing_update, params)
         DB_V2.execute(session, customer_pricing_update, params)
     except Exception as e:
+        logger.critical(e)
         session.rollback()
     else:
+        logger.info(
+            "Future Pricing established with an increase percentage of "
+            f"{increase_pct*100:0.2f}%"
+        )
         session.commit()
     finally:
         session.close()

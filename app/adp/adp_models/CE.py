@@ -24,8 +24,10 @@ class CE(ModelSeries):
         "V": ("Vertical", "CA"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         dims_sql = """
             SELECT adp_model, width, depth, height, length, weight,
                 pallet_qty

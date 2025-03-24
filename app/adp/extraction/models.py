@@ -39,6 +39,8 @@ def parse_model_string(
 ) -> pd.Series:
 
     match mode:
+        case ParsingModes.BASE_PRICE_FUTURE | ParsingModes.CUSTOMER_PRICING_FUTURE:
+            zero_disc_price_strat = mode
         case _:
             zero_disc_price_strat = ParsingModes.BASE_PRICE
 
@@ -55,7 +57,7 @@ def parse_model_string(
     record = model_obj.record()
     record_series = pd.Series(record)
     match mode:
-        case ParsingModes.CUSTOMER_PRICING | ParsingModes.CUSTOMER_PRICING_2024:
+        case ParsingModes.CUSTOMER_PRICING | ParsingModes.CUSTOMER_PRICING_FUTURE:
             record_series["customer_id"] = adp_customer_id
             priced_model = price_models_by_customer_discounts(
                 session=session,
@@ -134,51 +136,61 @@ def price_models_by_customer_discounts(
     adp_customer_id: int,
     price_mode: ParsingModes = ParsingModes.CUSTOMER_PRICING,
 ) -> pd.Series:
-    mat_grp_disc_sql = """
-        SELECT class.name AS mat_grp, discount, effective_date,
-            vendor_customer_id AS customer_id
-        FROM vendor_product_class_discounts a
-        JOIN vendor_product_classes as class on class.id = product_class_id
-        WHERE vendor_customer_id = :adp_customer_id;
-    """
-
-    snps_sql = """
-        SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
-            discount
-        FROM vendor_product_discounts AS a
-        JOIN vendor_products AS vp ON vp.id = a.product_id
-        WHERE vendor_customer_id = :adp_customer_id;
-    """
     match price_mode:
         case ParsingModes.CUSTOMER_PRICING:
-            mat_grp_discounts = pd.DataFrame(
-                DB_V2.execute(
-                    session=session,
-                    sql=mat_grp_disc_sql,
-                    params=dict(adp_customer_id=adp_customer_id),
-                )
-                .mappings()
-                .fetchall()
-            )
-            snps = pd.DataFrame(
-                DB_V2.execute(
-                    session=session,
-                    sql=snps_sql,
-                    params=dict(adp_customer_id=adp_customer_id),
-                )
-                .mappings()
-                .fetchall()
-            )
-        case ParsingModes.CUSTOMER_PRICING_2024:
-            raise Exception("No Longer Supported")
-            # mat_grp_discounts = ADP_DB_2024.load_df(
-            #     session=session,
-            #     table_name="material_group_discounts",
-            #     customer_id=adp_customer_id,
-            # )
-            # snps = ADP_DB_2024.load_df(
-            #     session=session, table_name="snps", customer_id=adp_customer_id
-            # ).drop_duplicates()
+            mat_grp_disc_sql = """
+                SELECT class.name AS mat_grp, discount, effective_date,
+                    vendor_customer_id AS customer_id
+                FROM vendor_product_class_discounts a
+                JOIN vendor_product_classes as class on class.id = product_class_id
+                WHERE vendor_customer_id = :adp_customer_id;
+            """
+
+            snps_sql = """
+                SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
+                    discount
+                FROM vendor_product_discounts AS a
+                JOIN vendor_products AS vp ON vp.id = a.product_id
+                WHERE vendor_customer_id = :adp_customer_id;
+            """
+        case ParsingModes.CUSTOMER_PRICING_FUTURE:
+            mat_grp_disc_sql = """
+                SELECT class.name AS mat_grp, future.discount, future.effective_date,
+                    vendor_customer_id AS customer_id
+                FROM vendor_product_class_discounts_future future
+                JOIN vendor_product_class_discounts a
+                    ON a.id = future.discount_id
+                JOIN vendor_product_classes AS class on class.id = product_class_id
+                WHERE vendor_customer_id = :adp_customer_id;
+            """
+
+            snps_sql = """
+                SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
+                    future.discount
+                FROM vendor_product_discounts_future AS future 
+                JOIN vendor_product_discounts AS a
+                    ON a.id = future.discount_id
+                JOIN vendor_products AS vp ON vp.id = a.product_id
+                WHERE vendor_customer_id = :adp_customer_id;
+            """
+    mat_grp_discounts = pd.DataFrame(
+        DB_V2.execute(
+            session=session,
+            sql=mat_grp_disc_sql,
+            params=dict(adp_customer_id=adp_customer_id),
+        )
+        .mappings()
+        .fetchall()
+    )
+    snps = pd.DataFrame(
+        DB_V2.execute(
+            session=session,
+            sql=snps_sql,
+            params=dict(adp_customer_id=adp_customer_id),
+        )
+        .mappings()
+        .fetchall()
+    )
 
     no_disc_price = int(model["zero_discount_price"])
     mat_group: str = model["mpg"]

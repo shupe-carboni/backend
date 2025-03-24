@@ -161,7 +161,9 @@ class ModelSeries:
         20: "20 kW",
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, use_future: bool
+    ):
         key_ = "adp_material_groups"
         cached = CACHE.get(key_)
         match cached:
@@ -179,6 +181,7 @@ class ModelSeries:
         self.attributes = re_match.groupdict()
         self.session = session
         self.db = db
+        self.use_future = use_future
 
     def __str__(self) -> str:
         return "".join(self.attributes.values()).strip()
@@ -253,6 +256,16 @@ class ModelSeries:
         key_ = f"adp_series_{self.__series_name__()}"
         if adders := CACHE.get(key_):
             return adders
+        elif self.use_future:
+            price_adders_sql = """
+                SELECT key, future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                    ON future.price_id = vendor_product_series_pricing.id
+                    AND series = :series
+                    AND vendor_id = 'adp'
+                    AND key like 'adder_%';
+            """
         else:
             price_adders_sql = """
                 SELECT key, price
@@ -261,21 +274,18 @@ class ModelSeries:
                 and vendor_id = 'adp'
                 and key like 'adder_%';
             """
-
-            params = dict(series=self.__series_name__())
-            adders_: list[dict[str, str | int]] = (
-                self.db.execute(
-                    session=self.session, sql=price_adders_sql, params=params
-                )
-                .mappings()
-                .all()
-            )
-            adders = dict()
-            for adder in adders_:
-                # adder_type is a container in case the type name itself has underscores
-                _, *adder_type, adder_key = adder["key"].split("_")
-                adder_type = "_".join(adder_type)
-                adders.setdefault(adder_type, {})
-                adders[adder_type] |= {adder_key: adder["price"]}
-            CACHE.add_or_update(key_, adders)
-            return adders
+        params = dict(series=self.__series_name__())
+        adders_: list[dict[str, str | int]] = (
+            self.db.execute(session=self.session, sql=price_adders_sql, params=params)
+            .mappings()
+            .all()
+        )
+        adders = dict()
+        for adder in adders_:
+            # adder_type is a container in case the type name itself has underscores
+            _, *adder_type, adder_key = adder["key"].split("_")
+            adder_type = "_".join(adder_type)
+            adders.setdefault(adder_type, {})
+            adders[adder_type] |= {adder_key: adder["price"]}
+        CACHE.add_or_update(key_, adders)
+        return adders

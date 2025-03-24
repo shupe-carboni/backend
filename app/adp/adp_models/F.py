@@ -19,8 +19,10 @@ class F(ModelSeries):
         (?P<rds>[R]?)
         """
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         if not any([self.attributes.get("revision"), self.attributes.get("rds")]):
             raise Exception(
                 "Invalid Model Number. Legacy R410a models now have a "
@@ -99,13 +101,24 @@ class F(ModelSeries):
         # NOTE the ~ operator in Postgres checks that :slab matches regex
         # values contained in the column "slab". The selection based on key
         # ignores the key suffix that denotes the heat kit so that it grabs them all
-        pricing_sql = """
-            SELECT key, price
-            FROM vendor_product_series_pricing
-            WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
-            AND vendor_id = 'adp'
-            AND series = 'F';
-        """
+        if self.use_future:
+            pricing_sql = """
+                SELECT key, future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                ON future.price_id = vendor_product_series_pricing.id
+                AND :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
+                AND vendor_id = 'adp'
+                AND series = 'F';
+            """
+        else:
+            pricing_sql = """
+                SELECT key, price
+                FROM vendor_product_series_pricing
+                WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
+                AND vendor_id = 'adp'
+                AND series = 'F';
+            """
         key = f"{self.tonnage}_{self.attributes['scode']}_"
         params = dict(key=key)
         pricing = (

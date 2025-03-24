@@ -25,8 +25,10 @@ class HD(ModelSeries):
     """
     material_weight = {"D": "WEIGHT_CU", "P": "WEIGHT_AL"}
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         specs_sql = f"""
             SELECT length, pallet_qty, "{self.material_weight[
                 self.attributes['mat']]}"
@@ -159,17 +161,32 @@ class HD(ModelSeries):
         self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        pricing_sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE (
-                key = :key_1
-                OR key = :key_2
-            ) AND (
-                series = 'HD'
-                AND vendor_id = 'adp'
-            );
-        """
+        if self.use_future:
+            pricing_sql = f"""
+                SELECT future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                ON future.price_id = vendor_product_series_pricing.id
+                AND (
+                    key = :key_1
+                    OR key = :key_2
+                ) AND (
+                    series = 'HD'
+                    AND vendor_id = 'adp'
+                );
+            """
+        else:
+            pricing_sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE (
+                    key = :key_1
+                    OR key = :key_2
+                ) AND (
+                    series = 'HD'
+                    AND vendor_id = 'adp'
+                );
+            """
         try:
             key_1 = str(int(self.attributes["scode"]))
             key_2 = f"{int(self.attributes['scode']):02}"

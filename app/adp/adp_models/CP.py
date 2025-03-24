@@ -39,8 +39,10 @@ class CP(ModelSeries):
         "C": "Bleed HP-A/C TXV (R-454B)",
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.pallet_qty = 8
         self.cased = self.attributes.get("cased") == "C"
         dims_sql = """
@@ -122,13 +124,24 @@ class CP(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE key = :model 
-            AND vendor_id = 'adp'
-            AND series = 'CP';
-        """
+        if self.use_future:
+            sql = f"""
+                SELECT future.price
+                FROM vendor_product_series_pricing_future as future
+                JOIN vendor_product_series_pricing
+                    ON vendor_product_series_pricing.id = future.price_id
+                    AND key = :model 
+                    AND vendor_id = 'adp'
+                    AND series = 'CP';
+            """
+        else:
+            sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE key = :model 
+                AND vendor_id = 'adp'
+                AND series = 'CP';
+            """
         model = str(self)
         params = dict(model=model)
         result = self.db.execute(

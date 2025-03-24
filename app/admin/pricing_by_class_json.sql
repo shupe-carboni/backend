@@ -65,13 +65,23 @@ WITH product_attrs_agg AS (
         AND a.vendor_id = :vendor_id
     )
     AND vpc.deleted_at IS NULL
+), with_future_price AS (
+    SELECT
+        formatted_pricing.id,
+        category,
+        product,
+        formatted_pricing.price,
+        formatted_pricing.effective_date,
+        json_build_object(
+            'price', future.price,
+            'effective_date', future.effective_date
+        )::jsonb as future
+        FROM vendor_pricing_by_class_future as future
+        JOIN formatted_pricing
+            ON future.price_id = formatted_pricing.id
 )
 SELECT 
-    formatted_pricing.id,
-    category,
-    product,
-    formatted_pricing.price,
-    formatted_pricing.effective_date,
+    with_future_price.*,
     json_agg(
         json_build_object(
             'id', h.id,
@@ -80,12 +90,13 @@ SELECT
             'timestamp', h.timestamp
         )
     ) as history
-FROM formatted_pricing
+FROM with_future_price
 LEFT JOIN vendor_pricing_by_class_changelog AS h
-    ON vendor_pricing_by_class_id = formatted_pricing.id
+    ON vendor_pricing_by_class_id = with_future_price.id
 GROUP BY 
-    formatted_pricing.id, 
-    category,
-    product,
-    formatted_pricing.price,
-    formatted_pricing.effective_date;
+    with_future_price.id, 
+    with_future_price.category,
+    with_future_price.product,
+    with_future_price.price,
+    with_future_price.effective_date,
+    with_future_price.future;

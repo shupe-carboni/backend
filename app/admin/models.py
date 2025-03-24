@@ -59,6 +59,11 @@ class PriceHistory(BaseModel):
     timestamp: datetime
 
 
+class PriceFuture(BaseModel):
+    price: int
+    effective_date: datetime
+
+
 class PriceItem(BaseModel):
     id: int
     override: Optional[bool] = None
@@ -67,6 +72,7 @@ class PriceItem(BaseModel):
     price: int
     effective_date: datetime
     history: list[PriceHistory]
+    future: Optional[PriceFuture] = None
     notes: Optional[list[PriceAttr]] = None
 
 
@@ -115,3 +121,4 @@ class DBOps(StrEnum):
     UPDATE_CUSTOMER_PRICING = auto()
     REMOVE_MISSING = auto()
     TEARDOWN = auto()
+    ESTABLISH_FUTURE = auto()

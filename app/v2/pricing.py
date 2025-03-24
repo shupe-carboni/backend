@@ -1,7 +1,7 @@
 from io import StringIO
 from time import time
 from typing import Callable, TypeAlias, Literal
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import getLogger
 from pandas import DataFrame, concat
 from fastapi import HTTPException
@@ -13,7 +13,7 @@ from app.admin import pricing_by_class, pricing_by_customer
 logger = getLogger("uvicorn.info")
 
 
-def flatten(pricing: dict) -> DataFrame:
+def flatten(pricing: dict, effective_date: datetime | None) -> DataFrame:
     prices_formatted = []
     for price in pricing["data"]:
         price: dict
@@ -35,6 +35,40 @@ def flatten(pricing: dict) -> DataFrame:
                 notes["notes"].append(f"{item['attr']}: {item['value']}")
 
         notes = {"notes": "\n".join(notes["notes"])}
+
+        # swap out the price and date signifying the current state
+        # with either a historical or future date
+        # Additionally, filter out future dated data that's in place of current
+        def get_historical_price(price_: dict):
+            if history := price_.get("history"):
+                closest_ = history[0], effective_date - history[0]["effective_date"]
+                for rec in history:
+                    diff_ = effective_date - rec["effective_date"]
+                    if timedelta(0) < diff_ < closest_[1]:
+                        closest_ = rec, diff_
+
+                (historic_price, _) = closest_
+                price_["price"] = historic_price["price"]
+                price_["effective_date"] = historic_price["effective_date"]
+            return price_
+
+        if not effective_date:
+            effective_date = datetime.today()
+        if effective_date >= datetime.today():
+            if future := price.get("future"):
+                if effective_date >= future["effective_date"]:
+                    price["price"] = future["price"]
+                    price["effective_date"] = future["effective_date"]
+            if price["effective_date"] > effective_date:
+                price = get_historical_price(price)
+
+        else:
+            price = get_historical_price(price)
+
+        if price["effective_date"] > effective_date:
+            # skip future pricing if not replaced by history
+            continue
+
         price_category = {"Price Category": price["category"]["name"]}
         df = DataFrame(
             [
@@ -47,15 +81,13 @@ def flatten(pricing: dict) -> DataFrame:
                     "price": price["price"],
                     "price_override": price.get("override", False),
                     **notes,
-                    # don't include history for the file return
-                    # "history": price[
-                    #     "history"
-                    # ],
                 }
             ]
         )
         df["price"] /= 100
         prices_formatted.append(df)
+    if not prices_formatted:
+        raise HTTPException(204)
     return concat(prices_formatted, ignore_index=True)
 
 
@@ -65,6 +97,7 @@ def transform(
     data: Pricing | Callable,
     remove_cols: list[str] = None,
     pivot: bool = False,
+    effective_date: datetime = None,
 ) -> FileResponse:
     """
     Takes pricing and formats into a CSV for return as a file to the client.
@@ -81,7 +114,9 @@ def transform(
     if isinstance(data, Callable):
         data = data()
     pricing_dict = data.model_dump(exclude_none=True)
-    pricing_df = flatten(pricing_dict).drop(columns="price_override")
+    pricing_df = flatten(pricing_dict, effective_date=effective_date).drop(
+        columns="price_override"
+    )
     if pivot:
         cols = list(pricing_df.columns)
         # remove the ones going away
@@ -109,8 +144,10 @@ def transform(
 
     customer_name = customer["data"]["attributes"]["name"]
     vendor_name = vendor_id.value.title()
-    today_ = str(datetime.now().today())
-    filename = f"{customer_name} {vendor_name} Pricing {today_}"
+    file_date = (
+        str(datetime.today().date()) if not effective_date else effective_date.date()
+    )
+    filename = f"{customer_name} {vendor_name} Pricing {file_date}"
     logger.info(f"transform: {time() - start}")
     return FileResponse(
         content=buffer,

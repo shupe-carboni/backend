@@ -59,8 +59,10 @@ class HE(ModelSeries):
         "22": ("Left Hand", "Multiposition"),
     }
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         width: int = int(self.attributes["width"])
         if width % 10 == 2:
             self.width = width / 10 + 0.05
@@ -249,14 +251,24 @@ class HE(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-
-        pricing_sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing 
-            WHERE key = :key
-            AND vendor_id = 'adp'
-            AND series = 'HE';
-        """
+        if self.use_future:
+            pricing_sql = f"""
+                SELECT future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing 
+                ON future.price_id = vendor_product_series_pricing.id
+                AND key = :key
+                AND vendor_id = 'adp'
+                AND series = 'HE';
+            """
+        else:
+            pricing_sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing 
+                WHERE key = :key
+                AND vendor_id = 'adp'
+                AND series = 'HE';
+            """
         key = f"{self.attributes['scode']}_"
         if self.uncased:
             key += "uncased"

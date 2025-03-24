@@ -22,8 +22,10 @@ class V(ModelSeries):
         """
     material_weight = {"D": "WEIGHT_CU", "P": "WEIGHT_AL"}
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         weight_column = self.material_weight[self.attributes["mat"]]
         specs_sql = f"""
             SELECT length, pallet_qty, "{weight_column}"
@@ -171,13 +173,24 @@ class V(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        pricing_sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE key = :key
-            AND series = 'V'
-            AND vendor_id = 'adp';
-        """
+        if self.use_future:
+            pricing_sql = f"""
+                SELECT future.eprice
+                FROM vendor_product_series_pricing_future as future
+                JOIN vendor_product_series_pricing
+                    ON future.price_id = vendor_product_series_pricing.id
+                    AND key = :key
+                    AND series = 'V'
+                    AND vendor_id = 'adp';
+            """
+        else:
+            pricing_sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE key = :key
+                AND series = 'V'
+                AND vendor_id = 'adp';
+            """
         key = f"{self.attributes['scode']}_"
         if self.attributes["paint"] == "V":
             key += "embossed"

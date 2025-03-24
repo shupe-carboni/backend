@@ -29,24 +29,13 @@ BEGIN;
         WHERE a.vendor_product_identifier = ap.part_number
     );
 
-    -- update LIST_PRICE
-    UPDATE vendor_pricing_by_class
-    SET price = ap.price,
-        effective_date = CAST(:ed AS TIMESTAMP)
-    FROM vendor_pricing_by_class vpc
-    JOIN vendor_products vp 
-        ON vp.id = vpc.product_id
-        AND vp.vendor_id = 'atco'
-    JOIN vendor_pricing_classes vpc_class
-        ON vpc_class.id = vpc.pricing_class_id
-        AND vpc_class.name = 'LIST_PRICE'
-        AND vpc_class.vendor_id = 'atco'
-    JOIN atco_pricing ap
-        ON vp.vendor_product_identifier = ap.part_number
-    WHERE vpc.id = vendor_pricing_by_class.id;
-
     -- add new to LIST_PRICE
-    INSERT INTO vendor_pricing_by_class (pricing_class_id, product_id, price,effective_date)
+    INSERT INTO vendor_pricing_by_class (
+        pricing_class_id,
+        product_id,
+        price,
+        effective_date
+    )
     SELECT (
         SELECT id 
         FROM vendor_product_classes
@@ -54,7 +43,7 @@ BEGIN;
         AND name = 'LIST_PRICE') as pricing_class_id,
         vp.id as product_id,
         ap.price as price,
-        CAST(:ed AS TIMESTAMP) as effective_date
+        CURRENT_TIMESTAMP as effective_date
     FROM atco_pricing AS ap
     JOIN vendor_products AS vp
         ON vp.vendor_product_identifier = ap.part_number
@@ -63,11 +52,27 @@ BEGIN;
         SELECT DISTINCT product_id
         FROM vendor_pricing_by_class
     );
-    -- update class based pricing other than LIST_PRICE using multipliers
-    UPDATE vendor_pricing_by_class
-    SET price = reference.new_price, effective_date = CAST(:ed AS TIMESTAMP)
-    FROM (
-        SELECT vendor_pricing_by_class.id, list_mapped.new_price
+    -- establish future LIST_PRICE
+    INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
+    SELECT class_price.id, ap.price, CAST(:ed AS TIMESTAMP)
+    FROM vendor_pricing_by_class AS class_price
+    JOIN vendor_products vp 
+        ON vp.id = class_price.product_id
+        AND vp.vendor_id = 'atco'
+    JOIN vendor_pricing_classes vpc_class
+        ON vpc_class.id = class_price.pricing_class_id
+        AND vpc_class.name = 'LIST_PRICE'
+        AND vpc_class.vendor_id = 'atco'
+    JOIN atco_pricing ap
+        ON vp.vendor_product_identifier = ap.part_number
+        AND vp.vendor_id = 'atco';
+
+    -- establish future class based pricing other than LIST_PRICE using multipliers
+    INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
+    SELECT class_price.id, reference.new_price, CAST(:ed AS TIMESTAMP)
+    FROM vendor_pricing_by_class AS class_price
+    JOIN (
+        SELECT vendor_pricing_by_class.id AS id, list_mapped.new_price AS new_price
         FROM vendor_pricing_by_class
         JOIN (
             SELECT a.product_id, b.name, pricing_class_name, ((price::float)*multiplier)::int as new_price
@@ -93,13 +98,15 @@ BEGIN;
             AND vendor_pricing_classes.vendor_id = 'atco'
             AND vendor_pricing_classes.name = list_mapped.pricing_class_name
     ) AS reference
-    WHERE reference.id = vendor_pricing_by_class.id;
+    ON reference.id = class_price.id;
     
-    -- update customer specific class based pricing using product class multipliers
-    -- and list pricing
-    UPDATE vendor_pricing_by_customer
-    SET price = new_price, effective_date = CAST(:ed AS TIMESTAMP)
-    FROM (
+    -- establish future customer specific class based pricing
+    -- using product class multipliers and list pricing
+
+    INSERT INTO vendor_pricing_by_customer_future (price_id, price, effective_date)
+    SELECT customer_price.id, reference.new_price, CAST(:ed AS TIMESTAMP)
+    FROM vendor_pricing_by_customer as customer_price
+    JOIN (
         SELECT g.id,((1-e.discount)*a.price)::int new_price
         FROM vendor_pricing_by_class a
         JOIN vendor_products b
@@ -125,8 +132,9 @@ BEGIN;
             AND h.name = 'LIST_PRICE'
         )
     ) AS reference
-    WHERE vendor_pricing_by_customer.id = reference.id;
-    -- get on your knees and pray
+    ON customer_price.id = reference.id;
+
+    -- cleanup
     DROP TABLE IF EXISTS atco_multipliers;
     DROP TABLE IF EXISTS atco_pricing;
 COMMIT;

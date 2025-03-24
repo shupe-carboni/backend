@@ -17,8 +17,10 @@ class S(ModelSeries):
     """
     weight_by_material = {"K": "weight_cu", "L": "weight_cu", "M": "weight_al"}
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.tonnage = int(self.attributes["ton"])
         weight_col = self.weight_by_material[self.attributes["mat"]]
         specs_sql = f"""
@@ -101,11 +103,20 @@ class S(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        pricing_sql = f"""
-            SELECT price
-            FROM vendor_product_series_pricing
-            WHERE key = :key;
-        """
+        if self.use_future:
+            pricing_sql = f"""
+                SELECT future.price
+                FROM vendor_product_series_pricing_future AS future
+                JOIN vendor_product_series_pricing
+                ON future.price_id = vendor_product_series_pricing.id
+                AND key = :key;
+            """
+        else:
+            pricing_sql = f"""
+                SELECT price
+                FROM vendor_product_series_pricing
+                WHERE key = :key;
+            """
         key = f"{self.attributes['mat']}{self.attributes['scode']}_{self.attributes['heat']}"
         params = dict(key=key)
         pricing = self.db.execute(
