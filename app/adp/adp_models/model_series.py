@@ -256,9 +256,7 @@ class ModelSeries:
 
     def get_adders(self) -> PriceByCategoryAndKey:
         key_ = f"adp_series_{self.__series_name__()}"
-        if adders := CACHE.get(key_):
-            return adders
-        elif self.use_future:
+        if self.use_future:
             price_adders_sql = """
                 SELECT 
                     key, 

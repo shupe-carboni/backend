@@ -105,7 +105,7 @@ class S(ModelSeries):
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
-            pricing_sql = f"""
+            pricing_sql = """
                 SELECT 
                     COALESCE(future.price, current.price) as price,
                     COALESCE(future.effective_date, current.effective_date) as effective_date
@@ -117,10 +117,10 @@ class S(ModelSeries):
                     AND vendor_id = 'adp';
             """
         else:
-            pricing_sql = f"""
+            pricing_sql = """
                 SELECT price, effective_date
                 FROM vendor_product_series_pricing
-                WHERE key = :key;
+                WHERE key = :key
                     AND series = 'S'
                     AND vendor_id = 'adp';
             """
