@@ -286,6 +286,7 @@ def add_customer_terms_parts_and_logo_path(
     customer_id: int,
     coil_prog: CoilProgram,
     ah_prog: AirHandlerProgram,
+    effective_date: datetime | None,
 ) -> CustomerProgram:
 
     footer = pull_customer_payment_terms(session, customer_id)
@@ -316,7 +317,10 @@ def add_customer_terms_parts_and_logo_path(
     try:
         payment_terms = footer["terms"].item()
         pre_paid_freight = footer["ppf"].item()
-        effective_date = str(footer["effective_date"].item())
+        if effective_date:
+            effective_date = str(effective_date)
+        else:
+            effective_date = str(footer["effective_date"].item())
     except:
         logger.info(f"footer capture failed for {alias_name}")
         payment_terms = None
@@ -397,7 +401,7 @@ def pull_program_data_v2(
             )
             AND classes.rank = 1
             AND vpbc.deleted_at IS NULL
-            AND vpbc_future.effective_date <= :ed
+            AND vpbc_future.effective_date::date <= :ed
         """
     else:
         customer_strategy_sql = """
@@ -569,7 +573,7 @@ def pull_program_data(
 
 
 def generate_program(
-    session: Session, customer_id: int, effective_date: datetime
+    session: Session, customer_id: int, effective_date: datetime | None
 ) -> XLSXFileResponse:
     start = time()
     try:
@@ -583,6 +587,7 @@ def generate_program(
             customer_id=customer_id,
             coil_prog=coil_prog,
             ah_prog=ah_prog,
+            effective_date=effective_date,
         )
         logger.info(f"generating {full_program}")
         for prog in full_program:

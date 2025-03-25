@@ -101,14 +101,6 @@ def transform(
 ) -> FileResponse:
     """
     Takes pricing and formats into a CSV for return as a file to the client.
-    Although price history is included in the JSON response, the file
-    contains only the current listing in the pricing tables, even if
-    the effective_date is in the future
-
-    TODO: set up a flag to prefer a historical price if given a date that falls
-    between the current effective date and a historical date, most recent
-    timestamp.
-
     """
     start = time()
     if isinstance(data, Callable):
