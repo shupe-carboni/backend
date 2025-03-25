@@ -143,7 +143,9 @@ def price_models_by_customer_discounts(
                     vendor_customer_id AS customer_id
                 FROM vendor_product_class_discounts a
                 JOIN vendor_product_classes as class on class.id = product_class_id
-                WHERE vendor_customer_id = :adp_customer_id;
+                WHERE vendor_customer_id = :adp_customer_id
+                AND a.effective_date <= CURRENT_DATE
+                AND a.deleted_at is null;
             """
 
             snps_sql = """
@@ -151,7 +153,9 @@ def price_models_by_customer_discounts(
                     discount
                 FROM vendor_product_discounts AS a
                 JOIN vendor_products AS vp ON vp.id = a.product_id
-                WHERE vendor_customer_id = :adp_customer_id;
+                WHERE vendor_customer_id = :adp_customer_id
+                AND a.effective_date <= CURRENT_DATE
+                AND a.deleted_at is null;
             """
         case ParsingModes.CUSTOMER_PRICING_FUTURE:
             mat_grp_disc_sql = """
