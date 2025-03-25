@@ -78,7 +78,11 @@ class V(ModelSeries):
             if a2l_coil:
                 metering = -metering
         except ValueError:
+            if not rds_option:
+                # invalid model to have an A/B metering and blank RDS slot
+                raise Exception("RDS designation missing")
             pass
+
         self.metering = self.metering_mapping[metering]
         painted = self.cabinet_config == Cabinet.PAINTED
         if not painted and not a2l_coil:
@@ -175,7 +179,7 @@ class V(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             pricing_sql = f"""
-                SELECT future.eprice
+                SELECT future.price
                 FROM vendor_product_series_pricing_future as future
                 JOIN vendor_product_series_pricing
                     ON future.price_id = vendor_product_series_pricing.id
