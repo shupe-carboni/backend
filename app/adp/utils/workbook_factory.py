@@ -403,6 +403,24 @@ def pull_program_data_v2(
             AND vpbc.deleted_at IS NULL
             AND vpbc_future.effective_date::date <= :ed
         """
+        backup = """
+            SELECT vpbc.id as price_id, vpbc.product_id, vpbc.vendor_customer_id as customer_id, 
+                classes.name as cat_1, vp.vendor_product_identifier as model_number, vpbc.price
+            FROM vendor_pricing_by_customer AS vpbc
+            JOIN vendor_products AS vp ON vp.id = vpbc.product_id
+            JOIN vendor_product_to_class_mapping AS mapping ON mapping.product_id = vp.id
+            JOIN vendor_product_classes AS classes ON classes.id = mapping.product_class_id
+            WHERE vpbc.vendor_customer_id = :customer_id
+            AND EXISTS (
+                SELECT 1
+                FROM vendor_pricing_classes AS vpc
+                WHERE vpc.id = vpbc.pricing_class_id
+                AND vpc.name = 'STRATEGY_PRICING'
+                AND vp.vendor_id = 'adp'
+            )
+            AND classes.rank = 1
+            AND vpbc.deleted_at IS NULL;
+        """
     else:
         customer_strategy_sql = """
             SELECT vpbc.id as price_id, vpbc.product_id, vpbc.vendor_customer_id as customer_id, 
@@ -457,7 +475,17 @@ def pull_program_data_v2(
         .fetchall()
     )
     if customer_strategy.empty:
-        raise EmptyProgram("No customer strategy exists")
+        customer_strategy = pd.DataFrame(
+            DB_V2.execute(
+                session,
+                backup,
+                dict(customer_id=customer_id, ed=effective_date),
+            )
+            .mappings()
+            .fetchall()
+        )
+        if customer_strategy.empty:
+            raise EmptyProgram("No customer strategy exists")
     strategy_product_desc = pd.DataFrame(
         DB_V2.execute(
             session,
