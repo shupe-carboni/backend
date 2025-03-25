@@ -141,6 +141,12 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
         WHERE effective_date <= :today_date
         LIMIT 1;
     """
+    any_product_series = """
+        SELECT id
+        FROM vendor_product_series_pricing_future
+        WHERE effective_date <= :today_date
+        LIMIT 1;
+    """
     class_pricing_update = """
         UPDATE vendor_pricing_by_class
         SET price = future.price, effective_date = future.effective_date
@@ -185,6 +191,17 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
         DELETE FROM vendor_product_discounts_future 
         WHERE effective_date::DATE <= :today_date;
     """
+    product_series_update = """
+        UPDATE vendor_product_series_pricing
+        SET price = future.price, effective_date = future.effective_date
+        FROM vendor_product_series_pricing_future as future
+        WHERE future.price_id = vendor_product_series_pricing.id
+        AND future.effective_date::DATE <= :today_date
+        AND vendor_product_series_pricing.deleted_at IS NULL;
+
+        DELETE FROM vendor_product_series_pricing_future 
+        WHERE effective_date::DATE <= :today_date;
+    """
     session.begin()
     try:
         param = dict(today_date=today_date)
@@ -196,6 +213,8 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
             DB_V2.execute(customer_product_class_discount_update, param)
         if DB_V2.execute(any_product_disc, param).scalar_one_or_none():
             DB_V2.execute(customer_product_discount_update, param)
+        if DB_V2.execute(any_product_series, param).scalar_one_or_none():
+            DB_V2.execute(product_series_update, param)
     except Exception as e:
         logger.critical(e)
         session.rollback()
