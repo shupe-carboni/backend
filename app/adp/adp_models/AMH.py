@@ -63,7 +63,7 @@ class AMH(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         if self.use_future:
             sql = """
-                SELECT future.price
+                SELECT future.price, future.effective_date
                 FROM vendor_pricing_by_class_future AS future
                 JOIN vendor_pricing_by_class AS a
                 ON future.price_id = a.id
@@ -83,7 +83,7 @@ class AMH(ModelSeries):
             """
         else:
             sql = """
-                SELECT price
+                SELECT price, effective_date
                 FROM vendor_pricing_by_class AS a
                 WHERE EXISTS (
                     SELECT 1
@@ -99,18 +99,19 @@ class AMH(ModelSeries):
                     AND c.vendor_id = 'adp'
                 );
             """
-        price = self.db.execute(
-            self.session, sql, dict(model=str(self))
-        ).scalar_one_or_none()
+        price = self.db.execute(self.session, sql, dict(model=str(self))).one_or_none()
         if not price:
             raise NoBasePrice(
                 "No record found in the price table with this model number."
             )
+        else:
+            price, self.eff_date = price
         return price
 
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),

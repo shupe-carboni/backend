@@ -90,6 +90,7 @@ class S(ModelSeries):
                 rf"S{self.attributes['mat']}"
                 rf"{self.attributes['scode']}(\(1,2\)|\*){self.tonnage}\+TXV"
             )
+        self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
         motor = self.motor
@@ -105,7 +106,7 @@ class S(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             pricing_sql = f"""
-                SELECT future.price
+                SELECT future.price, future.effective_date
                 FROM vendor_product_series_pricing_future AS future
                 JOIN vendor_product_series_pricing
                 ON future.price_id = vendor_product_series_pricing.id
@@ -113,15 +114,15 @@ class S(ModelSeries):
             """
         else:
             pricing_sql = f"""
-                SELECT price
+                SELECT price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE key = :key;
             """
         key = f"{self.attributes['mat']}{self.attributes['scode']}_{self.attributes['heat']}"
         params = dict(key=key)
-        pricing = self.db.execute(
+        pricing, self.eff_date = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
-        ).scalar_one()
+        ).one()
         return int(pricing), self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
@@ -143,6 +144,7 @@ class S(ModelSeries):
         self.set_heat()
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.MPG.value: self.mat_grp,
@@ -156,7 +158,7 @@ class S(ModelSeries):
             Fields.MOTOR.value: self.motor,
             Fields.METERING.value: self.metering,
             Fields.HEAT.value: self.heat,
-            Fields.ZERO_DISCOUNT_PRICE.value: self.calc_zero_disc_price() / 100,
+            Fields.ZERO_DISCOUNT_PRICE.value: self.zero_disc_price,
             Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,
             Fields.RATINGS_HP_TXV.value: self.ratings_hp_txv,
             Fields.RATINGS_PISTON.value: self.ratings_piston,

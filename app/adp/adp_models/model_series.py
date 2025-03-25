@@ -57,6 +57,7 @@ class Fields(StrEnum):
     FLEXCOIL_PRICE = "a2l_price"
     SORT_ORDER = auto()
     PRICE_ID = auto()
+    EFFECTIVE_DATE = auto()
 
     def formatted(self):
         if self.name == "ADP_ALIAS":
@@ -212,6 +213,7 @@ class ModelSeries:
 
     def record(self) -> dict[StrEnum, Any]:
         return {
+            Fields.EFFECTIVE_DATE.value: None,
             Fields.CATEGORY.value: None,
             Fields.DESCRIPTION.value: None,
             Fields.MODEL_NUMBER.value: None,

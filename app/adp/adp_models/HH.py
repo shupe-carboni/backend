@@ -100,7 +100,7 @@ class HH(ModelSeries):
 
         if self.use_future:
             pricing_sql = """
-                SELECT future.price
+                SELECT future.price, future.effective_date
                 FROM vendor_product_series_pricing_future AS future
                 JOIN vendor_product_series_pricing
                 ON future.price_id = vendor_product_series_pricing.id
@@ -110,17 +110,16 @@ class HH(ModelSeries):
             """
         else:
             pricing_sql = """
-                SELECT price
+                SELECT price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE key = :key
                 AND series = 'HH'
                 AND vendor_id = 'adp';
             """
         params = dict(key=self.attributes["scode"])
-        pricing: int = self.db.execute(
+        pricing, self.eff_date = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
-        ).scalar_one()
-
+        ).one()
         return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
@@ -132,6 +131,7 @@ class HH(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.MPG.value: self.mat_grp,

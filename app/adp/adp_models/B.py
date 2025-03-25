@@ -136,7 +136,7 @@ class B(ModelSeries):
             return pricing
         elif self.use_future:
             pricing_sql = """
-                SELECT key, future.price
+                SELECT key, future.price, future.effective_date
                 FROM vendor_product_series_pricing_future as future
                 JOIN vendor_product_series_pricing
                     ON future.price_id = vendor_product_series_pricing.id
@@ -146,7 +146,7 @@ class B(ModelSeries):
             """
         else:
             pricing_sql = """
-                SELECT key, price
+                SELECT key, price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE vendor_id = 'adp'
                 AND series = 'B'
@@ -166,8 +166,10 @@ class B(ModelSeries):
         for r in pricing_records:
             if r.get("key").endswith("base"):
                 pricing["base"] = r.get("price")
+                self.eff_date = r.get("effective_date")
             elif r.get("key")[-1] in ("2", "3", "4"):
                 pricing[r.get("key")[-1]] = r.get("price")
+                self.eff_date = r.get("effective_date")
         CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
         return pricing, self.get_adders()
 

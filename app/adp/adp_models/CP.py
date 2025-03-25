@@ -126,7 +126,7 @@ class CP(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             sql = f"""
-                SELECT future.price
+                SELECT future.price, future.effective_date
                 FROM vendor_product_series_pricing_future as future
                 JOIN vendor_product_series_pricing
                     ON vendor_product_series_pricing.id = future.price_id
@@ -136,7 +136,7 @@ class CP(ModelSeries):
             """
         else:
             sql = f"""
-                SELECT price
+                SELECT price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE key = :model 
                 AND vendor_id = 'adp'
@@ -146,12 +146,14 @@ class CP(ModelSeries):
         params = dict(model=model)
         result = self.db.execute(
             session=self.session, sql=sql, params=params
-        ).scalar_one_or_none()
+        ).one_or_none()
         if not result:
             raise NoBasePrice(
                 "No record found in the price table with this model number."
             )
-        return int(result), self.get_adders()
+        else:
+            price, self.eff_date = result
+        return int(price), self.get_adders()
 
     def get_zero_disc_price(self) -> int:
         base_price, adders = self.load_pricing()
@@ -161,6 +163,7 @@ class CP(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),

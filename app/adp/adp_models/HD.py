@@ -163,7 +163,7 @@ class HD(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             pricing_sql = f"""
-                SELECT future.price
+                SELECT future.price, future.effective_date
                 FROM vendor_product_series_pricing_future AS future
                 JOIN vendor_product_series_pricing
                 ON future.price_id = vendor_product_series_pricing.id
@@ -177,7 +177,7 @@ class HD(ModelSeries):
             """
         else:
             pricing_sql = f"""
-                SELECT price
+                SELECT price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE (
                     key = :key_1
@@ -196,9 +196,9 @@ class HD(ModelSeries):
             key_1=key_1 + f"_{self.cabinet_config.value}".lower(),
             key_2=key_2 + f"_{self.cabinet_config.value}".lower(),
         )
-        pricing = self.db.execute(
+        pricing, self.eff_date = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
-        ).scalar_one()
+        ).one()
         return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:
@@ -221,6 +221,7 @@ class HD(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),

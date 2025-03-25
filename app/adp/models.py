@@ -14,6 +14,7 @@ from app.jsonapi.sqla_models import ADPProgramRating
 
 class ProgAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True, protected_namespaces={})
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
     category: Optional[str] = None
     description: Optional[str] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
