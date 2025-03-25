@@ -1,5 +1,5 @@
-"""Database Table Models with relaltionships defined 
-    between models and jsonapi names defined separately"""
+"""Database Table Models with relaltionships defined
+between models and jsonapi names defined separately"""
 
 from sqlalchemy import (
     Column,
@@ -715,6 +715,9 @@ class VendorPricingByCustomer(Base):
     vendor_pricing_by_customer_changelog = relationship(
         "VendorPricingByCustomerChangelog", back_populates=__tablename__
     )
+    vendor_pricing_by_customer_future = relationship(
+        "VendorPricingByCustomerFuture", back_populates=__tablename__
+    )
     customer_pricing_by_customer = relationship(
         "CustomerPricingByCustomer", back_populates=__tablename__
     )
@@ -890,6 +893,9 @@ class VendorProductClassDiscount(Base):
     )
     vendor_product_class_discounts_changelog = relationship(
         "VendorProductClassDiscountsChangelog", back_populates=__tablename__
+    )
+    vendor_product_class_discounts_future = relationship(
+        "VendorProductClassDiscountFuture", back_populates=__tablename__
     )
 
     # GET request filtering
@@ -1441,6 +1447,93 @@ class VendorCustomerAttrChangelog(Base):
         return q.where(exists_query)
 
 
+class VendorProductClassDiscountFuture(Base):
+    __tablename__ = "vendor_product_class_discounts_future"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["discount", "effective_date"]
+    __primary_ref__ = "vendor_product_class_discounts"
+
+    id = Column(Integer, primary_key=True)
+    discount_id = Column(Integer, ForeignKey("vendor_product_class_discounts.id"))
+    discount = Column(Float)
+    effective_date = Column(DateTime)
+
+    # relationships
+    vendor_product_class_discounts = relationship(
+        "VendorProductClassDiscount", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        customer_mapping = aliased(CustomerLocationMapping)
+        vendor_customers = aliased(VendorCustomer)
+        vendor_product_class_discounts = aliased(VendorProductClassDiscount)
+        exists_query = exists().where(
+            VendorProductClassDiscountFuture.discount_id
+            == vendor_product_class_discounts.id,
+            vendor_product_class_discounts.vendor_customer_id == vendor_customers.id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorProductClassDiscountFuture.discount_id,
+            vendor_product_class_discounts_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
+
+
+class VendorPricingByCustomerFuture(Base):
+    __tablename__ = "vendor_pricing_by_customer_future"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["price", "effective_date"]
+    __primary_ref__ = "vendor_pricing_by_customer"
+
+    id = Column(Integer, primary_key=True)
+    price_id = Column(Integer, ForeignKey("vendor_pricing_by_customer.id"))
+    price = Column(Integer)
+    effective_date = Column(DateTime)
+
+    # relationships
+    vendor_pricing_by_customer = relationship(
+        "VendorPricingByCustomer", back_populates=__tablename__
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        customer_mapping = aliased(CustomerLocationMapping)
+        vendor_customers = aliased(VendorCustomer)
+        vendor_pricing_by_customer = aliased(VendorPricingByCustomer)
+        exists_query = exists().where(
+            VendorPricingByCustomerFuture.price_id == vendor_pricing_by_customer.id,
+            vendor_pricing_by_customer.vendor_customer_id == vendor_customers.id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorPricingByCustomerFuture.price_id,
+            vendor_pricing_by_customer_primary_id_queries(
+                email=email, vendor_id=vendor_id
+            ),
+        )
+
+
 serializer = JSONAPI_(Base)
 serializer_partial = partial(JSONAPI_, Base)
 
@@ -1843,6 +1936,67 @@ def vendor_pricing_classes_primary_id_queries(email, **filters) -> QuerySet:
             vendor_customer.id == vendor_customer_pricing_classes.vendor_customer_id,
             vendor_customer_pricing_classes.pricing_class_id
             == VendorPricingByCustomer.id,
+        )
+    )
+    sca_admin_query = sca_employee_query
+    querys: QuerySet = {
+        "sql_user_only": str(user_query),
+        "sql_manager": str(manager_query),
+        "sql_admin": str(admin_query),
+        "sql_sca_employee": str(sca_employee_query),
+        "sql_sca_admin": str(sca_admin_query),
+    }
+    return querys
+
+
+def vendor_product_class_discounts_primary_id_queries(
+    email: str, **filters
+) -> QuerySet:
+    vendor = filters.get("vendor_id")
+    vendor_product_class_discounts = aliased(VendorProductClassDiscount)
+    vendor_customer = aliased(VendorCustomer)
+    customer_to_loc = aliased(CustomerLocationMapping)
+    customer_locations = aliased(SCACustomerLocation)
+    users = aliased(SCAUser)
+
+    user_query = select(vendor_product_class_discounts.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorProductClassDiscount.vendor_customer_id,
+        )
+    )
+    manager_map = aliased(SCAManagerMap)
+    manager_query = select(vendor_product_class_discounts.id).where(
+        exists().where(
+            customer_locations.id == users.customer_location_id,
+            customer_locations.id == customer_to_loc.customer_location_id,
+            manager_map.user_id == users.id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorProductClassDiscount.vendor_customer_id,
+        )
+    )
+    admin_map = aliased(CustomerAdminMap)
+    admin_query = select(vendor_product_class_discounts.id).where(
+        exists().where(
+            customer_locations.id == customer_to_loc.customer_location_id,
+            customer_locations.customer_id == admin_map.customer_id,
+            admin_map.user_id == users.id,
+            users.email == email,
+            vendor_customer.vendor_id == vendor,
+            customer_to_loc.vendor_customer_id == vendor_customer.id,
+            vendor_customer.id == VendorProductClassDiscount.vendor_customer_id,
+        )
+    )
+    sca_employee_query = select(vendor_product_class_discounts.id).where(
+        exists().where(
+            vendor_customer.vendor_id == vendor,
+            vendor_customer.id == VendorProductClassDiscount.vendor_customer_id,
         )
     )
     sca_admin_query = sca_employee_query

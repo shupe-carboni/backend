@@ -19,4 +19,6 @@ from app.v2.routes import (
     customer_pricing_by_customer,
     customer_pricing_by_class,
     customer_location_mapping,
+    vendor_pricing_by_customer_future,
+    vendor_product_class_discounts_future,
 )

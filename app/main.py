@@ -117,6 +117,16 @@ v2_routes = [
     (v2.customer_pricing_by_customer.customer_pricing_by_customer, "/v2/vendors", app),
     (v2.customer_pricing_by_class.customer_pricing_by_class, "/v2/vendors", app),
     (v2.customer_location_mapping.customer_location_mapping, "/v2/vendors", app),
+    (
+        v2.vendor_product_class_discounts_future.vendor_product_class_discounts_future,
+        "/v2/vendors",
+        app,
+    ),
+    (
+        v2.vendor_pricing_by_customer_future.vendor_pricing_by_customer_future,
+        "/v2/vendors",
+        app,
+    ),
 ]
 app_misc_routes = [
     (customer_locations, "/customers", app),

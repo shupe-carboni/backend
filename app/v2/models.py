@@ -3332,6 +3332,249 @@ class VendorsAttrsChangelogQueryJSONAPI(
     page_size: Optional[int] = Field(default=None, alias="page[size]")
 
 
+from app.jsonapi.sqla_models import VendorProductClassDiscountFuture
+
+
+class VendorProductClassDiscountFutureRID(JSONAPIResourceIdentifier):
+    type: str = VendorProductClassDiscountFuture.__jsonapi_type_override__
+
+
+class VendorProductClassDiscountFutureRelResp(JSONAPIRelationshipsResponse):
+    data: (
+        list[VendorProductClassDiscountFutureRID] | VendorProductClassDiscountFutureRID
+    )
+
+
+class VendorProductClassDiscountFutureAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    discount: Optional[float] = Field(default=None, alias="discount")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
+
+
+class VendorProductClassDiscountFutureRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
+    vendor_product_class_discounts: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-product-class-discounts"
+    )
+
+
+class VendorProductClassDiscountFutureFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_discount: str = Field(default=None, alias="filter[discount]")
+    filter_effective_date: str = Field(default=None, alias="filter[effective-date]")
+
+
+class VendorProductClassDiscountFutureFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_vendor_product_class_discounts: str = Field(
+        default=None, alias="fields[vendor-product-class-discounts]"
+    )
+    fields_vendor_product_class_discounts_future: str = Field(
+        default=None, alias="fields[vendor-product-class-discounts-future]"
+    )
+
+
+class VendorProductClassDiscountFutureRObj(VendorProductClassDiscountFutureRID):
+    attributes: VendorProductClassDiscountFutureAttrs
+    relationships: VendorProductClassDiscountFutureRels
+
+
+class VendorProductClassDiscountFutureResp(JSONAPIResponse):
+    data: (
+        list[VendorProductClassDiscountFutureRObj]
+        | VendorProductClassDiscountFutureRObj
+    )
+
+
+class RelatedVendorProductClassDiscountFutureResp(VendorProductClassDiscountFutureResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_VendorProductClassDiscountFutureQuery: type[BaseModel] = create_model(
+    "VendorProductClassDiscountFutureQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in VendorProductClassDiscountFutureRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in VendorProductClassDiscountFutureAttrs.model_fields.keys()
+    },
+    **{
+        f"fields_vendor_product_class_discounts_future": (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class VendorProductClassDiscountFutureQuery(
+    _VendorProductClassDiscountFutureQuery, BaseModel
+): ...
+
+
+class VendorProductClassDiscountFutureQueryJSONAPI(
+    VendorProductClassDiscountFutureFields,
+    VendorProductClassDiscountFutureFilters,
+    Query,
+):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class ModVendorProductClassDiscountFutureAttrs(BaseModel):
+    discount: Optional[float] = Field(default=None, alias="discount")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
+
+
+class ModVendorProductClassDiscountFutureRObj(BaseModel):
+    id: int
+    type: str = VendorProductClassDiscountFuture.__jsonapi_type_override__
+    attributes: ModVendorProductClassDiscountFutureAttrs
+    relationships: VendorProductClassDiscountFutureRels
+
+
+class ModVendorProductClassDiscountFuture(BaseModel):
+    data: ModVendorProductClassDiscountFutureRObj
+
+
+class NewVendorProductClassDiscountFutureRObj(BaseModel):
+    type: str = VendorProductClassDiscountFuture.__jsonapi_type_override__
+    attributes: ModVendorProductClassDiscountFutureAttrs
+    relationships: VendorProductClassDiscountFutureRels
+
+
+class NewVendorProductClassDiscountFuture(BaseModel):
+    data: NewVendorProductClassDiscountFutureRObj
+
+
+from app.jsonapi.sqla_models import VendorPricingByCustomerFuture
+
+
+class VendorPricingByCustomerFutureRID(JSONAPIResourceIdentifier):
+    type: str = VendorPricingByCustomerFuture.__jsonapi_type_override__
+
+
+class VendorPricingByCustomerFutureRelResp(JSONAPIRelationshipsResponse):
+    data: list[VendorPricingByCustomerFutureRID] | VendorPricingByCustomerFutureRID
+
+
+class VendorPricingByCustomerFutureAttrs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
+
+
+class VendorPricingByCustomerFutureRels(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    vendors: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendors", exclude=True
+    )
+    vendor_pricing_by_customer: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-by-customer"
+    )
+
+
+class VendorPricingByCustomerFutureFilters(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    filter_price: str = Field(default=None, alias="filter[price]")
+    filter_effective_date: str = Field(default=None, alias="filter[effective-date]")
+
+
+class VendorPricingByCustomerFutureFields(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    fields_vendor_pricing_by_customer: str = Field(
+        default=None, alias="fields[vendor-pricing-by-customer]"
+    )
+    fields_vendor_pricing_by_customer_future: str = Field(
+        default=None, alias="fields[vendor-pricing-by-customer-future]"
+    )
+
+
+class VendorPricingByCustomerFutureRObj(VendorPricingByCustomerFutureRID):
+    attributes: VendorPricingByCustomerFutureAttrs
+    relationships: VendorPricingByCustomerFutureRels
+
+
+class VendorPricingByCustomerFutureResp(JSONAPIResponse):
+    data: list[VendorPricingByCustomerFutureRObj] | VendorPricingByCustomerFutureRObj
+
+
+class RelatedVendorPricingByCustomerFutureResp(VendorPricingByCustomerFutureResp):
+    included: dict = {}
+    links: Optional[dict] = Field(default=None, exclude=True)
+
+
+_VendorPricingByCustomerFutureQuery: type[BaseModel] = create_model(
+    "VendorPricingByCustomerFutureQuery",
+    **{
+        field: (field_info.annotation, field_info)
+        for field, field_info in Query.model_fields.items()
+    },
+    **{
+        f"fields_{field}": (Optional[str], None)
+        for field in VendorPricingByCustomerFutureRels.model_fields.keys()
+    },
+    **{
+        f"filter_{field}": (Optional[str], None)
+        for field in VendorPricingByCustomerFutureAttrs.model_fields.keys()
+    },
+    **{
+        f"fields_vendor_pricing_by_customer_future": (
+            Optional[str],
+            None,
+        )
+    },
+)
+
+
+class VendorPricingByCustomerFutureQuery(
+    _VendorPricingByCustomerFutureQuery, BaseModel
+): ...
+
+
+class VendorPricingByCustomerFutureQueryJSONAPI(
+    VendorPricingByCustomerFutureFields, VendorPricingByCustomerFutureFilters, Query
+):
+    page_number: Optional[int] = Field(default=None, alias="page[number]")
+    page_size: Optional[int] = Field(default=None, alias="page[size]")
+
+
+class ModVendorPricingByCustomerFutureAttrs(BaseModel):
+    price: Optional[int] = Field(default=None, alias="price")
+    effective_date: Optional[datetime] = Field(default=None, alias="effective-date")
+
+
+class ModVendorPricingByCustomerFutureRObj(BaseModel):
+    id: int
+    type: str = VendorPricingByCustomerFuture.__jsonapi_type_override__
+    attributes: ModVendorPricingByCustomerFutureAttrs
+    relationships: VendorPricingByCustomerFutureRels
+
+
+class ModVendorPricingByCustomerFuture(BaseModel):
+    data: ModVendorPricingByCustomerFutureRObj
+
+
+class NewVendorPricingByCustomerFutureRObj(BaseModel):
+    type: str = VendorPricingByCustomerFuture.__jsonapi_type_override__
+    attributes: ModVendorPricingByCustomerFutureAttrs
+    relationships: VendorPricingByCustomerFutureRels
+
+
+class NewVendorPricingByCustomerFuture(BaseModel):
+    data: NewVendorPricingByCustomerFutureRObj
+
+
 converters = {
     VendorQuery: __convert_query(VendorQueryJSONAPI),
     VendorCustomerPricingClassQuery: __convert_query(
@@ -3383,5 +3626,11 @@ converters = {
     VendorQuoteQuery: __convert_query(VendorQuoteQueryJSONAPI),
     VendorProductToClassMappingQuery: __convert_query(
         VendorProductToClassMappingQueryJSONAPI
+    ),
+    VendorProductClassDiscountFutureQuery: __convert_query(
+        VendorProductClassDiscountFutureQueryJSONAPI
+    ),
+    VendorPricingByCustomerFutureQuery: __convert_query(
+        VendorPricingByCustomerFutureQueryJSONAPI
     ),
 }
