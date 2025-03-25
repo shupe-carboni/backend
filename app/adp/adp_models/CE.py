@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.adp.utils.validator import Validator
+from app.adp.utils.validator import Validator, ParsingModes
 from app.db import ADP_DB, Session, Database
 
 
@@ -98,9 +98,15 @@ class CE(ModelSeries):
                 self.depth = specs["depth"]
                 real_model_obj = HH
 
+        strat = (
+            ParsingModes.BASE_PRICE_FUTURE
+            if self.use_future
+            else ParsingModes.BASE_PRICE
+        )
+
         self.real_model_obj = Validator(
             session, self.real_model, real_model_obj
-        ).is_model()
+        ).is_model(strat)
         self.zero_disc_price = self.real_model_obj.calc_zero_disc_price() / 100
         self.ratings_ac_txv = (
             rf"CE\(([P|V|S|H|M],){{1:4}}[P|V|S|H|M]\)"
@@ -115,6 +121,7 @@ class CE(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.real_model_obj.eff_date),
             Fields.MODEL_NUMBER.value: self.real_model,
             Fields.PRIVATE_LABEL.value: str(self),
             Fields.CATEGORY.value: self.real_model_obj.category(),

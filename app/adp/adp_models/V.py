@@ -179,11 +179,12 @@ class V(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             pricing_sql = f"""
-                SELECT future.price, future.effective_date
-                FROM vendor_product_series_pricing_future as future
-                JOIN vendor_product_series_pricing
-                    ON future.price_id = vendor_product_series_pricing.id
-                    AND key = :key
+                SELECT COALESCE(future.price, current.price) as price,
+                    COALESCE(future.effective_date, current.effective_date) as effective_date
+                FROM vendor_product_series_pricing AS current
+                LEFT JOIN vendor_product_series_pricing_future as future
+                    ON future.price_id = current.id
+                WHERE key = :key
                     AND series = 'V'
                     AND vendor_id = 'adp';
             """

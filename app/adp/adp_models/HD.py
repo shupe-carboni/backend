@@ -163,11 +163,13 @@ class HD(ModelSeries):
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
             pricing_sql = f"""
-                SELECT future.price, future.effective_date
-                FROM vendor_product_series_pricing_future AS future
-                JOIN vendor_product_series_pricing
-                ON future.price_id = vendor_product_series_pricing.id
-                AND (
+                SELECT 
+                    COALESCE(future.price, current.price) as price,
+                    COALESCE(future.effective_date, current.effective_date) as effective_date
+                FROM vendor_product_series_pricing as current
+                LEFT JOIN vendor_product_series_pricing_future AS future
+                    ON future.price_id = current.id
+                WHERE (
                     key = :key_1
                     OR key = :key_2
                 ) AND (

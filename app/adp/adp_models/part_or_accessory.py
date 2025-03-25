@@ -29,9 +29,11 @@ class PartOrAccessory(ModelSeries):
     def calc_zero_disc_price(self) -> tuple[int, int]:
         if self.use_future:
             sql_std = """
-                SELECT future.price, future.effective_date
-                FROM vendor_pricing_by_class_future future
-                JOIN vendor_pricing_by_class a
+                SELECT 
+                    COALESCE(future.price, a.price) as price,
+                    COALESCE(future.effective_date, a.effective_date) as effective_date
+                FROM vendor_pricing_by_class a
+                LEFT JOIN vendor_pricing_by_class_future future
                     ON a.id = future.price_id
                 WHERE EXISTS (
                     SELECT 1
@@ -48,9 +50,11 @@ class PartOrAccessory(ModelSeries):
                 );
             """
             sql_pref = """
-                SELECT future.price, future.effective_date
-                FROM vendor_pricing_by_class_future future
-                JOIN vendor_pricing_by_class a
+                SELECT 
+                    COALESCE(future.price, a.price) as price,
+                    COALESCE(future.effective_date, a.effective_date) as effective_date
+                FROM vendor_pricing_by_class a
+                LEFT JOIN vendor_pricing_by_class_future future
                     ON a.id = future.price_id
                 WHERE EXISTS (
                     SELECT 1

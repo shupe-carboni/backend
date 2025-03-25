@@ -1,11 +1,11 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
-from app.adp.utils.validator import Validator
+from app.adp.utils.validator import Validator, ParsingModes
 from app.db import ADP_DB, Session, Database
 
 
 class CF(ModelSeries):
-    text_len = (12, 13)
+    text_len = (10, 11, 12, 13)
     regex = r"""
         (?P<series>CF)
         (?P<application>[C|P|W])
@@ -18,8 +18,10 @@ class CF(ModelSeries):
         (?P<rds>[R]?)
     """
 
-    def __init__(self, session: Session, re_match: re.Match, db: Database):
-        super().__init__(session, re_match, db)
+    def __init__(
+        self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
+    ):
+        super().__init__(session, re_match, db, *args, **kwargs)
         self.tonnage = int(self.attributes["ton"])
         if rds := self.attributes.get("rds", ""):
             model_alias: str = str(self)[:-4] + rds
@@ -35,6 +37,11 @@ class CF(ModelSeries):
         actual_model = ADP_DB.execute(
             session=session, sql=model_mapping_sql, params=params
         ).scalar_one()
+        strat = (
+            ParsingModes.BASE_PRICE_FUTURE
+            if self.use_future
+            else ParsingModes.BASE_PRICE
+        )
         match self.attributes["application"]:
             case "C":
                 from app.adp.adp_models.F import F
@@ -43,7 +50,7 @@ class CF(ModelSeries):
                     db_session=session,
                     raw_text=actual_model,
                     model_series=F,
-                ).is_model()
+                ).is_model(strat)
                 self._record = self.model_obj.record()
             case "P":
                 from app.adp.adp_models.B import B
@@ -52,7 +59,7 @@ class CF(ModelSeries):
                     db_session=session,
                     raw_text=actual_model,
                     model_series=B,
-                ).is_model()
+                ).is_model(strat)
                 self._record = self.model_obj.record()
             case "W":
                 from app.adp.adp_models.S import S
@@ -61,7 +68,7 @@ class CF(ModelSeries):
                     db_session=session,
                     raw_text=actual_model,
                     model_series=S,
-                ).is_model()
+                ).is_model(strat)
                 self._record = self.model_obj.record()
         self.ratings_ac_txv = (
             rf"{self.attributes['series']}"
@@ -75,6 +82,7 @@ class CF(ModelSeries):
     def record(self) -> dict:
         self._record.update(
             {
+                Fields.EFFECTIVE_DATE.value: str(self.model_obj.eff_date),
                 Fields.PRIVATE_LABEL.value: str(self),
                 Fields.CATEGORY.value: self.model_obj.category(),
                 Fields.RATINGS_AC_TXV.value: self.ratings_ac_txv,

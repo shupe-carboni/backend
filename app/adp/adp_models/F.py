@@ -103,21 +103,24 @@ class F(ModelSeries):
         # ignores the key suffix that denotes the heat kit so that it grabs them all
         if self.use_future:
             pricing_sql = """
-                SELECT key, future.price
-                FROM vendor_product_series_pricing_future AS future
-                JOIN vendor_product_series_pricing
-                ON future.price_id = vendor_product_series_pricing.id
-                AND :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
-                AND vendor_id = 'adp'
-                AND series = 'F';
+                SELECT 
+                    key,
+                    COALESCE(future.price, current.price) as price,
+                    COALESCE(future.effective_date, current.effective_date) as effective_date
+                FROM vendor_product_series_pricing as current
+                LEFT JOIN vendor_product_series_pricing_future AS future
+                    ON future.price_id = current.id
+                WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
+                    AND vendor_id = 'adp'
+                    AND series = 'F';
             """
         else:
             pricing_sql = """
-                SELECT key, price
+                SELECT key, price, effective_date
                 FROM vendor_product_series_pricing
                 WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
-                AND vendor_id = 'adp'
-                AND series = 'F';
+                    AND vendor_id = 'adp'
+                    AND series = 'F';
             """
         key = f"{self.tonnage}_{self.attributes['scode']}_"
         params = dict(key=key)
@@ -130,6 +133,7 @@ class F(ModelSeries):
         for row in pricing:
             option = row["key"].split("_")[-1]
             pricing_reorganized[option] = row["price"]
+            self.eff_date = row["effective_date"]
         return pricing_reorganized, self.get_adders()
 
     def category(self) -> str:
@@ -169,6 +173,7 @@ class F(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.MPG.value: self.mat_grp,

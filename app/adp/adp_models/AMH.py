@@ -63,11 +63,13 @@ class AMH(ModelSeries):
     def calc_zero_disc_price(self) -> int:
         if self.use_future:
             sql = """
-                SELECT future.price, future.effective_date
-                FROM vendor_pricing_by_class_future AS future
-                JOIN vendor_pricing_by_class AS a
-                ON future.price_id = a.id
-                AND EXISTS (
+                SELECT 
+                    COALESCE(future.price, a.price) as price,
+                    COALESCE(future.effective_date, a.effective_date) as effective_date
+                FROM vendor_pricing_by_class AS a
+                LEFT JOIN vendor_pricing_by_class_future AS future
+                    ON future.price_id = a.id
+                WHERE EXISTS (
                     SELECT 1
                     FROM vendor_products b
                     WHERE b.vendor_product_identifier = :model

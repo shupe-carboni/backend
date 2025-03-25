@@ -136,11 +136,14 @@ class B(ModelSeries):
             return pricing
         elif self.use_future:
             pricing_sql = """
-                SELECT key, future.price, future.effective_date
-                FROM vendor_product_series_pricing_future as future
-                JOIN vendor_product_series_pricing
-                    ON future.price_id = vendor_product_series_pricing.id
-                    AND vendor_id = 'adp'
+                SELECT 
+                    key, 
+                    COALESCE(future.price, current.price) as price,
+                    COALESCE(future.effective_date, current.effective_date) as effective_date
+                FROM vendor_product_series_pricing as current
+                LEFT JOIN vendor_product_series_pricing_future as future
+                    ON future.price_id = current.id
+                WHERE vendor_id = 'adp'
                     AND series = 'B'
                     AND key IN :keys;
             """
@@ -194,6 +197,7 @@ class B(ModelSeries):
     def record(self) -> dict:
         model_record = super().record()
         values = {
+            Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.MPG.value: self.mat_grp,

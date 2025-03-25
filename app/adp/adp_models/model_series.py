@@ -260,11 +260,14 @@ class ModelSeries:
             return adders
         elif self.use_future:
             price_adders_sql = """
-                SELECT key, future.price
-                FROM vendor_product_series_pricing_future AS future
-                JOIN vendor_product_series_pricing
-                    ON future.price_id = vendor_product_series_pricing.id
-                    AND series = :series
+                SELECT 
+                    key, 
+                    COALESCE(future.price, current.price) as price,
+                    COALESCE(future.effective_date, current.effective_date) as effective_date
+                FROM vendor_product_series_pricing as current
+                LEFT JOIN vendor_product_series_pricing_future AS future
+                    ON future.price_id = current.id
+                WHERE series = :series
                     AND vendor_id = 'adp'
                     AND key like 'adder_%';
             """
