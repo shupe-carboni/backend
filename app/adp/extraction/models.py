@@ -67,7 +67,7 @@ def parse_model_string(
             )
             priced_model.pop("customer_id")
             return priced_model
-        case ParsingModes.BASE_PRICE:
+        case ParsingModes.BASE_PRICE | ParsingModes.BASE_PRICE_FUTURE:
             return record_series
         case ParsingModes.ATTRS_ONLY:
             record_series.drop(index=Fields.ZERO_DISCOUNT_PRICE.value, inplace=True)
