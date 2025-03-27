@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any, Optional
-from enum import StrEnum, auto
+from typing import Optional
+from enum import StrEnum, auto, Flag
 from pydantic import BaseModel
 
 
@@ -85,6 +85,12 @@ class FullPricingWithLink(BaseModel):
     pricing: Optional[Pricing] = None
 
 
+class ProductType(Flag):
+    COILS = auto()
+    AIR_HANDLERS = auto()
+    PARTS = auto()
+
+
 class ADPProductSheet(StrEnum):
     B = "B Series"
     CP_A1 = "CP Series A1"
@@ -99,6 +105,22 @@ class ADPProductSheet(StrEnum):
     HD = "HD Series"
     SC = "SC Series"
     PARTS = "Parts"
+
+
+class ADPProductType(Flag):
+    B = ProductType.AIR_HANDLERS
+    CP_A1 = ProductType.AIR_HANDLERS
+    CP_A2L = ProductType.AIR_HANDLERS
+    F = ProductType.AIR_HANDLERS
+    S = ProductType.AIR_HANDLERS
+    AMH = ProductType.AIR_HANDLERS
+    HE = ProductType.COILS
+    HH = ProductType.COILS
+    MH = ProductType.COILS
+    V = ProductType.COILS
+    HD = ProductType.COILS
+    SC = ProductType.COILS
+    PARTS = ProductType.PARTS
 
 
 class ADPCustomerRefSheet(StrEnum):

@@ -1,18 +1,64 @@
-import os
 from datetime import datetime
 from logging import getLogger
-from pandas import DataFrame, Series, concat, to_numeric
-from numpy import nan
+from pandas import DataFrame, concat
 from fastapi import HTTPException, status, BackgroundTasks
 
+import app.db.sql as SQL
+from app.db.sql import queries
 from app.db import Session, DB_V2
-from app.admin.models import ADPProductSheet, ADPCustomerRefSheet, DBOps
-from app.admin.price_update_sql import SQL
-from app.admin.models import VendorId
+from app.admin.models import (
+    ADPProductSheet,
+    ADPCustomerRefSheet,
+    ADPProductType,
+    ProductType,
+    VendorId,
+)
+import app.admin.price_sheet_parsers as parsers
 
 from app.adp.extraction.models import parse_model_string, ParsingModes
 
 logger = getLogger("uvicorn.info")
+
+## Percentage Increases
+
+
+def apply_percentage(
+    session: Session,
+    vendor_id: VendorId,
+    increase_pct: float | int,
+    effective_date: datetime,
+) -> None:
+    """
+    Take the percentage amount and apply it to all records
+    in vendor-pricing-by-customer and vendor-pricing-by-class
+
+    Discounts are not expected to change, just the underlying price points.
+    """
+    class_pricing_update = queries.apply_percentage_on_class_price
+    customer_pricing_update = queries.apply_percentage_on_customer_price
+    # assume percentage is in the form like 0.055, not 5.5
+    if increase_pct > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Percentage increase is over 100%: {increase_pct*100:0.2f}%",
+        )
+    multiplier = 1 + increase_pct
+    params = dict(multiplier=multiplier, ed=effective_date, vendor_id=vendor_id.value)
+    session.begin()
+    try:
+        DB_V2.execute(session, class_pricing_update, params)
+        DB_V2.execute(session, customer_pricing_update, params)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+    else:
+        logger.info(
+            "Future Pricing established with an increase percentage of "
+            f"{increase_pct*100:0.2f}%"
+        )
+        session.commit()
+    finally:
+        session.close()
 
 
 ## ATCO
@@ -27,18 +73,6 @@ def atco_price_update(
     Each sheet has a listing of products, almost identical but not completely.
     Each sheet has multipliers that correspond to the state-region (vendor-pricing-class)
     and product category (vendor-product-class, rank 1).
-
-    - Convert sheet names to valid pricing class names.
-    - Extract multipliers for each product class by price class (sheet).
-    - Extract all data for pricing, trimmed down and treated.
-    - Add any new product that isn't currently in the products table
-    - Update LIST_PRICE by joining against Part #
-    - Insert new LIST_PRICE by an exclusive join against Part #
-    - Update all other class prices joining LIST_PRICE records against product classes
-        and multiplying by the multiplier.
-    - Update vendor-pricing-by-customer by joining LIST_PRICE against
-        vendor-product-class-discounts (assuming here that these were not changed as
-        part of the pricing adjustment) and product classes.
 
     TODO: CIRCLE BACK WITH ERROR HANDLING
     """
@@ -95,34 +129,11 @@ def atco_price_update(
     p_records: list[dict] = pricing.to_dict("records")
     logger.info("New pricing records created")
 
-    temp_table_multipliers = """
-    -- load in new data
-        CREATE TEMPORARY TABLE atco_multipliers (
-            product_class_name varchar,
-            multiplier float,
-            pricing_class_name varchar
-        );
-    """
-    insert_multipliers = """
-        INSERT INTO atco_multipliers
-        VALUES (:product_class_name, :multiplier, :pricing_class_name);
-    """
-    temp_table_pricing = """
-        CREATE TEMPORARY TABLE atco_pricing (
-            part_number varchar,
-            description varchar,
-            price int,
-            product_category_name varchar
-        );
-    """
-    insert_pricing = """
-        INSERT INTO atco_pricing
-        VALUES (:part_number, :description, :price, :product_category_name);
-    """
-    dir_name = os.path.dirname(os.path.abspath(__file__))
-    atco_price_updates: str = "atco_price_updates.sql"
-    with open(os.path.join(dir_name, atco_price_updates)) as f:
-        atco_price_updates = f.read()
+    temp_table_multipliers = SQL.queries.atco_mults_temp_setup
+    insert_multipliers = SQL.queries.atco_mults_pop_temp
+    temp_table_pricing = SQL.queries.atco_pricing_temp_setup
+    insert_pricing = SQL.queries.atco_pricing_pop_temp
+    atco_price_updates_sql = SQL.queries.atco_price_updates
     try:
         logger.info("setting up temp tables")
         DB_V2.execute(session, temp_table_multipliers)
@@ -130,7 +141,7 @@ def atco_price_update(
         DB_V2.execute(session, insert_multipliers, m_records)
         DB_V2.execute(session, insert_pricing, p_records)
         date_param = dict(ed=str(effective_date))
-        DB_V2.execute(session, atco_price_updates, params=date_param)
+        DB_V2.execute(session, atco_price_updates_sql, params=date_param)
         logger.info("Price update successful")
     except Exception as e:
         logger.info("An error occured while trying to update pricing")
@@ -139,99 +150,32 @@ def atco_price_update(
     else:
         return 200
     finally:
-        drop_ = """
-            DROP TABLE IF EXISTS atco_multipliers;
-            DROP TABLE IF EXISTS atco_pricing;
-        """
+        drop_ = SQL.queries.atco_teardown
         DB_V2.execute(session, drop_)
 
 
 ## ADP
-def _adp_cp_series_handler(sheet: ADPProductSheet, df: DataFrame):
-    match sheet:
-        case ADPProductSheet.CP_A1:
-            txv = (7, 9)
-        case ADPProductSheet.CP_A2L:
-            txv = ("A", "B", "C")
-        case _:
-            raise Exception(f"Improper sheet passed to the CP series handler {sheet}")
-
-    txv_str = str(txv).replace("'", "").replace('"', "").replace(" ", "")
-    product_rows, product_cols = ((3, None), (1, 4))
-    product = df.iloc[slice(*product_rows), slice(*product_cols)]
-    product.columns = ["cu", "al", "price"]
-    product = product[~product["cu"].str.contains("Model Number")]
-
-    cu = product[["cu", "price"]]
-    al = product[["al", "price"]]
-    txv_options = []
-    for option in txv:
-        cu_txv_option = cu[cu["cu"].str.contains(txv_str, regex=False)]
-        cu_txv_option.loc[:, "cu"] = cu_txv_option["cu"].str.replace(
-            txv_str, str(option), regex=False
-        )
-        txv_options.append(cu_txv_option.rename(columns={"cu": "key"}))
-
-        al_txv_option = al[al["al"].str.contains(txv_str, regex=False)]
-        al_txv_option.loc[:, "al"] = al_txv_option["al"].str.replace(
-            txv_str, str(option), regex=False
-        )
-        txv_options.append(al_txv_option.rename(columns={"al": "key"}))
-
-    cu = cu[~cu["cu"].str.contains(txv_str, regex=False)].rename(columns={"cu": "key"})
-    al = al[~al["al"].str.contains(txv_str, regex=False)].rename(columns={"al": "key"})
-    result = concat([cu, al, *txv_options], ignore_index=True)
-    if sheet == ADPProductSheet.CP_A1:
-        addition_right_hand = result.copy()
-        addition_right_hand["key"] += "R"
-        result = concat([result, addition_right_hand], ignore_index=True)
-    result["vendor_id"] = VendorId.ADP.value
-    result["series"] = "CP"
-    result["price"] *= 100
-    return result
-
-
-def _adp_adder_expansion(
-    adder_mapping: dict[str, list[str]], adder_df: DataFrame, series: ADPProductSheet
-) -> DataFrame:
-    adder_df["description"] = adder_df["description"].str.replace(" ", "").str.lower()
-    adder_name_mapping = DataFrame(
-        [
-            (k.replace(" ", "").lower(), v)
-            for k, v_list in adder_mapping.items()
-            for v in v_list
-        ],
-        columns=["description", "key"],
-    )
-    adder_df_result = adder_df.merge(
-        adder_name_mapping,
-        on="description",
-        how="left",
-    ).explode("key")[["key", "price"]]
-    adder_df_result["vendor_id"] = VendorId.ADP.value
-    adder_df_result["series"] = series.name
-    adder_df_result["price"] *= 100
-    return adder_df_result.dropna().drop_duplicates()
-
-
 async def _adp_update_zero_disc_prices(
-    session: Session, effective_date: datetime
+    session: Session, effective_date: datetime, coils: bool, air_handlers: bool
 ) -> None:
     logger.info("Background update process begun")
-    all_models_sql = """
-        SELECT vpbc.id, vp.vendor_product_identifier
-        FROM vendor_pricing_by_class vpbc
-        JOIN vendor_products vp
-            ON vp.id = vpbc.product_id
-            AND vp.vendor_id = 'adp'
-        JOIN vendor_pricing_classes price_classes
-            ON price_classes.id = vpbc.pricing_class_id
-            AND price_classes.vendor_id = 'adp'
-        WHERE price_classes.name = 'ZERO_DISCOUNT';
-    """
+    match coils, air_handlers:
+        case True, True:
+            prod_cats = ("Coils", "Air Handlers")
+        case False, True:
+            prod_cats = ("Air Handlers",)
+        case True, False:
+            prod_cats = ("Coils",)
+        case False, False:
+            return
     try:
         logger.info("Retrieving all Zero Discount products with price ids")
-        all_models = DB_V2.execute(session, all_models_sql).fetchall()
+        all_models_sql = SQL.queries.adp_zero_disc_get_all_models
+        all_models = DB_V2.execute(
+            session,
+            all_models_sql,
+            dict(product_categories=prod_cats),
+        ).fetchall()
         logger.info(f"Repricing {len(all_models)} models ...")
         new_pricing_by_id = []
         for i, rec in enumerate(all_models):
@@ -251,22 +195,9 @@ async def _adp_update_zero_disc_prices(
             {"id": id_, "price": price} for id_, price in new_pricing_by_id
         ]
         logger.info("Finished calculations")
-        update_setup = """
-            DROP TABLE IF EXISTS adp_zd;
-            CREATE TEMPORARY TABLE adp_zd (id int, price int);
-        """
-        populate_update = """
-            INSERT INTO adp_zd (id, price)
-            VALUES (:id, :price)
-        """
-        establish_future_pricing = """
-            INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
-            SELECT class_price.id, new.price, :ed
-            FROM vendor_pricing_by_class AS class_price
-            JOIN adp_zd AS new
-                ON new.id = price_class.id;
-
-        """
+        update_setup = SQL.queries.adp_zero_disc_setup
+        populate_update = SQL.queries.adp_zero_disc_pop_temp
+        establish_future_pricing = SQL.queries.adp_zero_disc_establish_future
         try:
             DB_V2.execute(session, update_setup)
             DB_V2.execute(session, populate_update, new_pricing_params)
@@ -290,17 +221,7 @@ async def _adp_update_customer_prices(
     session: Session, effective_date: datetime
 ) -> None:
     logger.info("Background Update Process begun")
-    all_models_sql = """
-        SELECT vpbc.id, vp.vendor_product_identifier, vpbc.vendor_customer_id, 
-            a.value private_label
-        FROM vendor_pricing_by_customer vpbc
-        JOIN vendor_products vp
-            ON vp.id = vpbc.product_id
-            AND vp.vendor_id = 'adp'
-        LEFT JOIN vendor_pricing_by_customer_attrs a
-            ON a.pricing_by_customer_id = vpbc.id
-            AND a.attr = 'private_label'
-    """
+    all_models_sql = SQL.queries.adp_customer_pricing_all_models
     try:
         logger.info("Retriving all customer pricing ...")
         all_models = DB_V2.execute(session, all_models_sql).fetchall()
@@ -329,31 +250,16 @@ async def _adp_update_customer_prices(
             {"id": id_, "price": price} for id_, price in new_pricing_by_id
         ]
         logger.info("Finished calculations")
-        update_setup = """
-            DROP TABLE IF EXISTS adp_customer_nets;
-            CREATE TEMPORARY TABLE adp_customer_nets (id int, price int);
-        """
-        populate_update = """
-            INSERT INTO adp_customer_nets (id, price)
-            VALUES (:id, :price)
-        """
-        establish_future_pricing = """
-            INSERT INTO vendor_pricing_by_customer_future (
-                price_id,
-                price,
-                effective_date
-            )
-            SELECT customer_price.id, new.price, :ed
-            FROM vendor_pricing_by_customer AS customer_price
-            JOIN adp_customer_nets AS new
-                ON new.id = customer_price.id;
-        """
+        update_setup = SQL.queries.adp_customer_pricing_temp_setup
+        populate_update = SQL.queries.adp_customer_pricing_pop_temp
+        establish_future_pricing = SQL.queries.adp_customer_pricing_establish_future
         try:
             DB_V2.execute(session, update_setup)
             DB_V2.execute(session, populate_update, new_pricing_params)
             logger.info("temp table setup")
             DB_V2.execute(session, establish_future_pricing, dict(ed=effective_date))
-            DB_V2.execute(session, "DROP TABLE IF EXISTS adp_customer_nets;")
+            logger.info("tearing down")
+            DB_V2.execute(session, SQL.queries.adp_customer_pricing_teardown)
         except Exception as e:
             session.rollback()
             import traceback as tb
@@ -367,631 +273,50 @@ async def _adp_update_customer_prices(
         session.close()
 
 
-def _adp_price_sheet_parsing_and_key_price_est(
+def _adp_price_sheet_parsing_and_key_price_establishment(
     session: Session,
     sheets: dict[ADPCustomerRefSheet, DataFrame],
     effective_date: datetime,
     bg: BackgroundTasks,
 ) -> int:
+    coils = False
+    air_handlers = False
+    parser_map = {
+        ADPProductSheet.B: parsers.adp_b_series_sheet,
+        ADPProductSheet.CP_A1: parsers.adp_cp_series_sheet,
+        ADPProductSheet.CP_A2L: parsers.adp_cp_series_sheet,
+        ADPProductSheet.F: parsers.adp_f_series_sheet,
+        ADPProductSheet.S: parsers.adp_s_series_sheet,
+        ADPProductSheet.AMH: parsers.adp_amh_series_sheet,
+        ADPProductSheet.HE: parsers.adp_he_series_sheet,
+        ADPProductSheet.HH: parsers.adp_hh_series_sheet,
+        ADPProductSheet.MH: parsers.adp_mh_series_sheet,
+        ADPProductSheet.V: parsers.adp_v_series_sheet,
+        ADPProductSheet.HD: parsers.adp_hd_series_sheet,
+        ADPProductSheet.SC: parsers.adp_sc_series_sheet,
+    }
     results = []
     for series, df in sheets.items():
+        if series == ADPProductSheet.PARTS:
+            # direct parsing
+            parsers.adp_parts_sheet(session, df, effective_date)
+            continue
+        match ADPProductType[series.name].value:
+            case ProductType.COILS if not coils:
+                coils = True
+            case ProductType.AIR_HANDLERS if not air_handlers:
+                air_handlers = True
         logger.info(f"processing sheet: {series}")
-        match series:
-            case ADPProductSheet.B:
-                __composed_attrs = {
-                    (
-                        "130 deg F Aquastat (for HW coil only)",
-                        "120V [1]",
-                    ): "adder_voltage_4"
-                }
-                __adder_name_mapping = {
-                    "HP-AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                    ],
-                    "Variable Speed Motor": ["adder_motor_V"],
-                    "120V [1]": ["adder_voltage_3"],
-                    "HW Pump Assy": ["adder_heat_P"],
-                    "Refrigerant Detection System": ["adder_RDS_R"],
-                }
-                product_1_rows, product_1_cols = ((9, 57), (1, 8))
-                product_2_rows, product_2_cols = ((9, 49), (10, 17))
-                adder_rows, adder_cols = ((52, 58), (9, 17))
-
-                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
-                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
-                adders = df.iloc[slice(*adder_rows), slice(*adder_cols)]
-
-                product_1.dropna(axis=1, how="all", inplace=True)
-                product_2.dropna(axis=1, how="all", inplace=True)
-                adders.dropna(axis=1, how="all", inplace=True)
-
-                product_cols = ["tonnage", "slab", "base", "2", "3", "4"]
-                product_1.columns = product_cols
-                product_2.columns = product_cols
-                adders.columns = ["description", "price"]
-
-                product_1.loc[:, "slab"] = product_1["slab"].str.strip().str.slice(0, 2)
-                product_2.loc[:, "slab"] = product_2["slab"].str.strip().str.slice(0, 2)
-
-                product_1.dropna(how="all", inplace=True)
-                product_2.dropna(how="all", inplace=True)
-
-                product_1.loc[:, "tonnage"].ffill(inplace=True)
-                product_2.loc[:, "tonnage"].ffill(inplace=True)
-
-                for composed, name in __composed_attrs.items():
-                    new_adder = Series(
-                        adders[adders["description"].isin(composed)]["price"].sum(),
-                        index=[name],
-                        name="price",
-                    ).reset_index()
-                    new_adder["description"] = new_adder.pop("index")
-                    adders = concat([adders, new_adder])
-                adder_name_mapping = DataFrame(
-                    [
-                        (k, v)
-                        for k, v_list in __adder_name_mapping.items()
-                        for v in v_list
-                    ],
-                    columns=["description", "key"],
-                )
-                adders_result = adders.merge(
-                    adder_name_mapping,
-                    on="description",
-                    how="left",
-                ).explode("key")
-                adders_result["key"] = adders_result["key"].fillna(
-                    adders_result["description"]
-                )
-                adders_result = adders_result[
-                    ~adders_result["description"].str.contains("Aquastat")
-                ][["key", "price"]]
-
-                result = concat(
-                    [
-                        product_1.melt(
-                            id_vars=["tonnage", "slab"],
-                            var_name="suffix",
-                            value_name="price",
-                        ),
-                        product_2.melt(
-                            id_vars=["tonnage", "slab"],
-                            var_name="suffix",
-                            value_name="price",
-                        ),
-                    ]
-                )
-                result.loc[:, "key"] = (
-                    result["tonnage"].astype(str)
-                    + "_"
-                    + result["slab"]
-                    + "_"
-                    + result["suffix"]
-                )
-                result = concat([result[["key", "price"]], adders_result])
-                result["vendor_id"] = VendorId.ADP.value
-                result["series"] = series.name
-                result["price"] *= 100
-                results.append(result)
-            case ADPProductSheet.CP_A1 | ADPProductSheet.CP_A2L:
-                results.append(_adp_cp_series_handler(series, df))
-            case ADPProductSheet.F:
-                __adder_name_mapping = {
-                    "HP-AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                    ],
-                    "HP Expansion Valve R-410A (bleed or non-bleed)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                    ],
-                    "Circuit Breaker (adder for 5kW only)": ["adder_line_conn_B"],
-                    "120V PSC or 120V ECM": ["adder_voltage_3", "adder_voltage_4"],
-                    "5-speedECM18-37": [
-                        "adder_tonnage_18",
-                        "adder_tonnage_24",
-                        "adder_tonnage_25",
-                        "adder_tonnage_30",
-                        "adder_tonnage_31",
-                        "adder_tonnage_36",
-                        "adder_tonnage_37",
-                    ],
-                    "5-speedECM42-48": [
-                        "adder_tonnage_42",
-                        "adder_tonnage_48",
-                    ],
-                    "5-speedECM60": [
-                        "adder_tonnage_60",
-                    ],
-                    "Refrigerant Detection System": ["adder_RDS_R"],
-                }
-                product_1_rows, product_1_cols = ((8, 47), (1, 10))
-                product_2_rows, product_2_cols = ((8, 29), (15, 25))
-                adder_rows, adder_cols = ((30, 38), (16, 23))
-
-                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
-                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
-
-                adders = df.iloc[slice(*adder_rows), slice(*adder_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.iloc[:, 0].ffill(inplace=True)
-                mask = ~adders.iloc[:, 1].isna()
-                adders.iloc[mask, 0] = adders.loc[mask].iloc[:, 0].str.replace(
-                    " ", ""
-                ) + adders.loc[mask].iloc[:, 1].astype(str).str.replace(" ", "")
-                adders.iloc[:, 0] = adders.iloc[:, 0].str.replace(" ", "").str.lower()
-                adders = adders.iloc[:, [0, 2]]
-                adders.columns = ["description", "price"]
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-
-                for pt in (product_1, product_2):
-                    pt.dropna(axis=1, how="all", inplace=True)
-                    pt.dropna(axis=0, how="all", inplace=True)
-                    pt.iloc[:, 0] = pt.iloc[:, 0].ffill()
-                    pt.iloc[:, 1] = (
-                        pt.iloc[:, 1]
-                        .str.replace(",", "|", regex=False)
-                        .str.replace(" ", "", regex=False)
-                    )
-                    col_names = [
-                        "tonnage",
-                        "slab",
-                        "base",
-                        "05",
-                        "07",
-                        "10",
-                        "15",
-                        "20",
-                    ]
-                    if pt.shape[1] == 8:
-                        pt.columns = col_names
-                    elif pt.shape[1] == 7:
-                        pt.columns = col_names[:-1]
-                    else:
-                        raise Exception(f"Unexpected Column Count: {pt.shape}")
-                    pt = pt.melt(
-                        id_vars=["tonnage", "slab"],
-                        var_name="suffix",
-                        value_name="price",
-                    )
-                    pt.loc[:, "key"] = (
-                        pt.pop("tonnage").astype(str)
-                        + "_"
-                        + pt.pop("slab")
-                        + "_"
-                        + pt.pop("suffix")
-                    )
-                    result = pt[["key", "price"]]
-                    result["vendor_id"] = VendorId.ADP.value
-                    result["series"] = series.name
-                    result["price"] *= 100
-                    results.append(result)
-            case ADPProductSheet.S:
-                __adder_name_mapping = {
-                    "HP Expansion Valve": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                    ],
-                    "5-speed ECM": [
-                        "adder_tonnage_19",
-                        "adder_tonnage_25",
-                        "adder_tonnage_31",
-                        "adder_tonnage_37",
-                    ],
-                    "Refrigerant Detection System": ["adder_RDS_R"],
-                }
-                product_rows, product_cols = ((11, 26), (1, 5))
-                adder_rows, adder_cols = ((29, 32), (5, 9))
-
-                product = df.iloc[slice(*product_rows), slice(*product_cols)]
-                product = product.dropna(how="all", axis=0).dropna(how="all", axis=1)
-                product.columns = ["slab", "00", "05", "07"]
-                product.loc[:, "10"] = product["07"]
-                product.loc[:, "slab"] = product["slab"].str.strip().str.slice(1, 3)
-                result = product.melt(
-                    id_vars="slab", var_name="heat", value_name="price"
-                )
-                result.loc[:, "key"] = result["slab"] + "_" + result["heat"]
-                result = result[["key", "price"]]
-                result["vendor_id"] = VendorId.ADP.value
-                result["series"] = series.name
-                result["price"] *= 100
-                results.append(result)
-
-                adders = df.iloc[slice(*adder_rows), slice(*adder_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders["description"] = (
-                    adders["description"].str.replace(" ", "").str.lower()
-                )
-                adder_name_mapping = DataFrame(
-                    [
-                        (k.replace(" ", "").lower(), v)
-                        for k, v_list in __adder_name_mapping.items()
-                        for v in v_list
-                    ],
-                    columns=["description", "key"],
-                )
-                adders_result = adders.merge(
-                    adder_name_mapping,
-                    on="description",
-                    how="left",
-                ).explode("key")[["key", "price"]]
-                adders_result["vendor_id"] = VendorId.ADP.value
-                adders_result["series"] = series.name
-                adders_result["price"] *= 100
-                results.append(adders_result)
-            case ADPProductSheet.AMH:
-                product_rows, product_cols = ((10, 34), (2, 5))
-                product = df.iloc[slice(*product_rows), slice(*product_cols)]
-                product = (
-                    product.dropna(how="all", axis=0)
-                    .dropna(how="all", axis=1)
-                    .iloc[:, [0, 2]]
-                )
-                product.columns = ["key", "price"]
-                product["vendor_id"] = VendorId.ADP.value
-                product["series"] = series.name
-                product["price"] *= 100
-                results.append(product)
-            case ADPProductSheet.HE:
-                __adder_name_mapping = {
-                    "HP / AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                        "adder_metering_7",
-                    ],
-                    'Factory Installed ("R")': ["adder_RDS_R"],
-                    'Field Installed ("N")': ["adder_RDS_N"],
-                    'Factory Installed ("L")': ["adder_RDS_L"],
-                    "Non-core Depth": ["adder_misc_non-core"],
-                    "Non-core Hand": ["adder_misc_non-core"],
-                }
-                product_1_rows, product_1_cols = ((11, 28), (1, 7))
-                product_2_rows, product_2_cols = ((11, 40), (10, 16))
-                adders_rows, adders_cols = ((42, 55), (9, 13))
-
-                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
-                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
-                adders = df.iloc[slice(*adders_rows), slice(*adders_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders.dropna(subset="price", inplace=True)
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-
-                for product_df in (product_1, product_2):
-                    product_df.columns = [
-                        "slab",
-                        "uncased",
-                        "embossed_cased",
-                        "painted_cased",
-                        "embossed_mp",
-                        "painted_mp",
-                    ]
-                    product_df.loc[:, "slab"] = (
-                        product_df["slab"]
-                        .str.replace("*", "")
-                        .str.strip()
-                        .str.slice(-2, None)
-                    )
-                    result = product_df.melt(
-                        id_vars="slab", var_name="suffix", value_name="price"
-                    )
-                    result = result[result["price"] > 0]
-                    result.loc[:, "key"] = result["slab"] + "_" + result["suffix"]
-
-                    result = result[["key", "price"]]
-                    result["vendor_id"] = VendorId.ADP.value
-                    result["series"] = series.name
-                    result["price"] *= 100
-                    results.append(result)
-            case ADPProductSheet.HH:
-                __adder_name_mapping = {
-                    "HP / AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                        "adder_metering_7",
-                    ],
-                    'Factory Installed ("R")': ["adder_RDS_R"],
-                    'Field Installed ("N")': ["adder_RDS_N"],
-                    'Factory Installed ("L")': ["adder_RDS_L"],
-                }
-                product_rows, product_cols = ((15, 22), (0, 4))
-                adders_rows, adders_cols = ((24, 33), (0, 4))
-
-                product = df.iloc[slice(*product_rows), slice(*product_cols)]
-                product = product.dropna(how="all", axis=1).dropna(how="all", axis=0)
-                product = product.iloc[:, [0, -1]]
-                product.columns = ["key", "price"]
-                product.loc[:, "key"] = product["key"].str.strip().str.slice(-2, None)
-                product["vendor_id"] = VendorId.ADP.value
-                product["series"] = series.name
-                product["price"] *= 100
-                results.append(product)
-
-                adders = df.iloc[slice(*adders_rows), slice(*adders_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders.dropna(subset="price", inplace=True)
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-            case ADPProductSheet.MH:
-                __adder_name_mapping = {
-                    "HP / AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                        "adder_metering_7",
-                    ],
-                    'Factory Installed ("R")': ["adder_RDS_R"],
-                    'Field Installed ("N")': ["adder_RDS_N"],
-                    'Factory Installed ("L")': ["adder_RDS_L"],
-                }
-                product_rows, product_cols = ((13, 30), (0, 4))
-                adders_rows, adders_cols = ((33, 42), (0, 4))
-
-                product = df.iloc[slice(*product_rows), slice(*product_cols)]
-                product = product.dropna(how="all", axis=1).dropna(how="all", axis=0)
-                product = product.iloc[:, [0, -1]]
-                product.columns = ["key", "price"]
-                product.loc[:, "key"] = product["key"].str.strip().str.slice(-2, None)
-                product["vendor_id"] = VendorId.ADP.value
-                product["series"] = series.name
-                product["price"] *= 100
-                results.append(product)
-
-                adders = df.iloc[slice(*adders_rows), slice(*adders_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders.dropna(subset="price", inplace=True)
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-            case ADPProductSheet.V:
-                __adder_name_mapping = {
-                    "HP / AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                        "adder_metering_7",
-                    ],
-                    'Factory Installed ("R")': ["adder_RDS_R"],
-                    'Field Installed ("N")': ["adder_RDS_N"],
-                    'Factory Installed ("L")': ["adder_RDS_L"],
-                }
-                product_1_rows, product_1_cols = ((11, 29), (0, 5))
-                product_2_rows, product_2_cols = ((11, 30), (6, 11))
-                adders_rows, adders_cols = ((33, 42), (0, 4))
-
-                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
-                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
-                adders = df.iloc[slice(*adders_rows), slice(*adders_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders.dropna(subset="price", inplace=True)
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-
-                for product_df in (product_1, product_2):
-                    product_df.columns = [
-                        "slab",
-                        "tonnage",
-                        "height",
-                        "embossed",
-                        "painted",
-                    ]
-                    product_df.loc[:, "slab"] = (
-                        product_df["slab"]
-                        .str.replace("*", "")
-                        .str.strip()
-                        .str.slice(-2, None)
-                        .astype(int)
-                    )
-                    result = product_df.melt(
-                        id_vars=["slab", "tonnage", "height"],
-                        var_name="suffix",
-                        value_name="price",
-                    )
-                    result = result[result["price"] > 0]
-                    result.loc[:, "key"] = (
-                        result["slab"].astype(str) + "_" + result["suffix"]
-                    )
-
-                    result = result[["key", "price"]]
-                    result["vendor_id"] = VendorId.ADP.value
-                    result["series"] = series.name
-                    result["price"] *= 100
-                    results.append(result)
-            case ADPProductSheet.HD:
-                __adder_name_mapping = {
-                    "HP / AC TXV (All)": [
-                        "adder_metering_A",
-                        "adder_metering_B",
-                        "adder_metering_9",
-                        "adder_metering_7",
-                    ],
-                    'Factory Installed ("R")': ["adder_RDS_R"],
-                    'Field Installed ("N")': ["adder_RDS_N"],
-                    'Factory Installed ("L")': ["adder_RDS_L"],
-                }
-                product_1_rows, product_1_cols = ((11, 28), (1, 5))
-                product_2_rows, product_2_cols = ((11, 27), (6, 10))
-                adders_rows, adders_cols = ((33, 42), (0, 4))
-
-                product_1 = df.iloc[slice(*product_1_rows), slice(*product_1_cols)]
-                product_2 = df.iloc[slice(*product_2_rows), slice(*product_2_cols)]
-                adders = df.iloc[slice(*adders_rows), slice(*adders_cols)]
-                adders.dropna(how="all", axis=1, inplace=True)
-                adders.columns = ["description", "price"]
-                adders.dropna(subset="price", inplace=True)
-                results.append(
-                    _adp_adder_expansion(__adder_name_mapping, adders, series)
-                )
-
-                for product_df in (product_1, product_2):
-                    product_df.columns = [
-                        "slab",
-                        "tonnage",
-                        "embossed",
-                        "painted",
-                    ]
-                    product_df.loc[:, "slab"] = (
-                        product_df["slab"]
-                        .str.replace("*", "")
-                        .str.strip()
-                        .str.slice(-2, None)
-                        .astype(int)
-                        .astype(str)
-                    )
-                    result = product_df.melt(
-                        id_vars=["slab", "tonnage"],
-                        var_name="suffix",
-                        value_name="price",
-                    )
-                    result = result[result["price"] > 0]
-                    result.loc[:, "key"] = result[["slab", "suffix"]].apply("_".join, 1)
-
-                    result = result[["key", "price"]]
-                    result["vendor_id"] = VendorId.ADP.value
-                    result["series"] = series.name
-                    result["price"] *= 100
-                    results.append(result)
-            case ADPProductSheet.SC:
-                product_rows, product_cols = ((16, 41), (2, 5))
-
-                product = df.iloc[slice(*product_rows), slice(*product_cols)]
-                product = product.dropna(how="all", axis=1).dropna(how="all", axis=0)
-                product.columns = ["key", "0", "1"]
-                product.dropna(subset="key", inplace=True)
-                product = product[
-                    ~(product["key"].str.strip().str.startswith("Service"))
-                    & ~(product["key"].str.strip().str.startswith("Model"))
-                ]
-                product.loc[:, "key"] = (
-                    product["key"]
-                    .str.replace("(", "[", regex=False)
-                    .str.replace(")", "]", regex=False)
-                    .str.replace(" ", "", regex=False)
-                )
-                result = product.melt(
-                    id_vars="key", var_name="suffix", value_name="price"
-                )
-                result.dropna(inplace=True)
-                result.loc[:, "key"] += "_" + result["suffix"]
-                result = result[["key", "price"]]
-                result["vendor_id"] = VendorId.ADP.value
-                result["series"] = series.name
-                result["price"] *= 100
-                results.append(result)
-            case ADPProductSheet.PARTS:
-                df = df.iloc[4:, :5]
-                df.columns = [
-                    "part_number",
-                    "description",
-                    "pkg_qty",
-                    "preferred",
-                    "standard",
-                ]
-                df.loc[:, "preferred"] = (
-                    to_numeric(df["preferred"], errors="coerce") * 100
-                )
-                df.loc[:, "standard"] = (
-                    to_numeric(df["standard"], errors="coerce") * 100
-                )
-                df.dropna(subset="part_number", inplace=True)
-                df.replace({nan: None}, inplace=True)
-                df_records = df.to_dict(orient="records")
-
-                sql_resources = SQL[series]
-                setup_ = sql_resources[DBOps.SETUP]
-                populate_parts_temp = sql_resources[DBOps.POPULATE_TEMP]
-                update_parts = sql_resources[DBOps.UPDATE_EXISTING]
-                insert_new_parts = sql_resources[DBOps.INSERT_NEW_PRODUCT]
-                # expecting returned ids from prior insert for next queries
-                define_pkg_qtys_for_new_parts = sql_resources[DBOps.SETUP_ATTRS]
-                insert_new_prices = sql_resources[DBOps.INSERT_NEW_PRODUCT_PRICING]
-                update_customer_prices = sql_resources[DBOps.UPDATE_CUSTOMER_PRICING]
-                eff_date_param = dict(ed=effective_date)
-
-                session.begin()
-                try:
-                    DB_V2.execute(session, setup_)
-                    DB_V2.execute(session, populate_parts_temp, df_records)
-                    DB_V2.execute(session, update_parts, eff_date_param)
-                    new_ids = tuple(
-                        [
-                            rec[0]
-                            for rec in DB_V2.execute(
-                                session, insert_new_parts
-                            ).fetchall()
-                        ]
-                    )
-                    if new_ids:
-                        new_ids_param = dict(new_part_ids=new_ids)
-                        DB_V2.execute(
-                            session, define_pkg_qtys_for_new_parts, new_ids_param
-                        )
-                        DB_V2.execute(
-                            session,
-                            insert_new_prices,
-                            new_ids_param | eff_date_param,
-                        )
-                    DB_V2.execute(session, update_customer_prices, eff_date_param)
-                except Exception as e:
-                    import traceback as tb
-
-                    logger.error(tb.format_exc())
-                    session.rollback()
-                else:
-                    session.commit()
-                finally:
-                    session.close()
+        results.extend([*parser_map[series](df, series)])
 
     all_keys = concat(results, ignore_index=True)
     all_keys.loc[:, "effective_date"] = effective_date
-    setup_ = """
-        DROP TABLE IF EXISTS adp_product_series_pricing_update;
-        CREATE TEMPORARY TABLE adp_product_series_pricing_update (
-            vendor_id varchar,
-            series varchar,
-            key varchar,
-            price int,
-            effective_date timestamp
-        );
-    """
-    additional_setup = """
-        INSERT INTO adp_product_series_pricing_update
-        VALUES (:vendor_id, :series, :key, :price, :effective_date);
-    """
-    establish_future_key_prices = """
-        INSERT INTO vendor_product_series_pricing_future (
-            price_id,
-            price,
-            effective_date
-        )
-        SELECT key_pricing.id, new.price, new.effective_date
-        FROM vendor_product_series_pricing AS key_pricing
-        JOIN adp_product_series_pricing_update AS new
-            ON new.vendor_id = key_pricing.vendor_id
-            AND new.series = key_pricing.series
-            AND new.key = key_pricing.key;
-    """
-    teardown = """
-        DROP TABLE IF EXISTS adp_product_series_pricing_update;
-    """
+
+    setup_ = SQL.queries.adp_product_series_temp_table
+    additional_setup = SQL.queries.adp_product_series_pop_temp
+    establish_future_key_prices = SQL.queries.adp_product_series_establish_future
+    teardown = SQL.queries.adp_product_series_teardown
+
     records = all_keys.dropna().to_dict(orient="records")
     logger.info("updating records")
     session.begin()
@@ -1004,11 +329,14 @@ def _adp_price_sheet_parsing_and_key_price_est(
     except Exception as e:
         logger.critical(e)
         session.rollback()
+        raise HTTPException(status_code=500, detail=e)
     else:
         bg.add_task(
             _adp_update_zero_disc_prices,
             session=session,
             effective_date=effective_date,
+            coils=coils,
+            air_handlers=air_handlers,
         )
         return 202
 
@@ -1020,11 +348,10 @@ def _adp_master_parsing_and_customer_price_updates(
     bg: BackgroundTasks,
 ) -> int:
     for sheet, df in sheets.items():
-        sql_resources = SQL["adp_customers"]
-        setup_new_customers = sql_resources[DBOps.SETUP]
-        populate_new_customers = sql_resources[DBOps.POPULATE_TEMP]
-        add_new_customers = sql_resources[DBOps.INSERT_NEW_CUSTOMERS]
-        teardown = sql_resources[DBOps.TEARDOWN]
+        setup_new_customers = SQL.queries.adp_customers_tamp_table
+        populate_new_customers = SQL.queries.adp_customers_pop_temp
+        add_new_customers = SQL.queries.adp_customers_insert_new
+        teardown = SQL.queries.adp_customers_temp_teardown
         clear_ = teardown
         logger.info(f"processing sheet: {sheet}")
         match sheet:
@@ -1037,10 +364,10 @@ def _adp_master_parsing_and_customer_price_updates(
                 # ADPs discounts are provided in 0.01-base
                 # ADPs discounts are stored in 0.01-base
                 # df["discount"] /= 100
-                setup_mg_update = sql_resources[DBOps.SETUP]
-                populate_mg_update = sql_resources[DBOps.POPULATE_TEMP]
-                add_new_customer_discounts = sql_resources[DBOps.INSERT_NEW_DISCOUNTS]
-                update_discounts = sql_resources[DBOps.ESTABLISH_FUTURE]
+                setup_mg_update = SQL.queries.adp_discounts_temp_table
+                populate_mg_update = SQL.queries.adp_discounts_populate_temp
+                update_discounts = SQL.queries.adp_discounts_establish_future
+                add_new_customer_discounts = SQL.queries.adp_discounts_insert_new
 
                 session.begin()
                 eff_date_param = dict(ed=effective_date)
@@ -1094,13 +421,12 @@ def _adp_master_parsing_and_customer_price_updates(
                 df_records = df.to_dict(orient="records")
                 eff_date_param = dict(ed=effective_date)
 
-                sql_resources = SQL[sheet]
-                setup_snp_update = sql_resources[DBOps.SETUP]
-                populate_snp_update = sql_resources[DBOps.POPULATE_TEMP]
+                setup_snp_update = SQL.queries.adp_snps_temp_table
+                populate_snp_update = SQL.queries.adp_snps_pop_temp
                 # TODO figure out how to incorporate private labels
-                add_new_snps = sql_resources[DBOps.INSERT_NEW_DISCOUNTS]
-                update_snps = sql_resources[DBOps.ESTABLISH_FUTURE]
-                teardown = sql_resources[DBOps.TEARDOWN]
+                add_new_snps = SQL.queries.adp_snps_insert_new
+                update_snps = SQL.queries.adp_snps_establish_future
+                teardown = SQL.queries.adp_snps_teardown
                 logger.info("updating SNPs")
                 session.begin()
                 try:
@@ -1175,7 +501,7 @@ def adp_price_update(
             "Master Price file."
         )
     elif product_pricing_sheets:
-        _adp_price_sheet_parsing_and_key_price_est(
+        _adp_price_sheet_parsing_and_key_price_establishment(
             session, product_pricing_sheets, effective_date, bg
         )
     else:

@@ -169,10 +169,10 @@ class B(ModelSeries):
         for r in pricing_records:
             if r.get("key").endswith("base"):
                 pricing["base"] = r.get("price")
-                self.eff_date = r.get("effective_date")
+                pricing["effective_date"] = r.get("effective_date")
             elif r.get("key")[-1] in ("2", "3", "4"):
                 pricing[r.get("key")[-1]] = r.get("price")
-                self.eff_date = r.get("effective_date")
+                pricing["effective_date"] = r.get("effective_date")
         CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
         return pricing, self.get_adders()
 
@@ -184,6 +184,7 @@ class B(ModelSeries):
         result = pricing_["base"]
         try:
             heat_option = pricing_[heat[0]] if heat != "00" else 0
+            self.eff_date = pricing_["effective_date"]
         except Exception as e:
             raise self.InvalidHeatOption(e)
         result += heat_option
