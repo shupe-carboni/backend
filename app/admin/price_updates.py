@@ -16,7 +16,12 @@ from app.db import DB_V2
 from numpy import nan
 from pandas import read_csv, ExcelFile
 from app.admin.models import VendorId
-from app.admin.price_update_handlers import atco_price_update, adp_price_update
+from app.admin.price_update_handlers import (
+    atco_price_update,
+    adp_price_update,
+    apply_percentage,
+)
+from app.db.sql import queries
 
 
 price_updates = APIRouter(prefix=f"/admin/price-updates", tags=["admin"])
@@ -111,110 +116,35 @@ async def new_pricing(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@price_updates.get("/{vendor_id}")
+@price_updates.get("/implement")
 async def establish_current_from_current_futures(session: NewSession, token: Token):
+    """
+    Check whether any of the futures tables contains any data with an effective_date
+    on or before the current system date. The check query returns a mapping to booleans
+    with the same keys used for the `update_queries` mapping. If the update query
+    key maps to True (there are records that exist to update), the query runs.
+    """
     if token.permissions < auth.Permissions.sca_admin:
         logger.info("Insufficient permissions. Rejected.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     today_date = datetime.today().date()
-    any_class = """
-        SELECT id
-        FROM vendor_pricing_by_class_future
-        WHERE effective_date <= :today_date
-        LIMIT 1;
-    """
-    any_customer = """
-        SELECT id
-        FROM vendor_pricing_by_customer_future
-        WHERE effective_date <= :today_date
-        LIMIT 1;
-    """
-    any_product_class_disc = """
-        SELECT id
-        FROM vendor_product_class_discounts_future
-        WHERE effective_date <= :today_date
-        LIMIT 1;
-    """
-    any_product_disc = """
-        SELECT id
-        FROM vendor_product_discounts_future
-        WHERE effective_date <= :today_date
-        LIMIT 1;
-    """
-    any_product_series = """
-        SELECT id
-        FROM vendor_product_series_pricing_future
-        WHERE effective_date <= :today_date
-        LIMIT 1;
-    """
-    class_pricing_update = """
-        UPDATE vendor_pricing_by_class
-        SET price = future.price, effective_date = future.effective_date
-        FROM vendor_pricing_by_class_future as future
-        WHERE future.price_id = vendor_pricing_by_class.id
-        AND future.effective_date::DATE <= :today_date
-        AND vendor_pricing_by_class.deleted_at IS NULL;
+    check_for_updates = queries.signal_updatable_futures
+    update_queries = {
+        "any_class_pricing_future": queries.class_pricing_update,
+        "any_customer_pricing_future": queries.customer_pricing_update,
+        "any_product_class_disc_future": queries.customer_product_class_discount_update,
+        "any_product_disc_future": queries.customer_product_discount_update,
+        "any_product_series_future": queries.product_series_update,
+    }
 
-        DELETE FROM vendor_pricing_by_class_future 
-        WHERE effective_date::DATE <= :today_date;
-    """
-    customer_pricing_update = """
-        UPDATE vendor_pricing_by_customer
-        SET price = future.price, effective_date = future.effective_date
-        FROM vendor_pricing_by_customer_future as future
-        WHERE future.price_id = vendor_pricing_by_customer.id
-        AND future.effective_date::DATE <= :today_date
-        AND vendor_pricing_by_customer.deleted_at IS NULL;
-
-        DELETE FROM vendor_pricing_by_customer_future 
-        WHERE effective_date::DATE <= :today_date;
-    """
-    customer_product_class_discount_update = """
-        UPDATE vendor_product_class_discounts
-        SET discount = future.discount, effective_date = future.effective_date
-        FROM vendor_product_class_discounts_future as future
-        WHERE future.discount_id = vendor_product_class_discounts.id
-        AND future.effective_date::DATE <= :today_date
-        AND vendor_product_class_discounts.deleted_at IS NULL;
-
-        DELETE FROM vendor_product_class_discounts_future 
-        WHERE effective_date::DATE <= :today_date;
-    """
-    customer_product_discount_update = """
-        UPDATE vendor_product_discounts
-        SET discount = future.discount, effective_date = future.effective_date
-        FROM vendor_product_discounts_future as future
-        WHERE future.discount_id = vendor_product_discounts.id
-        AND future.effective_date::DATE <= :today_date
-        AND vendor_product_discounts.deleted_at IS NULL;
-
-        DELETE FROM vendor_product_discounts_future 
-        WHERE effective_date::DATE <= :today_date;
-    """
-    product_series_update = """
-        UPDATE vendor_product_series_pricing
-        SET price = future.price, effective_date = future.effective_date
-        FROM vendor_product_series_pricing_future as future
-        WHERE future.price_id = vendor_product_series_pricing.id
-        AND future.effective_date::DATE <= :today_date
-        AND vendor_product_series_pricing.deleted_at IS NULL;
-
-        DELETE FROM vendor_product_series_pricing_future 
-        WHERE effective_date::DATE <= :today_date;
-    """
     session.begin()
     try:
         param = dict(today_date=today_date)
-        if DB_V2.execute(any_class, param).scalar_one_or_none():
-            DB_V2.execute(class_pricing_update, param)
-        if DB_V2.execute(any_customer, param).scalar_one_or_none():
-            DB_V2.execute(customer_pricing_update, param)
-        if DB_V2.execute(any_product_class_disc, param).scalar_one_or_none():
-            DB_V2.execute(customer_product_class_discount_update, param)
-        if DB_V2.execute(any_product_disc, param).scalar_one_or_none():
-            DB_V2.execute(customer_product_discount_update, param)
-        if DB_V2.execute(any_product_series, param).scalar_one_or_none():
-            DB_V2.execute(product_series_update, param)
+        # query name to boolean mapping
+        update = DB_V2.execute(session, check_for_updates, param).mappings().fetchone()
+        for query in update_queries:
+            if update[query]:
+                DB_V2.execute(session, update_queries[query], param)
     except Exception as e:
         logger.critical(e)
         session.rollback()
@@ -222,73 +152,8 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
     else:
         logger.info("Prices and discounts updated")
         session.commit()
-        return Response(status_code=status.HTTP_200_OK)
-    finally:
-        session.close()
-
-
-def apply_percentage(
-    session: Session,
-    vendor_id: VendorId,
-    increase_pct: float | int,
-    effective_date: datetime,
-) -> None:
-    """
-    Take the percentage amount and apply it to all records
-    in vendor-pricing-by-customer and vendor-pricing-by-class
-
-    Discounts are not expected to change, just the underlying price points.
-    """
-    class_pricing_update = """
-        INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
-        SELECT 
-            class_price.id, 
-            CAST(ROUND(price * :multiplier) AS INTEGER),
-            :ed
-        FROM vendor_pricing_by_class AS class_price
-        WHERE EXISTS (
-            SELECT 1
-            FROM vendor_products
-            WHERE vendor_products.id = class_price.product_id
-            AND vendor_products.vendor_id = :vendor_id
-        ) 
-        AND deleted_at IS NULL;
-    """
-    customer_pricing_update = """
-        INSERT INTO vendor_pricing_by_customer_future (price_id, price, effective_date)
-        SELECT 
-            customer_price.id, 
-            CAST(ROUND(price * :multiplier) AS INTEGER),
-            :ed
-        FROM vendor_pricing_by_customer AS customer_price
-        WHERE EXISTS (
-            SELECT 1
-            FROM vendor_products
-            WHERE vendor_products.id = customer_price.product_id
-            AND vendor_products.vendor_id = :vendor_id
-        ) 
-        AND deleted_at IS NULL;
-    """
-    # assume percentage is in the form like 0.055, not 5.5
-    if increase_pct > 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Percentage increase is over 100%: {increase_pct*100:0.2f}%",
+        return Response(
+            status_code=status.HTTP_200_OK, content="Prices and discounts updated"
         )
-    multiplier = 1 + increase_pct
-    params = dict(multiplier=multiplier, ed=effective_date, vendor_id=vendor_id.value)
-    session.begin()
-    try:
-        DB_V2.execute(session, class_pricing_update, params)
-        DB_V2.execute(session, customer_pricing_update, params)
-    except Exception as e:
-        logger.critical(e)
-        session.rollback()
-    else:
-        logger.info(
-            "Future Pricing established with an increase percentage of "
-            f"{increase_pct*100:0.2f}%"
-        )
-        session.commit()
     finally:
         session.close()

@@ -29,7 +29,7 @@ BEGIN;
         WHERE a.vendor_product_identifier = ap.part_number
     );
 
-    -- add new to LIST_PRICE
+    -- add new to LIST_PRICE at current date
     INSERT INTO vendor_pricing_by_class (
         pricing_class_id,
         product_id,
@@ -52,7 +52,7 @@ BEGIN;
         SELECT DISTINCT product_id
         FROM vendor_pricing_by_class
     );
-    -- establish future LIST_PRICE
+    -- establish future LIST_PRICE in future class pricing
     INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)
     SELECT class_price.id, ap.price, CAST(:ed AS TIMESTAMP)
     FROM vendor_pricing_by_class AS class_price
@@ -65,7 +65,8 @@ BEGIN;
         AND vpc_class.vendor_id = 'atco'
     JOIN atco_pricing ap
         ON vp.vendor_product_identifier = ap.part_number
-        AND vp.vendor_id = 'atco';
+        AND vp.vendor_id = 'atco'
+    WHERE class_price.deleted_at IS NULL;
 
     -- establish future class based pricing other than LIST_PRICE using multipliers
     INSERT INTO vendor_pricing_by_class_future (price_id, price, effective_date)

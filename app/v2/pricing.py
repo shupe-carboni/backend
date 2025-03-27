@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from app.admin.models import VendorId, Pricing
 from app.downloads import FileResponse
 from app.db import DB_V2, Session
-from app.admin import pricing_by_class, pricing_by_customer
+from app.db.sql import queries
 
 logger = getLogger("uvicorn.info")
 
@@ -171,14 +171,16 @@ def fetch_pricing(
         match mode:
             case "both":
                 customer_pricing = (
-                    DB_V2.execute(session, pricing_by_customer, params=params)
+                    DB_V2.execute(
+                        session, queries.pricing_by_customer_json, params=params
+                    )
                     .mappings()
                     .fetchall()
                 )
                 overrides = [e for e in customer_pricing if e["override"] == True]
                 override_product_ids = set([e["product"]["id"] for e in overrides])
                 customer_class_pricing = (
-                    DB_V2.execute(session, pricing_by_class, params=params)
+                    DB_V2.execute(session, queries.pricing_by_class_json, params=params)
                     .mappings()
                     .fetchall()
                 )
@@ -196,14 +198,16 @@ def fetch_pricing(
                 pricing = Pricing(data=pricing_list)
             case "customer":
                 customer_pricing = (
-                    DB_V2.execute(session, pricing_by_customer, params=params)
+                    DB_V2.execute(
+                        session, queries.pricing_by_customer_json, params=params
+                    )
                     .mappings()
                     .fetchall()
                 )
                 pricing = Pricing(data=customer_pricing)
             case "class":
                 customer_class_pricing = (
-                    DB_V2.execute(session, pricing_by_class, params=params)
+                    DB_V2.execute(session, queries.pricing_by_class_json, params=params)
                     .mappings()
                     .fetchall()
                 )

@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS adp_customer_nets;

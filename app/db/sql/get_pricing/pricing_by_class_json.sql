@@ -1,34 +1,15 @@
--- get customer-specific pricing
-WITH notes_agg AS (
-    SELECT
-        pricing_by_customer_id,
-        COALESCE(
-            json_agg(
-                json_build_object(
-                    'id', id,
-                    'attr', attr,
-                    'type', type,
-                    'value', value
-                )
-            )::jsonb,
-            '[]'::jsonb
-        ) AS notes
-    FROM vendor_pricing_by_customer_attrs
-    GROUP BY pricing_by_customer_id
-), product_attrs_agg AS (
+--get class based pricing as nested JSON
+WITH product_attrs_agg AS (
     SELECT
         vendor_product_id as product_id,
-        COALESCE(
-            json_agg(
-                json_build_object(
-                    'id', id,
-                    'attr', attr,
-                    'type', type,
-                    'value', value
-                )
-            )::jsonb,
-            '[]'::jsonb
-        ) as attrs
+        json_agg(
+            json_build_object(
+                'id', id,
+                'attr', attr,
+                'type', type,
+                'value', value
+            )
+        )::jsonb as attrs
         FROM vendor_product_attrs
         GROUP BY vendor_product_id
 ), product_details as (
@@ -38,17 +19,14 @@ WITH notes_agg AS (
             'id', vp.id,
             'part_id', vp.vendor_product_identifier,
             'description', vp.vendor_product_description,
-            'categories', COALESCE(
-                json_agg (
-                    json_build_object(
-                        'id', product_class.id,
-                        'name', product_class.name,
-                        'rank', product_class.rank
-                    )
-                ) FILTER (WHERE product_class.id IS NOT NULL)::jsonb,
-                '[]'::jsonb
+            'categories', json_agg(
+                json_build_object(
+                    'id', product_class.id,
+                    'name', product_class.name,
+                    'rank', product_class.rank
+                )
             ),
-            'attrs', COALESCE(pa.attrs, '[]'::jsonb)
+            'attrs', pa.attrs
         )::jsonb AS product
     FROM vendor_products vp
     LEFT JOIN vendor_product_to_class_mapping vp_class_map
@@ -56,14 +34,13 @@ WITH notes_agg AS (
     LEFT JOIN vendor_product_classes product_class
         ON product_class.id = vp_class_map.product_class_id
         AND product_class.vendor_id = :vendor_id
-    LEFT JOIN product_attrs_agg as pa
+    LEFT JOIN product_attrs_agg pa
         ON pa.product_id = vp.id
     WHERE vp.vendor_id = :vendor_id
     GROUP BY vp.id, vp.vendor_product_identifier, vp.vendor_product_description, pa.attrs
 ), formatted_pricing AS (
     SELECT 
         vpc.id as id,
-        vpc.use_as_override as override,
         json_build_object(
             'id', vendor_pricing_classes.id,
             'name', vendor_pricing_classes.name
@@ -71,8 +48,8 @@ WITH notes_agg AS (
         product_details.product,
         vpc.price,
         vpc.effective_date
-    FROM vendor_pricing_by_customer vpc
-    JOIN vendor_pricing_classes
+    FROM vendor_pricing_by_class vpc
+    LEFT JOIN vendor_pricing_classes
         ON vendor_pricing_classes.id = vpc.pricing_class_id
         AND vendor_pricing_classes.vendor_id = :vendor_id
     LEFT JOIN product_details
@@ -80,29 +57,27 @@ WITH notes_agg AS (
     WHERE EXISTS (
         SELECT 1
         FROM vendor_customers a
-        where a.id = :customer_id
-        AND a.id = vpc.vendor_customer_id
+        JOIN vendor_customer_pricing_classes b
+        ON b.vendor_customer_id = a.id
+        WHERE b.pricing_class_id = vpc.pricing_class_id
+        AND a.id = :customer_id
         AND a.vendor_id = :vendor_id
     )
     AND vpc.deleted_at IS NULL
 ), with_future_price AS (
     SELECT
         formatted_pricing.id,
-        formatted_pricing.override,
         category,
         product,
         formatted_pricing.price,
         formatted_pricing.effective_date,
-        COALESCE( na.notes, '[]'::jsonb) as notes,
         json_build_object(
             'price', future.price,
             'effective_date', future.effective_date
         )::jsonb as future
-        FROM vendor_pricing_by_customer_future as future
+        FROM vendor_pricing_by_class_future as future
         JOIN formatted_pricing
             ON future.price_id = formatted_pricing.id
-        LEFT JOIN notes_agg AS na
-            ON na.pricing_by_customer_id = formatted_pricing.id
 )
 SELECT 
     with_future_price.*,
@@ -115,14 +90,12 @@ SELECT
         )
     ) as history
 FROM with_future_price
-LEFT JOIN vendor_pricing_by_customer_changelog AS h
-    ON vendor_pricing_by_customer_id = with_future_price.id
+LEFT JOIN vendor_pricing_by_class_changelog AS h
+    ON vendor_pricing_by_class_id = with_future_price.id
 GROUP BY 
     with_future_price.id, 
-    with_future_price.override,
     with_future_price.category,
     with_future_price.product,
     with_future_price.price,
     with_future_price.effective_date,
-    with_future_price.future,
-    with_future_price.notes;
+    with_future_price.future;
