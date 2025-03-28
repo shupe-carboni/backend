@@ -1,8 +1,10 @@
+from logging import getLogger
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, BackgroundTasks
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
+from app.db.sql import queries
 from app.v2.models import (
     VendorProductClassDiscountResp,
     ModVendorProductClassDiscount,
@@ -13,12 +15,17 @@ from app.jsonapi.sqla_models import VendorProductClassDiscount
 PARENT_PREFIX = "/vendors"
 VENDOR_PRODUCT_CLASS_DISCOUNTS = VendorProductClassDiscount.__jsonapi_type_override__
 
+ROUND_TO_DOLLAR = 100
+ROUND_TO_CENT = 1
+
 vendor_product_class_discounts = APIRouter(
     prefix=f"/{VENDOR_PRODUCT_CLASS_DISCOUNTS}", tags=["v2"]
 )
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
+
+logger = getLogger("uvicorn.info")
 
 
 @vendor_product_class_discounts.post(
@@ -60,23 +67,43 @@ async def mod_vendor_product_class_discount(
     session: NewSession,
     vendor_product_class_discount_id: int,
     mod_data: ModVendorProductClassDiscount,
+    bg: BackgroundTasks,
 ) -> VendorProductClassDiscountResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
-    return (
-        auth.VendorCustomerOperations(
-            token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+    ref_price_class_id = mod_data.data.relationships.vendor_pricing_classes.data.id
+    try:
+        ret = (
+            auth.VendorCustomerOperations(
+                token, VendorProductClassDiscount, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .patch(
+                session=session,
+                data=mod_data.model_dump(exclude_none=True, by_alias=True),
+                obj_id=vendor_product_class_discount_id,
+                primary_id=vendor_customer_id,
+            )
         )
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .patch(
-            session=session,
-            data=mod_data.model_dump(exclude_none=True, by_alias=True),
-            obj_id=vendor_product_class_discount_id,
-            primary_id=vendor_customer_id,
-        )
-    )
+    except Exception as e:
+        raise e
+    else:
+        match vendor_id:
+            case "adp":
+                sig = ROUND_TO_DOLLAR
+            case _:
+                sig = ROUND_TO_CENT
+        if ret["data"]["attributes"]["deleted-at"] is None:
+            bg.add_task(
+                recalc_customer_pricing_from_product_class_discount,
+                session,
+                vendor_product_class_discount_id,
+                ref_price_class_id,
+                sig,
+            )
+        return ret
 
 
 @vendor_product_class_discounts.delete(
@@ -195,3 +222,40 @@ async def vendor_product_class_discount_relationships_vendor_product_class_disco
     vendor_product_class_discount_id: int,
 ) -> None:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+
+
+def recalc_customer_pricing_from_product_class_discount(
+    session: Session,
+    product_class_discount_id: int,
+    ref_pricing_class_id: int,
+    rounding_strategy: int,
+) -> None:
+    """
+    When a customer's product-class-based pricing discount is changed, pricing reflected
+    in vendor_pricing_by_customer ought to be changed as well.
+
+    The reference pricing class id is used to identify the pricing in pricing_by_class
+    that can be used as the reference price against which to apply the new multiplier.
+    Rounding strategy is passed to the SQL statment to shift the truncation introduced
+    by ROUND, such that we can dynamically round to the nearest dollar or the nearest
+    cent.
+    """
+    logger.info(f"Recalculating pricing related to the modified product class discount")
+
+    update_customer_pricing = (
+        queries.update_customer_pricing_after_product_class_disc_modified
+    )
+    params = dict(
+        pricing_class_id=ref_pricing_class_id,
+        product_class_discount_id=product_class_discount_id,
+        sig=rounding_strategy,
+    )
+    try:
+        DB_V2.execute(session, sql=update_customer_pricing, params=params)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+    else:
+        logger.info("Update successful")
+        session.commit()
+    return

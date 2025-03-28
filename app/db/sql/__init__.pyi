@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 class Queries(SimpleNamespace):
     apply_percentage_on_customer_price: str
+    update_customer_pricing_after_product_class_disc_modified: str
     apply_percentage_on_class_price: str
     atco_price_updates: str
     atco_pricing_pop_temp: str
@@ -14,6 +15,11 @@ class Queries(SimpleNamespace):
     signal_updatable_futures: str
     class_pricing_update: str
     customer_product_discount_update: str
+    glasfloss_standard_filter: str
+    glasfloss_customer_product_multiplier: str
+    glasfloss_filter_features: str
+    glasfloss_mto_lookup: str
+    glasfloss_customer_product_class_multiplier: str
     pricing_by_class_json: str
     pricing_by_customer_json: str
     adp_parts_establish_future: str
