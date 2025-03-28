@@ -524,3 +524,50 @@ class FilterModel:
             effective_date=self.effective_date,
         )
         return FilterBuilt(**ret)
+
+
+def disect_model(session: Session, m: str) -> FilterModel:
+    m = m.replace("SP", "")
+    dims_part = m[3:]
+    exact = True if m[-1] == "E" else False
+    if exact:
+        dims_part = dims_part[:-1]
+    if m[0:3] in ("GDS", "ZLP", "M11", "M13"):
+        series = m[0:3]
+    elif m[0:3] == "GTA":
+        series = "GDS"
+    if dims_part.endswith("0H"):
+        depth = 0.5
+        dims_part = dims_part[:-2]
+    else:
+        depth = int(dims_part[-1])
+        dims_part = dims_part[:-1]
+    if frac := FRACTION_CODES.get(dims_part[-1]):
+        height = frac
+        dims_part = dims_part[:-1]
+    else:
+        height = 0
+    match len(dims_part):
+        case 2:
+            height += int(dims_part[-1])
+            width = int(dims_part[-2])
+        case 3 if dims_part[-2].isdecimal():
+            height += int(dims_part[-2:])
+            width = int(dims_part[0])
+        case 3 if not dims_part[-2].isdecimal():
+            height += int(dims_part[-1])
+            width = int(dims_part[0]) + FRACTION_CODES[dims_part[-2]]
+        case 4 if dims_part.isdecimal():
+            height += int(dims_part[-2:])
+            width = int(dims_part[:2])
+        case 4 if not dims_part.isdecimal():
+            height += int(dims_part[-2:])
+            width = int(dims_part[0]) + FRACTION_CODES[dims_part[1]]
+        case 5:
+            height += int(dims_part[-2:])
+            width = int(dims_part[0:2]) + FRACTION_CODES[dims_part[2]]
+        case _:
+            raise Exception(dims_part)
+    model_type = ModelType[series]
+    filter_ = Filter(width, height, depth, exact)
+    return FilterModel(session, model_type, filter_)

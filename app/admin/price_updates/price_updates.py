@@ -16,7 +16,7 @@ from app.db import DB_V2
 from numpy import nan
 from pandas import read_csv, ExcelFile
 from app.admin.models import VendorId
-from app.admin.price_update_handlers import (
+from app.admin.price_updates.price_update_handlers import (
     atco_price_update,
     adp_price_update,
     apply_percentage,
@@ -65,7 +65,7 @@ async def new_pricing(
         file_data = await file.read()
         match file.content_type:
             case "text/csv":
-                file_df = read_csv(file_data).replace({nan: None})
+                file_df_collection = {"csv": read_csv(file_data).replace({nan: None})}
             case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 with ExcelFile(file_data) as excel_file:
                     file_df_collection = {

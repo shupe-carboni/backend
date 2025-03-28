@@ -13,7 +13,7 @@ from app.admin.models import (
     ProductType,
     VendorId,
 )
-import app.admin.price_sheet_parsers as parsers
+import app.admin.price_updates.price_sheet_parsers as parsers
 
 from app.adp.extraction.models import parse_model_string, ParsingModes
 

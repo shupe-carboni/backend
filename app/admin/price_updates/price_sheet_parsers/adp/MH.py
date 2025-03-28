@@ -1,7 +1,7 @@
 from logging import getLogger
 from pandas import DataFrame
 from app.admin.models import VendorId, ADPProductSheet
-from app.admin.price_sheet_parsers.adp import _adder_expansion
+from app.admin.price_updates.price_sheet_parsers.adp import _adder_expansion
 
 logger = getLogger("uvicorn.info")
 

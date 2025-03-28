@@ -1,1 +1,1 @@
-from app.admin.price_updates import price_updates
+from app.admin.price_updates.price_updates import price_updates

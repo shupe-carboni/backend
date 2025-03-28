@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
-from enum import StrEnum, auto, Flag
-from pydantic import BaseModel
+from enum import StrEnum, auto, Enum
+from pydantic import BaseModel, ConfigDict
 
 
 class VendorId(StrEnum):
@@ -85,7 +85,7 @@ class FullPricingWithLink(BaseModel):
     pricing: Optional[Pricing] = None
 
 
-class ProductType(Flag):
+class ProductType(Enum):
     COILS = auto()
     AIR_HANDLERS = auto()
     PARTS = auto()
@@ -107,7 +107,7 @@ class ADPProductSheet(StrEnum):
     PARTS = "Parts"
 
 
-class ADPProductType(Flag):
+class ADPProductType(Enum):
     B = ProductType.AIR_HANDLERS
     CP_A1 = ProductType.AIR_HANDLERS
     CP_A2L = ProductType.AIR_HANDLERS
@@ -131,16 +131,19 @@ class ADPCustomerRefSheet(StrEnum):
     OO = "OO"
 
 
-class DBOps(StrEnum):
-    SETUP = auto()
-    POPULATE_TEMP = auto()
-    UPDATE_EXISTING = auto()
-    INSERT_NEW_PRODUCT = auto()
-    INSERT_NEW_CUSTOMERS = auto()
-    SETUP_ATTRS = auto()
-    INSERT_NEW_PRODUCT_PRICING = auto()
-    INSERT_NEW_DISCOUNTS = auto()
-    UPDATE_CUSTOMER_PRICING = auto()
-    REMOVE_MISSING = auto()
-    TEARDOWN = auto()
-    ESTABLISH_FUTURE = auto()
+class ModelLookupADP(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    model_number: str
+    customer_id: Optional[int] = 0
+    future: Optional[bool] = False
+
+
+class ModelLookupGlasfloss(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    series: Optional[str] = ""
+    width: Optional[float] = 0
+    height: Optional[float] = 0
+    depth: Optional[float] = 0
+    exact: Optional[bool] = False
+    model_number: Optional[str] = ""
+    customer_id: Optional[int] = 0

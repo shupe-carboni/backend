@@ -1,4 +1,4 @@
-__version__ = "2.3.12"
+__version__ = "2.3.13"
 
 from dotenv import load_dotenv
 
@@ -14,12 +14,12 @@ from starlette.responses import RedirectResponse
 from starlette.routing import Match, Route
 
 ## Routers ##
-from app.glasfloss import glasfloss
 from app.hardcast import hardcast
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import adp, ratings_admin
 from app.admin import price_updates
+from app.model_lookup import model_lookup
 import app.v2 as v2
 
 logger = logging.getLogger("uvicorn.info")
@@ -132,10 +132,9 @@ app_misc_routes = [
     (customer_locations, "/customers", app),
     (customers, "", app),
     (places, "", app),
-    (adp, "/vendors", app),
     (hardcast, "", app),
-    (glasfloss, "/vendors", app),
     (price_updates, "", app),
+    (model_lookup, "/vendors", app),
 ]
 routes = (*adp_sub_routes, *customer_sub_routes, *app_misc_routes, *v2_routes)
 ## register all of the routes and avoid crashing due to a registration issue
