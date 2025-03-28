@@ -21,7 +21,9 @@ from app.adp.utils.models import ParsingModes
 from app.admin.models import VendorId, ModelLookupADP, ModelLookupGlasfloss
 
 
-model_lookup = APIRouter(prefix=f"/model-lookup", tags=[""])
+model_lookup = APIRouter(
+    prefix=f"/model-lookup", tags=["model number parsing and lookup"]
+)
 logger = logging.getLogger("uvicorn.info")
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]

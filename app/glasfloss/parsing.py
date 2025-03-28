@@ -6,6 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pydantic import BaseModel, Field, ConfigDict
 
 from app.db import DB_V2, Session
+from app.db.sql import queries
 
 ROUNDING_SIG = Decimal("1.00")
 
@@ -89,7 +90,7 @@ class FilterBuilt(BaseModel):
     effective_date: datetime = Field(alias="effective-date")
 
 
-FRACTION_CODES = {
+FRACTION_CODES_TO_LETTER = {
     625: "A",
     1250: "B",
     1875: "C",
@@ -106,6 +107,25 @@ FRACTION_CODES = {
     8750: "P",
     9375: "R",
 }
+
+FRACTION_CODES_TO_NUMBER = {
+    "A": 0.0625,
+    "B": 0.1250,
+    "C": 0.1875,
+    "D": 0.2500,
+    "E": 0.3125,
+    "F": 0.3750,
+    "G": 0.4375,
+    "H": 0.5000,
+    "J": 0.5625,
+    "K": 0.6250,
+    "L": 0.6875,
+    "M": 0.7500,
+    "N": 0.8125,
+    "P": 0.8750,
+    "R": 0.9375,
+}
+
 ALLOWED_DEPTHS = {
     ModelType.GDS: [0.5, 1, 2],
     ModelType.ZLP: [1, 2, 4],
@@ -117,7 +137,7 @@ ALLOWED_DEPTHS = {
 
 def convert_to_letter_code(dim: float) -> str:
     significance: int = 10**4
-    return FRACTION_CODES[int((dim * significance) % significance)]
+    return FRACTION_CODES_TO_LETTER[int((dim * significance) % significance)]
 
 
 def convert_attr_type(type_: str, value: str) -> Any:
@@ -290,43 +310,10 @@ class FilterModel:
         """
 
         def set_multipliers(standard: bool) -> None:
-            customer_product_class_multiplier_sql = """
-                SELECT (1-discount) as multiplier, effective_date
-                FROM vendor_product_class_discounts a
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_customers b
-                    WHERE a.vendor_customer_id = b.id
-                    AND b.vendor_id = 'glasfloss'
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM vendor_product_classes c
-                    WHERE c.rank = 3
-                    AND c.name = :rank_3_name
-                    AND c.vendor_id = 'glasfloss'
-                    AND c.id = a.product_class_id
-                )
-                AND a.vendor_customer_id = :customer_id;
-            """
-            customer_product_multiplier_sql = """
-                SELECT (1-discount) as multiplier, effective_date
-                FROM vendor_product_discounts a
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_customers b
-                    WHERE a.vendor_customer_id = b.id
-                    AND b.vendor_id = 'glasfloss'
-                )
-                AND EXISTS (
-                    SELECT 1
-                    FROM vendor_products c
-                    WHERE c.vendor_product_identifier = :model_number
-                    AND c.vendor_id = 'glasfloss'
-                    AND c.id = a.product_id
-                )
-                AND a.vendor_customer_id = :customer_id;
-            """
+            customer_product_class_mult = (
+                queries.glasfloss_customer_product_class_multiplier
+            )
+            customer_product_mult = queries.glasfloss_customer_product_multiplier
             if not customer_id:
                 return
             match self.model_type:
@@ -361,7 +348,7 @@ class FilterModel:
 
             customer_product_multiplier = DB_V2.execute(
                 self.session,
-                sql=customer_product_multiplier_sql,
+                sql=customer_product_mult,
                 params=dict(
                     model_number=str(self.model_number), customer_id=customer_id
                 ),
@@ -373,7 +360,7 @@ class FilterModel:
             else:
                 customer_class_multiplier = DB_V2.execute(
                     self.session,
-                    sql=customer_product_class_multiplier_sql,
+                    sql=customer_product_class_mult,
                     params=dict(rank_3_name=rank_3_name, customer_id=customer_id),
                 ).one_or_none()
                 if customer_class_multiplier:
@@ -382,19 +369,9 @@ class FilterModel:
                     self.multiplier *= multiplier
             return
 
-        standard_filter_sql = """
-            SELECT product_id, price, effective_date
-            FROM vendor_pricing_by_class
-            WHERE exists (
-                SELECT 1 
-                FROM vendor_products a 
-                JOIN vendor_product_to_class_mapping b ON b.product_id = a.id 
-                JOIN vendor_product_classes c ON c.id = b.product_class_id 
-                WHERE c.name in :types 
-                AND a.vendor_id = 'glasfloss' 
-                AND a.id = vendor_pricing_by_class.product_id
-                AND a.vendor_product_identifier = :model_number);
-        """
+        standard_filter_sql = queries.glasfloss_standard_filter
+        filter_features_sql = queries.glasfloss_filter_features
+        mto_lookup_sql = queries.glasfloss_mto_lookup
 
         standard_filter = DB_V2.execute(
             session=self.session,
@@ -407,11 +384,6 @@ class FilterModel:
 
         if standard_filter:
             product_id, price, effective_date = standard_filter
-            filter_features_sql = """
-                SELECT attr, type, value
-                FROM vendor_product_attrs
-                WHERE vendor_product_id = :product_id;
-            """
             filter_features = DB_V2.execute(
                 self.session,
                 sql=filter_features_sql,
@@ -428,32 +400,6 @@ class FilterModel:
             set_multipliers(standard=True)
         else:
             depth_placeholder = self.depth if 4 >= self.depth else 4
-            mto_lookup_sql = """
-                WITH glasfloss_pricing_mto AS (
-                    SELECT 
-                        id,
-                        series,
-                        split_part(key,'_',1) as size_type,
-                        split_part(key,'_',2) as part_number,
-                        split_part(key,'_',3)::float / 100 as depth,
-                        split_part(key,'_',4)::int as upper_bnd_face_area,
-                        price
-                    FROM vendor_product_series_pricing
-                    WHERE vendor_id = 'glasfloss'
-                )
-                SELECT price, part_number
-                FROM glasfloss_pricing_mto
-                WHERE series = :series
-                AND size_type = :size_type
-                AND depth = :depth
-                AND upper_bnd_face_area = (
-                    SELECT MIN(upper_bnd_face_area)
-                    FROM glasfloss_pricing_mto
-                    WHERE upper_bnd_face_area >= :face_area
-                    AND series = :series
-                    AND size_type = :size_type
-                );
-            """
             match self.model_type:
                 case ModelType.GDS:
                     size_type = "DOUBLE" if self.double else "SINGLE"
@@ -542,7 +488,7 @@ def disect_model(session: Session, m: str) -> FilterModel:
     else:
         depth = int(dims_part[-1])
         dims_part = dims_part[:-1]
-    if frac := FRACTION_CODES.get(dims_part[-1]):
+    if frac := FRACTION_CODES_TO_NUMBER.get(dims_part[-1]):
         height = frac
         dims_part = dims_part[:-1]
     else:
@@ -556,16 +502,16 @@ def disect_model(session: Session, m: str) -> FilterModel:
             width = int(dims_part[0])
         case 3 if not dims_part[-2].isdecimal():
             height += int(dims_part[-1])
-            width = int(dims_part[0]) + FRACTION_CODES[dims_part[-2]]
+            width = int(dims_part[0]) + FRACTION_CODES_TO_NUMBER[dims_part[-2]]
         case 4 if dims_part.isdecimal():
             height += int(dims_part[-2:])
             width = int(dims_part[:2])
         case 4 if not dims_part.isdecimal():
             height += int(dims_part[-2:])
-            width = int(dims_part[0]) + FRACTION_CODES[dims_part[1]]
+            width = int(dims_part[0]) + FRACTION_CODES_TO_NUMBER[dims_part[1]]
         case 5:
             height += int(dims_part[-2:])
-            width = int(dims_part[0:2]) + FRACTION_CODES[dims_part[2]]
+            width = int(dims_part[0:2]) + FRACTION_CODES_TO_NUMBER[dims_part[2]]
         case _:
             raise Exception(dims_part)
     model_type = ModelType[series]
