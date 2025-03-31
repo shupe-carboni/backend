@@ -1547,8 +1547,11 @@ class VendorProductClassDiscountRels(BaseModel):
     vendors: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendors", exclude=True
     )
-    vendor_pricing_classes: Optional[JSONAPIRelationships] = Field(
-        default=None, alias="vendor-pricing-classes", exclude=True
+    vendor_pricing_classes_ref: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-classes-ref", exclude=True
+    )
+    vendor_pricing_classes_new: Optional[JSONAPIRelationships] = Field(
+        default=None, alias="vendor-pricing-classes-new", exclude=True
     )
     vendor_customers: Optional[JSONAPIRelationships] = Field(
         default=None, alias="vendor-customers"
