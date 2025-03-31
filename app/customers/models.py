@@ -48,10 +48,6 @@ class CustomerRelationshipsFieldsSelectors(BaseModel):
     fields_customer_locations: str = Field(
         default=None, alias="fields[customer-locations]"
     )
-    fields_adp_customers: str = Field(default=None, alias="fields[adp-customers]")
-    fields_adp_customer_terms: str = Field(
-        default=None, alias="fields[adp-customer-terms]"
-    )
 
 
 class CustomerResourceObject(CustomerResourceIdentifier):
