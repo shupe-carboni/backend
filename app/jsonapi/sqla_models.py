@@ -1342,10 +1342,8 @@ class VendorQuoteAttr(Base):
         email: str, vendor_id: str
     ) -> tuple[Column, QuerySet]:
         return (
-            CustomerPricingByClass.pricing_by_class_id,
-            vendor_pricing_by_class_primary_id_queries(
-                email=email, vendor_id=vendor_id
-            ),
+            VendorQuoteAttr.vendor_quotes_id,
+            vendor_quotes_primary_id_queries(email=email, vendor_id=vendor_id),
         )
 
 
@@ -1874,6 +1872,7 @@ def vendor_primary_id_queries(*args, **filters) -> QuerySet:
     admin_query = user_query
     sca_employee_query = user_query
     sca_admin_query = user_query
+
     querys: QuerySet = {
         "sql_user_only": str(user_query),
         "sql_manager": str(manager_query),
