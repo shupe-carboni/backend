@@ -106,8 +106,10 @@ class JSONAPI_(JSONAPI):
         Roughly equivalent to
             SELECT field
             FROM table
-            WHERE field LIKE '%value_1%
-            OR LIKE '%value_2%';
+            WHERE field ILIKE '%value_1%
+            OR field ILIKE '%value_2%'
+            OR field % 'value_1'
+            OR field % 'value_2';
         """
 
         filter_query_args = []
@@ -116,7 +118,11 @@ class JSONAPI_(JSONAPI):
             if field_py := model.__jsonapi_map_to_py__.get(attr):
                 model_attr: Column = getattr(model, field_py)
                 for item in value:
-                    filter_query_args.append(or_(model_attr.like("%" + item + "%")))
+                    filter_query_args.append(
+                        or_(
+                            model_attr.ilike("%" + item + "%"), model_attr.op("%")(item)
+                        )
+                    )
             else:
                 warnings.warn(
                     f"Warning: filter field {field} with value {value} was ignored."
