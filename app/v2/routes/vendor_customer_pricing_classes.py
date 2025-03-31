@@ -3,7 +3,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
-from app.v2.models import VendorCustomerPricingClassResp, NewVendorCustomerPricingClass
+from app.v2.models import (
+    VendorCustomerPricingClassResp,
+    NewVendorCustomerPricingClass,
+    ModVendorCustomerPricingClass,
+)
 from app.jsonapi.sqla_models import VendorCustomerPricingClass
 
 PARENT_PREFIX = "/vendors"
@@ -41,6 +45,36 @@ async def new_vendor_customer_pricing_classes(
             session,
             data=new_obj.model_dump(exclude_none=True, by_alias=True),
             primary_id=vendor_customer_id,
+        )
+    )
+
+
+@vendor_customer_pricing_classes.patch(
+    "/{vendor_customer_pricing_classes_id}",
+    response_model=VendorCustomerPricingClassResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def new_vendor_customer_pricing_classes(
+    token: Token,
+    session: NewSession,
+    vendor_customer_pricing_classes_id: int,
+    mod_obj: ModVendorCustomerPricingClass,
+) -> VendorCustomerPricingClassResp:
+    vendor_customer_id = mod_obj.data.relationships.vendor_customers.data.id
+    vendor_id = mod_obj.data.relationships.vendors.data.id
+    return (
+        auth.VendorCustomerOperations(
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
+        )
+        .allow_admin()
+        .allow_sca()
+        .allow_dev()
+        .patch(
+            session,
+            data=mod_obj.model_dump(exclude_none=True, by_alias=True),
+            primary_id=vendor_customer_id,
+            obj_id=vendor_customer_pricing_classes_id,
         )
     )
 

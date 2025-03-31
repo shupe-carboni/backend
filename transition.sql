@@ -506,7 +506,7 @@ BEGIN;
 	BEGIN
 		IF OLD.pricing_class_id != NEW.pricing_class_id THEN
 			INSERT INTO vendor_customer_pricing_classes_changelog (pricing_class_id, vendor_customer_id)
-			VALUES (OLD.pricing_class_id, NEW.vendor_customer_id);
+			VALUES (NEW.pricing_class_id, NEW.vendor_customer_id);
 		END IF;
 		RETURN NEW;
 	END;

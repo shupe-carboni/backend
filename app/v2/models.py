@@ -2489,12 +2489,23 @@ class VendorCustomerPricingClassResp(JSONAPIResponse):
 
 class NewVendorCustomerPricingClassRObj(BaseModel):
     type: str = VendorCustomerPricingClass.__jsonapi_type_override__
-    attributes: Optional[VendorCustomerPricingClassAttrs] = Field(default=False)
+    attributes: Optional[VendorCustomerPricingClassAttrs] = Field(default=None)
+    relationships: VendorCustomerPricingClassRels
+
+
+class ModVendorCustomerPricingClassRObj(BaseModel):
+    id: int
+    type: str = VendorCustomerPricingClass.__jsonapi_type_override__
+    attributes: Optional[VendorCustomerPricingClassAttrs] = Field(default=None)
     relationships: VendorCustomerPricingClassRels
 
 
 class NewVendorCustomerPricingClass(BaseModel):
     data: NewVendorCustomerPricingClassRObj
+
+
+class ModVendorCustomerPricingClass(BaseModel):
+    data: ModVendorCustomerPricingClassRObj
 
 
 class RelatedVendorCustomerPricingClassResp(VendorCustomerPricingClassResp):
