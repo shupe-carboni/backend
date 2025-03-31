@@ -527,6 +527,8 @@ class SecOp(ABC):
             result = result_query()
         elif self._customer or self._dev:
             ids = self.permitted_customer_location_ids(session=session)
+            if not ids:
+                raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
             result = result_query(permitted_ids=ids)
         else:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
