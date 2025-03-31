@@ -65,13 +65,9 @@ SCA_DEV_AND_CUSTOMER_ADMIN_ONLY = list(
 )
 
 BASE_GETS = ["/customers", f"/customers/{CUSTOMER_ID}"]
-RELATED_GETS = [
-    BASE_GETS[-1] + f"/{related}"
-    for related in ["customer-locations", "adp-customers", "adp-customer-terms"]
-]
+RELATED_GETS = [BASE_GETS[-1] + f"/{related}" for related in ["customer-locations"]]
 RELATIONSHIP_GETS = [
-    BASE_GETS[-1] + f"/relationships/{related}"
-    for related in ["customer-locations", "adp-customers", "adp-customer-terms"]
+    BASE_GETS[-1] + f"/relationships/{related}" for related in ["customer-locations"]
 ]
 GET_PATHS = [
     (*perm_and_code, path)
