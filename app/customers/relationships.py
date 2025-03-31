@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 
 from app import auth
-from app.db import SCA_DB
+from app.db import DB_V2
 from app.customers.locations.models import (
     RelatedLocationResponse,
     LocationRelationshipsResponse,
@@ -15,7 +15,7 @@ API_TYPE = SCACustomer.__jsonapi_type_override__
 customer_rel = APIRouter(tags=[API_TYPE])
 
 CustomersPerm = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
 @customer_rel.get(
