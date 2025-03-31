@@ -11,7 +11,7 @@ from logging import getLogger
 
 load_dotenv()
 from pydantic import BaseModel, field_validator
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
@@ -644,7 +644,7 @@ class SecOp(ABC):
         obj_id: int | str,
         primary_id: Optional[int] = None,
         hard_delete: bool = False,
-    ):
+    ) -> None:
         self.gate(session, primary_id, obj_id)
         if hard_delete:
             self._serializer.delete_resource(
@@ -670,7 +670,7 @@ class SecOp(ABC):
                 api_type=api_type,
                 obj_id=obj_id,
             )
-        return JSONResponse({}, status_code=204)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class CustomersOperations(SecOp):

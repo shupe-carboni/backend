@@ -59,6 +59,7 @@ WITH notes_agg AS (
     LEFT JOIN product_attrs_agg as pa
         ON pa.product_id = vp.id
     WHERE vp.vendor_id = :vendor_id
+        AND vp.deleted_at IS NULL
     GROUP BY vp.id, vp.vendor_product_identifier, vp.vendor_product_description, pa.attrs
 ), formatted_pricing AS (
     SELECT 
@@ -80,9 +81,10 @@ WITH notes_agg AS (
     WHERE EXISTS (
         SELECT 1
         FROM vendor_customers a
-        where a.id = :customer_id
-        AND a.id = vpc.vendor_customer_id
-        AND a.vendor_id = :vendor_id
+        WHERE a.id = :customer_id
+            AND a.id = vpc.vendor_customer_id
+            AND a.vendor_id = :vendor_id
+            AND a.deleted_at IS NULL
     )
     AND vpc.deleted_at IS NULL
 ), with_future_price AS (

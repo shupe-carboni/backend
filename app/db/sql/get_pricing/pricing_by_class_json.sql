@@ -37,6 +37,7 @@ WITH product_attrs_agg AS (
     LEFT JOIN product_attrs_agg pa
         ON pa.product_id = vp.id
     WHERE vp.vendor_id = :vendor_id
+        AND vp.deleted_at IS NULL
     GROUP BY vp.id, vp.vendor_product_identifier, vp.vendor_product_description, pa.attrs
 ), formatted_pricing AS (
     SELECT 
@@ -58,10 +59,11 @@ WITH product_attrs_agg AS (
         SELECT 1
         FROM vendor_customers a
         JOIN vendor_customer_pricing_classes b
-        ON b.vendor_customer_id = a.id
+            ON b.vendor_customer_id = a.id
         WHERE b.pricing_class_id = vpc.pricing_class_id
-        AND a.id = :customer_id
-        AND a.vendor_id = :vendor_id
+            AND a.id = :customer_id
+            AND a.vendor_id = :vendor_id
+            AND b.deleted_at IS NULL
     )
     AND vpc.deleted_at IS NULL
 ), with_future_price AS (
