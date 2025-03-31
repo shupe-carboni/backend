@@ -73,12 +73,15 @@ WITH product_attrs_agg AS (
         product,
         formatted_pricing.price,
         formatted_pricing.effective_date,
-        json_build_object(
+        CASE WHEN future.price IS NULL
+        THEN NULL
+        ELSE json_build_object(
             'price', future.price,
             'effective_date', future.effective_date
-        )::jsonb as future
-        FROM vendor_pricing_by_class_future as future
-        JOIN formatted_pricing
+            )::jsonb
+        END as future
+        FROM formatted_pricing
+        LEFT JOIN vendor_pricing_by_class_future as future
             ON future.price_id = formatted_pricing.id
 )
 SELECT 

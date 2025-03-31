@@ -96,12 +96,16 @@ WITH notes_agg AS (
         formatted_pricing.price,
         formatted_pricing.effective_date,
         COALESCE( na.notes, '[]'::jsonb) as notes,
-        json_build_object(
-            'price', future.price,
-            'effective_date', future.effective_date
-        )::jsonb as future
-        FROM vendor_pricing_by_customer_future as future
-        JOIN formatted_pricing
+        CASE
+            WHEN future.price IS NULL
+            THEN NULL
+            ELSE json_build_object(
+                'price', future.price,
+                'effective_date', future.effective_date
+            )::jsonb
+            END as future
+        FROM formatted_pricing
+        LEFT JOIN vendor_pricing_by_customer_future as future
             ON future.price_id = formatted_pricing.id
         LEFT JOIN notes_agg AS na
             ON na.pricing_by_customer_id = formatted_pricing.id

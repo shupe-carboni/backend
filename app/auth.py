@@ -12,7 +12,6 @@ from logging import getLogger
 load_dotenv()
 from pydantic import BaseModel, field_validator
 from fastapi import Depends, HTTPException, status, Response
-from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
