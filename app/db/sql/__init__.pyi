@@ -3,6 +3,7 @@ class Queries(SimpleNamespace):
     apply_percentage_on_customer_price: str
     update_customer_pricing_after_product_class_disc_modified: str
     apply_percentage_on_class_price: str
+    new_customer_pricing_after_product_class_discs: str
     atco_price_updates: str
     atco_pricing_pop_temp: str
     atco_mults_temp_setup: str
