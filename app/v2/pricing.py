@@ -61,7 +61,9 @@ def flatten(pricing: dict, effective_date: datetime | None) -> DataFrame:
                     price["effective_date"] = future["effective_date"]
             if price["effective_date"] > effective_date:
                 price = get_historical_price(price)
-
+        elif effective_date == price["effective_date"]:
+            # don't replace if the current price matches the given date
+            pass
         else:
             price = get_historical_price(price)
 
