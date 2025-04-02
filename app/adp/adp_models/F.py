@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session, Database
+from app.db.sql import queries
 
 
 class F(ModelSeries):
@@ -102,28 +103,19 @@ class F(ModelSeries):
         # values contained in the column "slab". The selection based on key
         # ignores the key suffix that denotes the heat kit so that it grabs them all
         if self.use_future:
-            pricing_sql = """
-                SELECT 
-                    key,
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing as current
-                LEFT JOIN vendor_product_series_pricing_future AS future
-                    ON future.price_id = current.id
-                WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
-                    AND vendor_id = 'adp'
-                    AND series = 'F';
-            """
+            pricing_sql = queries.product_series_pricing_reach_into_future
         else:
-            pricing_sql = """
-                SELECT key, price, effective_date
-                FROM vendor_product_series_pricing
-                WHERE :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
-                    AND vendor_id = 'adp'
-                    AND series = 'F';
-            """
+            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.tonnage}_{self.attributes['scode']}_"
         params = dict(key=key)
+        params = dict(
+            key_mode=self.KeyMode.FIRST_2_PARTS.value,
+            key=key,
+            keys=None,
+            series="F",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
         pricing = (
             self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
@@ -132,7 +124,7 @@ class F(ModelSeries):
         pricing_reorganized = dict()
         for row in pricing:
             option = row["key"].split("_")[-1]
-            pricing_reorganized[option] = row["price"]
+            pricing_reorganized[option] = row["effective_price"]
             self.eff_date = row["effective_date"]
         return pricing_reorganized, self.get_adders()
 

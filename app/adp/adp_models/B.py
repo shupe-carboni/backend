@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session, Database, CACHE
+from app.db.sql import queries
 
 
 class B(ModelSeries):
@@ -132,34 +133,22 @@ class B(ModelSeries):
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
         key_first_part = f"{self.tonnage}_{self.attributes['scode']}_"
-        if pricing := CACHE.get(key_first_part):
-            return pricing
-        elif self.use_future:
-            pricing_sql = """
-                SELECT 
-                    key, 
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing as current
-                LEFT JOIN vendor_product_series_pricing_future as future
-                    ON future.price_id = current.id
-                WHERE vendor_id = 'adp'
-                    AND series = 'B'
-                    AND key IN :keys;
-            """
+        if self.use_future:
+            pricing_sql = queries.product_series_pricing_reach_into_future
         else:
-            pricing_sql = """
-                SELECT key, price, effective_date
-                FROM vendor_product_series_pricing
-                WHERE vendor_id = 'adp'
-                AND series = 'B'
-                AND key IN :keys;
-            """
+            pricing_sql = queries.product_series_pricing_with_override_dynamic
 
-        keys = tuple(
-            [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
+        # NOTE normally I'd pass a tuple, but due to how the SQL uses typed arrays
+        # (CARDINALITY and UNNEST), I'm passing a list so it becomes a CASTable array
+        keys = [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
+        params = dict(
+            key_mode=self.KeyMode.MEMBERSHIP.value,
+            key=None,
+            keys=keys,
+            series="B",
+            vendor_id="adp",
+            customer_id=self.customer_id,
         )
-        params = dict(keys=keys)
         pricing_records: tuple[dict[str, str | int]] = (
             self.db.execute(session=self.session, sql=pricing_sql, params=params)
             .mappings()
@@ -168,12 +157,12 @@ class B(ModelSeries):
         pricing = dict()
         for r in pricing_records:
             if r.get("key").endswith("base"):
-                pricing["base"] = r.get("price")
+                pricing["base"] = r.get("effective_price")
                 pricing["effective_date"] = r.get("effective_date")
             elif r.get("key")[-1] in ("2", "3", "4"):
-                pricing[r.get("key")[-1]] = r.get("price")
+                pricing[r.get("key")[-1]] = r.get("effective_price")
                 pricing["effective_date"] = r.get("effective_date")
-        CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
+        # CACHE.add_or_update(key_first_part, (pricing, self.get_adders()))
         return pricing, self.get_adders()
 
     def calc_zero_disc_price(self) -> int:

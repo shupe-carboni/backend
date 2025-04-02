@@ -8,6 +8,7 @@ from app.adp.adp_models.model_series import (
     NoBasePrice,
 )
 from app.db import ADP_DB, Session, Database
+from app.db.sql import queries
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -252,25 +253,9 @@ class HE(ModelSeries):
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
-            pricing_sql = f"""
-                SELECT 
-                    COALESCE(future.price, current.price) AS price,
-                    COALESCE(future.effective_date, current.effective_date) AS effective_date
-                FROM vendor_product_series_pricing AS current
-                LEFT JOIN vendor_product_series_pricing_future AS future
-                    ON future.price_id = current.id
-                WHERE key = :key
-                    AND vendor_id = 'adp'
-                    AND series = 'HE';
-            """
+            pricing_sql = queries.product_series_pricing_reach_into_future
         else:
-            pricing_sql = f"""
-                SELECT price, effective_date
-                FROM vendor_product_series_pricing 
-                WHERE key = :key
-                AND vendor_id = 'adp'
-                AND series = 'HE';
-            """
+            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.attributes['scode']}_"
         if self.uncased:
             key += "uncased"
@@ -283,9 +268,16 @@ class HE(ModelSeries):
                 key += "mp"
             else:
                 key += "cased"
-        params = dict(key=key)
+        params = dict(
+            key_mode=self.KeyMode.EXACT.value,
+            key=key,
+            keys=None,
+            series="HE",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
         try:
-            pricing, self.eff_date = self.db.execute(
+            _, pricing, self.eff_date = self.db.execute(
                 session=self.session, sql=pricing_sql, params=params
             ).one()
         except Exception as e:

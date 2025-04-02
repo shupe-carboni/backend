@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.db import ADP_DB, Session, Database
+from app.db.sql import queries
 
 
 class SC(ModelSeries):
@@ -81,28 +82,20 @@ class SC(ModelSeries):
             "S": 4,
         }
         if self.use_future:
-            pricing_sql = f"""
-                SELECT 
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing AS current
-                LEFT JOIN vendor_product_series_pricing_future AS future
-                    ON future.price_id = current.id
-                WHERE :key ~ key
-                    AND series = 'SC'
-                    AND vendor_id = 'adp';
-            """
+            pricing_sql = queries.product_series_pricing_reach_into_future
         else:
-            pricing_sql = f"""
-                SELECT price, effective_date
-                FROM vendor_product_series_pricing
-                WHERE :key ~ key
-                AND series = 'SC'
-                AND vendor_id = 'adp';
-            """
+            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{str(self)[:(key_len[self.attributes['mat']])]}_{col}"
-        price, self.eff_date = self.db.execute(
-            session=self.session, sql=pricing_sql, params=dict(key=key)
+        params = dict(
+            key_mode=self.KeyMode.REGEX.value,
+            key=key,
+            keys=None,
+            series="SC",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
+        _, price, self.eff_date = self.db.execute(
+            session=self.session, sql=pricing_sql, params=params
         ).one()
         return int(price)
 

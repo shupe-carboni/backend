@@ -10,6 +10,7 @@ from app.auth import SecOp
 from app.adp.adp_models import MODELS, S, Fields, ModelSeries
 from app.adp.utils.validator import Validator
 from app.db import Stage, Session, DB_V2
+from app.db.sql import queries
 from app.adp.utils.models import ParsingModes
 import warnings
 
@@ -38,16 +39,11 @@ def parse_model_string(
     session: Session, adp_customer_id: int, model: str, mode: ParsingModes
 ) -> pd.Series:
 
-    match mode:
-        case ParsingModes.BASE_PRICE_FUTURE | ParsingModes.CUSTOMER_PRICING_FUTURE:
-            zero_disc_price_strat = mode
-        case _:
-            zero_disc_price_strat = ParsingModes.BASE_PRICE
-
     model_obj: ModelSeries = None
     for m in MODELS:
+        # NOTE supplying customer price to allow special zero-discount-price calculation
         if matched_model := Validator(session, model, m).is_model(
-            zero_disc_price_strat
+            mode, customer_id=adp_customer_id
         ):
             model_obj = matched_model
     if not model_obj:
@@ -138,50 +134,16 @@ def price_models_by_customer_discounts(
 ) -> pd.Series:
     match price_mode:
         case ParsingModes.CUSTOMER_PRICING:
-            mat_grp_disc_sql = """
-                SELECT class.name AS mat_grp, discount, effective_date,
-                    vendor_customer_id AS customer_id
-                FROM vendor_product_class_discounts a
-                JOIN vendor_product_classes as class on class.id = product_class_id
-                WHERE vendor_customer_id = :adp_customer_id
-                AND a.effective_date <= CURRENT_DATE
-                AND a.deleted_at is null;
-            """
-
-            snps_sql = """
-                SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
-                    discount
-                FROM vendor_product_discounts AS a
-                JOIN vendor_products AS vp ON vp.id = a.product_id
-                WHERE vendor_customer_id = :adp_customer_id
-                AND a.effective_date <= CURRENT_DATE
-                AND a.deleted_at is null;
-            """
+            mat_grp_disc_sql = queries.get_class_discount_current
+            snps_sql = queries.get_product_discount_current
         case ParsingModes.CUSTOMER_PRICING_FUTURE:
-            mat_grp_disc_sql = """
-                SELECT class.name AS mat_grp, future.discount, future.effective_date,
-                    vendor_customer_id AS customer_id
-                FROM vendor_product_class_discounts_future future
-                JOIN vendor_product_class_discounts a
-                    ON a.id = future.discount_id
-                JOIN vendor_product_classes AS class on class.id = product_class_id
-                WHERE vendor_customer_id = :adp_customer_id;
-            """
-
-            snps_sql = """
-                SELECT vp.vendor_product_identifier AS model, vendor_customer_id AS customer_id,
-                    future.discount
-                FROM vendor_product_discounts_future AS future 
-                JOIN vendor_product_discounts AS a
-                    ON a.id = future.discount_id
-                JOIN vendor_products AS vp ON vp.id = a.product_id
-                WHERE vendor_customer_id = :adp_customer_id;
-            """
+            mat_grp_disc_sql = queries.get_class_discount_future
+            snps_sql = queries.get_product_discount_future
     mat_grp_discounts = pd.DataFrame(
         DB_V2.execute(
             session=session,
             sql=mat_grp_disc_sql,
-            params=dict(adp_customer_id=adp_customer_id),
+            params=dict(customer_id=adp_customer_id),
         )
         .mappings()
         .fetchall()
@@ -190,7 +152,7 @@ def price_models_by_customer_discounts(
         DB_V2.execute(
             session=session,
             sql=snps_sql,
-            params=dict(adp_customer_id=adp_customer_id),
+            params=dict(customer_id=adp_customer_id),
         )
         .mappings()
         .fetchall()

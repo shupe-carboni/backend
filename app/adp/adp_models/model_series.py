@@ -1,5 +1,6 @@
 import re
 from app.db import DB_V2, Session, Database, CACHE
+from app.db.sql import queries
 from pandas import DataFrame
 from enum import StrEnum, auto
 from typing import TypeAlias, Literal, Any
@@ -91,6 +92,13 @@ class ModelSeries:
 
     class NoBasePrice(Exception): ...
 
+    class KeyMode(StrEnum):
+        EXACT = "exact"
+        MEMBERSHIP = "membership"
+        REGEX = "regex"
+        FIRST_2_PARTS = "first_2_parts"
+        ADDERS = "adders"
+
     coil_depth_mapping = {
         "A": 19.5,
         "C": 20.5,
@@ -163,7 +171,12 @@ class ModelSeries:
     }
 
     def __init__(
-        self, session: Session, re_match: re.Match, db: Database, use_future: bool
+        self,
+        session: Session,
+        re_match: re.Match,
+        db: Database,
+        use_future: bool,
+        customer_id: int,
     ):
         key_ = "adp_material_groups"
         cached = CACHE.get(key_)
@@ -183,6 +196,7 @@ class ModelSeries:
         self.session = session
         self.db = db
         self.use_future = use_future
+        self.customer_id = customer_id
 
     def __str__(self) -> str:
         return "".join(self.attributes.values()).strip()
@@ -257,27 +271,17 @@ class ModelSeries:
     def get_adders(self) -> PriceByCategoryAndKey:
         key_ = f"adp_series_{self.__series_name__()}"
         if self.use_future:
-            price_adders_sql = """
-                SELECT 
-                    key, 
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing as current
-                LEFT JOIN vendor_product_series_pricing_future AS future
-                    ON future.price_id = current.id
-                WHERE series = :series
-                    AND vendor_id = 'adp'
-                    AND key like 'adder_%';
-            """
+            price_adders_sql = queries.product_series_pricing_reach_into_future
         else:
-            price_adders_sql = """
-                SELECT key, price
-                FROM vendor_product_series_pricing
-                WHERE series = :series
-                and vendor_id = 'adp'
-                and key like 'adder_%';
-            """
-        params = dict(series=self.__series_name__())
+            price_adders_sql = queries.product_series_pricing_with_override_dynamic
+        params = dict(
+            series=self.__series_name__(),
+            vendor_id="adp",
+            key_mode="adders",
+            key=None,
+            keys=None,
+            customer_id=self.customer_id,
+        )
         adders_: list[dict[str, str | int]] = (
             self.db.execute(session=self.session, sql=price_adders_sql, params=params)
             .mappings()
@@ -289,6 +293,6 @@ class ModelSeries:
             _, *adder_type, adder_key = adder["key"].split("_")
             adder_type = "_".join(adder_type)
             adders.setdefault(adder_type, {})
-            adders[adder_type] |= {adder_key: adder["price"]}
-        CACHE.add_or_update(key_, adders)
+            adders[adder_type] |= {adder_key: adder["effective_price"]}
+        # CACHE.add_or_update(key_, adders)
         return adders

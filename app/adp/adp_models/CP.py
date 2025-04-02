@@ -6,6 +6,7 @@ from app.adp.adp_models.model_series import (
     NoBasePrice,
 )
 from app.db import ADP_DB, Session, Database
+from app.db.sql import queries
 
 
 class CP(ModelSeries):
@@ -125,27 +126,18 @@ class CP(ModelSeries):
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
-            sql = f"""
-                SELECT 
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing as current
-                LEFT JOIN vendor_product_series_pricing_future as future
-                    ON current.id = future.price_id
-                WHERE key = :model 
-                    AND vendor_id = 'adp'
-                    AND series = 'CP';
-            """
+            sql = queries.product_series_pricing_reach_into_future
         else:
-            sql = f"""
-                SELECT price, effective_date
-                FROM vendor_product_series_pricing
-                WHERE key = :model 
-                AND vendor_id = 'adp'
-                AND series = 'CP';
-            """
+            sql = queries.product_series_pricing_with_override_dynamic
         model = str(self)
-        params = dict(model=model)
+        params = dict(
+            key_mode=self.KeyMode.EXACT.value,
+            key=model,
+            keys=None,
+            series="CP",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
         result = self.db.execute(
             session=self.session, sql=sql, params=params
         ).one_or_none()
@@ -154,7 +146,7 @@ class CP(ModelSeries):
                 "No record found in the price table with this model number."
             )
         else:
-            price, self.eff_date = result
+            _, price, self.eff_date = result
         return int(price), self.get_adders()
 
     def get_zero_disc_price(self) -> int:

@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
 from app.db import ADP_DB, Session, Database
+from app.db.sql import queries
 
 
 class S(ModelSeries):
@@ -105,28 +106,19 @@ class S(ModelSeries):
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
         if self.use_future:
-            pricing_sql = """
-                SELECT 
-                    COALESCE(future.price, current.price) as price,
-                    COALESCE(future.effective_date, current.effective_date) as effective_date
-                FROM vendor_product_series_pricing as current
-                LEFT JOIN vendor_product_series_pricing_future AS future
-                    ON future.price_id = current.id
-                WHERE key = :key
-                    AND series = 'S'
-                    AND vendor_id = 'adp';
-            """
+            pricing_sql = queries.product_series_pricing_reach_into_future
         else:
-            pricing_sql = """
-                SELECT price, effective_date
-                FROM vendor_product_series_pricing
-                WHERE key = :key
-                    AND series = 'S'
-                    AND vendor_id = 'adp';
-            """
+            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.attributes['mat']}{self.attributes['scode']}_{self.attributes['heat']}"
-        params = dict(key=key)
-        pricing, self.eff_date = self.db.execute(
+        params = dict(
+            key_mode=self.KeyMode.EXACT.value,
+            key=key,
+            keys=None,
+            series="S",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
+        _, pricing, self.eff_date = self.db.execute(
             session=self.session, sql=pricing_sql, params=params
         ).one()
         return int(pricing), self.get_adders()

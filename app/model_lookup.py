@@ -81,7 +81,7 @@ def adp_parse_full_model_number(
             parse_mode = ParsingModes.BASE_PRICE_FUTURE
         elif not customer_id and not future:
             parse_mode = ParsingModes.BASE_PRICE
-        elif future:
+        elif customer_id and future:
             parse_mode = ParsingModes.CUSTOMER_PRICING_FUTURE
         else:
             parse_mode = ParsingModes.CUSTOMER_PRICING

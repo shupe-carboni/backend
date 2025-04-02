@@ -21,7 +21,9 @@ class Validator:
         self.session = db_session
 
     def is_model(
-        self, price_strat: ParsingModes = ParsingModes.BASE_PRICE
+        self,
+        price_strat: ParsingModes = ParsingModes.BASE_PRICE,
+        customer_id: int = 0,
     ) -> ModelSeries | bool:
         if self.text_len not in self.model_series.text_len or not self.raw_text:
             return False
@@ -30,26 +32,42 @@ class Validator:
         if model_parsed:
             try:
                 match price_strat:
-                    case (
-                        ParsingModes.BASE_PRICE_FUTURE
-                        | ParsingModes.CUSTOMER_PRICING_FUTURE
-                    ):
+                    case ParsingModes.BASE_PRICE_FUTURE:
                         return self.model_series(
                             session=self.session,
                             re_match=model_parsed,
                             db=DB_V2,
                             use_future=True,
+                            customer_id=0,
                         )
-                    case _:
+                    case ParsingModes.CUSTOMER_PRICING_FUTURE:
+                        return self.model_series(
+                            session=self.session,
+                            re_match=model_parsed,
+                            db=DB_V2,
+                            use_future=True,
+                            customer_id=customer_id,
+                        )
+                    case ParsingModes.BASE_PRICE:
                         return self.model_series(
                             session=self.session,
                             re_match=model_parsed,
                             db=DB_V2,
                             use_future=False,
+                            customer_id=0,
+                        )
+                    case ParsingModes.CUSTOMER_PRICING:
+                        return self.model_series(
+                            session=self.session,
+                            re_match=model_parsed,
+                            db=DB_V2,
+                            use_future=False,
+                            customer_id=customer_id,
                         )
             except NoBasePrice as np:
                 logger.error(
-                    f"Model {model_parsed.group(0)} unable to be produced due to an error: {np.reason}"
+                    f"Model {model_parsed.group(0)} unable to be "
+                    f"produced due to an error: {np.reason}"
                 )
                 return False
             except Exception as e:
