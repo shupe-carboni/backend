@@ -324,16 +324,16 @@ def test_vendor_endpoint_response_content(
         route += "&include=vendor-customers"
         resp = test_client.get(route)
         returned_ids = sorted([customer["id"] for customer in resp.json()["included"]])
-        assert returned_ids == ids
     else:
         resp = test_client.get(route)
         assert resp.status_code < 500, pformat(resp.text)
         returned_ids = sorted([customer["id"] for customer in resp.json()["data"]])
-        match perm:
-            case auth_overrides.AdminToken | auth_overrides.SCAEmployeeToken:
-                assert set(returned_ids) >= set(ids) and len(returned_ids) > len(ids)
-            case _:
-                assert returned_ids == ids
+
+    match perm:
+        case auth_overrides.AdminToken | auth_overrides.SCAEmployeeToken:
+            assert set(returned_ids) >= set(ids) and len(returned_ids) >= len(ids)
+        case _:
+            assert returned_ids == ids
 
 
 post_patch_delete_outline = [

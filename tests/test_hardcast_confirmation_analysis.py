@@ -8,9 +8,11 @@ load_dotenv()
 
 test_client = TestClient(app)
 PATH = "/hardcast/confirmations"
-test_file = "./tests/test_hardcast_conf.PDF"
-empty_test_file = "./tests/Sales Grp. Order Con_3351588 for PO_ 4785026.pdf"
-ambiguous_city_name_file = "./tests/Sales Grp. Order Con_3351761 for PO_ 4785026.pdf"
+test_file = "./tests/assets/test_hardcast_conf.PDF"
+empty_test_file = "./tests/assets/Sales Grp. Order Con_3351588 for PO_ 4785026.pdf"
+ambiguous_city_name_file = (
+    "./tests/assets/Sales Grp. Order Con_3351761 for PO_ 4785026.pdf"
+)
 FLOW_NAME = getenv("FLOW_NAME")
 
 

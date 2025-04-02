@@ -31,7 +31,7 @@ class TestRequest:
 
 ADP_CUSTOMER_ID = 55  # TEST CUSTOMER
 PATH_PREFIX = "/vendors/model-lookup/adp"
-PRICED_MODELS = pd.read_csv("./tests/model_pricing_examples.csv")
+PRICED_MODELS = pd.read_csv("./tests/assets/model_pricing_examples.csv")
 TEST_COIL_MODEL = "HE32924D175B1605AP"
 TEST_AH_MODEL = "SM312500"
 
@@ -57,7 +57,7 @@ def test_model_zero_discount_pricing(model, price):
     url = f"{PATH_PREFIX}?customer_id=0&model_number="
     resp = test_client.get(url + str(model))
     assert resp.status_code == 200, resp.content
-    assert resp.json()["zero-discount-price"] == price
+    assert resp.json()["zero_discount_price"] == price
 
 
 mapped_perms = [
