@@ -157,3 +157,68 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
         )
     finally:
         session.close()
+
+
+@price_updates.get("/{vendor_id}/rollback")
+async def rollback_an_implemented_update(
+    session: NewSession,
+    token: Token,
+    vendor_id: VendorId,
+    current_effective_date: datetime,
+    new_effective_date: datetime,
+):
+    """If an increase has already been implemented (current date went beyond effective
+    date), this rolls back that action and sets a new effective_date.
+        - Assume pricing is in effect now
+            (vendor_pricing_by_class, vendor_pricing_by_customer,
+            vendor_product_class_discounts, vendor_product_discounts,
+            vendor_product_series_pricing)
+        - Any pricing in effect now, don't assume that there is only one history record correlated to it
+        - take everything that's current and with an effective_date set to current_effective_date,
+                put it into future, with new_effective_date
+            (vendor_pricing_by_class_future, vendor_pricing_by_customer_future,
+            vendor_product_class_discounts_future, vendor_product_discounts_future,
+            vendor_product_series_pricing_future)
+        - joining current with history, update current with the most recently timestamped
+            record with an effective date closest to the current_effective_date.
+    """
+    if token.permissions < auth.Permissions.sca_admin:
+        logger.info("Insufficient permissions. Rejected.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    elif (
+        new_effective_date < current_effective_date
+        or new_effective_date < datetime.today()
+    ):
+        msg = (
+            "Invalid dates. "
+            "The new date must be after the current date supplied,"
+            "and the new date must be in the future"
+        )
+        logger.error(msg)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    rollback_query = queries.rollback_price_increase
+    try:
+        params = dict(
+            cur_eff_date=current_effective_date.date(),
+            new_eff_date=new_effective_date.date(),
+            vendor_id=vendor_id.value,
+        )
+        DB_V2.execute(session, rollback_query, params)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        logger.info(
+            f"Prices and discounts rolled back to {current_effective_date.date()}."
+        )
+        logger.info(
+            f"Prices and discounts increase set to {new_effective_date.date()}."
+        )
+        session.commit()
+        return Response(
+            status_code=status.HTTP_200_OK,
+            content=f"Prices and discounts rolled back for {vendor_id}",
+        )
+    finally:
+        session.close()

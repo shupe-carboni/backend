@@ -16,6 +16,7 @@ class Queries(SimpleNamespace):
     apply_percentage_on_class_price: str
     class_pricing_update: str
     customer_product_discount_update: str
+    rollback_price_increase: str
     product_series_pricing_with_override_dynamic: str
     product_series_pricing_reach_into_future: str
     glasfloss_standard_filter: str

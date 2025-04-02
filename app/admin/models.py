@@ -12,6 +12,7 @@ class VendorId(StrEnum):
     GLASFLOSS = "glasfloss"
     MILWAUKEE = "milwaukee"
     SOUTHWIRE = "southwire"
+    TEST = "test"
 
 
 class Customer(BaseModel):
