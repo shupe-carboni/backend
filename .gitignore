@@ -1,4 +1,5 @@
 # My own ignores
+proompt*
 *.zip
 /tests/*/*.csv
 /tests/*/*.pdf
