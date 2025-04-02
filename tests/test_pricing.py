@@ -44,8 +44,6 @@ def test_price_update_rollback():
         RETURNING id;
     """
     price_id = DB_V2.execute(session, new_class_price).scalar_one()
-    # session.commit()
-    # time.sleep(1)
     update_price_to_add_history = f"""
         UPDATE vendor_pricing_by_class
         SET price = 100, effective_date = '{TODAY.date()}'
@@ -58,7 +56,6 @@ def test_price_update_rollback():
     query = f"?current_effective_date={TODAY}&new_effective_date={FUTURE_DATE}"
     response: Response = test_client.get(path + query)
     assert response.status_code == 200, response.text
-    print(price_id)
     # Verify future table
     future = (
         DB_V2.execute(
@@ -81,3 +78,8 @@ def test_price_update_rollback():
     )
     assert current["price"] == 90
     assert current["effective_date"].date() == YESTERDAY.date()
+
+
+def test_customer_pricing_class_update_alters_pricing_labels():
+    # TODO
+    assert True
