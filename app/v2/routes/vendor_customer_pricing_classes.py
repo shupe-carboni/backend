@@ -37,7 +37,7 @@ async def new_vendor_customer_pricing_classes(
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorCustomerOperations(
-            token, VendorCustomerPricingClass, PARENT_PREFIX, id=vendor_id
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
@@ -82,7 +82,7 @@ async def mod_vendor_customer_pricing_classes(
         )
         ret = (
             auth.VendorCustomerOperations(
-                token, VendorCustomerPricingClass, PARENT_PREFIX, id=vendor_id
+                token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
             )
             .allow_admin()
             .allow_sca()
@@ -123,7 +123,7 @@ async def del_vendor_customer_pricing_classes(
 ) -> None:
     return (
         auth.VendorCustomerOperations(
-            token, VendorCustomerPricingClass, PARENT_PREFIX, id=vendor_id
+            token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
         )
         .allow_admin()
         .allow_sca()
