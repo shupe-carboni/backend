@@ -22,7 +22,7 @@ from app.adp.extraction.ratings import (
     add_ratings_to_program,
 )
 
-ratings_admin = APIRouter(prefix="/admin", tags=["adp", "admin", "ratings"])
+ratings_admin = APIRouter(prefix="/admin/adp", tags=["adp", "admin", "ratings"])
 logger = logging.getLogger("uvicorn.info")
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(ADP_DB.get_db)]

@@ -79,7 +79,7 @@ app.add_middleware(
 ##          their parent resources helps with
 ##          ordering paths correctly
 customer_sub_routes = [(customer_rel, "", customers)]
-adp_sub_routes = [(ratings_admin, "", adp)]
+adp_sub_routes = [(ratings_admin, "/vendors", app)]
 v2_routes = [
     (v2.vendors.vendors, "/v2", app),
     (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
