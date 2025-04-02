@@ -4,6 +4,9 @@ as variables with names that match the filenames.
 
 import os
 from types import SimpleNamespace
+from logging import getLogger
+
+logger = getLogger("uvicorn.info")
 
 
 class Queries(SimpleNamespace):
@@ -20,7 +23,7 @@ for root, _, files in os.walk(dir_):
         if ext == ".sql":
             with open(os.path.join(root, file), "r") as f:
                 if hasattr(queries, file_name):
-                    raise Exception(f"Duplicate sql filename: {f}")
+                    logger.warning(f"Possible duplicate sql filename: {file} in {root}")
                 setattr(queries, file_name, f.read())
                 stub_content += f"    {file_name}: str\n"
 stub_content += "queries: Queries"
