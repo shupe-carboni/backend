@@ -125,21 +125,16 @@ class CP(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        if self.use_future:
-            sql = queries.product_series_pricing_reach_into_future
-        else:
-            sql = queries.product_series_pricing_with_override_dynamic
         model = str(self)
         params = dict(
             key_mode=self.KeyMode.EXACT.value,
-            key=model,
-            keys=None,
+            key_param=[model],
             series="CP",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         result = self.db.execute(
-            session=self.session, sql=sql, params=params
+            session=self.session, sql=self.pricing_sql, params=params
         ).one_or_none()
         if not result:
             raise NoBasePrice(

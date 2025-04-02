@@ -178,10 +178,6 @@ class V(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        if self.use_future:
-            pricing_sql = queries.product_series_pricing_reach_into_future
-        else:
-            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.attributes['scode']}_"
         if self.attributes["paint"] == "V":
             key += "embossed"
@@ -189,15 +185,14 @@ class V(ModelSeries):
             key += "painted"
         params = dict(
             key_mode=self.KeyMode.EXACT.value,
-            key=key,
-            keys=None,
+            key_param=[key],
             series="V",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         _, pricing, self.eff_date = self.db.execute(
             session=self.session,
-            sql=pricing_sql,
+            sql=self.pricing_sql,
             params=params,
         ).one()
 

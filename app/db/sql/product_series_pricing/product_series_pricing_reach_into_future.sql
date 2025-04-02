@@ -6,20 +6,24 @@ WITH CurrentPricing AS (
     AND series = :series
     AND deleted_at IS NULL
     AND (
-        (:key_mode = 'exact' AND key = :key)
-        OR(:key_mode = 'membership' AND 
-            (
-                CARDINALITY(CAST(:keys AS TEXT[])) > 0
-                AND key IN (SELECT UNNEST(CAST(:keys AS TEXT[])))
-            ))
-        OR (:key_mode = 'first_2_parts' 
-            AND :key is not null 
-            AND :key ~ SUBSTRING(key FROM '^[^_]*_[^_]*_') )
-        OR (:key_mode = 'regex' 
-            AND :key is not null 
-            AND :key ~ key)
-        OR (:key_mode = 'adders' 
-            AND key like 'adder_%')
+        :key_param IS NOT NULL 
+        AND CASE :key_mode
+            WHEN 'exact' THEN 
+                CARDINALITY(:key_param) = 1 
+                AND key = (:key_param)[1]
+            WHEN 'membership' THEN 
+                CARDINALITY(:key_param) > 0 
+                AND key IN (SELECT UNNEST(:key_param))
+            WHEN 'first_2_parts' THEN 
+                CARDINALITY(:key_param) = 1 
+                AND (:key_param)[1] ~ SUBSTRING(key FROM '^[^_]*_[^_]*_')
+            WHEN 'regex' THEN 
+                CARDINALITY(:key_param) = 1 
+                AND (:key_param)[1] ~ key
+            WHEN 'adders' THEN
+                key like 'adder_%'
+            ELSE FALSE  -- return no results
+        END
     )
 ),
 FuturePricing AS (

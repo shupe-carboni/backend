@@ -197,6 +197,10 @@ class ModelSeries:
         self.db = db
         self.use_future = use_future
         self.customer_id = customer_id
+        if self.use_future:
+            self.pricing_sql = queries.product_series_pricing_reach_into_future
+        else:
+            self.pricing_sql = queries.product_series_pricing_with_override_dynamic
 
     def __str__(self) -> str:
         return "".join(self.attributes.values()).strip()
@@ -270,20 +274,15 @@ class ModelSeries:
 
     def get_adders(self) -> PriceByCategoryAndKey:
         key_ = f"adp_series_{self.__series_name__()}"
-        if self.use_future:
-            price_adders_sql = queries.product_series_pricing_reach_into_future
-        else:
-            price_adders_sql = queries.product_series_pricing_with_override_dynamic
         params = dict(
             series=self.__series_name__(),
             vendor_id="adp",
             key_mode="adders",
-            key=None,
-            keys=None,
+            key_param=[""],
             customer_id=self.customer_id,
         )
         adders_: list[dict[str, str | int]] = (
-            self.db.execute(session=self.session, sql=price_adders_sql, params=params)
+            self.db.execute(session=self.session, sql=self.pricing_sql, params=params)
             .mappings()
             .all()
         )

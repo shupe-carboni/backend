@@ -133,24 +133,19 @@ class B(ModelSeries):
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
         key_first_part = f"{self.tonnage}_{self.attributes['scode']}_"
-        if self.use_future:
-            pricing_sql = queries.product_series_pricing_reach_into_future
-        else:
-            pricing_sql = queries.product_series_pricing_with_override_dynamic
 
         # NOTE normally I'd pass a tuple, but due to how the SQL uses typed arrays
         # (CARDINALITY and UNNEST), I'm passing a list so it becomes a CASTable array
         keys = [f"{key_first_part}{suffix}" for suffix in ("base", "2", "3", "4")]
         params = dict(
             key_mode=self.KeyMode.MEMBERSHIP.value,
-            key=None,
-            keys=keys,
+            key_param=keys,
             series="B",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         pricing_records: tuple[dict[str, str | int]] = (
-            self.db.execute(session=self.session, sql=pricing_sql, params=params)
+            self.db.execute(session=self.session, sql=self.pricing_sql, params=params)
             .mappings()
             .fetchall()
         )

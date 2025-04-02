@@ -162,10 +162,6 @@ class HD(ModelSeries):
         self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        if self.use_future:
-            pricing_sql = queries.product_series_pricing_reach_into_future
-        else:
-            pricing_sql = queries.product_series_pricing_with_override_dynamic
         try:
             key_1 = str(int(self.attributes["scode"]))
             key_2 = f"{int(self.attributes['scode']):02}"
@@ -176,14 +172,13 @@ class HD(ModelSeries):
         keys = [key_1, key_2]
         params = dict(
             key_mode=self.KeyMode.MEMBERSHIP.value,
-            key=None,
-            keys=keys,
+            key_param=keys,
             series="HD",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         _, pricing, self.eff_date = self.db.execute(
-            session=self.session, sql=pricing_sql, params=params
+            session=self.session, sql=self.pricing_sql, params=params
         ).one()
         return pricing, self.get_adders()
 

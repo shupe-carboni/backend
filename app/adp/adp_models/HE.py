@@ -252,10 +252,6 @@ class HE(ModelSeries):
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:
-        if self.use_future:
-            pricing_sql = queries.product_series_pricing_reach_into_future
-        else:
-            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.attributes['scode']}_"
         if self.uncased:
             key += "uncased"
@@ -270,15 +266,14 @@ class HE(ModelSeries):
                 key += "cased"
         params = dict(
             key_mode=self.KeyMode.EXACT.value,
-            key=key,
-            keys=None,
+            key_param=[key],
             series="HE",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         try:
             _, pricing, self.eff_date = self.db.execute(
-                session=self.session, sql=pricing_sql, params=params
+                session=self.session, sql=self.pricing_sql, params=params
             ).one()
         except Exception as e:
             raise NoBasePrice(str(e))

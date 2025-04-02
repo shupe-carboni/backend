@@ -99,25 +99,16 @@ class F(ModelSeries):
 
     def load_pricing(self) -> tuple[dict[str, int], PriceByCategoryAndKey]:
 
-        # NOTE the ~ operator in Postgres checks that :slab matches regex
-        # values contained in the column "slab". The selection based on key
-        # ignores the key suffix that denotes the heat kit so that it grabs them all
-        if self.use_future:
-            pricing_sql = queries.product_series_pricing_reach_into_future
-        else:
-            pricing_sql = queries.product_series_pricing_with_override_dynamic
         key = f"{self.tonnage}_{self.attributes['scode']}_"
-        params = dict(key=key)
         params = dict(
             key_mode=self.KeyMode.FIRST_2_PARTS.value,
-            key=key,
-            keys=None,
+            key_param=[key],
             series="F",
             vendor_id="adp",
             customer_id=self.customer_id,
         )
         pricing = (
-            self.db.execute(session=self.session, sql=pricing_sql, params=params)
+            self.db.execute(session=self.session, sql=self.pricing_sql, params=params)
             .mappings()
             .fetchall()
         )
