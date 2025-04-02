@@ -25,6 +25,8 @@ class Queries(SimpleNamespace):
     glasfloss_customer_product_class_multiplier: str
     pricing_by_class_json: str
     pricing_by_customer_json: str
+    vendor_customer_pricing_class_preflight: str
+    vendor_customer_pricing_class_patch_followup: str
     get_class_discount_future: str
     get_product_discount_current: str
     get_product_discount_future: str
