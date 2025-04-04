@@ -1,111 +1,12 @@
-from datetime import datetime
-from warnings import warn
 import re
 import pandas as pd
 import logging
-from functools import partial, wraps
+from datetime import datetime
 from app.adp.adp_models import Fields
-from app.adp.extraction.models import parse_model_string, ParsingModes
 
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger("uvicorn.info")
-
-
-def deprecated(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        warn(
-            "Flexcoil is no longer dynamically added to strategy files for comparison."
-            " This function will be removed in a future version.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-@deprecated
-def price_flexcoil_version(
-    customer_id: int, session: Session, row_subset: pd.Series
-) -> pd.Series:
-    """
-    ADP has killed the FlexCoil in practical effect, as coils with field installed
-        RDS ordered from this point forward will come with an A2L piston and will
-        NOT be allowed to be used on R410a systems.
-    As a result, SCA is making the decision to remove the Flexcoil model dynamic
-        insertion into program files side-by-side with A1 models.
-        A2L models will be in their own product vlocks, explicitly added to strategies.
-
-    -- 2024-10-18 (Joseph Carboni)
-
-
-    ADP is no longer offering Air Handlers as FlexCoils.
-
-    -- 2024-09-05 (Joseph Carboni)
-
-    I don't like doing it this way, but this seems the most
-        straightforward given the requirements.
-    To accomplish this, I needed to pass the customer_id in from
-        CustomerProgram as well as pass in the database Session down
-        from generate_program in workbook_factory down through the
-        build_program method, in which the Program's `category_data`
-        method is called.
-
-    Really wild.
-
-    The point here is to parse out the Flexcoil versions of
-        non-flexcoil product and show the model nubers and prices
-        side-by-side with currently active or proposed product.
-
-    -- 2024-04-05 (Joseph Carboni)
-    """
-    model_number: str = row_subset[Fields.MODEL_NUMBER.value]
-    series: str = row_subset[Fields.SERIES.value]
-    not_available_txt = "Not Available"
-    not_available = pd.Series([not_available_txt, not_available_txt])
-    same_as_model_txt = "Same as Model Number"
-    same_as_model = pd.Series([same_as_model_txt, same_as_model_txt])
-    # flexcoil by replacement
-    if series in ("HE", "HH", "HD"):
-        if model_number.endswith("AP"):
-            model_to_parse = model_number.replace("AP", "N")
-        elif model_number[:2] == "CE" and not model_number.endswith("N"):
-            model_to_parse = model_number + "N"
-        elif model_number.endswith("N"):
-            return same_as_model
-        elif model_number.endswith("R"):
-            model_to_parse = list(model_number)
-            model_to_parse[4] = "1"
-            model_to_parse[-1] = "N"
-            model_to_parse = "".join(model_to_parse)
-        else:
-            return not_available
-    # flexcoil by append
-    elif series in ("MH", "V"):
-        model_end = model_number[-1]
-        if model_end not in ("R", "N"):
-            model_to_parse = model_number + "N"
-        elif model_end == "N":
-            return same_as_model
-        elif model_end == "R":
-            model_to_parse = model_number[:-2] + "1N"
-    else:
-        return not_available
-
-    result = parse_model_string(
-        session=session,
-        adp_customer_id=customer_id,
-        model=model_to_parse,
-        mode=ParsingModes.CUSTOMER_PRICING,
-    )
-    if result[Fields.PRIVATE_LABEL.value] is not None:
-        return result[[Fields.PRIVATE_LABEL.value, Fields.NET_PRICE.value]].rename(
-            {Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
-        )
-    else:
-        return result[[Fields.MODEL_NUMBER.value, Fields.NET_PRICE.value]]
 
 
 class EmptyProgram(Exception): ...
@@ -279,7 +180,7 @@ class CustomerProgram:
     ) -> None:
         if not (coils or air_handlers):
             raise Exception(
-                "Either a Coil Program or an Air Handler " "Program are required"
+                "Either a Coil Program or an Air Handler Strategy are required"
             )
 
         self.customer_id = customer_id
@@ -315,9 +216,12 @@ class CustomerProgram:
             customer_name = re.sub(
                 r"(?<=')([^'])", lambda match: match.group(1).lower(), customer_name
             )
-        return f"{customer_name} {file_date.year} ADP Product Strategy {file_date}".replace(
-            "/", "_"
+        # fmt: off
+        return (
+            f"{customer_name} {file_date.year} ADP Product Strategy {file_date}"
+            .replace("/", "_")
         )
+        # fmt: on
 
     def filter_ratings(self) -> None:
         if not self.ratings.empty:

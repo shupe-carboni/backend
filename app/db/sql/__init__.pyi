@@ -62,6 +62,13 @@ class Queries(SimpleNamespace):
     adp_snps_pop_temp: str
     adp_snps_temp_table: str
     adp_snps_establish_future: str
+    adp_customer_aliases: str
+    adp_customer_parts: str
+    adp_strategy_custom_descriptions: str
+    adp_strategy_product_attributes: str
+    adp_customer_strategy_data: str
+    adp_customer_attributes: str
+    adp_strategy_custom_features: str
     adp_product_series_pop_temp: str
     adp_product_series_temp_table: str
     adp_product_series_teardown: str

@@ -5,13 +5,11 @@ import os
 import pandas as pd
 import logging
 from time import time
-from enum import Enum
-from dataclasses import dataclass
-from typing import Iterable
 from datetime import datetime
 from openpyxl.styles import Font, Alignment, numbers
 from fastapi import HTTPException
 from app.adp.adp_models import Fields
+from app.adp.utils.models import AttrType, ProgramFile
 from app.adp.utils.programs import (
     CoilProgram,
     AirHandlerProgram,
@@ -19,24 +17,14 @@ from app.adp.utils.programs import (
     EmptyProgram,
 )
 from app.adp.utils.pricebook import PriceBook
-from app.db import Session, ADP_DB, SCA_DB, Stage, DB_V2
+from app.db import Session, DB_V2
+from app.db.sql import queries
 from app.downloads import XLSXFileResponse
 
 
 logger = logging.getLogger("uvicorn.info")
 TODAY = str(datetime.today().date())
 TEMPLATES = os.getenv("TEMPLATES")
-
-
-class AttrType(Enum):
-    NUMBER = int
-    STRING = str
-
-
-@dataclass
-class ProgramFile:
-    file_name: str
-    file_data: bytes
 
 
 def fill_sort_order_field(df: pd.DataFrame) -> None:
@@ -108,51 +96,21 @@ def build_ah_program(
 
 
 def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.DataFrame:
-    sql_attrs = """
-        SELECT vendor_customers.id AS customer_id, vendor_customer_attrs.id as attr_id,
-            attr, value, type  
-        FROM vendor_customers 
-        JOIN vendor_customer_attrs 
-        ON vendor_customer_attrs.vendor_customer_id = vendor_customers.id
-        WHERE attr in ('ppf','terms')
-        AND vendor_id = 'adp'
-        AND vendor_customer_attrs.deleted_at IS NULL
-        AND vendor_customers.id = :customer_id;
-    """
+    sql_attrs = queries.adp_customer_attributes
     customer_attrs = DB_V2.execute(session, sql_attrs, {"customer_id": customer_id})
     logger.info(f"customer_id: {customer_id}")
     customer_attrs_df = pd.DataFrame(
         customer_attrs.fetchall(), columns=customer_attrs.keys()
     )
 
-    attr_ids = tuple(customer_attrs_df["attr_id"].to_list())
     attr_types_by_col = customer_attrs_df[["attr", "type"]]
-    if attr_ids:
-        sql_last_eff_date_by_customer = """
-            SELECT b.id AS customer_id, DATE_TRUNC('second',max(timestamp)) AS effective_date
-            FROM vendor_customer_attrs_changelog
-            JOIN vendor_customer_attrs AS a
-            ON a.id = attr_id
-            JOIN vendor_customers AS b
-            ON b.id = a.vendor_customer_id
-            WHERE attr_id IN :attr_ids
-            GROUP BY b.id;
-        """
-        try:
-            customer_latest_effective_date = DB_V2.execute(
-                session, sql_last_eff_date_by_customer, {"attr_ids": attr_ids}
-            ).one()[-1]
-        except Exception as e:
-            logger.error(e)
-            raise e
-    else:
-        customer_latest_effective_date = "1900-01-01"
+    customer_latest_effective_date = datetime.today().date()
 
     # ought to be a one-row table now
     customer_attrs_df = customer_attrs_df.pivot(
         index="customer_id", columns="attr", values="value"
     )
-    customer_attrs_df["effective_date"] = customer_latest_effective_date
+    customer_attrs_df["effective_date"] = str(customer_latest_effective_date)
     for attr in attr_types_by_col.itertuples():
         customer_attrs_df[attr.attr] = customer_attrs_df[attr.attr].astype(
             AttrType[attr.type].value
@@ -163,38 +121,7 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
 
 
 def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
-    """
-    Tables:
-        - vendor-customers (id)
-        - vendor-products (vendor_product_identifier, vendor_product_description)
-        - vendor-product-attrs (attr='pkg_qty')
-        - vendor-pricing-by-customer (pricing class in 'PREFERRED_PARTS', 'STANDARD_PARTS')
-        - vendor-pricing-by-customer-attrs (attr='sort_order')
-    """
-    sql = """
-        SELECT vc.id AS customer_id,
-            vp.vendor_product_identifier AS part_number,
-            vp.vendor_product_description AS description,
-            vpa.value AS pkg_qty,
-            vpbc.price::float / 100 as preferred,
-            vpbc.price::float / 100 as standard
-        FROM vendor_customers vc
-        JOIN vendor_pricing_by_customer vpbc ON vpbc.vendor_customer_id = vc.id
-        JOIN vendor_products vp ON vp.id = vpbc.product_id
-        JOIN vendor_product_attrs vpa ON vpa.vendor_product_id = vp.id
-        LEFT JOIN vendor_pricing_by_customer_attrs vpca
-            ON vpca.pricing_by_customer_id = vpbc.id and vpca.attr = 'sort_order'
-        WHERE vc.id = :customer_id
-        AND vpa.attr = 'pkg_qty'
-        AND EXISTS (
-            SELECT 1
-            FROM vendor_pricing_classes vpc
-            WHERE vpc.id = vpbc.pricing_class_id
-            AND vpc.name IN ('PREFERRED_PARTS','STANDARD_PARTS')
-            AND vpc.vendor_id = 'adp'
-        )
-        ORDER BY vpca.value::int;
-    """
+    sql = queries.adp_customer_parts
     try:
         result = DB_V2.execute(session, sql, {"customer_id": customer_id})
     except Exception as e:
@@ -205,21 +132,7 @@ def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
 
 
 def pull_customer_aliases_v2(session: Session) -> pd.DataFrame:
-    sql = """
-        SELECT DISTINCT
-            vc.id as id, 
-            vc.name AS adp_alias,
-            customers.name as customer,
-            customers.id as sca_id, 
-            vca.value::bool as preferred_parts
-        FROM vendor_customers vc
-        JOIN customer_location_mapping clm ON clm.vendor_customer_id = vc.id
-        JOIN sca_customer_locations scl ON scl.id = clm.customer_location_id
-        JOIN sca_customers customers ON customers.id = scl.customer_id
-        JOIN vendor_customer_attrs vca ON vca.vendor_customer_id = vc.id
-        WHERE vc.vendor_id = 'adp'
-        AND vca.attr = 'preferred_parts';
-    """
+    sql = queries.adp_customer_aliases
     result = DB_V2.execute(session, sql)
     return pd.DataFrame(result.fetchall(), columns=result.keys())
 
@@ -274,7 +187,7 @@ def pull_customer_parent_accounts(session: Session) -> pd.DataFrame:
         result = pull_customer_parents_v2(session)
     except Exception as e:
         logger.warning(f"v2 customer parents method failed: {e}")
-        result = SCA_DB.load_df(session=session, table_name="customers")
+        result = DB_V2.load_df(session=session, table_name="sca_customers")
     else:
         logger.info("Used V2 for customer parents")
     finally:
@@ -377,115 +290,25 @@ def pull_program_data_v2(
     """
 
     if effective_date and effective_date > datetime.today():
-        customer_strategy_sql = """
-            SELECT 
-                vpbc.id as price_id,
-                vpbc.product_id,
-                vpbc.vendor_customer_id as customer_id, 
-                classes.name as cat_1,
-                vp.vendor_product_identifier as model_number,
-                vpbc_future.price
-            FROM vendor_pricing_by_customer_future AS vpbc_future
-            JOIN vendor_pricing_by_customer AS vpbc
-                ON vpbc_future.price_id = vpbc.id
-            JOIN vendor_products AS vp ON vp.id = vpbc.product_id
-            JOIN vendor_product_to_class_mapping AS mapping ON mapping.product_id = vp.id
-            JOIN vendor_product_classes AS classes ON classes.id = mapping.product_class_id
-            WHERE vpbc.vendor_customer_id = :customer_id
-            AND EXISTS (
-                SELECT 1
-                FROM vendor_pricing_classes AS vpc
-                WHERE vpc.id = vpbc.pricing_class_id
-                AND vpc.name = 'STRATEGY_PRICING'
-                AND vp.vendor_id = 'adp'
-            )
-            AND classes.rank = 1
-            AND vpbc.deleted_at IS NULL
-            AND vpbc_future.effective_date::date <= :ed
-        """
-        backup = """
-            SELECT vpbc.id as price_id, vpbc.product_id, vpbc.vendor_customer_id as customer_id, 
-                classes.name as cat_1, vp.vendor_product_identifier as model_number, vpbc.price
-            FROM vendor_pricing_by_customer AS vpbc
-            JOIN vendor_products AS vp ON vp.id = vpbc.product_id
-            JOIN vendor_product_to_class_mapping AS mapping ON mapping.product_id = vp.id
-            JOIN vendor_product_classes AS classes ON classes.id = mapping.product_class_id
-            WHERE vpbc.vendor_customer_id = :customer_id
-            AND EXISTS (
-                SELECT 1
-                FROM vendor_pricing_classes AS vpc
-                WHERE vpc.id = vpbc.pricing_class_id
-                AND vpc.name = 'STRATEGY_PRICING'
-                AND vp.vendor_id = 'adp'
-            )
-            AND classes.rank = 1
-            AND vpbc.deleted_at IS NULL;
-        """
+        use_future = True
     else:
-        customer_strategy_sql = """
-            SELECT vpbc.id as price_id, vpbc.product_id, vpbc.vendor_customer_id as customer_id, 
-                classes.name as cat_1, vp.vendor_product_identifier as model_number, vpbc.price
-            FROM vendor_pricing_by_customer AS vpbc
-            JOIN vendor_products AS vp ON vp.id = vpbc.product_id
-            JOIN vendor_product_to_class_mapping AS mapping ON mapping.product_id = vp.id
-            JOIN vendor_product_classes AS classes ON classes.id = mapping.product_class_id
-            WHERE vpbc.vendor_customer_id = :customer_id
-            AND EXISTS (
-                SELECT 1
-                FROM vendor_pricing_classes AS vpc
-                WHERE vpc.id = vpbc.pricing_class_id
-                AND vpc.name = 'STRATEGY_PRICING'
-                AND vp.vendor_id = 'adp'
-            )
-            AND classes.rank = 1
-            AND vpbc.deleted_at IS NULL;
-        """
-    strategy_product_custom_desc_sql = """
-        SELECT pricing_by_customer_id as price_id, value as "category"
-        FROM vendor_pricing_by_customer_attrs
-        WHERE pricing_by_customer_id IN :ids
-        AND attr = 'custom_description'; 
-    """
-    strategy_product_custom_feature_sql = """
-        SELECT pricing_by_customer_id as price_id, attr, value
-        FROM vendor_pricing_by_customer_attrs
-        WHERE pricing_by_customer_id IN :ids
-        AND attr IN (
-            'private_label',
-            'ratings_ac_txv',
-            'ratings_hp_txv',
-            'ratings_field_txv',
-            'ratings_piston',
-            'sort_order'
-        ); 
-    """
-    strategy_product_attrs = """
-        SELECT vendor_product_id AS product_id, attr, value
-        FROM vendor_product_attrs
-        WHERE vendor_product_id IN :product_ids
-        AND attr NOT IN ('category','private_label');
-    """
+        use_future = False
+
+    strategy_product_custom_desc_sql = queries.adp_strategy_custom_descriptions
+    strategy_product_custom_feature_sql = queries.adp_strategy_custom_features
+    strategy_product_attrs = queries.adp_strategy_product_attributes
+    customer_strategy_sql = queries.adp_customer_strategy_data
     customer_strategy = pd.DataFrame(
         DB_V2.execute(
             session,
             customer_strategy_sql,
-            dict(customer_id=customer_id, ed=effective_date),
+            dict(customer_id=customer_id, ed=effective_date, use_future=use_future),
         )
         .mappings()
         .fetchall()
     )
     if customer_strategy.empty:
-        customer_strategy = pd.DataFrame(
-            DB_V2.execute(
-                session,
-                backup,
-                dict(customer_id=customer_id, ed=effective_date),
-            )
-            .mappings()
-            .fetchall()
-        )
-        if customer_strategy.empty:
-            raise EmptyProgram("No customer strategy exists")
+        raise EmptyProgram("No customer strategy exists")
     strategy_product_desc = pd.DataFrame(
         DB_V2.execute(
             session,
@@ -646,20 +469,3 @@ def generate_program(
         )
     finally:
         session.close()
-
-
-def update_dates_in_tables(
-    session: Session, tables: Iterable[str], customer_id: int = None
-) -> None:
-    coil_update_q, ah_update_q = [
-        f"""UPDATE {table}
-            SET last_file_gen = :date
-            WHERE customer_id 
-            IN :customers;"""
-        for table in tables
-    ]
-    params = {"customers": (customer_id,), "date": TODAY}
-    with session:
-        for q in coil_update_q, ah_update_q:
-            ADP_DB.execute(session, q, params)
-        session.commit()

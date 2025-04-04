@@ -61,53 +61,14 @@ class AMH(ModelSeries):
         return value
 
     def calc_zero_disc_price(self) -> int:
-        if self.use_future:
-            sql = """
-                SELECT 
-                    COALESCE(future.price, a.price) as price,
-                    COALESCE(future.effective_date, a.effective_date) as effective_date
-                FROM vendor_pricing_by_class AS a
-                LEFT JOIN vendor_pricing_by_class_future AS future
-                    ON future.price_id = a.id
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.vendor_product_identifier = :model
-                    AND b.id = a.product_id
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = a.pricing_class_id
-                    AND c.name = 'ZERO_DISCOUNT'
-                    AND c.vendor_id = 'adp'
-                );
-            """
-        else:
-            sql = """
-                SELECT price, effective_date
-                FROM vendor_pricing_by_class AS a
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.vendor_product_identifier = :model
-                    AND b.id = a.product_id
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = a.pricing_class_id
-                    AND c.name = 'ZERO_DISCOUNT'
-                    AND c.vendor_id = 'adp'
-                );
-            """
+        sql = self.pricing_sql
         price = self.db.execute(self.session, sql, dict(model=str(self))).one_or_none()
         if not price:
             raise NoBasePrice(
                 "No record found in the price table with this model number."
             )
         else:
-            price, self.eff_date = price
+            _, price, self.eff_date = price
         return price
 
     def record(self) -> dict:
