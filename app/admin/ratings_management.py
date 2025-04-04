@@ -30,7 +30,7 @@ NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
 executor = ThreadPoolExecutor(max_workers=2)
 
 
-@ratings_admin.get("/update-ratings-reference")
+@ratings_admin.post("/update-ratings-reference")
 def update_ratings_ref(
     token: Token,
     session: NewSession,
@@ -51,7 +51,7 @@ def update_ratings_ref(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
-@ratings_admin.get("/update-unregistered-ratings")
+@ratings_admin.post("/update-unregistered-ratings")
 def update_unregistered_ratings(token: Token, session: NewSession, bg: BackgroundTasks):
     """Update all program ratings
     that haven't been found in the ratings reference"""
