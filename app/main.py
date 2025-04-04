@@ -17,7 +17,7 @@ from starlette.routing import Match, Route
 from app.hardcast import hardcast
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
-from app.adp import adp, ratings_admin
+from app.adp import ratings_admin
 from app.admin import price_updates
 from app.model_lookup import model_lookup
 import app.v2 as v2
