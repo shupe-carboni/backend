@@ -1,1 +1,1 @@
-from app.adp.routes.ratings_management import ratings_admin
+from app.admin.ratings_management import ratings_admin
