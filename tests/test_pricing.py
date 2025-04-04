@@ -3,7 +3,6 @@
 from fastapi.testclient import TestClient
 from httpx import Response
 from datetime import datetime, timedelta
-import time
 
 from app.main import app
 from app.auth import authenticate_auth0_token
@@ -21,6 +20,8 @@ YESTERDAY = TODAY + timedelta(days=-1)
 TEST_VENDOR = "test"
 TEST_VENDOR_PRODUCT_ID = 4543
 TEST_VENDOR_PRICE_CLASS_ID = 37
+TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID = 502
+TEST_CUSTOMER_ID = 257
 
 
 def test_price_update_rollback():
@@ -81,5 +82,60 @@ def test_price_update_rollback():
 
 
 def test_customer_pricing_class_update_alters_pricing_labels():
-    # TODO
-    assert True
+    assert not DB_V2.conn_params, "Not connected to the test Database"
+    session = next(DB_V2.get_db())
+    app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
+    # Setup test data
+    reset_ = f"""
+        UPDATE vendor_customer_pricing_classes
+        SET pricing_class_id = {TEST_VENDOR_PRICE_CLASS_ID}
+        WHERE id = {TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID}
+    """
+    new_pricing_class = f"""
+        INSERT INTO vendor_pricing_classes (vendor_id, name) 
+            VALUES ('{TEST_VENDOR}', 'NewClass') ON CONFLICT DO NOTHING
+        RETURNING id;
+    """
+    setup_pricing = f"""
+    INSERT INTO vendor_pricing_by_customer (
+            product_id,
+            pricing_class_id,
+            vendor_customer_id,
+            use_as_override,
+            price,
+            effective_date
+        ) VALUES (
+            {TEST_VENDOR_PRODUCT_ID},
+            {TEST_VENDOR_PRICE_CLASS_ID},
+            {TEST_CUSTOMER_ID},
+            true,
+            150,
+            '{TODAY.date()}'
+        )
+    RETURNING id;
+    """
+    DB_V2.execute(session, reset_)
+    new_pricing_class_id = DB_V2.execute(session, new_pricing_class).scalar_one()
+    pricing_ids = DB_V2.execute(session, setup_pricing).scalars().all()
+    path = f"/v2/vendors/vendor-customer-pricing-classes/{TEST_VENDOR_PRICE_CLASS_ID}"
+    data = dict(
+        data={
+            "id": TEST_VENDOR_PRICE_CLASS_ID,
+            "type": "vendor-customer-pricing-classes",
+            "relationships": {
+                "vendors": {"data": {"id": TEST_VENDOR, "type": "vendors"}},
+                "vendor-customers": {
+                    "data": {"id": TEST_CUSTOMER_ID, "type": "vendor-customers"}
+                },
+                "vendor-customer-pricing-classes": {
+                    "data": {
+                        "id": new_pricing_class_id,
+                        "type": "vendor-customer-pricing-classes",
+                    }
+                },
+            },
+        }
+    )
+    resp: Response = test_client.patch(path, json=data)
+    assert resp.status_code == 200, resp.text
+    # TODO check the pricing_ids to see if they have the new id
