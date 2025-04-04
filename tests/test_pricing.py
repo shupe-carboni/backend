@@ -20,6 +20,8 @@ YESTERDAY = TODAY + timedelta(days=-1)
 TEST_VENDOR = "test"
 TEST_VENDOR_PRODUCT_ID = 4543
 TEST_VENDOR_PRICE_CLASS_ID = 37
+TEST_VENDOR_ANOTHER_PRICE_CLASS_ID = 39
+TEST_VENDOR_NEW_PRICE_CLASS_ID = 40
 TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID = 502
 TEST_CUSTOMER_ID = 257
 
@@ -87,14 +89,31 @@ def test_customer_pricing_class_update_alters_pricing_labels():
     app.dependency_overrides[authenticate_auth0_token] = auth_overrides.AdminToken
     # Setup test data
     reset_ = f"""
+        DELETE FROM vendor_pricing_by_customer_changelog
+        WHERE EXISTS (
+            SELECT 1
+            FROM vendor_pricing_by_customer
+            WHERE vendor_customer_id = {TEST_CUSTOMER_ID}
+            AND pricing_class_id = {TEST_VENDOR_NEW_PRICE_CLASS_ID}
+        ); 
+
+        DELETE FROM vendor_pricing_by_customer
+        WHERE vendor_customer_id = {TEST_CUSTOMER_ID}
+            AND pricing_class_id = {TEST_VENDOR_NEW_PRICE_CLASS_ID};
+
         UPDATE vendor_customer_pricing_classes
         SET pricing_class_id = {TEST_VENDOR_PRICE_CLASS_ID}
-        WHERE id = {TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID}
-    """
-    new_pricing_class = f"""
-        INSERT INTO vendor_pricing_classes (vendor_id, name) 
-            VALUES ('{TEST_VENDOR}', 'NewClass') ON CONFLICT DO NOTHING
-        RETURNING id;
+        WHERE id = {TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID};
+
+        DELETE FROM vendor_customer_pricing_classes_changelog
+        WHERE EXISTS (
+            SELECT 1
+            FROM vendor_pricing_classes 
+            WHERE vendor_pricing_classes.id = vendor_customer_pricing_classes_changelog.pricing_class_id 
+                AND vendor_id = '{TEST_VENDOR}'
+                AND vendor_pricing_classes.id = {TEST_VENDOR_NEW_PRICE_CLASS_ID}
+        );
+
     """
     setup_pricing = f"""
     INSERT INTO vendor_pricing_by_customer (
@@ -111,26 +130,34 @@ def test_customer_pricing_class_update_alters_pricing_labels():
             true,
             150,
             '{TODAY.date()}'
+        ),(
+            {TEST_VENDOR_PRODUCT_ID},
+            {TEST_VENDOR_ANOTHER_PRICE_CLASS_ID},
+            {TEST_CUSTOMER_ID},
+            false,
+            99,
+            '{TODAY.date()}'
         )
-    RETURNING id;
+    ON CONFLICT DO NOTHING RETURNING id;
     """
     DB_V2.execute(session, reset_)
-    new_pricing_class_id = DB_V2.execute(session, new_pricing_class).scalar_one()
     pricing_ids = DB_V2.execute(session, setup_pricing).scalars().all()
-    path = f"/v2/vendors/vendor-customer-pricing-classes/{TEST_VENDOR_PRICE_CLASS_ID}"
+    assert pricing_ids, "no new records created"
+    session.commit()
+    path = f"/v2/vendors/vendor-customer-pricing-classes/{TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID}"
     data = dict(
         data={
-            "id": TEST_VENDOR_PRICE_CLASS_ID,
+            "id": TEST_VENDOR_CUSTOMER_PRICE_CLASS_ID,
             "type": "vendor-customer-pricing-classes",
             "relationships": {
                 "vendors": {"data": {"id": TEST_VENDOR, "type": "vendors"}},
                 "vendor-customers": {
                     "data": {"id": TEST_CUSTOMER_ID, "type": "vendor-customers"}
                 },
-                "vendor-customer-pricing-classes": {
+                "vendor-pricing-classes": {
                     "data": {
-                        "id": new_pricing_class_id,
-                        "type": "vendor-customer-pricing-classes",
+                        "id": TEST_VENDOR_NEW_PRICE_CLASS_ID,
+                        "type": "vendor-pricing-classes",
                     }
                 },
             },
@@ -139,3 +166,20 @@ def test_customer_pricing_class_update_alters_pricing_labels():
     resp: Response = test_client.patch(path, json=data)
     assert resp.status_code == 200, resp.text
     # TODO check the pricing_ids to see if they have the new id
+    get_pricing = """
+        SELECT id, pricing_class_id
+        FROM vendor_pricing_by_customer
+        WHERE id in :ids;
+    """
+    altered_pricing = (
+        DB_V2.execute(session, get_pricing, dict(ids=tuple(pricing_ids)))
+        .mappings()
+        .fetchall()
+    )
+    expected = zip(
+        pricing_ids,
+        (TEST_VENDOR_NEW_PRICE_CLASS_ID, TEST_VENDOR_ANOTHER_PRICE_CLASS_ID),
+    )
+    expected = {e[0]: e[1] for e in expected}
+    for price in altered_pricing:
+        assert expected[price["id"]] == price["pricing_class_id"]
