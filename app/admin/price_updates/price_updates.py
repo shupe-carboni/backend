@@ -116,7 +116,7 @@ async def new_pricing(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@price_updates.get("/implement")
+@price_updates.post("/implement")
 async def establish_current_from_current_futures(session: NewSession, token: Token):
     """
     Check whether any of the futures tables contains any data with an effective_date
@@ -159,7 +159,7 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
         session.close()
 
 
-@price_updates.get("/{vendor_id}/rollback")
+@price_updates.post("/{vendor_id}/rollback")
 async def rollback_an_implemented_update(
     session: NewSession,
     token: Token,
