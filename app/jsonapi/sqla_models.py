@@ -447,7 +447,7 @@ class VendorsAttrsChangelog(Base):
 class VendorProduct(Base):
     __tablename__ = "vendor_products"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = ["vendor_product_description", "deleted_at"]
+    __modifiable_fields__ = ["vendor_product_description", "deleted_at", "attr_order"]
     __primary_ref__ = "vendors"
 
     id = Column(Integer, primary_key=True)
@@ -455,6 +455,7 @@ class VendorProduct(Base):
     vendor_product_identifier = Column(String)
     vendor_product_description = Column(String)
     deleted_at = Column(DateTime)
+    attr_order = Column(ARRAY(Integer))
 
     # relationships
     vendors = relationship("Vendor", back_populates=__tablename__)
