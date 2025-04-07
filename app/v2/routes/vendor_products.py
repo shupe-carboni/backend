@@ -50,7 +50,7 @@ async def new_vendor_product(
         new_id = ret["data"]["id"]
         params = []
         if custom_attributes:
-            logger.info("new product added - registerging custom_attributes")
+            logger.info("new product added - registering custom_attributes")
         for attr in custom_attributes:
             attr_dict = attr.model_dump(exclude_none=True)
             match attr_dict:
