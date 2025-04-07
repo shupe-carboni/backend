@@ -21,7 +21,7 @@ from app.downloads import (
 from app.jsonapi.sqla_models import Vendor
 from app.adp.utils.workbook_factory import generate_program
 
-PARENT_PREFIX = "/vendors"
+PARENT_PREFIX = "/v2/vendors"
 VENDOR_PREFIX = "/{vendor}"
 VENDORS = Vendor.__jsonapi_type_override__
 
@@ -639,28 +639,27 @@ async def vendors_attrs_related_object_related_changelogs(
 
 @vendors.get(
     "/{vendor_id}/vendor-products/{product_id}",
-    response_model=VendorProductAttrResp,
+    response_model=VendorProductResp,
     response_model_exclude_none=True,
     tags=["jsonapi", GetType.Resource],
 )
-async def vendors_product_related_object(
+async def vendors_producy_object(
     token: Token,
     session: NewSession,
     vendor_id: str,
     product_id: int,
-    query: VendorProductAttrQuery = Depends(),
-) -> VendorProductAttrResp:
+    query: VendorProductQuery = Depends(),
+) -> VendorProductResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
-    return (
-        auth.VendorProductOperations(
-            token, VendorProductAttr, prefix, vendor_id=vendor_id
-        )
+    ret = (
+        auth.VendorProductOperations(token, VendorProduct, prefix, id=vendor_id)
         .allow_admin()
         .allow_sca()
         .allow_dev()
         .allow_customer("std")
-        .get(session, converters[VendorProductAttrQuery](query), product_id)
+        .get(session, converters[VendorProductQuery](query), product_id)
     )
+    return ret
 
 
 @vendors.get(
