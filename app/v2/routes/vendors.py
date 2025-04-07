@@ -8,6 +8,7 @@ from fastapi.routing import APIRouter
 from enum import StrEnum
 
 from app import auth
+from app.admin.models import VendorId
 from app.db import DB_V2, Session
 from app.v2.models import *
 from app.v2.pricing import transform, fetch_pricing
@@ -53,7 +54,7 @@ class GetType(StrEnum):
 
 
 def generate_pricing_dl_link(
-    vendor_id: str, customer_id: int, callback: Callable
+    vendor_id: VendorId, customer_id: int, callback: Callable
 ) -> str:
     resource_path = (
         f"/v2/vendors/{vendor_id}/vendor-customers/{customer_id}/pricing/download"
@@ -92,7 +93,7 @@ async def vendor_collection(
 async def vendor_resource(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorResp:
     return (
@@ -114,7 +115,7 @@ async def vendor_resource(
 async def vendor_related_vendors_attrs(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorsAttrResp:
     return (
@@ -136,7 +137,7 @@ async def vendor_related_vendors_attrs(
 async def vendor_relationships_vendors_attrs(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorsAttrRelResp:
     return (
@@ -158,7 +159,7 @@ async def vendor_relationships_vendors_attrs(
 async def vendor_related_vendor_products(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorProductQuery = Depends(),
 ) -> VendorProductResp:
     return (
@@ -180,7 +181,7 @@ async def vendor_related_vendor_products(
 async def vendor_relationships_vendor_products(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorProductRelResp:
     return (
@@ -204,7 +205,7 @@ async def vendor_relationships_vendor_products(
 async def vendor_related_vendor_product_classes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorProductClassResp:
     return (
@@ -228,7 +229,7 @@ async def vendor_related_vendor_product_classes(
 async def vendor_relationships_vendor_product_classes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorProductClassRelResp:
     return (
@@ -256,7 +257,7 @@ async def vendor_relationships_vendor_product_classes(
 async def vendor_related_vendor_pricing_classes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorPricingClassResp:
     return (
@@ -280,7 +281,7 @@ async def vendor_related_vendor_pricing_classes(
 async def vendor_relationships_vendor_pricing_classes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorPricingClassRelResp:
     return (
@@ -308,7 +309,7 @@ async def vendor_relationships_vendor_pricing_classes(
 async def vendor_related_vendor_customers(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorCustomerResp:
     # id must be the kwarg to filter on Vendors as the primary resource due to
@@ -332,7 +333,7 @@ async def vendor_related_vendor_customers(
 async def vendor_relationships_vendor_customers(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuery = Depends(),
 ) -> VendorCustomerRelResp:
     return (
@@ -360,7 +361,7 @@ async def vendor_relationships_vendor_customers(
 async def vendors_attrs_changelog_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorsAttrsChangelogQuery = Depends(),
 ) -> VendorsAttrsChangelogResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -388,7 +389,7 @@ async def vendors_attrs_changelog_collection(
 async def vendors_products_attrs_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorProductAttrQuery = Depends(),
 ) -> VendorProductAttrResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -416,7 +417,7 @@ async def vendors_products_attrs_collection(
 async def vendors_pricing_by_customer_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorPricingByCustomerQuery = Depends(),
 ) -> VendorPricingByCustomerResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -444,7 +445,7 @@ async def vendors_pricing_by_customer_collection(
 async def customer_pricing_by_class_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: CustomerPricingByClassQuery = Depends(),
 ) -> CustomerPricingByClassResp:
     """Customer 'favorites' within the vendor's price assignments by class/tier
@@ -474,7 +475,7 @@ async def customer_pricing_by_class_collection(
 async def customer_pricing_by_customer_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: CustomerPricingByCustomerQuery = Depends(),
 ) -> CustomerPricingByCustomerResp:
     """Customer 'favorites' within the vendor's price assignments directly
@@ -504,7 +505,7 @@ async def customer_pricing_by_customer_collection(
 async def vendors_product_class_discounts_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorProductClassDiscountQuery = Depends(),
 ) -> VendorProductClassDiscountResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -532,7 +533,7 @@ async def vendors_product_class_discounts_collection(
 async def vendor_customer_pricing_classes_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorCustomerPricingClassQuery = Depends(),
 ) -> VendorCustomerPricingClassResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -560,7 +561,7 @@ async def vendor_customer_pricing_classes_collection(
 async def vendors_quotes_collection(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     query: VendorQuoteQuery = Depends(),
 ) -> VendorQuoteResp:
     prefix = PARENT_PREFIX + VENDOR_PREFIX.format(vendor=vendor_id)
@@ -589,7 +590,7 @@ async def vendors_quotes_collection(
 async def vendors_attrs_related_object(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     attr_id: int,
     query: VendorsAttrQuery = Depends(),
 ) -> VendorsAttrResp:
@@ -617,7 +618,7 @@ async def vendors_attrs_related_object(
 async def vendors_attrs_related_object_related_changelogs(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     attr_id: int,
     query: VendorsAttrQuery = Depends(),
 ) -> VendorCustomerAttrChangelogResp:
@@ -646,7 +647,7 @@ async def vendors_attrs_related_object_related_changelogs(
 async def vendors_producy_object(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     product_id: int,
     query: VendorProductQuery = Depends(),
 ) -> VendorProductResp:
@@ -671,7 +672,7 @@ async def vendors_producy_object(
 async def vendors_product_related_object_attrs(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     product_id: int,
     query: VendorProductQuery = Depends(),
 ) -> VendorProductAttrResp:
@@ -700,7 +701,7 @@ async def vendors_product_related_object_attrs(
 async def vendor_customer_obj(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorCustomerResp:
@@ -859,7 +860,7 @@ async def download_price_file(
 async def vendor_customer_related_pricing_by_customer(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorPricingByCustomerResp:
@@ -890,7 +891,7 @@ async def vendor_customer_related_pricing_by_customer(
 async def vendor_customer_related_product_class_discounts(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorProductClassDiscountResp:
@@ -921,7 +922,7 @@ async def vendor_customer_related_product_class_discounts(
 async def vendor_customer_related_customer_pricing_classes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorCustomerPricingClassResp:
@@ -952,7 +953,7 @@ async def vendor_customer_related_customer_pricing_classes(
 async def vendor_customer_related_quotes(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     customer_id: int,
     query: VendorCustomerQuery = Depends(),
 ) -> VendorQuoteResp:
@@ -1008,7 +1009,7 @@ from app.v2.models import ModVendor
 async def mod_vendor(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
     mod_data: ModVendor,
 ) -> VendorResp:
     return (
@@ -1031,7 +1032,7 @@ async def mod_vendor(
 async def del_vendor(
     token: Token,
     session: NewSession,
-    vendor_id: str,
+    vendor_id: VendorId,
 ) -> None:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX, id=vendor_id)
