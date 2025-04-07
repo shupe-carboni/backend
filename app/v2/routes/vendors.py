@@ -69,7 +69,7 @@ def generate_pricing_dl_link(
     "",
     response_model=VendorResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "vendors"],
 )
 async def vendor_collection(
     token: Token, session: NewSession, query: VendorQuery = Depends()
@@ -88,7 +88,7 @@ async def vendor_collection(
     "/{vendor_id}",
     response_model=VendorResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Resource],
+    tags=["jsonapi", GetType.Resource, "vendors"],
 )
 async def vendor_resource(
     token: Token,
@@ -110,7 +110,7 @@ async def vendor_resource(
     "/{vendor_id}/vendors-attrs",
     response_model=VendorsAttrResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "vendors"],
 )
 async def vendor_related_vendors_attrs(
     token: Token,
@@ -132,7 +132,7 @@ async def vendor_related_vendors_attrs(
     "/{vendor_id}/relationships/vendors-attrs",
     response_model=VendorsAttrRelResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Relationships],
+    tags=["jsonapi", GetType.Relationships, "vendors"],
 )
 async def vendor_relationships_vendors_attrs(
     token: Token,
@@ -154,7 +154,7 @@ async def vendor_relationships_vendors_attrs(
     "/{vendor_id}/vendor-products",
     response_model=VendorProductResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "products"],
 )
 async def vendor_related_vendor_products(
     token: Token,
@@ -176,7 +176,7 @@ async def vendor_related_vendor_products(
     "/{vendor_id}/relationships/vendor-products",
     response_model=VendorProductRelResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Relationships],
+    tags=["jsonapi", GetType.Relationships, "products"],
 )
 async def vendor_relationships_vendor_products(
     token: Token,
@@ -200,7 +200,7 @@ async def vendor_relationships_vendor_products(
     "/{vendor_id}/vendor-product-classes",
     response_model=VendorProductClassResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "products"],
 )
 async def vendor_related_vendor_product_classes(
     token: Token,
@@ -224,7 +224,7 @@ async def vendor_related_vendor_product_classes(
     "/{vendor_id}/relationships/vendor-product-classes",
     response_model=VendorProductClassRelResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Relationships],
+    tags=["jsonapi", GetType.Relationships, "products"],
 )
 async def vendor_relationships_vendor_product_classes(
     token: Token,
@@ -252,7 +252,7 @@ async def vendor_relationships_vendor_product_classes(
     "/{vendor_id}/vendor-pricing-classes",
     response_model=VendorPricingClassResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "pricing"],
 )
 async def vendor_related_vendor_pricing_classes(
     token: Token,
@@ -276,7 +276,7 @@ async def vendor_related_vendor_pricing_classes(
     "/{vendor_id}/relationships/vendor-pricing-classes",
     response_model=VendorPricingClassRelResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Relationships],
+    tags=["jsonapi", GetType.Relationships, "pricing"],
 )
 async def vendor_relationships_vendor_pricing_classes(
     token: Token,
@@ -304,7 +304,7 @@ async def vendor_relationships_vendor_pricing_classes(
     "/{vendor_id}/vendor-customers",
     response_model=VendorCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "vendor customers"],
 )
 async def vendor_related_vendor_customers(
     token: Token,
@@ -328,7 +328,7 @@ async def vendor_related_vendor_customers(
     "/{vendor_id}/relationships/vendor-customers",
     response_model=VendorCustomerRelResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Relationships],
+    tags=["jsonapi", GetType.Relationships, "vendor customers"],
 )
 async def vendor_relationships_vendor_customers(
     token: Token,
@@ -356,7 +356,7 @@ async def vendor_relationships_vendor_customers(
     "/{vendor_id}/vendors-attrs/vendors-attrs-changelog",
     response_model=VendorsAttrsChangelogResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "vendors"],
 )
 async def vendors_attrs_changelog_collection(
     token: Token,
@@ -384,7 +384,7 @@ async def vendors_attrs_changelog_collection(
     "/{vendor_id}/vendor-products/vendor-product-attrs",
     response_model=VendorProductAttrResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "products"],
 )
 async def vendors_products_attrs_collection(
     token: Token,
@@ -412,7 +412,7 @@ async def vendors_products_attrs_collection(
     "/{vendor_id}/vendor-customers/vendor-pricing-by-customer",
     response_model=VendorPricingByCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "pricing"],
 )
 async def vendors_pricing_by_customer_collection(
     token: Token,
@@ -440,7 +440,7 @@ async def vendors_pricing_by_customer_collection(
     "/{vendor_id}/vendor-customers/customer-pricing-by-class",
     response_model=CustomerPricingByClassResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "pricing"],
 )
 async def customer_pricing_by_class_collection(
     token: Token,
@@ -470,7 +470,7 @@ async def customer_pricing_by_class_collection(
     "/{vendor_id}/vendor-customers/customer-pricing-by-customer",
     response_model=CustomerPricingByCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "pricing"],
 )
 async def customer_pricing_by_customer_collection(
     token: Token,
@@ -500,7 +500,7 @@ async def customer_pricing_by_customer_collection(
     "/{vendor_id}/vendor-customers/vendor-product-class-discounts",
     response_model=VendorProductClassDiscountResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "discounts"],
 )
 async def vendors_product_class_discounts_collection(
     token: Token,
@@ -528,7 +528,7 @@ async def vendors_product_class_discounts_collection(
     "/{vendor_id}/vendor-customers/vendor-customer-pricing-classes",
     response_model=VendorCustomerPricingClassResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "pricing"],
 )
 async def vendor_customer_pricing_classes_collection(
     token: Token,
@@ -556,7 +556,7 @@ async def vendor_customer_pricing_classes_collection(
     "/{vendor_id}/vendor-customers/vendor-quotes",
     response_model=VendorQuoteResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Collection],
+    tags=["jsonapi", GetType.Collection, "quotes"],
 )
 async def vendors_quotes_collection(
     token: Token,
@@ -585,7 +585,7 @@ async def vendors_quotes_collection(
     "/{vendor_id}/vendors-attrs/{attr_id}",
     response_model=VendorsAttrResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Resource],
+    tags=["jsonapi", GetType.Resource, "vendors"],
 )
 async def vendors_attrs_related_object(
     token: Token,
@@ -613,7 +613,7 @@ async def vendors_attrs_related_object(
     "/{vendor_id}/vendors-attrs/{attr_id}/vendors-attrs-changelog",
     response_model=VendorsAttrsChangelogResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "vendors"],
 )
 async def vendors_attrs_related_object_related_changelogs(
     token: Token,
@@ -642,7 +642,7 @@ async def vendors_attrs_related_object_related_changelogs(
     "/{vendor_id}/vendor-products/{product_id}",
     response_model=VendorProductResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Resource],
+    tags=["jsonapi", GetType.Resource, "products"],
 )
 async def vendors_producy_object(
     token: Token,
@@ -667,7 +667,7 @@ async def vendors_producy_object(
     "/{vendor_id}/vendor-products/{product_id}/vendor-product-attrs",
     response_model=VendorProductAttrResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "products"],
 )
 async def vendors_product_related_object_attrs(
     token: Token,
@@ -696,7 +696,7 @@ async def vendors_product_related_object_attrs(
     "/{vendor_id}/vendor-customers/{customer_id}",
     response_model=VendorCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Resource],
+    tags=["jsonapi", GetType.Resource, "vendor customers"],
 )
 async def vendor_customer_obj(
     token: Token,
@@ -722,7 +722,7 @@ async def vendor_customer_obj(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing",
     response_model=FullPricingWithLink,
     response_model_exclude_none=True,
-    tags=["special", "pricing"],
+    tags=["vendor customers", "pricing"],
 )
 async def vendor_customer_pricing(
     token: Token,
@@ -827,7 +827,7 @@ async def vendor_customer_pricing(
     "/{vendor_id}/vendor-customers/{customer_id}/pricing/download",
     response_class=StreamingResponse,
     response_model=None,
-    tags=["special", "pricing", "download"],
+    tags=["vendor customers", "pricing", "download"],
 )
 async def download_price_file(
     vendor_id: VendorId, customer_id: int, download_id: str
@@ -855,7 +855,7 @@ async def download_price_file(
     "/{vendor_id}/vendor-customers/{customer_id}/vendor-pricing-by-customer",
     response_model=VendorPricingByCustomerResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "pricing", "vendor customers"],
 )
 async def vendor_customer_related_pricing_by_customer(
     token: Token,
@@ -886,7 +886,7 @@ async def vendor_customer_related_pricing_by_customer(
     "/{vendor_id}/vendor-customers/{customer_id}/vendor-product-class-discounts",
     response_model=VendorProductClassDiscountResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "discounts", "vendor customers"],
 )
 async def vendor_customer_related_product_class_discounts(
     token: Token,
@@ -917,7 +917,7 @@ async def vendor_customer_related_product_class_discounts(
     "/{vendor_id}/vendor-customers/{customer_id}/vendor-customer-pricing-classes",
     response_model=VendorCustomerPricingClassResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "vendor customers", "pricing"],
 )
 async def vendor_customer_related_customer_pricing_classes(
     token: Token,
@@ -948,7 +948,7 @@ async def vendor_customer_related_customer_pricing_classes(
     "/{vendor_id}/vendor-customers/{customer_id}/vendor-quotes",
     response_model=VendorQuoteResp,
     response_model_exclude_none=True,
-    tags=["jsonapi", GetType.Related],
+    tags=["jsonapi", GetType.Related, "vendor customers", "quotes"],
 )
 async def vendor_customer_related_quotes(
     token: Token,
@@ -979,7 +979,7 @@ async def vendor_customer_related_quotes(
     "",
     response_model=VendorResp,
     response_model_exclude_none=True,
-    tags=["jsonapi"],
+    tags=["jsonapi", "vendors"],
 )
 async def new_vendor(
     token: Token,
@@ -1004,7 +1004,7 @@ from app.v2.models import ModVendor
     "/{vendor_id}",
     response_model=VendorResp,
     response_model_exclude_none=True,
-    tags=["jsonapi"],
+    tags=["jsonapi", "vendors"],
 )
 async def mod_vendor(
     token: Token,
@@ -1027,7 +1027,7 @@ async def mod_vendor(
 
 @vendors.delete(
     "/{vendor_id}",
-    tags=["jsonapi"],
+    tags=["jsonapi", "vendors"],
 )
 async def del_vendor(
     token: Token,
