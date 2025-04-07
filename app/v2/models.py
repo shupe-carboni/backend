@@ -285,6 +285,7 @@ class VendorProductAttrs(BaseModel):
         default=None, alias="vendor-product-description"
     )
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
+    attr_order: Optional[list[int]] = Field(default_factory=list, alias="attr-order")
 
 
 class VendorProductRels(BaseModel):
