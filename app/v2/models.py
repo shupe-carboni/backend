@@ -276,6 +276,13 @@ class VendorProductRelResp(JSONAPIRelationshipsResponse):
     data: list[VendorProductRID] | VendorProductRID
 
 
+class VendorProductCustomAttr(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    attr: Optional[str] = Field(default=None, alias="attr")
+    type: Optional[str] = Field(default=None, alias="type")
+    value: Optional[str] = Field(default=None, alias="value")
+
+
 class VendorProductAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     vendor_product_identifier: Optional[str] = Field(
@@ -286,6 +293,9 @@ class VendorProductAttrs(BaseModel):
     )
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
     attr_order: Optional[list[int]] = Field(default_factory=list, alias="attr-order")
+    vendor_product_attrs: Optional[list[VendorProductCustomAttr]] = Field(
+        default=None, exclude=True, alias="vendor-product-attrs"
+    )
 
 
 class VendorProductRels(BaseModel):
@@ -399,6 +409,7 @@ class ModVendorProductAttrs(BaseModel):
     vendor_product_description: Optional[str] = Field(
         default=None, alias="vendor-product-description"
     )
+    attr_order: Optional[list[int]] = Field(default=None, alias="attr-order")
     deleted_at: Optional[datetime] = Field(default=None, alias="deleted-at")
 
 

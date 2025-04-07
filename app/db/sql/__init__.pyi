@@ -2,6 +2,7 @@ from types import SimpleNamespace
 class Queries(SimpleNamespace):
     update_customer_pricing_after_product_class_disc_modified: str
     new_customer_pricing_after_product_class_discs: str
+    insert_vendor_product_attrs: str
     atco_price_updates: str
     atco_pricing_pop_temp: str
     atco_mults_temp_setup: str

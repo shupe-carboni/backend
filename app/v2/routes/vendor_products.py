@@ -1,8 +1,10 @@
 from typing import Annotated
+from logging import getLogger
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
+from app.db.sql import queries
 from app.v2.models import VendorProductResp, ModVendorProduct, NewVendorProduct
 from app.jsonapi.sqla_models import VendorProduct
 
@@ -13,6 +15,8 @@ vendor_products = APIRouter(prefix=f"/{VENDOR_PRODUCTS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
+
+logger = getLogger("uvicorn.info")
 
 
 @vendor_products.post(
@@ -27,17 +31,45 @@ async def new_vendor_product(
     new_obj: NewVendorProduct,
 ) -> VendorProductResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
-    return (
-        auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, id=vendor_id)
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .post(
-            session=session,
-            data=new_obj.model_dump(exclude_none=True, by_alias=True),
-            primary_id=vendor_id,
+    custom_attributes = new_obj.data.attributes.vendor_product_attrs
+    try:
+        ret = (
+            auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, id=vendor_id)
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session=session,
+                data=new_obj.model_dump(exclude_none=True, by_alias=True),
+                primary_id=vendor_id,
+            )
         )
-    )
+    except Exception as e:
+        raise e
+    else:
+        new_id = ret["data"]["id"]
+        params = []
+        if custom_attributes:
+            logger.info("new product added - registerging custom_attributes")
+        for attr in custom_attributes:
+            attr_dict = attr.model_dump(exclude_none=True)
+            match attr_dict:
+                case {"attr": a, "type": b, "value": c}:
+                    logger.info(f"Adding attribute: {attr}")
+                    params.append(attr_dict | {"vendor_product_id": new_id})
+                case _:
+                    logger.warning(
+                        "Ignored custom attribute due to mismatch"
+                        f"between obj structure and expected structure. Got: {attr}"
+                    )
+        try:
+            DB_V2.execute(session, queries.insert_vendor_product_attrs, params)
+        except Exception as e:
+            logger.error(e)
+        else:
+            session.commit()
+        finally:
+            return ret
 
 
 @vendor_products.patch(
