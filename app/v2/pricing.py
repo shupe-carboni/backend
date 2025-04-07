@@ -111,8 +111,8 @@ def transform(
     pricing_df = flatten(pricing_dict, effective_date=effective_date).drop(
         columns="price_override"
     )
+    cols = list(pricing_df.columns)
     if pivot:
-        cols = list(pricing_df.columns)
         # remove the ones going away
         cols.remove("Price Category")
         cols.remove("price")
@@ -124,7 +124,16 @@ def transform(
         ).reset_index()
         result = pricing_df[cols + anticipated_new_cols]
     else:
-        result = pricing_df
+        # assumption is made that products are connected to AT LEAST one category to
+        # sort on.
+        guarantee_first = ["part_id", "description", "Price Category", "category_1"]
+        guarantee_last = ["effective_date", "price", "notes"]
+        other_cols = [
+            col for col in cols if col not in set(guarantee_first + guarantee_last)
+        ]
+        result = pricing_df[guarantee_first + other_cols + guarantee_last].sort_values(
+            by=(guarantee_first[-2:] + guarantee_first[:2])
+        )
 
     if remove_cols:
         try:
