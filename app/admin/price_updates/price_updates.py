@@ -111,7 +111,6 @@ async def new_pricing(
         case _:
             logger.info(f"vendor {vendor_id} unable to be routed")
             raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     return Response(status_code=status.HTTP_200_OK)
 
