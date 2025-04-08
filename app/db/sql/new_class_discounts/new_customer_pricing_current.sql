@@ -1,4 +1,4 @@
--- recalculate pricing
+-- calculate new current pricing
 -- sig is used to determine where to round off
 -- ex. sig == 100 means to round to the nearest dollar whereas sig == 1 rounds to cents
 INSERT INTO vendor_pricing_by_customer (
@@ -31,7 +31,7 @@ JOIN vendor_product_to_class_mapping AS c
     ON c.product_class_id = b.id
 JOIN vendor_products AS d
     ON d.id = c.product_id
--- map pricing class
+-- map pricing by class
 JOIN vendor_pricing_by_class AS e
     ON e.product_id = d.id
 -- map customer

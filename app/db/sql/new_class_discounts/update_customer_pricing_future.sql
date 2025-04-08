@@ -1,17 +1,17 @@
--- recalculate pricing
+-- recalculate future pricing
 -- sig is used to determine where to round off
 -- ex. sig == 100 means to round to the nearest dollar whereas sig == 1 rounds to cents
-UPDATE vendor_pricing_by_customer
-SET price = new.calculated_price, effective_date = CURRENT_DATE
+UPDATE vendor_pricing_by_customer_future
+SET price = new.calculated_price
 FROM (
     SELECT 
-        g.id as price_by_customer_id,
+        f.id as price_id,
         CASE
             WHEN a.discount < 1 THEN CAST((
-                ROUND((e.price::float * (1-a.discount))/:sig)*:sig
+                ROUND((f.price::float * (1-a.discount))/:sig)*:sig
             ) AS INT)
             ELSE CAST((
-                ROUND((e.price::float * (1-a.discount/100))/:sig)*:sig
+                ROUND((f.price::float * (1-a.discount/100))/:sig)*:sig
             ) AS INT)
         END as calculated_price
     FROM vendor_product_class_discounts AS a
@@ -22,9 +22,12 @@ FROM (
         ON c.product_class_id = b.id
     JOIN vendor_products AS d
         ON d.id = c.product_id
-    -- map pricing class
+    -- map pricing by class
     JOIN vendor_pricing_by_class AS e
         ON e.product_id = d.id
+    -- map future ref class price
+    JOIN vendor_pricing_by_class_future as f
+        ON f.price_id =  e.id
     -- map customer
     JOIN vendor_customers AS f
         ON f.id = a.vendor_customer_id
@@ -37,5 +40,5 @@ FROM (
     -- target only pricing that explicitly overrides the class-based version
         AND g.use_as_override
 ) as new
-WHERE new.price_by_customer_id = vendor_pricing_by_customer.id
+WHERE new.price_id = vendor_pricing_by_customer_future.price_id
 AND deleted_at IS NULL;
