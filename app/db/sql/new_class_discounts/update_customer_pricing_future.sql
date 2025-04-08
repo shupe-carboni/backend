@@ -5,13 +5,13 @@ UPDATE vendor_pricing_by_customer_future
 SET price = new.calculated_price
 FROM (
     SELECT 
-        f.id as price_id,
+        g.id as price_id,
         CASE
             WHEN a.discount < 1 THEN CAST((
-                ROUND((f.price::float * (1-a.discount))/:sig)*:sig
+                ROUND((future.price::float * (1-a.discount))/:sig)*:sig
             ) AS INT)
             ELSE CAST((
-                ROUND((f.price::float * (1-a.discount/100))/:sig)*:sig
+                ROUND((future.price::float * (1-a.discount/100))/:sig)*:sig
             ) AS INT)
         END as calculated_price
     FROM vendor_product_class_discounts AS a
@@ -25,9 +25,6 @@ FROM (
     -- map pricing by class
     JOIN vendor_pricing_by_class AS e
         ON e.product_id = d.id
-    -- map future ref class price
-    JOIN vendor_pricing_by_class_future as f
-        ON f.price_id =  e.id
     -- map customer
     JOIN vendor_customers AS f
         ON f.id = a.vendor_customer_id
@@ -35,10 +32,13 @@ FROM (
     JOIN vendor_pricing_by_customer AS g
         ON g.vendor_customer_id = f.id
         AND g.product_id = d.id
+    -- map future ref class price
+    JOIN vendor_pricing_by_class_future as future
+        ON future.price_id = e.id
     WHERE e.pricing_class_id = :pricing_class_id
         AND a.id = :product_class_discount_id
     -- target only pricing that explicitly overrides the class-based version
         AND g.use_as_override
+        AND g.deleted_at IS NULL
 ) as new
 WHERE new.price_id = vendor_pricing_by_customer_future.price_id
-AND deleted_at IS NULL;

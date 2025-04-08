@@ -7,19 +7,16 @@ INSERT INTO vendor_pricing_by_customer_future (
     effective_date
 )
 SELECT 
-    :new_price_class_id AS pricing_class_id,
-    d.id AS product_id,
-    f.id AS vendor_customer_id,
-    true AS use_as_override,
+    g.id,
     CASE
         WHEN a.discount < 1 THEN CAST((
-            ROUND((e.price::float * (1-a.discount))/:sig)*:sig
+            ROUND((future.price::float * (1-a.discount))/:sig)*:sig
         ) AS INT)
         ELSE CAST((
-            ROUND((e.price::float * (1-a.discount/100))/:sig)*:sig
+            ROUND((future.price::float * (1-a.discount/100))/:sig)*:sig
         ) AS INT)
     END as price,
-    CURRENT_DATE as effective_date
+    future.effective_date as effective_date
 FROM vendor_product_class_discounts AS a
 -- map product class
 JOIN vendor_product_classes AS b
@@ -31,16 +28,22 @@ JOIN vendor_products AS d
 -- map pricing by class
 JOIN vendor_pricing_by_class AS e
     ON e.product_id = d.id
+-- map future ref class price
+JOIN vendor_pricing_by_class_future as future
+    ON future.price_id = e.id
 -- map customer
 JOIN vendor_customers AS f
     ON f.id = a.vendor_customer_id
+JOIN vendor_pricing_by_customer AS g 
+    ON g.vendor_customer_id = f.id 
+    AND g.product_id = d.id
 WHERE e.pricing_class_id = :ref_pricing_class_id
     AND a.id = :product_class_discount_id
     AND e.deleted_at IS NULL
     AND d.deleted_at IS NULL
+    AND g.use_as_override
     AND NOT EXISTS (
         SELECT 1
         FROM vendor_pricing_by_customer_future ref_future
-        WHERE ref_future.price_id = e.id
-        AND ref_vpc.pricing_class_id = :new_price_class_id
+        WHERE ref_future.price_id = g.id
     );
