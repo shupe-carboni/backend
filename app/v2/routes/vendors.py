@@ -3,13 +3,13 @@ from datetime import date, time
 from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Union
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Response
 from fastapi.routing import APIRouter
 from enum import StrEnum
 
 from app import auth
 from app.admin.models import VendorId
-from app.db import DB_V2, Session
+from app.db import DB_V2, Session, S3
 from app.v2.models import *
 from app.v2.pricing import transform, fetch_pricing
 from app.admin.models import VendorId, FullPricingWithLink
@@ -1041,3 +1041,23 @@ async def del_vendor(
         .allow_dev()
         .delete(session, obj_id=vendor_id)
     )
+
+
+## download logo
+
+
+@vendors.get("/{vendor_id}/logo", tags=["download"])
+async def customer_logo_file(session: NewSession, vendor_id: VendorId):
+    logo_key = DB_V2.execute(
+        session,
+        """SELECT logo_path from vendors where id = :id;""",
+        dict(id=vendor_id),
+    ).scalar_one_or_none()
+    if logo_key:
+        file = S3.get_file(logo_key)
+        return FileResponse(
+            content=file.file_content,
+            media_type=file.file_mime,
+            filename=file.file_name,
+        )
+    return Response(status.HTTP_204_NO_CONTENT)
