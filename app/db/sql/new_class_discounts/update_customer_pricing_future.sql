@@ -1,6 +1,7 @@
 -- recalculate future pricing
 -- sig is used to determine where to round off
--- ex. sig == 100 means to round to the nearest dollar whereas sig == 1 rounds to cents
+-- ex. sig == 100 means to round to the nearest dollar 
+-- whereas sig == 1 rounds to cents
 UPDATE vendor_pricing_by_customer_future
 SET price = new.calculated_price
 FROM (

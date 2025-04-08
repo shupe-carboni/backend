@@ -1,6 +1,7 @@
 -- recalculate new future pricing
 -- sig is used to determine where to round off
--- ex. sig == 100 means to round to the nearest dollar whereas sig == 1 rounds to cents
+-- ex. sig == 100 means to round to the nearest dollar
+-- whereas sig == 1 rounds to cents
 INSERT INTO vendor_pricing_by_customer_future (
     price_id,
     price,
