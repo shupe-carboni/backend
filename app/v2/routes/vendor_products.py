@@ -51,25 +51,27 @@ async def new_vendor_product(
         params = []
         if custom_attributes:
             logger.info("new product added - registering custom_attributes")
-        for attr in custom_attributes:
-            attr_dict = attr.model_dump(exclude_none=True)
-            match attr_dict:
-                case {"attr": a, "type": b, "value": c}:
-                    logger.info(f"Adding attribute: {attr}")
-                    params.append(attr_dict | {"vendor_product_id": new_id})
-                case _:
-                    logger.warning(
-                        "Ignored custom attribute due to mismatch"
-                        f"between obj structure and expected structure. Got: {attr}"
-                    )
-        try:
-            DB_V2.execute(session, queries.insert_vendor_product_attrs, params)
-        except Exception as e:
-            logger.error(e)
-        else:
-            session.commit()
-        finally:
-            return ret
+            for attr in custom_attributes:
+                attr_dict = attr.model_dump(exclude_none=True)
+                match attr_dict:
+                    case {"attr": a, "type": b, "value": c}:
+                        logger.info(f"Adding attribute: {attr}")
+                        params.append(attr_dict | {"vendor_product_id": new_id})
+                    case _:
+                        logger.warning(
+                            "Ignored custom attribute due to mismatch"
+                            f"between obj structure and expected structure. Got: {attr}"
+                        )
+            try:
+                DB_V2.execute(session, queries.insert_vendor_product_attrs, params)
+            except Exception as e:
+                logger.error(e)
+            else:
+                session.commit()
+            finally:
+                return ret
+        logger.info(f"No custom attributes provided")
+        return ret
 
 
 @vendor_products.patch(
