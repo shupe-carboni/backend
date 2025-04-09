@@ -229,3 +229,61 @@ def fetch_pricing(
     if not pricing.data:
         raise HTTPException(404)
     return pricing
+
+
+def calc_customer_pricing_from_product_class_discount(
+    session: Session,
+    product_class_discount_id: int,
+    ref_pricing_class_id: int,
+    new_pricing_class_id: int,
+    rounding_strategy: int,
+    update_only: bool = False,
+) -> None:
+    """
+    When a customer's product-class-based pricing discount is changed, pricing reflected
+    in vendor_pricing_by_customer ought to be changed as well.
+
+    The reference pricing class id is used to identify the pricing in pricing_by_class
+    that can be used as the reference price against which to apply the new multiplier.
+    Rounding strategy is passed to the SQL statment to shift the truncation introduced
+    by ROUND, such that we can dynamically round to the nearest dollar or the nearest
+    cent.
+    """
+    logger.info(f"Calculating pricing related to the modified product class discount")
+
+    update_params = dict(
+        pricing_class_id=ref_pricing_class_id,
+        product_class_discount_id=product_class_discount_id,
+        sig=rounding_strategy,
+    )
+    new_record_params = dict(
+        ref_pricing_class_id=ref_pricing_class_id,
+        new_price_class_id=new_pricing_class_id,
+        product_class_discount_id=product_class_discount_id,
+        sig=rounding_strategy,
+    )
+    try:
+        DB_V2.execute(
+            session, sql=queries.update_customer_pricing_current, params=update_params
+        )
+        DB_V2.execute(
+            session, queries.update_customer_pricing_future, params=update_params
+        )
+        if not update_only:
+            DB_V2.execute(
+                session,
+                sql=queries.new_customer_pricing_current,
+                params=new_record_params,
+            )
+            DB_V2.execute(
+                session,
+                sql=queries.new_customer_pricing_future,
+                params=new_record_params,
+            )
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+    else:
+        logger.info("Update successful")
+        session.commit()
+    return
