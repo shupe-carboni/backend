@@ -5,7 +5,6 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.admin.models import VendorId
-from app.db.sql import queries
 from app.v2.pricing import calc_customer_pricing_from_product_class_discount
 from app.v2.models import (
     VendorProductClassDiscountResp,
@@ -44,8 +43,8 @@ async def new_vendor_product_class_discount(
 ) -> VendorProductClassDiscountResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
-    ref_price_class_id = new_obj.data.relationships.vendor_pricing_classes_ref.data.id
-    new_price_class_id = new_obj.data.relationships.vendor_pricing_classes_new.data.id
+    ref_price_class_id = new_obj.data.relationships.base_price_classes.data.id
+    new_price_class_id = new_obj.data.relationships.label_price_classes.data.id
     product_class_id = new_obj.data.relationships.vendor_product_classes.data.id
     if not product_class_id:
         raise HTTPException(
@@ -68,8 +67,8 @@ async def new_vendor_product_class_discount(
     except Exception as e:
         raise e
     else:
-        match vendor_id:
-            case "adp":
+        match VendorId(vendor_id):
+            case VendorId.ADP:
                 sig = ROUND_TO_DOLLAR
                 update_only = True
             case _:
@@ -104,8 +103,8 @@ async def mod_vendor_product_class_discount(
 ) -> VendorProductClassDiscountResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
-    ref_price_class_id = mod_data.data.relationships.vendor_pricing_classes_ref.data.id
-    new_price_class_id = mod_data.data.relationships.vendor_pricing_classes_new.data.id
+    ref_price_class_id = mod_data.data.relationships.base_price_classes.data.id
+    new_price_class_id = mod_data.data.relationships.label_price_classes.data.id
     try:
         ret = (
             auth.VendorCustomerOperations(

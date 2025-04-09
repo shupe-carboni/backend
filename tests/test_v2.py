@@ -552,13 +552,13 @@ post_patch_delete_outline = [
                         "type": "vendor-product-classes",
                     }
                 },
-                vendor_pricing_classes_ref={
+                base_price_classes={
                     "data": {
                         "id": int(TEST_VENDOR_PRICING_CLASS),
                         "type": "vendor-pricing-classes",
                     }
                 },
-                vendor_pricing_classes_new={
+                label_price_classes={
                     "data": {
                         "id": int(TEST_VENDOR_PRICING_CLASS),
                         "type": "vendor-pricing-classes",
@@ -583,13 +583,13 @@ post_patch_delete_outline = [
                         "type": "vendor-product-classes",
                     }
                 },
-                vendor_pricing_classes_ref={
+                base_price_classes={
                     "data": {
                         "id": int(TEST_VENDOR_PRICING_CLASS),
                         "type": "vendor-pricing-classes",
                     }
                 },
-                vendor_pricing_classes_new={
+                label_price_classes={
                     "data": {
                         "id": int(TEST_VENDOR_PRICING_CLASS),
                         "type": "vendor-pricing-classes",
@@ -953,11 +953,11 @@ filter_name_and_rank_none = (
 no_filter = ""
 filters = [
     (filter_name_to_none, 0),
-    (filter_name_success, 18),
-    (filter_rank_success, 18),
-    (filter_name_and_rank_success, 18),
+    (filter_name_success, 19),
+    (filter_rank_success, 19),
+    (filter_name_and_rank_success, 19),
     (filter_name_and_rank_none, 0),
-    (no_filter, 65),
+    (no_filter, 66),
 ]
 
 
