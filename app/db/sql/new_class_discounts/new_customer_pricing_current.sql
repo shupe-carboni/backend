@@ -22,7 +22,7 @@ SELECT
             ROUND((e.price::float * (1-a.discount/100))/:sig)*:sig
         ) AS INT)
     END as price,
-    CURRENT_DATE as effective_date
+    :effective_date as effective_date
 FROM vendor_product_class_discounts AS a
 -- map product class
 JOIN vendor_product_classes AS b

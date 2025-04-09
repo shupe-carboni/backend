@@ -2,7 +2,9 @@
 -- sig is used to determine where to round off
 -- ex. sig == 100 means to round to the nearest dollar whereas sig == 1 rounds to cents
 UPDATE vendor_pricing_by_customer
-SET price = new.calculated_price, effective_date = CURRENT_DATE
+SET
+    price = new.calculated_price,
+    effective_date = :effective_date
 FROM (
     SELECT 
         g.id as price_by_customer_id,

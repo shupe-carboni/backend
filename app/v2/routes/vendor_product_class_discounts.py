@@ -46,6 +46,7 @@ async def new_vendor_product_class_discount(
     ref_price_class_id = new_obj.data.relationships.base_price_classes.data.id
     new_price_class_id = new_obj.data.relationships.label_price_classes.data.id
     product_class_id = new_obj.data.relationships.vendor_product_classes.data.id
+    effective_date = new_obj.data.attributes.effective_date
     if not product_class_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="product_class_id required"
@@ -82,6 +83,7 @@ async def new_vendor_product_class_discount(
                 new_id,
                 ref_price_class_id,
                 new_price_class_id,
+                effective_date,
                 sig,
                 update_only,
             )
@@ -105,6 +107,7 @@ async def mod_vendor_product_class_discount(
     vendor_id = mod_data.data.relationships.vendors.data.id
     ref_price_class_id = mod_data.data.relationships.base_price_classes.data.id
     new_price_class_id = mod_data.data.relationships.label_price_classes.data.id
+    effective_date = mod_data.data.attributes.effective_date
     try:
         ret = (
             auth.VendorCustomerOperations(
@@ -137,6 +140,7 @@ async def mod_vendor_product_class_discount(
                 vendor_product_class_discount_id,
                 ref_price_class_id,
                 new_price_class_id,
+                effective_date,
                 sig,
                 update_only,
             )

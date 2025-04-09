@@ -236,6 +236,7 @@ def calc_customer_pricing_from_product_class_discount(
     product_class_discount_id: int,
     ref_pricing_class_id: int,
     new_pricing_class_id: int,
+    effective_date: datetime,
     rounding_strategy: int,
     update_only: bool = False,
 ) -> None:
@@ -254,12 +255,14 @@ def calc_customer_pricing_from_product_class_discount(
     update_params = dict(
         pricing_class_id=ref_pricing_class_id,
         product_class_discount_id=product_class_discount_id,
+        effective_date=effective_date,
         sig=rounding_strategy,
     )
     new_record_params = dict(
         ref_pricing_class_id=ref_pricing_class_id,
         new_price_class_id=new_pricing_class_id,
         product_class_discount_id=product_class_discount_id,
+        effective_date=effective_date,
         sig=rounding_strategy,
     )
     try:
