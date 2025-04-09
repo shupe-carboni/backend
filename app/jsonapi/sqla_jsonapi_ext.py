@@ -620,7 +620,7 @@ class JSONAPI_(JSONAPI):
         )
 
         # apply filtering to the related model as well
-        rel_key_model: SQLAlchemyModel = self._fetch_model(rel_key)
+        rel_key_model: SQLAlchemyModel = relationship.mapper.entity
         rel_key_id_query = select(rel_key_model.id)
         rel_key_permitted_ids = set(
             session.scalars(
