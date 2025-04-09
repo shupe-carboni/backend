@@ -1,7 +1,5 @@
 from types import SimpleNamespace
 class Queries(SimpleNamespace):
-    update_customer_pricing_after_product_class_disc_modified: str
-    new_customer_pricing_after_product_class_discs: str
     insert_vendor_product_attrs: str
     atco_price_updates: str
     atco_pricing_pop_temp: str
@@ -18,6 +16,10 @@ class Queries(SimpleNamespace):
     class_pricing_update: str
     customer_product_discount_update: str
     rollback_price_increase: str
+    update_customer_pricing_future: str
+    new_customer_pricing_current: str
+    new_customer_pricing_future: str
+    update_customer_pricing_current: str
     product_series_pricing_with_override_dynamic: str
     product_series_pricing_reach_into_future: str
     glasfloss_standard_filter: str
