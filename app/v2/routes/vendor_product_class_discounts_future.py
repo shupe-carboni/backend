@@ -23,6 +23,8 @@ Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 converter = converters[VendorProductClassDiscountFutureQuery]
 
+# TODO enable price recalc on future pricing by new or modified discount futures
+
 
 @vendor_product_class_discounts_future.get(
     "",
