@@ -1009,7 +1009,7 @@ from app.v2.models import ModVendor
 async def mod_vendor(
     token: Token,
     session: NewSession,
-    vendor_id: VendorId,
+    vendor_id: str,
     mod_data: ModVendor,
 ) -> VendorResp:
     return (
@@ -1032,7 +1032,7 @@ async def mod_vendor(
 async def del_vendor(
     token: Token,
     session: NewSession,
-    vendor_id: VendorId,
+    vendor_id: str,
 ) -> None:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX, id=vendor_id)
