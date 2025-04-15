@@ -6,6 +6,7 @@ load_dotenv()
 import os
 import logging
 from random import randint
+from time import time
 from asyncio import sleep
 from fastapi import FastAPI, Request, status, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +41,11 @@ class BotTarpit(BaseHTTPMiddleware):
                         'Allowed passthrough of request"\
                                  " on the root endpoint'
                     )
-                return await call_next(request)
+                try:
+                    start_ = time()
+                    return await call_next(request)
+                finally:
+                    logger.info(f"Request time: {time()-start_}s")
         host = request.client.host
         await self.trigger_delay(host, path)
         return Response(

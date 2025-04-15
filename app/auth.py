@@ -178,7 +178,9 @@ async def authenticate_auth0_token(
     token: HTTPAuthorizationCredentials = Depends(token_auth_scheme),
 ) -> VerifiedToken:
     error = None
+    start_ = time.time()
     if verified_token := LocalTokenStore.contains(token.credentials):
+        logger.info(f"Auth: {time.time() - start_}s")
         return verified_token
     jwks = requests.get(AUTH0_DOMAIN + "/.well-known/jwks.json").json()
     try:
@@ -236,6 +238,7 @@ async def authenticate_auth0_token(
                     **user_info,
                 )
                 LocalTokenStore.add_token(new_token=verified_token)
+                logger.info(f"Auth: {time.time() - start_}s")
                 return verified_token
         else:
             error = "No RSA key found in JWT Header"
