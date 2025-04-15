@@ -80,11 +80,15 @@ class VendorRObj(VendorRID):
     relationships: VendorRels
 
 
-class VendorResp(JSONAPIResponse):
-    data: list[VendorRObj] | VendorRObj
+class VendorCollectionResp(JSONAPIResponse):
+    data: list[VendorRObj]
 
 
-class RelatedVendorResp(VendorResp):
+class VendorResourceResp(JSONAPIResponse):
+    data: VendorRObj
+
+
+class RelatedVendorResp(VendorResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 

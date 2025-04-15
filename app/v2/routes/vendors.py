@@ -67,13 +67,13 @@ def generate_pricing_dl_link(
 
 @vendors.get(
     "",
-    response_model=VendorResp,
+    response_model=VendorCollectionResp,
     response_model_exclude_none=True,
     tags=["jsonapi", GetType.Collection, "vendors"],
 )
 async def vendor_collection(
     token: Token, session: NewSession, query: VendorQuery = Depends()
-) -> VendorResp:
+) -> VendorCollectionResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -86,7 +86,7 @@ async def vendor_collection(
 
 @vendors.get(
     "/{vendor_id}",
-    response_model=VendorResp,
+    response_model=VendorResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi", GetType.Resource, "vendors"],
 )
@@ -95,7 +95,7 @@ async def vendor_resource(
     session: NewSession,
     vendor_id: VendorId,
     query: VendorQuery = Depends(),
-) -> VendorResp:
+) -> VendorResourceResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -977,7 +977,7 @@ async def vendor_customer_related_quotes(
 
 @vendors.post(
     "",
-    response_model=VendorResp,
+    response_model=VendorResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi", "vendors"],
 )
@@ -985,7 +985,7 @@ async def new_vendor(
     token: Token,
     session: NewSession,
     new_vendor: NewVendor,
-) -> VendorResp:
+) -> VendorResourceResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX)
         .allow_admin()
@@ -1002,7 +1002,7 @@ from app.v2.models import ModVendor
 
 @vendors.patch(
     "/{vendor_id}",
-    response_model=VendorResp,
+    response_model=VendorResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi", "vendors"],
 )
@@ -1011,7 +1011,7 @@ async def mod_vendor(
     session: NewSession,
     vendor_id: str,
     mod_data: ModVendor,
-) -> VendorResp:
+) -> VendorResourceResp:
     return (
         auth.VendorOperations2(token, Vendor, PARENT_PREFIX, vendor_id=vendor_id)
         .allow_admin()
