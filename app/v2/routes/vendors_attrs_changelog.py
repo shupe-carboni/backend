@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import (
-    VendorsAttrsChangelogResp,
+    VendorsAttrsChangelogResourceResp,
 )
 from app.jsonapi.sqla_models import VendorsAttrsChangelog
 
@@ -25,7 +25,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 )
 async def vendors_attrs_changelog_collection(
     token: Token, session: NewSession
-) -> VendorsAttrsChangelogResp:
+) -> VendorsAttrsChangelogResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -37,7 +37,7 @@ async def vendors_attrs_changelog_resource(
     token: Token,
     session: NewSession,
     vendors_attrs_changelog_id: int,
-) -> VendorsAttrsChangelogResp:
+) -> VendorsAttrsChangelogResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

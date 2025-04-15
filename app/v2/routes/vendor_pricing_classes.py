@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
 from app.v2.models import (
-    VendorPricingClassResp,
+    VendorPricingClassResourceResp,
     ModVendorPricingClass,
     NewVendorPricingClass,
 )
@@ -21,7 +21,7 @@ NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 
 @vendor_pricing_classes.post(
     "",
-    response_model=VendorPricingClassResp,
+    response_model=VendorPricingClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -29,7 +29,7 @@ async def mod_vendor_pricing_classe(
     token: Token,
     session: NewSession,
     new_obj: NewVendorPricingClass,
-) -> VendorPricingClassResp:
+) -> VendorPricingClassResourceResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
@@ -46,7 +46,7 @@ async def mod_vendor_pricing_classe(
 
 @vendor_pricing_classes.patch(
     "/{vendor_pricing_classes_id}",
-    response_model=VendorPricingClassResp,
+    response_model=VendorPricingClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -55,7 +55,7 @@ async def mod_vendor_pricing_classe(
     session: NewSession,
     vendor_pricing_classes_id: int,
     mod_data: ModVendorPricingClass,
-) -> VendorPricingClassResp:
+) -> VendorPricingClassResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)

@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
-from app.v2.models import VendorQuoteResp, ModVendorQuote, NewVendorQuote
+from app.v2.models import VendorQuoteResourceResp, ModVendorQuote, NewVendorQuote
 from app.jsonapi.sqla_models import VendorQuote
 
 PARENT_PREFIX = "/vendors"
@@ -17,7 +17,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendor_quotes.post(
     "",
-    response_model=VendorQuoteResp,
+    response_model=VendorQuoteResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -25,7 +25,7 @@ async def new_vendor_quote(
     token: Token,
     session: NewSession,
     new_obj: NewVendorQuote,
-) -> VendorQuoteResp:
+) -> VendorQuoteResourceResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
@@ -46,7 +46,7 @@ async def new_vendor_quote(
 
 @vendor_quotes.patch(
     "/{vendor_quote_id}",
-    response_model=VendorQuoteResp,
+    response_model=VendorQuoteResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -55,7 +55,7 @@ async def mod_vendor_quote(
     session: NewSession,
     vendor_quote_id: int,
     mod_data: ModVendorQuote,
-) -> VendorQuoteResp:
+) -> VendorQuoteResourceResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
@@ -105,7 +105,7 @@ async def del_vendor_quote(
     "",
     tags=["jsonapi"],
 )
-async def vendor_quote_collection(token: Token, session: NewSession) -> VendorQuoteResp:
+async def vendor_quote_collection(token: Token, session: NewSession):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -117,7 +117,7 @@ async def vendor_quote_resource(
     token: Token,
     session: NewSession,
     vendor_quote_id: int,
-) -> VendorQuoteResp:
+):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

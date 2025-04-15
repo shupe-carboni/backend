@@ -19,7 +19,7 @@ class VendorRID(JSONAPIResourceIdentifier):
 
 
 class VendorRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorRID] | VendorRID
+    data: list[VendorRID]
 
 
 class VendorAttrs(BaseModel):
@@ -162,7 +162,7 @@ class VendorsAttrRID(JSONAPIResourceIdentifier):
 
 
 class VendorsAttrRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorsAttrRID] | VendorsAttrRID
+    data: list[VendorsAttrRID]
 
 
 class VendorsAttrAttrs(BaseModel):
@@ -203,8 +203,12 @@ class VendorsAttrRObj(VendorsAttrRID):
     relationships: VendorsAttrRels
 
 
-class VendorsAttrResp(JSONAPIResponse):
-    data: list[VendorsAttrRObj] | VendorsAttrRObj
+class VendorsAttrCollectionResp(JSONAPIResponse):
+    data: list[VendorsAttrRObj]
+
+
+class VendorsAttrResourceResp(JSONAPIResponse):
+    data: VendorsAttrRObj
 
 
 class NewVendorsAttrRObj(BaseModel):
@@ -217,7 +221,7 @@ class NewVendorsAttr(BaseModel):
     data: NewVendorsAttrRObj
 
 
-class RelatedVendorsAttrResp(VendorsAttrResp):
+class RelatedVendorsAttrResp(VendorsAttrResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -277,7 +281,7 @@ class VendorProductRID(JSONAPIResourceIdentifier):
 
 
 class VendorProductRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorProductRID] | VendorProductRID
+    data: list[VendorProductRID]
 
 
 class VendorProductCustomAttr(BaseModel):
@@ -359,8 +363,12 @@ class VendorProductRObj(VendorProductRID):
     relationships: VendorProductRels
 
 
-class VendorProductResp(JSONAPIResponse):
-    data: list[VendorProductRObj] | VendorProductRObj
+class VendorProductCollectionResp(JSONAPIResponse):
+    data: list[VendorProductRObj]
+
+
+class VendorProductResourceResp(JSONAPIResponse):
+    data: VendorProductRObj
 
 
 class NewVendorProductRObj(BaseModel):
@@ -373,7 +381,7 @@ class NewVendorProduct(BaseModel):
     data: NewVendorProductRObj
 
 
-class RelatedVendorProductResp(VendorProductResp):
+class RelatedVendorProductResp(VendorProductResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -478,8 +486,12 @@ class VendorProductAttrRObj(VendorProductAttrRID):
     relationships: VendorProductAttrRels
 
 
-class VendorProductAttrResp(JSONAPIResponse):
-    data: list[VendorProductAttrRObj] | VendorProductAttrRObj
+class VendorProductAttrCollectionResp(JSONAPIResponse):
+    data: list[VendorProductAttrRObj]
+
+
+class VendorProductAttrResourceResp(JSONAPIResponse):
+    data: VendorProductAttrRObj
 
 
 class NewVendorProductAttrRObj(BaseModel):
@@ -492,7 +504,7 @@ class NewVendorProductAttr(BaseModel):
     data: NewVendorProductAttrRObj
 
 
-class RelatedVendorProductAttrResp(VendorProductAttrResp):
+class RelatedVendorProductAttrResp(VendorProductAttrResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -554,7 +566,7 @@ class VendorProductClassRID(JSONAPIResourceIdentifier):
 
 
 class VendorProductClassRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorProductClassRID] | VendorProductClassRID
+    data: list[VendorProductClassRID]
 
 
 class VendorProductClassAttrs(BaseModel):
@@ -601,8 +613,12 @@ class VendorProductClassRObj(VendorProductClassRID):
     relationships: VendorProductClassRels
 
 
-class VendorProductClassResp(JSONAPIResponse):
-    data: list[VendorProductClassRObj] | VendorProductClassRObj
+class VendorProductClassCollectionResp(JSONAPIResponse):
+    data: list[VendorProductClassRObj]
+
+
+class VendorProductClassResourceResp(JSONAPIResponse):
+    data: VendorProductClassRObj
 
 
 class NewVendorProductClassRObj(BaseModel):
@@ -615,7 +631,7 @@ class NewVendorProductClass(BaseModel):
     data: NewVendorProductClassRObj
 
 
-class RelatedVendorProductClassResp(VendorProductClassResp):
+class RelatedVendorProductClassResp(VendorProductClassResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -797,7 +813,7 @@ class VendorPricingClassRID(JSONAPIResourceIdentifier):
 
 
 class VendorPricingClassRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorPricingClassRID] | VendorPricingClassRID
+    data: list[VendorPricingClassRID]
 
 
 class VendorPricingClassAttrs(BaseModel):
@@ -854,8 +870,12 @@ class VendorPricingClassRObj(VendorPricingClassRID):
     relationships: VendorPricingClassRels
 
 
-class VendorPricingClassResp(JSONAPIResponse):
-    data: list[VendorPricingClassRObj] | VendorPricingClassRObj
+class VendorPricingClassCollectionResp(JSONAPIResponse):
+    data: list[VendorPricingClassRObj]
+
+
+class VendorPricingClassResourceResp(JSONAPIResponse):
+    data: VendorPricingClassRObj
 
 
 class NewVendorPricingClassRObj(BaseModel):
@@ -868,7 +888,7 @@ class NewVendorPricingClass(BaseModel):
     data: NewVendorPricingClassRObj
 
 
-class RelatedVendorPricingClassResp(VendorPricingClassResp):
+class RelatedVendorPricingClassResp(VendorPricingClassResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -1223,8 +1243,12 @@ class VendorPricingByCustomerRObj(VendorPricingByCustomerRID):
     relationships: VendorPricingByCustomerRels
 
 
-class VendorPricingByCustomerResp(JSONAPIResponse):
-    data: list[VendorPricingByCustomerRObj] | VendorPricingByCustomerRObj
+class VendorPricingByCustomerCollectionResp(JSONAPIResponse):
+    data: list[VendorPricingByCustomerRObj]
+
+
+class VendorPricingByCustomerResourceResp(JSONAPIResponse):
+    data: VendorPricingByCustomerRObj
 
 
 class NewVendorPricingByCustomerRObj(BaseModel):
@@ -1237,7 +1261,7 @@ class NewVendorPricingByCustomer(BaseModel):
     data: NewVendorPricingByCustomerRObj
 
 
-class RelatedVendorPricingByCustomerResp(VendorPricingByCustomerResp):
+class RelatedVendorPricingByCustomerResp(VendorPricingByCustomerResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -1300,7 +1324,7 @@ class VendorCustomerRID(JSONAPIResourceIdentifier):
 
 
 class VendorCustomerRelResp(JSONAPIRelationshipsResponse):
-    data: list[VendorCustomerRID] | VendorCustomerRID
+    data: list[VendorCustomerRID]
 
 
 class VendorCustomerAttrs(BaseModel):
@@ -1383,8 +1407,12 @@ class VendorCustomerRObj(VendorCustomerRID):
     relationships: VendorCustomerRels
 
 
-class VendorCustomerResp(JSONAPIResponse):
-    data: list[VendorCustomerRObj] | VendorCustomerRObj
+class VendorCustomerCollectionResp(JSONAPIResponse):
+    data: list[VendorCustomerRObj]
+
+
+class VendorCustomerResourceResp(JSONAPIResponse):
+    data: VendorCustomerRObj
 
 
 class NewVendorCustomerRObj(BaseModel):
@@ -1397,7 +1425,7 @@ class NewVendorCustomer(BaseModel):
     data: NewVendorCustomerRObj
 
 
-class RelatedVendorCustomerResp(VendorCustomerResp):
+class RelatedVendorCustomerResp(VendorCustomerResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -1605,8 +1633,12 @@ class VendorProductClassDiscountRObj(VendorProductClassDiscountRID):
     relationships: VendorProductClassDiscountRels
 
 
-class VendorProductClassDiscountResp(JSONAPIResponse):
-    data: list[VendorProductClassDiscountRObj] | VendorProductClassDiscountRObj
+class VendorProductClassDiscountCollectionResp(JSONAPIResponse):
+    data: list[VendorProductClassDiscountRObj]
+
+
+class VendorProductClassDiscountResourceResp(JSONAPIResponse):
+    data: VendorProductClassDiscountRObj
 
 
 class NewVendorProductClassDiscountRObj(BaseModel):
@@ -1619,7 +1651,7 @@ class NewVendorProductClassDiscount(BaseModel):
     data: NewVendorProductClassDiscountRObj
 
 
-class RelatedVendorProductClassDiscountResp(VendorProductClassDiscountResp):
+class RelatedVendorProductClassDiscountResp(VendorProductClassDiscountResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -1972,8 +2004,12 @@ class VendorQuoteRObj(VendorQuoteRID):
     relationships: VendorQuoteRels
 
 
-class VendorQuoteResp(JSONAPIResponse):
-    data: list[VendorQuoteRObj] | VendorQuoteRObj
+class VendorQuoteCollectionResp(JSONAPIResponse):
+    data: list[VendorQuoteRObj]
+
+
+class VendorQuoteResourceResp(JSONAPIResponse):
+    data: VendorQuoteRObj
 
 
 class NewVendorQuoteRObj(BaseModel):
@@ -1986,7 +2022,7 @@ class NewVendorQuote(BaseModel):
     data: NewVendorQuoteRObj
 
 
-class RelatedVendorQuoteResp(VendorQuoteResp):
+class RelatedVendorQuoteResp(VendorQuoteResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -2502,8 +2538,12 @@ class VendorCustomerPricingClassRObj(VendorCustomerPricingClassRID):
     relationships: VendorCustomerPricingClassRels
 
 
-class VendorCustomerPricingClassResp(JSONAPIResponse):
-    data: list[VendorCustomerPricingClassRObj] | VendorCustomerPricingClassRObj
+class VendorCustomerPricingClassCollectionResp(JSONAPIResponse):
+    data: list[VendorCustomerPricingClassRObj]
+
+
+class VendorCustomerPricingClassResourceResp(JSONAPIResponse):
+    data: VendorCustomerPricingClassRObj
 
 
 class NewVendorCustomerPricingClassRObj(BaseModel):
@@ -2527,7 +2567,7 @@ class ModVendorCustomerPricingClass(BaseModel):
     data: ModVendorCustomerPricingClassRObj
 
 
-class RelatedVendorCustomerPricingClassResp(VendorCustomerPricingClassResp):
+class RelatedVendorCustomerPricingClassResp(VendorCustomerPricingClassResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 
@@ -3323,11 +3363,15 @@ class VendorsAttrsChangelogRObj(VendorsAttrsChangelogRID):
     relationships: VendorsAttrsChangelogRels
 
 
-class VendorsAttrsChangelogResp(JSONAPIResponse):
-    data: list[VendorsAttrsChangelogRObj] | VendorsAttrsChangelogRObj
+class VendorsAttrsChangelogCollectionResp(JSONAPIResponse):
+    data: list[VendorsAttrsChangelogRObj]
 
 
-class RelatedVendorsAttrsChangelogResp(VendorsAttrsChangelogResp):
+class VendorsAttrsChangelogResourceResp(JSONAPIResponse):
+    data: VendorsAttrsChangelogRObj
+
+
+class RelatedVendorsAttrsChangelogResp(VendorsAttrsChangelogResourceResp):
     included: dict = {}
     links: Optional[dict] = Field(default=None, exclude=True)
 

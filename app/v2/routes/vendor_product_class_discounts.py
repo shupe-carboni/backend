@@ -7,7 +7,7 @@ from app.db import DB_V2, Session
 from app.admin.models import VendorId
 from app.v2.pricing import calc_customer_pricing_from_product_class_discount
 from app.v2.models import (
-    VendorProductClassDiscountResp,
+    VendorProductClassDiscountResourceResp,
     ModVendorProductClassDiscount,
     NewVendorProductClassDiscount,
 )
@@ -31,7 +31,7 @@ logger = getLogger("uvicorn.info")
 
 @vendor_product_class_discounts.post(
     "",
-    response_model=VendorProductClassDiscountResp,
+    response_model=VendorProductClassDiscountResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -40,7 +40,7 @@ async def new_vendor_product_class_discount(
     session: NewSession,
     new_obj: NewVendorProductClassDiscount,
     bg: BackgroundTasks,
-) -> VendorProductClassDiscountResp:
+) -> VendorProductClassDiscountResourceResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
     ref_price_class_id = new_obj.data.relationships.base_price_classes.data.id
@@ -92,7 +92,7 @@ async def new_vendor_product_class_discount(
 
 @vendor_product_class_discounts.patch(
     "/{vendor_product_class_discount_id}",
-    response_model=VendorProductClassDiscountResp,
+    response_model=VendorProductClassDiscountResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -102,7 +102,7 @@ async def mod_vendor_product_class_discount(
     vendor_product_class_discount_id: int,
     mod_data: ModVendorProductClassDiscount,
     bg: BackgroundTasks,
-) -> VendorProductClassDiscountResp:
+) -> VendorProductClassDiscountResourceResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
     ref_price_class_id = mod_data.data.relationships.base_price_classes.data.id
@@ -177,7 +177,7 @@ async def del_vendor_product_class_discount(
 async def vendor_product_class_discount_collection(
     token: Token,
     session: NewSession,
-) -> VendorProductClassDiscountResp:
+) -> VendorProductClassDiscountResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -189,7 +189,7 @@ async def vendor_product_class_discount_resource(
     token: Token,
     session: NewSession,
     vendor_product_class_discount_id: int,
-) -> VendorProductClassDiscountResp:
+) -> VendorProductClassDiscountResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

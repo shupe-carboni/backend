@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import (
-    VendorPricingByCustomerResp,
+    VendorPricingByCustomerResourceResp,
     ModVendorPricingByCustomer,
     NewVendorPricingByCustomer,
 )
@@ -24,7 +24,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendor_pricing_by_customer.post(
     "",
-    response_model=VendorPricingByCustomerResp,
+    response_model=VendorPricingByCustomerResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -32,7 +32,7 @@ async def new_vendor_pricing_by_customer(
     token: Token,
     session: NewSession,
     new_obj: NewVendorPricingByCustomer,
-) -> VendorPricingByCustomerResp:
+) -> VendorPricingByCustomerResourceResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
     try:
@@ -86,7 +86,7 @@ async def new_vendor_pricing_by_customer(
 
 @vendor_pricing_by_customer.patch(
     "/{vendor_pricing_by_customer_id}",
-    response_model=VendorPricingByCustomerResp,
+    response_model=VendorPricingByCustomerResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -95,7 +95,7 @@ async def mod_vendor_pricing_by_customer(
     session: NewSession,
     vendor_pricing_by_customer_id: int,
     mod_data: ModVendorPricingByCustomer,
-) -> VendorPricingByCustomerResp:
+) -> VendorPricingByCustomerResourceResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
@@ -144,7 +144,7 @@ async def del_vendor_pricing_by_customer(
 @vendor_pricing_by_customer.get("", tags=["jsonapi"])
 async def vendor_pricing_by_customer_collection(
     token: Token, session: NewSession
-) -> VendorPricingByCustomerResp:
+) -> VendorPricingByCustomerResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -153,7 +153,7 @@ async def vendor_pricing_by_customer_resource(
     token: Token,
     session: NewSession,
     vendor_pricing_by_customer_id: int,
-) -> VendorPricingByCustomerResp:
+) -> VendorPricingByCustomerResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

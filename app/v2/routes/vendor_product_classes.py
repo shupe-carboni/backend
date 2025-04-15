@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import (
-    VendorProductClassResp,
+    VendorProductClassResourceResp,
     ModVendorProductClass,
     NewVendorProductClass,
 )
@@ -21,7 +21,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendor_product_classes.post(
     "",
-    response_model=VendorProductClassResp,
+    response_model=VendorProductClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -29,7 +29,7 @@ async def new_vendor_product_classes(
     token: Token,
     session: NewSession,
     new_obj: NewVendorProductClass,
-) -> VendorProductClassResp:
+) -> VendorProductClassResourceResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorProductClass, PARENT_PREFIX, id=vendor_id)
@@ -46,7 +46,7 @@ async def new_vendor_product_classes(
 
 @vendor_product_classes.patch(
     "/{vendor_product_classes_id}",
-    response_model=VendorProductClassResp,
+    response_model=VendorProductClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -55,7 +55,7 @@ async def mod_vendor_product_classes(
     session: NewSession,
     vendor_product_classes_id: int,
     mod_data: ModVendorProductClass,
-) -> VendorProductClassResp:
+) -> VendorProductClassResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorProductClass, PARENT_PREFIX, id=vendor_id)
@@ -93,7 +93,7 @@ async def del_vendor_product_classes(
 @vendor_product_classes.get("", tags=["Not Implemented"])
 async def vendor_product_classes_collection(
     token: Token, session: NewSession
-) -> VendorProductClassResp:
+) -> VendorProductClassResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -102,7 +102,7 @@ async def vendor_product_classes_resource(
     token: Token,
     session: NewSession,
     vendor_product_classes_id: int,
-) -> VendorProductClassResp:
+) -> VendorProductClassResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

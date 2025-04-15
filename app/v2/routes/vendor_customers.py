@@ -3,7 +3,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import SCA_DB, Session
-from app.v2.models import VendorCustomerResp, ModVendorCustomer, NewVendorCustomer
+from app.v2.models import (
+    VendorCustomerResourceResp,
+    ModVendorCustomer,
+    NewVendorCustomer,
+)
 from app.jsonapi.sqla_models import VendorCustomer
 
 PARENT_PREFIX = "/vendors"
@@ -17,7 +21,7 @@ NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
 
 @vendor_customers.post(
     "",
-    response_model=VendorCustomerResp,
+    response_model=VendorCustomerResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -25,7 +29,7 @@ async def new_vendor_customer(
     token: Token,
     session: NewSession,
     new_obj: NewVendorCustomer,
-) -> VendorCustomerResp:
+) -> VendorCustomerResourceResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorCustomerOperations(
@@ -44,7 +48,7 @@ async def new_vendor_customer(
 
 @vendor_customers.patch(
     "/{vendor_customer_id}",
-    response_model=VendorCustomerResp,
+    response_model=VendorCustomerResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -53,7 +57,7 @@ async def mod_vendor_customer(
     session: NewSession,
     vendor_customer_id: int,
     mod_data: ModVendorCustomer,
-) -> VendorCustomerResp:
+) -> VendorCustomerResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
         auth.VendorCustomerOperations(
@@ -98,7 +102,7 @@ async def del_vendor_customer(
 @vendor_customers.get("", tags=["Not Implemented"])
 async def vendor_customer_collection(
     token: Token, session: NewSession
-) -> VendorCustomerResp:
+) -> VendorCustomerResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -107,7 +111,7 @@ async def vendor_customer_resource(
     token: Token,
     session: NewSession,
     vendor_customer_id: int,
-) -> VendorCustomerResp:
+) -> VendorCustomerResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

@@ -5,7 +5,7 @@ from app import auth
 from app.db import DB_V2, Session
 from app.db.sql import queries
 from app.v2.models import (
-    VendorCustomerPricingClassResp,
+    VendorCustomerPricingClassResourceResp,
     NewVendorCustomerPricingClass,
     ModVendorCustomerPricingClass,
 )
@@ -24,7 +24,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendor_customer_pricing_classes.post(
     "",
-    response_model=VendorCustomerPricingClassResp,
+    response_model=VendorCustomerPricingClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -32,7 +32,7 @@ async def new_vendor_customer_pricing_classes(
     token: Token,
     session: NewSession,
     new_obj: NewVendorCustomerPricingClass,
-) -> VendorCustomerPricingClassResp:
+) -> VendorCustomerPricingClassResourceResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
@@ -52,7 +52,7 @@ async def new_vendor_customer_pricing_classes(
 
 @vendor_customer_pricing_classes.patch(
     "/{vendor_customer_pricing_classes_id}",
-    response_model=VendorCustomerPricingClassResp,
+    response_model=VendorCustomerPricingClassResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -61,7 +61,7 @@ async def mod_vendor_customer_pricing_classes(
     session: NewSession,
     vendor_customer_pricing_classes_id: int,
     mod_obj: ModVendorCustomerPricingClass,
-) -> VendorCustomerPricingClassResp:
+) -> VendorCustomerPricingClassResourceResp:
     vendor_customer_id = mod_obj.data.relationships.vendor_customers.data.id
     vendor_id = mod_obj.data.relationships.vendors.data.id
     try:

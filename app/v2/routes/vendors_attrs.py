@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
-from app.v2.models import VendorsAttrResp, ModVendorsAttr, NewVendorsAttr
+from app.v2.models import VendorsAttrResourceResp, ModVendorsAttr, NewVendorsAttr
 from app.jsonapi.sqla_models import VendorsAttr
 
 PARENT_PREFIX = "/vendors"
@@ -17,7 +17,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendors_attrs.post(
     "",
-    response_model=VendorsAttrResp,
+    response_model=VendorsAttrResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -25,7 +25,7 @@ async def new_vendors_attr(
     token: Token,
     session: NewSession,
     new_obj: NewVendorsAttr,
-) -> VendorsAttrResp:
+) -> VendorsAttrResourceResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
@@ -42,7 +42,7 @@ async def new_vendors_attr(
 
 @vendors_attrs.patch(
     "/{vendors_attr_id}",
-    response_model=VendorsAttrResp,
+    response_model=VendorsAttrResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -51,7 +51,7 @@ async def mod_vendors_attr(
     session: NewSession,
     vendors_attr_id: int,
     mod_data: ModVendorsAttr,
-) -> VendorsAttrResp:
+) -> VendorsAttrResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
@@ -93,7 +93,7 @@ async def del_vendors_attr(
     "",
     tags=["jsonapi"],
 )
-async def vendors_attr_collection(token: Token, session: NewSession) -> VendorsAttrResp:
+async def vendors_attr_collection(token: Token, session: NewSession):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -102,7 +102,7 @@ async def vendors_attr_resource(
     token: Token,
     session: NewSession,
     vendors_attr_id: int,
-) -> VendorsAttrResp:
+):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

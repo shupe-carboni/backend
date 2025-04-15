@@ -57,7 +57,7 @@ def test_price_update_rollback():
     # execute rollback
     path = f"/admin/price-updates/{TEST_VENDOR}/rollback"
     query = f"?current_effective_date={TODAY}&new_effective_date={FUTURE_DATE}"
-    response: Response = test_client.get(path + query)
+    response: Response = test_client.post(path + query)
     assert response.status_code == 200, response.text
     # Verify future table
     future = (

@@ -5,7 +5,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.db.sql import queries
-from app.v2.models import VendorProductResp, ModVendorProduct, NewVendorProduct
+from app.v2.models import VendorProductResourceResp, ModVendorProduct, NewVendorProduct
 from app.jsonapi.sqla_models import VendorProduct
 
 PARENT_PREFIX = "/vendors"
@@ -21,7 +21,7 @@ logger = getLogger("uvicorn.info")
 
 @vendor_products.post(
     "",
-    response_model=VendorProductResp,
+    response_model=VendorProductResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -29,7 +29,7 @@ async def new_vendor_product(
     token: Token,
     session: NewSession,
     new_obj: NewVendorProduct,
-) -> VendorProductResp:
+) -> VendorProductResourceResp:
     vendor_id = new_obj.data.relationships.vendors.data.id
     custom_attributes = new_obj.data.attributes.vendor_product_attrs
     try:
@@ -76,7 +76,7 @@ async def new_vendor_product(
 
 @vendor_products.patch(
     "/{vendor_product_id}",
-    response_model=VendorProductResp,
+    response_model=VendorProductResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -85,7 +85,7 @@ async def mod_vendor_product(
     session: NewSession,
     vendor_product_id: int,
     mod_data: ModVendorProduct,
-) -> VendorProductResp:
+) -> VendorProductResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
         auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, id=vendor_id)
@@ -126,7 +126,7 @@ async def del_vendor_product(
 @vendor_products.get("", tags=["jsonapi"])
 async def vendor_product_collection(
     token: Token, session: NewSession
-) -> VendorProductResp:
+) -> VendorProductResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 
@@ -135,7 +135,7 @@ async def vendor_product_resource(
     token: Token,
     session: NewSession,
     vendor_product_id: int,
-) -> VendorProductResp:
+) -> VendorProductResourceResp:
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
 

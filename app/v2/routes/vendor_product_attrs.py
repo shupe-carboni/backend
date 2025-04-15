@@ -4,7 +4,7 @@ from fastapi.routing import APIRouter
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import (
-    VendorProductAttrResp,
+    VendorProductAttrResourceResp,
     ModVendorProductAttr,
     NewVendorProductAttr,
 )
@@ -21,7 +21,7 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 @vendor_product_attrs.post(
     "",
-    response_model=VendorProductAttrResp,
+    response_model=VendorProductAttrResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -29,7 +29,7 @@ async def new_vendor_product_attr(
     token: Token,
     session: NewSession,
     new_obj: NewVendorProductAttr,
-) -> VendorProductAttrResp:
+) -> VendorProductAttrResourceResp:
     vendor_product_id = new_obj.data.relationships.vendor_products.data.id
     vendor_id = new_obj.data.relationships.vendors.data.id
     return (
@@ -49,7 +49,7 @@ async def new_vendor_product_attr(
 
 @vendor_product_attrs.patch(
     "/{vendor_product_attr_id}",
-    response_model=VendorProductAttrResp,
+    response_model=VendorProductAttrResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -58,7 +58,7 @@ async def mod_vendor_product_attr(
     session: NewSession,
     vendor_product_attr_id: int,
     mod_data: ModVendorProductAttr,
-) -> VendorProductAttrResp:
+) -> VendorProductAttrResourceResp:
     vendor_product_id = mod_data.data.relationships.vendor_products.data.id
     vendor_id = mod_data.data.relationships.vendors.data.id
     return (
