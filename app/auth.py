@@ -1,7 +1,7 @@
 import os
 import time
 import requests
-import bcrypt
+import threading
 from datetime import datetime
 from abc import ABC
 from enum import Enum, IntEnum, StrEnum, auto
@@ -94,7 +94,7 @@ class VerifiedToken(BaseModel):
     collection.
     """
 
-    token: bytes
+    token: str
     exp: int
     permissions: IntEnum
     nickname: str
@@ -106,37 +106,34 @@ class VerifiedToken(BaseModel):
         return time.time() > self.exp
 
     @field_validator("token", mode="before")
-    def hash_token(cls, value: str):
+    def hash_token(cls, value: str) -> str:
         token_b = value.encode("utf-8")
-        token_256_hash = sha256(token_b).digest()
-        salt = bcrypt.gensalt(12)
-        return bcrypt.hashpw(token_256_hash, salt)
-
-    def __hash__(self) -> int:
-        return self.token.__hash__()
-
-    def is_same_token(self, other: str) -> bool:
-        other_b = other.encode("utf-8")
-        other_sha_256 = sha256(other_b).digest()
-        return bcrypt.checkpw(other_sha_256, self.token)
+        token_256 = sha256(token_b)
+        return token_256.hexdigest()
 
 
 class LocalTokenStore:
     """Global in-memory storage system for access tokens"""
 
-    tokens: set[VerifiedToken] = set()
+    tokens: dict[str, VerifiedToken] = dict()
+    lock = threading.Lock()
 
     @classmethod
     def add_token(cls, new_token: VerifiedToken) -> None:
-        cls.tokens.add(new_token)
+        with cls.lock:
+            cls.tokens[new_token.token] = new_token
 
     @classmethod
-    def contains(cls, token: str) -> VerifiedToken | None:
-        for verified_token in cls.tokens:
-            if verified_token.is_same_token(token):
-                if not verified_token.is_expired():
-                    return verified_token
-        return
+    def get(cls, other_token: str) -> VerifiedToken | None:
+        with cls.lock:
+            other_b = other_token.encode("utf-8")
+            other_sha_256 = sha256(other_b).hexdigest()
+            if verified_tok := cls.tokens.get(other_sha_256):
+                if not verified_tok.is_expired():
+                    return verified_tok
+                else:
+                    cls.tokens.pop(verified_tok.token)
+            return
 
 
 def get_user_info(access_token: str) -> dict:
@@ -179,7 +176,7 @@ async def authenticate_auth0_token(
 ) -> VerifiedToken:
     error = None
     start_ = time.time()
-    if verified_token := LocalTokenStore.contains(token.credentials):
+    if verified_token := LocalTokenStore.get(token.credentials):
         logger.info(f"Auth(cached): {time.time() - start_}s")
         return verified_token
     jwks = requests.get(AUTH0_DOMAIN + "/.well-known/jwks.json").json()
