@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import re
 import os
+from time import time
 import boto3
 import asyncio
 from logging import getLogger
@@ -254,7 +255,11 @@ class DatabaseV2(Database):
         params: Iterable[dict | str | int | None] = None,
         **kwargs,
     ) -> Result:
-        return session.execute(text(sql), params=params, **kwargs)
+        try:
+            start_ = time()
+            return session.execute(text(sql), params=params, **kwargs)
+        finally:
+            logger.info(f"Query Time: {time()-start_}s")
 
 
 ADP_DB = Database("adp")

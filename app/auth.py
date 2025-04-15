@@ -523,6 +523,7 @@ class SecOp(ABC):
                 raise InvalidArguments(
                     "Invalid argument set supplied to auth.secured_get_query"
                 )
+        start_ = time.time()
         if self._admin or self._sca:
             result = result_query()
         elif self._customer or self._dev:
@@ -537,6 +538,7 @@ class SecOp(ABC):
                 result = result.data
         if not result["data"]:
             raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
+        logger.info(f"Query Time: {time.time()-start_}s")
         return result
 
     @standard_error_handler
