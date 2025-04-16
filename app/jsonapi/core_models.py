@@ -3,26 +3,67 @@ Define the JSON:API specification, which acts as a contract
 for requests and responses for the API
 """
 
-from pydantic import BaseModel, Field, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, WrapValidator, ValidationError, Field
 from typing import Optional, Annotated, Any, Callable
+from functools import partial
+from datetime import datetime
+from app.db import Stage
+
+
+def set_default(type_: type, v, handler):
+    try:
+        return handler(v)
+    except ValidationError:
+        return type_() if type_ is not None else None
+
+
+set_none_default = partial(set_default, None)
+set_list_default = partial(set_default, list)
+set_dict_default = partial(set_default, dict)
+
+# Long = Field(ge=-(2**63), le=2**63 - 1)
+Long = Field(ge=1000000000, le=9999999999)
 
 StringToNum = Annotated[int, BeforeValidator(lambda num: int(num))]
+
+NullableStr = Annotated[str, WrapValidator(set_none_default)]
+NullableInt = Annotated[int, WrapValidator(set_none_default)]
+NullableLongInt = Annotated[int, Long, WrapValidator(set_none_default)]
+NullableFloat = Annotated[float, WrapValidator(set_none_default)]
+NullableBool = Annotated[bool, WrapValidator(set_none_default)]
+NullableDateTime = Annotated[datetime, WrapValidator(set_none_default)]
+NullableStage = Annotated[Stage, WrapValidator(set_none_default)]
+
+OptionalDict = Annotated[dict, WrapValidator(set_dict_default)]
+OptionalList = Annotated[list, WrapValidator(set_list_default)]
+OptionalIntArr = Annotated[list[int], WrapValidator(set_list_default)]
 
 
 class JSONAPIVersion(BaseModel):
     version: str
 
 
+OptionalJSONAPIVersion = Annotated[JSONAPIVersion, WrapValidator(set_none_default)]
+
+
 class JSONAPIResourceObject(BaseModel):
-    id: str | int
+    id: int
     type: str
-    attributes: Optional[dict] = {}
-    relationships: Optional[dict] = {}
+    attributes: OptionalDict
+    relationships: OptionalDict
+
+
+OptionalJSONAPIResourceObject = Annotated[
+    JSONAPIResourceObject, WrapValidator(set_none_default)
+]
+OptionalArrJSONAPIResourceObject = Annotated[
+    list[JSONAPIResourceObject], WrapValidator(set_none_default)
+]
 
 
 class JSONAPIErrorObject(BaseModel):
     id: str
-    meta: Optional[dict] = {}
+    meta: OptionalDict
     status: int
     code: str
     title: str
@@ -37,16 +78,19 @@ class Pagination(BaseModel):
     # self: str
     first: str
     # prev: str
-    next: Optional[str] = None
+    next: NullableStr
     last: str
 
 
+OptionalPagination = Annotated[Pagination, WrapValidator(set_none_default)]
+
+
 class JSONAPIResponse(BaseModel):
-    jsonapi: Optional[JSONAPIVersion] = None
-    meta: Optional[dict] = {}
-    data: Optional[JSONAPIResourceObject]
-    included: Optional[list[JSONAPIResourceObject]] = []
-    links: Optional[Pagination] = None
+    jsonapi: OptionalJSONAPIVersion
+    meta: OptionalDict
+    data: OptionalJSONAPIResourceObject
+    included: OptionalArrJSONAPIResourceObject
+    links: OptionalPagination = None
 
 
 class JSONAPIResourceIdentifier(BaseModel):
@@ -54,9 +98,17 @@ class JSONAPIResourceIdentifier(BaseModel):
     type: str
 
 
+OptionalJSONAPIResourceIdentifier = Annotated[
+    JSONAPIResourceIdentifier, WrapValidator(set_none_default)
+]
+OptionalArrJSONAPIResourceIdentifier = Annotated[
+    list[JSONAPIResourceIdentifier], WrapValidator(set_none_default)
+]
+
+
 class JSONAPIRelationshipsResponse(BaseModel):
-    meta: Optional[dict] = {}
-    data: list[JSONAPIResourceIdentifier] | JSONAPIResourceIdentifier
+    meta: OptionalDict
+    data: list[JSONAPIResourceIdentifier]
 
 
 class JSONAPIRelationshipLinks(BaseModel):
@@ -64,9 +116,19 @@ class JSONAPIRelationshipLinks(BaseModel):
     related: str
 
 
+OptionalJSONAPIRelationshipLinks = Annotated[
+    JSONAPIRelationshipLinks, WrapValidator(set_none_default)
+]
+
+
 class JSONAPIRelationships(BaseModel):
-    links: Optional[JSONAPIRelationshipLinks] = None
-    data: Optional[JSONAPIResourceIdentifier | list[JSONAPIResourceIdentifier]] = None
+    links: OptionalJSONAPIRelationshipLinks = None
+    data: OptionalJSONAPIResourceIdentifier = None
+
+
+OptionalJSONAPIRelationships = Annotated[
+    JSONAPIRelationships, WrapValidator(set_none_default)
+]
 
 
 class JSONAPIRequestData(BaseModel):
@@ -75,12 +137,12 @@ class JSONAPIRequestData(BaseModel):
 
 class JSONAPIRequest(BaseModel):
     data: JSONAPIRequestData
-    included: Optional[list[JSONAPIResourceObject]] = None
+    included: OptionalArrJSONAPIResourceObject
 
 
 class Query(BaseModel):
-    include: Optional[str | None] = None
-    sort: Optional[str] = None
+    include: NullableStr = None
+    sort: NullableStr = None
     # fields: implemented at runtime
     # filter: implemented at runtime
     page_number: Optional[StringToNum] = None
