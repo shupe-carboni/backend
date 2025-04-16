@@ -1,5 +1,5 @@
 from enum import StrEnum, auto
-from datetime import date, time
+from datetime import datetime, date, time
 from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Union
