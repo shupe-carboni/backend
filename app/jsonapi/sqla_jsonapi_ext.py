@@ -565,9 +565,11 @@ class JSONAPI_(JSONAPI):
                 elif related.id not in permitted_ids_obj[related.__jsonapi_type__]:
                     response.data["data"] = None
                 else:
-                    response.data["data"], _ = self._render_full_resource(
+                    built, _ = self._render_full_resource(
                         related, {}, {}, {}, permitted_ids_obj
                     )
+                    built.pop("included")  # don't need it because query isn't used
+                    response.data["data"] = built
             except PermissionDeniedError:
                 response.data["data"] = None
         else:
@@ -576,13 +578,14 @@ class JSONAPI_(JSONAPI):
                 if item.id not in permitted_ids_obj[item.__jsonapi_type__]:
                     continue
                 try:
-                    response.data["data"].append(
-                        self._render_full_resource(item, {}, {}, {}, permitted_ids_obj)[
-                            0
-                        ]
+                    built, _ = self._render_full_resource(
+                        item, {}, {}, {}, permitted_ids_obj
                     )
+                    built.pop("included")  # don't need it because query isn't used
+                    response.data["data"].append(built)
                 except PermissionDeniedError:
                     continue
+        response.data["included"] = []
         return response
 
     def get_relationship(
