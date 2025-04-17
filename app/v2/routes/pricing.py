@@ -27,7 +27,7 @@ VENDOR_PREFIX = "/{vendor}"
 VENDORS = Vendor.__jsonapi_type_override__
 
 logger = getLogger("uvicorn.info")
-pricing = APIRouter(prefix=f"/{VENDORS}", tags=["v2"])
+pricing = APIRouter(prefix="", tags=["v2"])
 
 
 def date_to_datetime(d: date) -> Optional[datetime]:
