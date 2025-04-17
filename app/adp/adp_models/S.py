@@ -101,7 +101,7 @@ class S(ModelSeries):
         elif self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - R410a"
+            value += "- R-410a"
         return value
 
     def load_pricing(self) -> tuple[int, PriceByCategoryAndKey]:

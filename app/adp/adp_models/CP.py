@@ -119,7 +119,7 @@ class CP(ModelSeries):
         if self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - R410a"
+            value += "- R-410a"
         if self.attributes.get("drain"):
             value += " - Right Hand Drain"
         return value

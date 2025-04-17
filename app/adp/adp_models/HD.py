@@ -196,7 +196,7 @@ class HD(ModelSeries):
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - R410a"
+            value += "- R-410a"
         return value
 
     def record(self) -> dict:

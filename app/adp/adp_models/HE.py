@@ -246,7 +246,7 @@ class HE(ModelSeries):
         if self.rds_field_installed or self.rds_factory_installed:
             value += " - A2L"
         elif "410a" in self.metering:
-            value += " - R410a"
+            value += " - R-410a"
         elif "R-22" in self.metering:
             value += " - R-22"
         return value

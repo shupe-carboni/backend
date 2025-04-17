@@ -128,7 +128,7 @@ class F(ModelSeries):
         elif self.rds_factory_installed:
             value += " - A2L"
         else:
-            value += " - R410a"
+            value += "- R-410a"
         return value
 
     def calc_zero_disc_price(self) -> int:
