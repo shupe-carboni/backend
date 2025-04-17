@@ -169,14 +169,14 @@ async def vendor_customer_pricing(
     response_model_exclude_none=True,
     tags=["vendor customers", "pricing"],
 )
-async def vendor_customer_pricing(
+async def new_vendor_customer_pricing(
     token: Token,
     session: NewSession,
     vendor_id: VendorId,
     customer_id: int,
     effective_date: date = None,
 ) -> FullPricingWithLink:
-    """ """
+    """Add/update customer pricing for a vendor."""
     try:
         customer = (
             auth.VendorCustomerOperations(token, VendorCustomer, id=vendor_id)
@@ -187,6 +187,15 @@ async def vendor_customer_pricing(
         )
     except HTTPException as e:
         raise e
+
+    return await vendor_customer_pricing(
+        token,
+        session,
+        vendor_id,
+        customer_id,
+        None,
+        ReturnType.JSON,
+    )
 
 
 @pricing.get(
