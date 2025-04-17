@@ -34,27 +34,26 @@ def apply_percentage(
 
     Discounts are not expected to change, just the underlying price points.
     """
-    class_pricing_update = queries.apply_percentage_on_class_price
-    customer_pricing_update = queries.apply_percentage_on_customer_price
-    # assume percentage is in the form like 0.055, not 5.5
     if increase_pct > 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Percentage increase is over 100%: {increase_pct*100:0.2f}%",
+        # Expecting that sometimes I'll get 0.055 and sometimes I'll get 5.5
+        increase_pct /= 100
+        logger.info(
+            f"Increase percentage of {increase_pct*100:,.2f}% "
+            "will be applied to all pricing directly"
         )
     multiplier = 1 + increase_pct
     params = dict(multiplier=multiplier, ed=effective_date, vendor_id=vendor_id.value)
     session.begin()
     try:
-        DB_V2.execute(session, class_pricing_update, params)
-        DB_V2.execute(session, customer_pricing_update, params)
+        DB_V2.execute(session, queries.apply_percentage_on_class_price, params)
+        DB_V2.execute(session, queries.apply_percentage_on_customer_price, params)
     except Exception as e:
         logger.critical(e)
         session.rollback()
     else:
         logger.info(
             "Future Pricing established with an increase percentage of "
-            f"{increase_pct*100:0.2f}%"
+            f"{increase_pct*100:0.2f}%, effective {effective_date.date()}"
         )
         session.commit()
     finally:
