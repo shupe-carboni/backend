@@ -87,6 +87,7 @@ customer_sub_routes = [(customer_rel, "", customers)]
 adp_sub_routes = [(ratings_admin, "/vendors", app)]
 v2_routes = [
     (v2.vendors.vendors, "/v2", app),
+    (v2.pricing.pricing, "/v2/vendors", app),
     (v2.vendors_attrs.vendors_attrs, "/v2/vendors", app),
     (v2.vendor_quotes.vendor_quotes, "/v2/vendors", app),
     (v2.vendor_quotes_attrs.vendor_quotes_attrs, "/v2/vendors", app),
