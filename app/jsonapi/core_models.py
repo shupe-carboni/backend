@@ -123,7 +123,7 @@ OptionalJSONAPIRelationshipLinks = Annotated[
 
 class JSONAPIRelationships(BaseModel):
     links: OptionalJSONAPIRelationshipLinks = None
-    data: OptionalJSONAPIResourceIdentifier = None
+    data: OptionalArrJSONAPIResourceIdentifier = None
 
 
 OptionalJSONAPIRelationships = Annotated[
