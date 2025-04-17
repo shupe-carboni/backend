@@ -60,8 +60,10 @@ async def new_pricing(
         logger.info("Insufficient permissions. Rejected.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     if file and increase_pct:
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+        detail = "Expecting either a file *or* a percentage to apply, not both."
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, detail=detail)
     elif file:
+        logger.info("File received")
         file_data = await file.read()
         match file.content_type:
             case "text/csv":
@@ -79,13 +81,7 @@ async def new_pricing(
                 raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
         logger.info(f"File read sucessfully - Routing to {vendor_id}")
     elif increase_pct:
-        # Expecting that sometimes I'll get 0.055 and sometimes I'll get 5.5
-        if increase_pct > 1:
-            increase_pct /= 100
-        logger.info(
-            f"Increase percentage of {increase_pct*100:,.2f}% "
-            "will be applied to all pricing directly"
-        )
+        logger.info(f"A percentage increase received: {increase_pct}")
     else:
         msg = "must supply either a file or an increase percentage"
         raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
