@@ -33,8 +33,8 @@ async def new_vendor_pricing_by_customer(
     session: NewSession,
     new_obj: NewVendorPricingByCustomer,
 ) -> VendorPricingByCustomerResourceResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     try:
         return (
             auth.VendorCustomerOperations(
@@ -50,8 +50,10 @@ async def new_vendor_pricing_by_customer(
             )
         )
     except ValidationError:
-        product_id = new_obj.data.relationships.vendor_products.data.id
-        pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data.id
+        product_id = new_obj.data.relationships.vendor_products.data.pop().id
+        pricing_class_id = (
+            new_obj.data.relationships.vendor_pricing_classes.data.pop().id
+        )
         new_price = new_obj.data.attributes.price
         sql = """
             SELECT id
@@ -96,8 +98,8 @@ async def mod_vendor_pricing_by_customer(
     vendor_pricing_by_customer_id: int,
     mod_data: ModVendorPricingByCustomer,
 ) -> VendorPricingByCustomerResourceResp:
-    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id

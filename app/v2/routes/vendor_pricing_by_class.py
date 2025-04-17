@@ -30,8 +30,10 @@ async def new_vendor_pricing_by_class(
     session: NewSession,
     new_obj: NewVendorPricingByClass,
 ) -> VendorPricingByClassResp:
-    vendor_pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_pricing_class_id = (
+        new_obj.data.relationships.vendor_pricing_classes.data.pop().id
+    )
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorPricingClassOperations(
             token, VendorPricingByClass, PARENT_PREFIX, vendor_id=vendor_id
@@ -59,8 +61,10 @@ async def mod_vendor_pricing_by_class(
     vendor_pricing_by_class_id: int,
     mod_data: ModVendorPricingByClass,
 ) -> VendorPricingByClassResp:
-    vendor_pricing_class_id = mod_data.data.relationships.vendor_pricing_classes.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_pricing_class_id = (
+        mod_data.data.relationships.vendor_pricing_classes.data.pop().id
+    )
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorPricingClassOperations(
             token, VendorPricingByClass, PARENT_PREFIX, vendor_id=vendor_id

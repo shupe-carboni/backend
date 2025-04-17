@@ -30,7 +30,7 @@ async def new_vendor_customer(
     session: NewSession,
     new_obj: NewVendorCustomer,
 ) -> VendorCustomerResourceResp:
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorCustomer, PARENT_PREFIX, id=vendor_id
@@ -58,7 +58,7 @@ async def mod_vendor_customer(
     vendor_customer_id: int,
     mod_data: ModVendorCustomer,
 ) -> VendorCustomerResourceResp:
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorCustomer, PARENT_PREFIX, id=vendor_id

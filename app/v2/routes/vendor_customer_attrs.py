@@ -30,8 +30,8 @@ async def new_vendor_customer_attr(
     session: NewSession,
     new_obj: NewVendorCustomerAttr,
 ) -> VendorCustomerAttrResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
@@ -60,8 +60,8 @@ async def mod_vendor_customer_attr(
     vendor_customer_attr_id: int,
     mod_data: ModVendorCustomerAttr,
 ) -> VendorCustomerAttrResp:
-    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id

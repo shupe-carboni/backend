@@ -30,8 +30,8 @@ async def new_vendor_quote_product(
     session: NewSession,
     new_obj: NewVendorQuoteProduct,
 ) -> VendorQuoteProductResp:
-    vendor_quotes_id = new_obj.data.relationships.vendor_quotes.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_quotes_id = new_obj.data.relationships.vendor_quotes.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorQuoteOperations(
             token, VendorQuoteProduct, PARENT_PREFIX, vendor_id=vendor_id
@@ -60,8 +60,8 @@ async def mod_vendor_quote_product(
     vendor_quote_product_id: int,
     mod_data: ModVendorQuoteProduct,
 ) -> VendorQuoteProductResp:
-    vendor_quotes_id = mod_data.data.relationships.vendor_quotes.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_quotes_id = mod_data.data.relationships.vendor_quotes.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorQuoteOperations(
             token, VendorQuoteProduct, PARENT_PREFIX, vendor_id=vendor_id

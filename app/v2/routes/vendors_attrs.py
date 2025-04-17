@@ -26,7 +26,7 @@ async def new_vendors_attr(
     session: NewSession,
     new_obj: NewVendorsAttr,
 ) -> VendorsAttrResourceResp:
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
@@ -52,7 +52,7 @@ async def mod_vendors_attr(
     vendors_attr_id: int,
     mod_data: ModVendorsAttr,
 ) -> VendorsAttrResourceResp:
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorOperations2(token, VendorsAttr, PARENT_PREFIX, id=vendor_id)
         .allow_admin()

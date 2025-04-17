@@ -147,7 +147,7 @@ async def mod_vendor_pricing_by_customer_future(
     session: NewSession,
     new_data: NewVendorPricingByCustomerFuture,
 ) -> VendorPricingByCustomerFutureResp:
-    vendor_id = new_data.data.relationships.vendors.data.id
+    vendor_id = new_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorPricingByCustomerOperations(
             token, VendorPricingByCustomerFuture, PARENT_PREFIX, vendor_id=vendor_id
@@ -158,7 +158,7 @@ async def mod_vendor_pricing_by_customer_future(
         .post(
             session=session,
             data=new_data.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_data.data.relationships.vendor_pricing_by_customer.data.id,
+            primary_id=new_data.data.relationships.vendor_pricing_by_customer.data.pop().id,
         )
     )
 
@@ -175,7 +175,7 @@ async def mod_vendor_pricing_by_customer_future(
     vendor_pricing_by_customer_future_id: int,
     mod_data: ModVendorPricingByCustomerFuture,
 ) -> VendorPricingByCustomerFutureResp:
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorPricingByCustomerOperations(
             token, VendorPricingByCustomerFuture, PARENT_PREFIX, vendor_id=vendor_id
@@ -187,7 +187,7 @@ async def mod_vendor_pricing_by_customer_future(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_pricing_by_customer_future_id,
-            primary_id=mod_data.data.relationships.vendor_pricing_by_customer.data.id,
+            primary_id=mod_data.data.relationships.vendor_pricing_by_customer.data.pop().id,
         )
     )
 

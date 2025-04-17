@@ -26,8 +26,8 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 async def new_customer_location_mapping(
     token: Token, session: NewSession, new_obj: NewCustomerLocationMapping
 ) -> CustomerLocationMappingResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, CustomerLocationMapping, PARENT_PREFIX, vendor_id=vendor_id

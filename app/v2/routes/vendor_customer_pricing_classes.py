@@ -33,8 +33,8 @@ async def new_vendor_customer_pricing_classes(
     session: NewSession,
     new_obj: NewVendorCustomerPricingClass,
 ) -> VendorCustomerPricingClassResourceResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorCustomerOperations(
             token, VendorCustomerPricingClass, PARENT_PREFIX, vendor_id=vendor_id
@@ -62,8 +62,8 @@ async def mod_vendor_customer_pricing_classes(
     vendor_customer_pricing_classes_id: int,
     mod_obj: ModVendorCustomerPricingClass,
 ) -> VendorCustomerPricingClassResourceResp:
-    vendor_customer_id = mod_obj.data.relationships.vendor_customers.data.id
-    vendor_id = mod_obj.data.relationships.vendors.data.id
+    vendor_customer_id = mod_obj.data.relationships.vendor_customers.data.pop().id
+    vendor_id = mod_obj.data.relationships.vendors.data.pop().id
     try:
         # do preflight to get pricing ids that need to have class label reassigned
         params = dict(
@@ -98,7 +98,7 @@ async def mod_vendor_customer_pricing_classes(
         raise e
     else:
         # now change the pricing_class_id in customer_pricing where the label was used
-        new_id = mod_obj.data.relationships.vendor_pricing_classes.data.id
+        new_id = mod_obj.data.relationships.vendor_pricing_classes.data.pop().id
         params = dict(
             new_pricing_class_id=new_id,
             affected_ids=tuple(affected_customer_pricing_ids),

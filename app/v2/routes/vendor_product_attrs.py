@@ -30,8 +30,8 @@ async def new_vendor_product_attr(
     session: NewSession,
     new_obj: NewVendorProductAttr,
 ) -> VendorProductAttrResourceResp:
-    vendor_product_id = new_obj.data.relationships.vendor_products.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_product_id = new_obj.data.relationships.vendor_products.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorProductOperations(
             token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id
@@ -59,8 +59,8 @@ async def mod_vendor_product_attr(
     vendor_product_attr_id: int,
     mod_data: ModVendorProductAttr,
 ) -> VendorProductAttrResourceResp:
-    vendor_product_id = mod_data.data.relationships.vendor_products.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_product_id = mod_data.data.relationships.vendor_products.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data.pop().id
     return (
         auth.VendorProductOperations(
             token, VendorProductAttr, PARENT_PREFIX, vendor_id=vendor_id

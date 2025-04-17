@@ -34,9 +34,9 @@ async def new_vendor_pricing_by_customer_attr(
     new_obj: NewVendorPricingByCustomerAttr,
 ) -> VendorPricingByCustomerAttrResp:
     vendor_pricing_by_customer_id = (
-        new_obj.data.relationships.vendor_pricing_by_customer.data.id
+        new_obj.data.relationships.vendor_pricing_by_customer.data.pop().id
     )
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_id = new_obj.data.relationships.vendors.data.pop().id
     try:
         return (
             auth.VendorPricingByCustomerOperations(
@@ -68,9 +68,9 @@ async def mod_vendor_pricing_by_customer_attr(
     mod_obj: ModVendorPricingByCustomerAttr,
 ) -> VendorPricingByCustomerAttrResp:
     vendor_pricing_by_customer_id = (
-        mod_obj.data.relationships.vendor_pricing_by_customer.data.id
+        mod_obj.data.relationships.vendor_pricing_by_customer.data.pop().id
     )
-    vendor_id = mod_obj.data.relationships.vendors.data.id
+    vendor_id = mod_obj.data.relationships.vendors.data.pop().id
     return (
         auth.VendorPricingByCustomerOperations(
             token, VendorPricingByCustomerAttr, PARENT_PREFIX, vendor_id=vendor_id
