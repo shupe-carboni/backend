@@ -30,7 +30,7 @@ async def new_vendor_product(
     session: NewSession,
     new_obj: NewVendorProduct,
 ) -> VendorProductResourceResp:
-    vendor_id = new_obj.data.relationships.vendors.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
     custom_attributes = new_obj.data.attributes.vendor_product_attrs
     try:
         ret = (
@@ -86,7 +86,7 @@ async def mod_vendor_product(
     vendor_product_id: int,
     mod_data: ModVendorProduct,
 ) -> VendorProductResourceResp:
-    vendor_id = mod_data.data.relationships.vendors.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
     return (
         auth.VendorOperations2(token, VendorProduct, PARENT_PREFIX, id=vendor_id)
         .allow_admin()

@@ -30,7 +30,7 @@ async def mod_vendor_pricing_classe(
     session: NewSession,
     new_obj: NewVendorPricingClass,
 ) -> VendorPricingClassResourceResp:
-    vendor_id = new_obj.data.relationships.vendors.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
     return (
         auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
         .allow_admin()
@@ -56,7 +56,7 @@ async def mod_vendor_pricing_classe(
     vendor_pricing_classes_id: int,
     mod_data: ModVendorPricingClass,
 ) -> VendorPricingClassResourceResp:
-    vendor_id = mod_data.data.relationships.vendors.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
     return (
         auth.VendorOperations2(token, VendorPricingClass, PARENT_PREFIX, id=vendor_id)
         .allow_admin()

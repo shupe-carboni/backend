@@ -32,8 +32,8 @@ async def new_vendor_product_to_class_mapping(
     session: NewSession,
     new_obj: NewVendorProductToClassMapping,
 ) -> VendorProductToClassMappingResp:
-    vendor_products_id = new_obj.data.relationships.vendor_products.data.id
-    vendor_id = new_obj.data.relationships.vendors.data.id
+    vendor_products_id = new_obj.data.relationships.vendor_products.data[0].id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
     return (
         auth.VendorProductOperations(
             token, VendorProductToClassMapping, PARENT_PREFIX, vendor_id=vendor_id
@@ -61,8 +61,8 @@ async def mod_vendor_product_to_class_mapping(
     vendor_product_to_class_mapping_id: int,
     mod_data: ModVendorProductToClassMapping,
 ) -> VendorProductToClassMappingResp:
-    vendor_products_id = mod_data.data.relationships.vendor_products.data.id
-    vendor_id = mod_data.data.relationships.vendors.data.id
+    vendor_products_id = mod_data.data.relationships.vendor_products.data[0].id
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
     return (
         auth.VendorProductOperations(
             token, VendorProductToClassMapping, PARENT_PREFIX, vendor_id=vendor_id

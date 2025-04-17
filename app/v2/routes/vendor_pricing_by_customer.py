@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
+from logging import getLogger
 from app import auth
 from app.db import DB_V2, Session
 from app.v2.models import (
@@ -13,6 +14,8 @@ from sqlalchemy_jsonapi.errors import ValidationError
 
 PARENT_PREFIX = "/vendors/v2"
 VENDOR_PRICING_BY_CUSTOMER = VendorPricingByCustomer.__jsonapi_type_override__
+
+logger = getLogger("uvicorn.info")
 
 vendor_pricing_by_customer = APIRouter(
     prefix=f"/{VENDOR_PRICING_BY_CUSTOMER}", tags=["v2"]
@@ -33,8 +36,8 @@ async def new_vendor_pricing_by_customer(
     session: NewSession,
     new_obj: NewVendorPricingByCustomer,
 ) -> VendorPricingByCustomerResourceResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
-    vendor_id = new_obj.data.relationships.vendors.data.pop().id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data[0].id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
     try:
         return (
             auth.VendorCustomerOperations(
@@ -49,41 +52,48 @@ async def new_vendor_pricing_by_customer(
                 primary_id=vendor_customer_id,
             )
         )
-    except ValidationError:
-        product_id = new_obj.data.relationships.vendor_products.data.pop().id
-        pricing_class_id = (
-            new_obj.data.relationships.vendor_pricing_classes.data.pop().id
-        )
-        new_price = new_obj.data.attributes.price
-        sql = """
-            SELECT id
-            FROM vendor_pricing_by_customer
-            WHERE vendor_customer_id = :vc_id
-            AND product_id = :p_id
-            AND pricing_class_id = :pc_id;
-        """
-        (existing_id,) = DB_V2.execute(
-            session,
-            sql,
-            dict(
-                vc_id=vendor_customer_id,
-                p_id=product_id,
-                pc_id=pricing_class_id,
-            ),
-        ).one()
-        data = {
-            "id": existing_id,
-            "type": "vendor-pricing-by-customer",
-            "attributes": {
-                "deleted-at": None,
-                "price": new_price,
-            },
-            "relationships": new_obj.data.relationships.model_dump(exclude_none=True)
-            | {"vendors": {"data": {"type": "vendors", "id": vendor_id}}},
-        }
-        return await mod_vendor_pricing_by_customer(
-            token, session, existing_id, ModVendorPricingByCustomer(data=data)
-        )
+    except ValidationError as e:
+        logger.warning(e)
+        try:
+            product_id = new_obj.data.relationships.vendor_products.data[0].id
+            pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data[
+                0
+            ].id
+            new_price = new_obj.data.attributes.price
+            sql = """
+                SELECT id
+                FROM vendor_pricing_by_customer
+                WHERE vendor_customer_id = :vc_id
+                AND product_id = :p_id
+                AND pricing_class_id = :pc_id;
+            """
+            (existing_id,) = DB_V2.execute(
+                session,
+                sql,
+                dict(
+                    vc_id=vendor_customer_id,
+                    p_id=product_id,
+                    pc_id=pricing_class_id,
+                ),
+            ).one()
+            data = {
+                "id": existing_id,
+                "type": "vendor-pricing-by-customer",
+                "attributes": {
+                    "deleted-at": None,
+                    "price": new_price,
+                },
+                "relationships": new_obj.data.relationships.model_dump(
+                    exclude_none=True
+                )
+                | {"vendors": {"data": [{"type": "vendors", "id": vendor_id}]}},
+            }
+            return await mod_vendor_pricing_by_customer(
+                token, session, existing_id, ModVendorPricingByCustomer(data=data)
+            )
+        except Exception as e:
+            logger.critical(e)
+            raise e
 
 
 @vendor_pricing_by_customer.patch(
@@ -98,22 +108,26 @@ async def mod_vendor_pricing_by_customer(
     vendor_pricing_by_customer_id: int,
     mod_data: ModVendorPricingByCustomer,
 ) -> VendorPricingByCustomerResourceResp:
-    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.pop().id
-    vendor_id = mod_data.data.relationships.vendors.data.pop().id
-    return (
-        auth.VendorCustomerOperations(
-            token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+    try:
+        vendor_customer_id = mod_data.data.relationships.vendor_customers.data[0].id
+        vendor_id = mod_data.data.relationships.vendors.data[0].id
+        return (
+            auth.VendorCustomerOperations(
+                token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .patch(
+                session=session,
+                data=mod_data.model_dump(exclude_none=True, by_alias=True),
+                obj_id=vendor_pricing_by_customer_id,
+                primary_id=vendor_customer_id,
+            )
         )
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .patch(
-            session=session,
-            data=mod_data.model_dump(exclude_none=True, by_alias=True),
-            obj_id=vendor_pricing_by_customer_id,
-            primary_id=vendor_customer_id,
-        )
-    )
+    except Exception as e:
+        logger.critical(e)
+        raise e
 
 
 @vendor_pricing_by_customer.delete(

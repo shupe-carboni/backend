@@ -29,9 +29,9 @@ async def new_customer_pricing_by_class(
     new_obj: NewCustomerPricingByClass,
 ) -> CustomerPricingByClassResp:
     vendor_pricing_by_class_id = (
-        new_obj.data.relationships.vendor_pricing_by_class.data.pop().id
+        new_obj.data.relationships.vendor_pricing_by_class.data[0].id
     )
-    vendor_id = new_obj.data.relationships.vendors.data.pop().id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
     return (
         auth.VendorPricingByClassOperations(
             token, CustomerPricingByClass, PARENT_PREFIX, vendor_id=vendor_id

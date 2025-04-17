@@ -149,7 +149,7 @@ async def new_vendor_product_class_discounts_future(
     session: NewSession,
     new_data: NewVendorProductClassDiscountFuture,
 ) -> VendorProductClassDiscountFutureResp:
-    vendor_id = new_data.data.relationships.vendors.data.pop().id
+    vendor_id = new_data.data.relationships.vendors.data[0].id
     return (
         auth.VendorProductClassDiscountOperations(
             token, VendorProductClassDiscountFuture, PARENT_PREFIX, vendor_id=vendor_id
@@ -160,7 +160,9 @@ async def new_vendor_product_class_discounts_future(
         .post(
             session=session,
             data=new_data.model_dump(exclude_none=True, by_alias=True),
-            primary_id=new_data.data.relationships.vendor_product_class_discounts.data.pop().id,
+            primary_id=new_data.data.relationships.vendor_product_class_discounts.data[
+                0
+            ].id,
         )
     )
 
@@ -177,7 +179,7 @@ async def mod_vendor_product_class_discounts_future(
     vendor_product_class_discounts_future_id: int,
     mod_data: ModVendorProductClassDiscountFuture,
 ) -> VendorProductClassDiscountFutureResp:
-    vendor_id = mod_data.data.relationships.vendors.data.pop().id
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
     return (
         auth.VendorProductClassDiscountOperations(
             token, VendorProductClassDiscountFuture, PARENT_PREFIX, vendor_id=vendor_id
@@ -189,7 +191,9 @@ async def mod_vendor_product_class_discounts_future(
             session=session,
             data=mod_data.model_dump(exclude_none=True, by_alias=True),
             obj_id=vendor_product_class_discounts_future_id,
-            primary_id=mod_data.data.relationships.vendor_product_class_discounts.data.pop().id,
+            primary_id=mod_data.data.relationships.vendor_product_class_discounts.data[
+                0
+            ].id,
         )
     )
 

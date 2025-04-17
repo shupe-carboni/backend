@@ -8,13 +8,20 @@ from itertools import chain
 from sqlalchemy_jsonapi import JSONAPI
 from fastapi import HTTPException
 from sqlalchemy import or_, func, inspect, Column, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, Query as sqlQuery
+
 from sqlalchemy_jsonapi.errors import (
+    BadRequestError,
+    InvalidTypeForEndpointError,
+    MissingTypeError,
     NotSortableError,
     PermissionDeniedError,
-    ResourceTypeNotFoundError,
-    ResourceNotFoundError,
     RelationshipNotFoundError,
+    ResourceNotFoundError,
+    ResourceTypeNotFoundError,
+    ToManyExpectedError,
+    ValidationError,
 )
 from sqlalchemy_jsonapi.serializer import (
     Permissions,
@@ -30,6 +37,14 @@ from sqlalchemy_jsonapi.serializer import (
 
 QuerySet = dict[str, str]
 GenericData = dict[str, dict[str, Any] | list[dict[str, Any]]]
+
+
+class MissingKey:
+    def __init__(self, elem):
+        self.elem = elem
+
+    def __repr__(self):
+        return "<{} elem={}>".format(self.__class__.__name__, self.elem)
 
 
 class SQLAlchemyModel:
@@ -870,3 +885,163 @@ class JSONAPI_(JSONAPI):
                 continue
 
         return to_ret, rejected
+
+    def post_collection(self, session: Session, data: dict[str, dict], api_type: str):
+        """
+        Create a new Resource.
+
+        :param session: SQLAlchemy session
+        :param data: Request JSON Data
+        :param params: Keyword arguments
+        """
+        model: SQLAlchemyModel = self._fetch_model(api_type)
+        self._check_json_data(data)
+
+        orm_desc_keys = model.__mapper__.all_orm_descriptors.keys()
+
+        if "type" not in data["data"].keys():
+            raise MissingTypeError()
+
+        if data["data"]["type"] != model.__jsonapi_type__:
+            raise InvalidTypeForEndpointError(
+                model.__jsonapi_type__, data["data"]["type"]
+            )
+
+        resource = model()
+        check_permission(resource, None, Permissions.CREATE)
+
+        data["data"].setdefault("relationships", {})
+        data["data"].setdefault("attributes", {})
+
+        data_keys = set(
+            map(
+                (lambda x: resource.__jsonapi_map_to_py__.get(x, MissingKey(x))),
+                data["data"].get("relationships", {}).keys(),
+            )
+        )
+        model_keys = set(resource.__mapper__.relationships.keys())
+        if not data_keys <= model_keys:
+            data_keys = set(
+                [key.elem if isinstance(key, MissingKey) else key for key in data_keys]
+            )
+            # pragma: no cover
+            raise BadRequestError(
+                "{} not relationships for {}".format(
+                    ", ".join([repr(key) for key in list(data_keys - model_keys)]),
+                    model.__jsonapi_type__,
+                )
+            )
+
+        attrs_to_ignore = {"__mapper__", "id"}
+
+        setters = []
+
+        try:
+            if "id" in data["data"].keys():
+                resource.id = data["data"]["id"]
+
+            for key, relationship in resource.__mapper__.relationships.items():
+                attrs_to_ignore |= set(relationship.local_columns) | {key}
+                api_key = resource.__jsonapi_map_to_api__[key]
+
+                if (
+                    "relationships" not in data["data"].keys()
+                    or api_key not in data["data"]["relationships"].keys()
+                ):
+                    continue
+
+                data_rel = data["data"]["relationships"][api_key]
+                if "data" not in data_rel.keys():
+                    raise BadRequestError(
+                        "Missing data key in relationship {}".format(key)
+                    )
+                data_rel = data_rel["data"]
+
+                remote_side = relationship.back_populates
+                if relationship.direction == MANYTOONE:
+                    setter = get_rel_desc(resource, key, RelationshipActions.SET)
+                    if data_rel is None:
+                        setters.append([setter, None])
+                    else:
+                        if isinstance(data_rel, list):
+                            data_rel = data_rel.pop()
+                        if not isinstance(data_rel, dict):
+                            raise BadRequestError("{} must be a hash".format(key))
+                        if not {"type", "id"} == set(data_rel.keys()):
+                            raise BadRequestError(
+                                "{} must have type and id keys".format(key)
+                            )
+                        to_relate = self._fetch_resource(
+                            session, data_rel["type"], data_rel["id"], Permissions.EDIT
+                        )
+                        rem = to_relate.__mapper__.relationships[remote_side]
+                        if rem.direction == MANYTOONE:
+                            check_permission(to_relate, remote_side, Permissions.EDIT)
+                        else:
+                            check_permission(to_relate, remote_side, Permissions.CREATE)
+                        setters.append([setter, to_relate])
+                else:
+                    setter = get_rel_desc(resource, key, RelationshipActions.APPEND)
+                    if not isinstance(data_rel, list):
+                        raise BadRequestError("{} must be an array".format(key))
+                    for item in data_rel:
+                        if "type" not in item.keys() or "id" not in item.keys():
+                            raise BadRequestError(
+                                "{} must have type and id keys".format(key)
+                            )
+                        # pragma: no cover
+                        to_relate = self._fetch_resource(
+                            session, item["type"], item["id"], Permissions.EDIT
+                        )
+                        rem = to_relate.__mapper__.relationships[remote_side]
+                        if rem.direction == MANYTOONE:
+                            check_permission(to_relate, remote_side, Permissions.EDIT)
+                        else:
+                            check_permission(to_relate, remote_side, Permissions.CREATE)
+                        setters.append([setter, to_relate])
+
+            data_keys = set(
+                map(
+                    (lambda x: resource.__jsonapi_map_to_py__.get(x, None)),
+                    data["data"].get("attributes", {}).keys(),
+                )
+            )
+            model_keys = set(orm_desc_keys) - attrs_to_ignore
+
+            if not data_keys <= model_keys:
+                raise BadRequestError(
+                    "{} not attributes for {}".format(
+                        ", ".join(list(data_keys - model_keys)), model.__jsonapi_type__
+                    )
+                )
+
+            with session.no_autoflush:
+                for setter, value in setters:
+                    setter(resource, value)
+
+                for key in data_keys:
+                    api_key = resource.__jsonapi_map_to_api__[key]
+                    setter = get_attr_desc(resource, key, AttributeActions.SET)
+                    setter(resource, data["data"]["attributes"][api_key])
+
+                session.add(resource)
+                session.commit()
+
+        except IntegrityError as e:
+            session.rollback()
+            raise ValidationError(str(e.orig))
+        except AssertionError as e:
+            # pragma: no cover
+            session.rollback()
+            raise ValidationError(e.msg)
+        except TypeError as e:
+            import traceback as tb
+
+            session.rollback()
+            print(tb.format_exc())
+            print(model_keys - data_keys)
+            raise ValidationError("Incompatible data type")
+        session.refresh(resource)
+        response = self.get_resource(session, {}, model.__jsonapi_type__, resource.id)
+        response.status_code = 201
+        return response

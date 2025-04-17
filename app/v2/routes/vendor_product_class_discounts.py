@@ -41,11 +41,11 @@ async def new_vendor_product_class_discount(
     new_obj: NewVendorProductClassDiscount,
     bg: BackgroundTasks,
 ) -> VendorProductClassDiscountResourceResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data.pop().id
-    vendor_id = new_obj.data.relationships.vendors.data.pop().id
-    ref_price_class_id = new_obj.data.relationships.base_price_classes.data.pop().id
-    new_price_class_id = new_obj.data.relationships.label_price_classes.data.pop().id
-    product_class_id = new_obj.data.relationships.vendor_product_classes.data.pop().id
+    vendor_customer_id = new_obj.data.relationships.vendor_customers.data[0].id
+    vendor_id = new_obj.data.relationships.vendors.data[0].id
+    ref_price_class_id = new_obj.data.relationships.base_price_classes.data[0].id
+    new_price_class_id = new_obj.data.relationships.label_price_classes.data[0].id
+    product_class_id = new_obj.data.relationships.vendor_product_classes.data[0].id
     effective_date = new_obj.data.attributes.effective_date
     if not product_class_id:
         raise HTTPException(
@@ -103,10 +103,10 @@ async def mod_vendor_product_class_discount(
     mod_data: ModVendorProductClassDiscount,
     bg: BackgroundTasks,
 ) -> VendorProductClassDiscountResourceResp:
-    vendor_customer_id = mod_data.data.relationships.vendor_customers.data.pop().id
-    vendor_id = mod_data.data.relationships.vendors.data.pop().id
-    ref_price_class_id = mod_data.data.relationships.base_price_classes.data.pop().id
-    new_price_class_id = mod_data.data.relationships.label_price_classes.data.pop().id
+    vendor_customer_id = mod_data.data.relationships.vendor_customers.data[0].id
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
+    ref_price_class_id = mod_data.data.relationships.base_price_classes.data[0].id
+    new_price_class_id = mod_data.data.relationships.label_price_classes.data[0].id
     effective_date = mod_data.data.attributes.effective_date
     try:
         ret = (
