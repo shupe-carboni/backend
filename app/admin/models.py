@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Annotated
 from enum import StrEnum, auto, Enum
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VendorId(StrEnum):
@@ -148,3 +148,74 @@ class ModelLookupGlasfloss(BaseModel):
     exact: Optional[bool] = False
     model_number: Optional[str] = ""
     customer_id: Optional[int] = 0
+
+
+class PriceTemplateSheet(StrEnum):
+    CUSTOMER_PRICING = "Customer Pricing"
+    CUSTOMER_PRICE_CATEGORY = "Customer Price Category"
+    PRODUCT_CATEGORY_DISCOUNTS = "Product Category Discounts"
+    PRODUCT_DISCOUNTS = "Product Discounts"
+
+
+class PriceTemplateSheetColumn(StrEnum):
+    PART_NUMBER = "Part Number"
+    PRICING_CATEGORY = "Pricing Category"
+    PRICE = "Price"
+    CATEGORIES = "Categories"
+    PRODUCT_CATEGORY = "Product Category"
+    DISCOUNT = "Discount"
+    CATEGORY_RANK = "Category Rank"
+
+
+PriceTemplateSheetColumns = {
+    PriceTemplateSheet.CUSTOMER_PRICING: [
+        PriceTemplateSheetColumn.PART_NUMBER,
+        PriceTemplateSheetColumn.PRICING_CATEGORY,
+        PriceTemplateSheetColumn.PRICE,
+    ],
+    PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: [
+        PriceTemplateSheetColumn.CATEGORIES,
+    ],
+    PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [
+        PriceTemplateSheetColumn.PRODUCT_CATEGORY,
+        PriceTemplateSheetColumn.CATEGORY_RANK,
+        PriceTemplateSheetColumn.DISCOUNT,
+    ],
+    PriceTemplateSheet.PRODUCT_DISCOUNTS: [
+        PriceTemplateSheetColumn.PART_NUMBER,
+        PriceTemplateSheetColumn.DISCOUNT,
+    ],
+}
+
+PosFloat = Annotated[float, Field(gt=0)]
+PosInt = Annotated[int, Field(gt=0)]
+Discount = Annotated[float, Field(gt=0, lt=1)]
+
+
+class CustomerPrice(BaseModel):
+    part_number: str
+    pricing_category: str
+    price: PosFloat
+
+
+class CustomerPriceCategory(BaseModel):
+    category: str
+
+
+class ProductCategoryDiscount(BaseModel):
+    product_category: str
+    category_rank: PosInt
+    discount: Discount
+
+
+class ProductDiscount(BaseModel):
+    part_number: str
+    discount: Discount
+
+
+PriceTemplateModels: dict[StrEnum, BaseModel] = {
+    PriceTemplateSheet.CUSTOMER_PRICING: CustomerPrice,
+    PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: CustomerPriceCategory,
+    PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: ProductCategoryDiscount,
+    PriceTemplateSheet.PRODUCT_DISCOUNTS: ProductDiscount,
+}

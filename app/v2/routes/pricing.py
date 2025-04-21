@@ -1,4 +1,5 @@
-from enum import StrEnum
+from io import BytesIO
+from dataclasses import dataclass
 from datetime import datetime, date, time
 from logging import getLogger
 from functools import partial
@@ -6,13 +7,20 @@ from typing import Annotated, Callable, Union
 from fastapi import Depends, HTTPException, status, UploadFile
 from fastapi.routing import APIRouter
 from enum import StrEnum
+import openpyxl
 
 from app import auth
 from app.admin.models import VendorId
 from app.db import DB_V2, Session
 from app.v2.models import *
 from app.v2.pricing import transform, fetch_pricing
-from app.admin.models import VendorId, FullPricingWithLink
+from app.admin.models import (
+    VendorId,
+    FullPricingWithLink,
+    PriceTemplateSheetColumns,
+    PriceTemplateSheet,
+    PriceTemplateModels,
+)
 from app.downloads import (
     XLSXFileResponse,
     FileResponse,
@@ -159,6 +167,22 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
+        case VendorId.FRIEDRICH, ReturnType.JSON:
+            remove_cols = None
+            pricing = price_fetch(mode="both")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
+        case VendorId.FRIEDRICH, ReturnType.CSV:
+            remove_cols = None
+            pricing = partial(price_fetch, mode="both")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
         case _:
             raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
 
@@ -189,7 +213,9 @@ async def new_vendor_customer_pricing(
     except HTTPException as e:
         raise e
     else:
-        """logic here"""
+        file_data = BytesIO(await templated_file.read())
+        parsed_data = parse_pricing_template(file_data)
+        # parse_and_apply_changes_from_template(file_data, available_sheets)
 
     return await vendor_customer_pricing(
         token,
@@ -227,3 +253,71 @@ async def download_price_file(
 
     else:
         return file
+
+
+def parse_pricing_template(data: BytesIO) -> dict[StrEnum, list[BaseModel]]:
+    data.seek(0)
+    wb = openpyxl.load_workbook(data, data_only=True)
+    ret = {
+        PriceTemplateSheet.CUSTOMER_PRICING: [],
+        PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: [],
+        PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [],
+        PriceTemplateSheet.PRODUCT_DISCOUNTS: [],
+    }
+    try:
+        sheet_names = set(wb.sheetnames)
+        expected_sheets = set([sheet.value for sheet in PriceTemplateSheet])
+        if extra_sheets := sheet_names - expected_sheets:
+            logger.warning(f"Additional sheets present: {extra_sheets}")
+        elif expected_sheets - sheet_names == expected_sheets:
+            msg = "None of the expected sheets are present in the file."
+            msg += " Expected at least one sheet with the following names: "
+            msg += f"{', '.join(expected_sheets)}"
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=msg)
+        elif missing_sheets := expected_sheets - sheet_names:
+            logger.warning(f"Missing Sheets: {missing_sheets}")
+
+        for sheet_name in sheet_names:
+            sheet = wb[sheet_name]
+            template_sheet_enum = PriceTemplateSheet(sheet_name)
+            expected_columns = set(PriceTemplateSheetColumns[template_sheet_enum])
+            visited = set()
+            for cell in sheet[1]:
+                if cell.value not in expected_columns:
+                    msg = f"Unexpected column: {cell.value}"
+                    raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+                else:
+                    visited.add(cell.value)
+            if missing := expected_columns - visited:
+                msg = f"Expected columns for sheet {sheet_name} are missing: {missing}"
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+            first_row = [cell.value for cell in sheet[2]]
+            missing_or_incomplete_first_row = not any(first_row) or not all(first_row)
+            if missing_or_incomplete_first_row:
+                logger.warning(f"Skipping {sheet_name}")
+                continue
+            else:
+                data_model = PriceTemplateModels[template_sheet_enum]
+                for row in sheet.iter_rows(min_row=2):
+                    row_vals = (cell.value for cell in row)
+                    incomplete_row = not any(row_vals) or not all(row_vals)
+                    if incomplete_row:
+                        continue
+                    data_obj = {
+                        k: v
+                        for k, v in zip(
+                            data_model.model_fields.keys(), (cell.value for cell in row)
+                        )
+                    }
+                    ret[template_sheet_enum].append(data_model(**data_obj))
+    except Exception as e:
+        raise e
+    else:
+        ret = {k: v for k, v in ret.items() if v}
+        if ret:
+            return ret
+        msg = "Pricing Update file is empty"
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, msg)
+    finally:
+        wb.close()
+        data.seek(0)
