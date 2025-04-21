@@ -3,7 +3,7 @@ from datetime import datetime, date, time
 from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Union
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, UploadFile
 from fastapi.routing import APIRouter
 from enum import StrEnum
 
@@ -174,6 +174,7 @@ async def new_vendor_customer_pricing(
     session: NewSession,
     vendor_id: VendorId,
     customer_id: int,
+    templated_file: UploadFile,
     effective_date: date = None,
 ) -> FullPricingWithLink:
     """Add/update customer pricing for a vendor."""

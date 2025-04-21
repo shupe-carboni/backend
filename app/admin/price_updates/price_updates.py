@@ -30,6 +30,49 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 logger = logging.getLogger("uvicorn.info")
 
 
+@price_updates.post("/implement")
+async def establish_current_from_current_futures(session: NewSession, token: Token):
+    """
+    Check whether any of the futures tables contains any data with an effective_date
+    on or before the current system date. The check query returns a mapping to booleans
+    with the same keys used for the `update_queries` mapping. If the update query
+    key maps to True (there are records that exist to update), the query runs.
+    """
+    if token.permissions < auth.Permissions.sca_admin:
+        logger.info("Insufficient permissions. Rejected.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    today_date = datetime.today().date()
+    check_for_updates = queries.signal_updatable_futures
+    update_queries = {
+        "any_class_pricing_future": queries.class_pricing_update,
+        "any_customer_pricing_future": queries.customer_pricing_update,
+        "any_product_class_disc_future": queries.customer_product_class_discount_update,
+        "any_product_disc_future": queries.customer_product_discount_update,
+        "any_product_series_future": queries.product_series_update,
+    }
+
+    session.begin()
+    try:
+        param = dict(today_date=today_date)
+        # query name to boolean mapping
+        update = DB_V2.execute(session, check_for_updates, param).mappings().fetchone()
+        for query in update_queries:
+            if update[query]:
+                DB_V2.execute(session, update_queries[query], param)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        logger.info("Prices and discounts updated")
+        session.commit()
+        return Response(
+            status_code=status.HTTP_200_OK, content="Prices and discounts updated"
+        )
+    finally:
+        session.close()
+
+
 @price_updates.post("/{vendor_id}")
 async def new_pricing(
     bg: BackgroundTasks,
@@ -109,49 +152,6 @@ async def new_pricing(
             raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
 
     return Response(status_code=status.HTTP_200_OK)
-
-
-@price_updates.post("/implement")
-async def establish_current_from_current_futures(session: NewSession, token: Token):
-    """
-    Check whether any of the futures tables contains any data with an effective_date
-    on or before the current system date. The check query returns a mapping to booleans
-    with the same keys used for the `update_queries` mapping. If the update query
-    key maps to True (there are records that exist to update), the query runs.
-    """
-    if token.permissions < auth.Permissions.sca_admin:
-        logger.info("Insufficient permissions. Rejected.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    today_date = datetime.today().date()
-    check_for_updates = queries.signal_updatable_futures
-    update_queries = {
-        "any_class_pricing_future": queries.class_pricing_update,
-        "any_customer_pricing_future": queries.customer_pricing_update,
-        "any_product_class_disc_future": queries.customer_product_class_discount_update,
-        "any_product_disc_future": queries.customer_product_discount_update,
-        "any_product_series_future": queries.product_series_update,
-    }
-
-    session.begin()
-    try:
-        param = dict(today_date=today_date)
-        # query name to boolean mapping
-        update = DB_V2.execute(session, check_for_updates, param).mappings().fetchone()
-        for query in update_queries:
-            if update[query]:
-                DB_V2.execute(session, update_queries[query], param)
-    except Exception as e:
-        logger.critical(e)
-        session.rollback()
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        logger.info("Prices and discounts updated")
-        session.commit()
-        return Response(
-            status_code=status.HTTP_200_OK, content="Prices and discounts updated"
-        )
-    finally:
-        session.close()
 
 
 @price_updates.post("/{vendor_id}/rollback")
