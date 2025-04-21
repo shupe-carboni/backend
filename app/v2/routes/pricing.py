@@ -188,6 +188,8 @@ async def new_vendor_customer_pricing(
         )
     except HTTPException as e:
         raise e
+    else:
+        """logic here"""
 
     return await vendor_customer_pricing(
         token,

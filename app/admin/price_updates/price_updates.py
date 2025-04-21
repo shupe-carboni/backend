@@ -22,7 +22,11 @@ from app.admin.price_updates.price_update_handlers import (
     apply_percentage,
 )
 from app.db.sql import queries
-
+from app.admin.templates import templates
+from app.downloads import (
+    XLSXFileResponse,
+    StreamingResponse,
+)
 
 price_updates = APIRouter(prefix=f"/admin/price-updates", tags=["admin"])
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
@@ -217,3 +221,21 @@ async def rollback_an_implemented_update(
         )
     finally:
         session.close()
+
+
+@price_updates.get(
+    "/upload-template",
+    response_class=StreamingResponse,
+    response_model=None,
+    tags=["templates", "pricing", "download"],
+)
+async def download_price_file_update_template() -> XLSXFileResponse:
+    try:
+        return XLSXFileResponse(
+            content=templates.pricing_update, filename="upload-template"
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        else:
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

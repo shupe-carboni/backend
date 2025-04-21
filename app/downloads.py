@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 
 load_dotenv()
+from io import BytesIO
 from dataclasses import dataclass
 from os import getenv
 from datetime import datetime, timedelta
@@ -13,13 +14,15 @@ from fastapi import HTTPException, status
 
 from app.db import Stage
 
+BytesLike = bytes | BytesIO
+
 
 class XLSXFileResponse(StreamingResponse):
     media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     def __init__(
         self,
-        content: Any,
+        content: BytesLike,
         status_code: int = 200,
         headers: Optional[Mapping[str, str]] = None,
         media_type: Optional[str] = None,
