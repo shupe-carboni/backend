@@ -1,10 +1,9 @@
 from io import BytesIO
-from dataclasses import dataclass
 from datetime import datetime, date, time
 from logging import getLogger
 from functools import partial
 from typing import Annotated, Callable, Union
-from fastapi import Depends, HTTPException, status, UploadFile
+from fastapi import Depends, HTTPException, status, UploadFile, BackgroundTasks
 from fastapi.routing import APIRouter
 from enum import StrEnum
 import openpyxl
@@ -14,12 +13,19 @@ from app.admin.models import VendorId
 from app.db import DB_V2, Session
 from app.v2.models import *
 from app.v2.pricing import transform, fetch_pricing
+from app.v2.routes.vendor_product_class_discounts import (
+    new_vendor_product_class_discount,
+)
 from app.admin.models import (
     VendorId,
     FullPricingWithLink,
     PriceTemplateSheetColumns,
     PriceTemplateSheet,
     PriceTemplateModels,
+    ProductCategoryDiscount as ProductCategoryDiscountDTO,
+    ProductDiscount as ProductDiscountDTO,
+    CustomerPrice as CustomerPriceDTO,
+    CustomerPriceCategory as CustomerPriceCategoryDTO,
 )
 from app.downloads import (
     XLSXFileResponse,
@@ -199,7 +205,7 @@ async def new_vendor_customer_pricing(
     vendor_id: VendorId,
     customer_id: int,
     templated_file: UploadFile,
-    effective_date: date = None,
+    effective_date: date = datetime.today().date(),
 ) -> FullPricingWithLink:
     """Add/update customer pricing for a vendor."""
     try:
@@ -212,11 +218,90 @@ async def new_vendor_customer_pricing(
         )
     except HTTPException as e:
         raise e
-    else:
-        file_data = BytesIO(await templated_file.read())
-        parsed_data = parse_pricing_template(file_data)
-        # parse_and_apply_changes_from_template(file_data, available_sheets)
 
+    file_data = BytesIO(await templated_file.read())
+    # TODO supply ids for price classes and product class
+    parsed_data = parse_pricing_template(file_data)
+    for record_type, records in parsed_data.items():
+        match record_type:
+            case PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY:
+                record: CustomerPriceCategoryDTO
+                ...
+            case PriceTemplateSheet.CUSTOMER_PRICING:
+                record: CustomerPriceDTO
+                ...
+            case PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS:
+                errors = []
+                for record in records:
+                    record_: ProductCategoryDiscountDTO = record
+                    data = NewVendorProductClassDiscountRObj(
+                        type="vendor-product-class-discounts",
+                        attributes=VendorProductClassDiscountAttrs(
+                            discount=record_.discount,
+                            effective_date=effective_date,
+                        ),
+                        relationships=VendorProductClassDiscountRels(
+                            vendors=JSONAPIRelationships(
+                                data=[
+                                    JSONAPIResourceIdentifier(
+                                        id=vendor_id.value, type="vendors"
+                                    )
+                                ]
+                            ),
+                            vendor_customers=JSONAPIRelationships(
+                                data=[
+                                    JSONAPIResourceIdentifier(
+                                        id=customer_id, type="vendor-customers"
+                                    )
+                                ]
+                            ),
+                            base_price_classes=JSONAPIRelationships(
+                                data=[
+                                    JSONAPIResourceIdentifier(
+                                        id=record_.get_base_price_category_id(
+                                            session, vendor_id
+                                        ),
+                                        type="base-price-classes",
+                                    )
+                                ]
+                            ),
+                            label_price_classes=JSONAPIRelationships(
+                                data=[
+                                    JSONAPIResourceIdentifier(
+                                        id=record_.get_label_price_category_id(
+                                            session, vendor_id
+                                        ),
+                                        type="label-price-classes",
+                                    )
+                                ]
+                            ),
+                            vendor_product_classes=JSONAPIRelationships(
+                                data=[
+                                    JSONAPIResourceIdentifier(
+                                        id=record_.get_product_category_id(
+                                            session, vendor_id
+                                        ),
+                                        type="vendor-product-classes",
+                                    )
+                                ]
+                            ),
+                        ),
+                    )
+                    try:
+                        await new_vendor_product_class_discount(
+                            token,
+                            session,
+                            NewVendorProductClassDiscount(data=data),
+                            bg=BackgroundTasks(),
+                        )
+                    except Exception as e:
+                        logger.error(f"Error establishing product discount: {e}")
+                        errors.append(record)
+                    else:
+                        session.commit()
+
+            case PriceTemplateSheet.PRODUCT_DISCOUNTS:
+                record: ProductDiscountDTO
     return await vendor_customer_pricing(
         token,
         session,

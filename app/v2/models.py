@@ -1720,7 +1720,7 @@ class ModVendorProductClassDiscountAttrs(BaseModel):
 class ModVendorProductClassDiscountRObj(BaseModel):
     id: int
     type: str = VendorProductClassDiscount.__jsonapi_type_override__
-    attributes: ModVendorProductClassDiscountAttrs
+    attributes: VendorProductClassDiscountAttrs
     relationships: VendorProductClassDiscountRels
 
 

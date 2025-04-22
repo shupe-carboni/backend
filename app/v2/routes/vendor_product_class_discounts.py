@@ -2,6 +2,7 @@ from logging import getLogger
 from typing import Annotated
 from fastapi import Depends, HTTPException, status, BackgroundTasks
 from fastapi.routing import APIRouter
+from sqlalchemy_jsonapi.errors import ValidationError
 from app import auth
 from app.db import DB_V2, Session
 from app.admin.models import VendorId
@@ -10,6 +11,7 @@ from app.v2.models import (
     VendorProductClassDiscountResourceResp,
     ModVendorProductClassDiscount,
     NewVendorProductClassDiscount,
+    ModVendorProductClassDiscountRObj,
 )
 from app.jsonapi.sqla_models import VendorProductClassDiscount
 
@@ -65,29 +67,67 @@ async def new_vendor_product_class_discount(
                 primary_id=vendor_customer_id,
             )
         )
+    except ValidationError as e:
+        ex_id_sql = """
+            SELECT id
+            FROM vendor_product_class_discounts
+            WHERE base_price_class = :bpc
+            AND label_price_class = :lpc
+            AND product_class_id = :pcid
+            AND vendor_customer_id = :vcid
+        """
+        params = dict(
+            bpc=ref_price_class_id,
+            lpc=new_price_class_id,
+            pcid=product_class_id,
+            vcid=vendor_customer_id,
+        )
+        existing_id = DB_V2.execute(session, ex_id_sql, params).scalar_one()
+
+        mod_obj = ModVendorProductClassDiscount(
+            data=ModVendorProductClassDiscountRObj(
+                id=existing_id,
+                type=new_obj.data.type,
+                attributes=new_obj.data.attributes,
+                relationships=new_obj.data.relationships,
+            )
+        )
+        return await mod_vendor_product_class_discount(
+            token,
+            session,
+            existing_id,
+            mod_obj,
+            bg,
+        )
     except Exception as e:
         raise e
-    else:
-        match VendorId(vendor_id):
-            case VendorId.ADP:
-                sig = ROUND_TO_DOLLAR
-                update_only = True
-            case _:
-                sig = ROUND_TO_CENT
-                update_only = False
-        new_id = ret["data"]["id"]
-        if ret["data"]["attributes"]["deleted-at"] is None:
-            bg.add_task(
-                calc_customer_pricing_from_product_class_discount,
-                session,
-                new_id,
-                ref_price_class_id,
-                new_price_class_id,
-                effective_date,
-                sig,
-                update_only,
-            )
-        return ret
+    match VendorId(vendor_id):
+        case VendorId.ADP:
+            sig = ROUND_TO_DOLLAR
+            update_only = True
+        case _:
+            sig = ROUND_TO_CENT
+            update_only = False
+    new_id = ret["data"]["id"]
+    if ret["data"]["attributes"]["deleted-at"] is None:
+        # bg.add_task(
+        #     calc_customer_pricing_from_product_class_discount,
+        #     new_id,
+        #     ref_price_class_id,
+        #     new_price_class_id,
+        #     effective_date,
+        #     sig,
+        #     update_only,
+        # )
+        calc_customer_pricing_from_product_class_discount(
+            new_id,
+            ref_price_class_id,
+            new_price_class_id,
+            effective_date,
+            sig,
+            update_only,
+        )
+    return ret
 
 
 @vendor_product_class_discounts.patch(
@@ -134,9 +174,17 @@ async def mod_vendor_product_class_discount(
                 sig = ROUND_TO_CENT
                 update_only = False
         if ret["data"]["attributes"]["deleted-at"] is None:
-            bg.add_task(
-                calc_customer_pricing_from_product_class_discount,
-                session,
+            # bg.add_task(
+            #     calc_customer_pricing_from_product_class_discount,
+            #     session,
+            #     vendor_product_class_discount_id,
+            #     ref_price_class_id,
+            #     new_price_class_id,
+            #     effective_date,
+            #     sig,
+            #     update_only,
+            # )
+            calc_customer_pricing_from_product_class_discount(
                 vendor_product_class_discount_id,
                 ref_price_class_id,
                 new_price_class_id,

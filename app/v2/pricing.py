@@ -232,7 +232,6 @@ def fetch_pricing(
 
 
 def calc_customer_pricing_from_product_class_discount(
-    session: Session,
     product_class_discount_id: int,
     ref_pricing_class_id: int,
     new_pricing_class_id: int,
@@ -251,6 +250,7 @@ def calc_customer_pricing_from_product_class_discount(
     cent.
     """
     logger.info(f"Calculating pricing related to the modified product class discount")
+    session = next(DB_V2.get_db())
 
     update_params = dict(
         pricing_class_id=ref_pricing_class_id,
@@ -265,6 +265,7 @@ def calc_customer_pricing_from_product_class_discount(
         effective_date=effective_date,
         sig=rounding_strategy,
     )
+    session.begin()
     try:
         DB_V2.execute(
             session, sql=queries.update_customer_pricing_current, params=update_params

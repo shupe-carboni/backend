@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, Annotated
 from enum import StrEnum, auto, Enum
 from pydantic import BaseModel, ConfigDict, Field
+from app.db import Session, DB_V2
 
 
 class VendorId(StrEnum):
@@ -179,6 +180,7 @@ PriceTemplateSheetColumns = {
     PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [
         PriceTemplateSheetColumn.PRODUCT_CATEGORY,
         PriceTemplateSheetColumn.CATEGORY_RANK,
+        PriceTemplateSheetColumn.PRICING_CATEGORY,
         PriceTemplateSheetColumn.DISCOUNT,
     ],
     PriceTemplateSheet.PRODUCT_DISCOUNTS: [
@@ -197,20 +199,96 @@ class CustomerPrice(BaseModel):
     pricing_category: str
     price: PosFloat
 
+    def get_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE vendor_id = :vid
+            AND name = :cat
+        """
+        params = dict(cat=self.pricing_category, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
+    def get_product_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_products
+            WHERE vendor_product_identifier = :pid
+            AND vendor_id = :vid
+        """
+        params = dict(pid=self.part_number, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
 
 class CustomerPriceCategory(BaseModel):
     category: str
+
+    def get_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE vendor_id = :vid
+            AND name = :cat
+        """
+        params = dict(cat=self.category, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
 
 
 class ProductCategoryDiscount(BaseModel):
     product_category: str
     category_rank: PosInt
+    pricing_category: str
     discount: Discount
+
+    def get_label_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE name = :price_cat
+            AND vendor_id = :vid
+        """
+        params = dict(price_cat=self.pricing_category, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
+    def get_base_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE name = :price_cat
+            AND vendor_id = :vid
+        """
+        params = dict(price_cat=VendorBasePriceClasses[vendor_id], vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
+    def get_product_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_product_classes
+            WHERE name = :product_cat
+            AND rank = :cat_rank
+            AND vendor_id = :vid
+        """
+        params = dict(
+            product_cat=self.product_category,
+            cat_rank=self.category_rank,
+            vid=vendor_id.value,
+        )
+        return DB_V2.execute(session, sql, params).scalar_one()
 
 
 class ProductDiscount(BaseModel):
     part_number: str
     discount: Discount
+
+    def get_product_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_products
+            WHERE vendor_product_identifier = :pid
+            AND vendor_id = :vid
+        """
+        params = dict(pid=self.part_number, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
 
 
 PriceTemplateModels: dict[StrEnum, BaseModel] = {
@@ -218,4 +296,10 @@ PriceTemplateModels: dict[StrEnum, BaseModel] = {
     PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: CustomerPriceCategory,
     PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: ProductCategoryDiscount,
     PriceTemplateSheet.PRODUCT_DISCOUNTS: ProductDiscount,
+}
+
+VendorBasePriceClasses: dict[StrEnum, str] = {
+    VendorId.ADP: "ZERO_DISCOUNT_PRICE",
+    VendorId.ATCO: "LIST_PRICE",
+    VendorId.FRIEDRICH: None,
 }

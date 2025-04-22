@@ -971,8 +971,14 @@ class JSONAPI_(JSONAPI):
                             raise BadRequestError(
                                 "{} must have type and id keys".format(key)
                             )
+                        data_rel_type_name = (
+                            relationship.mapper.entity.__jsonapi_type_override__
+                        )
                         to_relate = self._fetch_resource(
-                            session, data_rel["type"], data_rel["id"], Permissions.EDIT
+                            session,
+                            data_rel_type_name,
+                            data_rel["id"],
+                            Permissions.EDIT,
                         )
                         rem = to_relate.__mapper__.relationships[remote_side]
                         if rem.direction == MANYTOONE:
@@ -1045,3 +1051,191 @@ class JSONAPI_(JSONAPI):
         response = self.get_resource(session, {}, model.__jsonapi_type__, resource.id)
         response.status_code = 201
         return response
+
+    def patch_resource(self, session, json_data, api_type, obj_id):
+        """
+        Replacement of resource values.
+
+        :param session: SQLAlchemy session
+        :param json_data: Request JSON Data
+        :param api_type: Type of the resource
+        :param obj_id: ID of the resource
+        """
+        model = self._fetch_model(api_type)
+        resource = self._fetch_resource(session, api_type, obj_id, Permissions.EDIT)
+        self._check_json_data(json_data)
+        orm_desc_keys = resource.__mapper__.all_orm_descriptors.keys()
+
+        if not ({"type", "id"} <= set(json_data["data"].keys())):
+            raise BadRequestError("Missing type or id")
+
+        if str(json_data["data"]["id"]) != str(resource.id):
+            raise BadRequestError("IDs do not match")
+
+        if json_data["data"]["type"] != resource.__jsonapi_type__:
+            raise BadRequestError("Type does not match")
+
+        json_data["data"].setdefault("relationships", {})
+        json_data["data"].setdefault("attributes", {})
+
+        missing_keys = set(json_data["data"].get("relationships", {}).keys()) - set(
+            resource.__jsonapi_map_to_py__.keys()
+        )
+
+        if missing_keys:
+            raise BadRequestError(
+                "{} not relationships for {}.{}".format(
+                    ", ".join(list(missing_keys)), model.__jsonapi_type__, resource.id
+                )
+            )
+
+        attrs_to_ignore = {"__mapper__", "id"}
+
+        session.add(resource)
+
+        try:
+            for key, relationship in resource.__mapper__.relationships.items():
+                api_key = resource.__jsonapi_map_to_api__[key]
+                attrs_to_ignore |= set(relationship.local_columns) | {key}
+
+                if api_key not in json_data["data"]["relationships"].keys():
+                    continue
+
+                self.patch_relationship(
+                    session,
+                    json_data["data"]["relationships"][api_key],
+                    model.__jsonapi_type__,
+                    resource.id,
+                    api_key,
+                )
+
+            data_keys = set(
+                map(
+                    (lambda x: resource.__jsonapi_map_to_py__.get(x, None)),
+                    json_data["data"]["attributes"].keys(),
+                )
+            )
+            model_keys = set(orm_desc_keys) - attrs_to_ignore
+
+            if not data_keys <= model_keys:
+                raise BadRequestError(
+                    "{} not attributes for {}.{}".format(
+                        ", ".join(list(data_keys - model_keys)),
+                        model.__jsonapi_type__,
+                        resource.id,
+                    )
+                )
+
+            for key in data_keys & model_keys:
+                setter = get_attr_desc(resource, key, AttributeActions.SET)
+                setter(
+                    resource,
+                    json_data["data"]["attributes"][
+                        resource.__jsonapi_map_to_api__[key]
+                    ],
+                )  # NOQA
+            session.commit()
+        except IntegrityError as e:
+            session.rollback()
+            raise ValidationError(str(e.orig))
+        except AssertionError as e:
+            # pragma: no cover
+            session.rollback()
+            raise ValidationError(e.msg)
+        except TypeError as e:
+            session.rollback()
+            raise ValidationError("Incompatible data type")
+        return self.get_resource(session, {}, model.__jsonapi_type__, resource.id)
+
+    def patch_relationship(self, session, json_data, api_type, obj_id, rel_key):
+        """
+        Replacement of relationship values.
+
+        :param session: SQLAlchemy session
+        :param json_data: Request JSON Data
+        :param api_type: Type of the resource
+        :param obj_id: ID of the resource
+        :param rel_key: Key of the relationship to fetch
+        """
+        model = self._fetch_model(api_type)
+        resource = self._fetch_resource(session, api_type, obj_id, Permissions.EDIT)
+        if rel_key not in resource.__jsonapi_map_to_py__.keys():
+            raise RelationshipNotFoundError(resource, resource, rel_key)
+        py_key = resource.__jsonapi_map_to_py__[rel_key]
+        relationship = self._get_relationship(resource, py_key, Permissions.EDIT)
+        self._check_json_data(json_data)
+
+        session.add(resource)
+        remote_side = relationship.back_populates
+        try:
+            if relationship.direction == MANYTOONE:
+                if (
+                    isinstance(json_data["data"], list)
+                    and json_data["data"] is not None
+                ):
+                    json_data["data"] = json_data["data"].pop()
+                if (
+                    not isinstance(json_data["data"], dict)
+                    and json_data["data"] is not None
+                ):
+                    raise ValidationError("Provided data must be a hash.")
+
+                related = getattr(resource, relationship.key)
+                check_permission(related, None, Permissions.EDIT)
+                check_permission(related, remote_side, Permissions.EDIT)
+
+                setter = get_rel_desc(
+                    resource, relationship.key, RelationshipActions.SET
+                )
+
+                if json_data["data"] is None:
+                    setter(resource, None)
+                else:
+                    type_ = relationship.mapper.entity.__jsonapi_type_override__
+                    to_relate = self._fetch_resource(
+                        session,
+                        type_,
+                        json_data["data"]["id"],
+                        Permissions.EDIT,
+                    )
+                    check_permission(to_relate, remote_side, Permissions.EDIT)
+                    setter(resource, to_relate)
+            else:
+                if not isinstance(json_data["data"], list):
+                    raise ValidationError("Provided data must be an array.")
+
+                related = getattr(resource, relationship.key)
+
+                remover = get_rel_desc(
+                    resource, relationship.key, RelationshipActions.DELETE
+                )
+                appender = get_rel_desc(
+                    resource, relationship.key, RelationshipActions.APPEND
+                )
+                for item in related:
+                    check_permission(item, None, Permissions.EDIT)
+                    remote = item.__mapper__.relationships[remote_side]
+                    if remote.direction == MANYTOONE:
+                        check_permission(item, remote_side, Permissions.EDIT)
+                    else:
+                        check_permission(item, remote_side, Permissions.DELETE)
+                    remover(resource, item)
+
+                for item in json_data["data"]:
+                    to_relate = self._fetch_resource(
+                        session, item["type"], item["id"], Permissions.EDIT
+                    )
+                    remote = to_relate.__mapper__.relationships[remote_side]
+
+                    if remote.direction == MANYTOONE:
+                        check_permission(to_relate, remote_side, Permissions.EDIT)
+                    else:
+                        check_permission(to_relate, remote_side, Permissions.CREATE)
+                    appender(resource, to_relate)
+            session.commit()
+        except KeyError:
+            raise ValidationError("Incompatible Type")
+
+        return self.get_relationship(
+            session, {}, model.__jsonapi_type__, resource.id, rel_key
+        )
