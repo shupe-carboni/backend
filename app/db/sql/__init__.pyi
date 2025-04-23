@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 class Queries(SimpleNamespace):
+    insert_vendor_customer_attrs: str
     insert_vendor_product_attrs: str
     atco_price_updates: str
     atco_pricing_pop_temp: str

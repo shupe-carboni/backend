@@ -1353,10 +1353,28 @@ class VendorCustomerRelResp(JSONAPIRelationshipsResponse):
     data: list[VendorCustomerRID]
 
 
+class VendorCustomerCustomAttr(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    attr: NullableStr = Field(default=None, alias="attr")
+    type: NullableStr = Field(default=None, alias="type")
+    value: NullableStr = Field(default=None, alias="value")
+
+
+OptionalVendorCustomerCustomAttr = Annotated[
+    VendorCustomerCustomAttr, WrapValidator(set_none_default)
+]
+OptionalArrVendorCustomerCustomAttr = Annotated[
+    list[VendorCustomerCustomAttr], WrapValidator(set_none_default)
+]
+
+
 class VendorCustomerAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     name: NullableStr = Field(default=None, alias="name")
     deleted_at: NullableDateTime = Field(default=None, alias="deleted-at")
+    vendor_customer_attrs: OptionalArrVendorCustomerCustomAttr = Field(
+        default=None, exclude=True, alias="vendor-customer-attrs"
+    )
 
 
 class VendorCustomerRels(BaseModel):
