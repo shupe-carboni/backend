@@ -97,16 +97,20 @@ async def mod_vendor_customer_pricing_classes(
     except Exception as e:
         raise e
     else:
-        # now change the pricing_class_id in customer_pricing where the label was used
-        new_id = mod_obj.data.relationships.vendor_pricing_classes.data[0].id
-        params = dict(
-            new_pricing_class_id=new_id,
-            affected_ids=tuple(affected_customer_pricing_ids),
-        )
-        DB_V2.execute(
-            session, queries.vendor_customer_pricing_class_patch_followup, params=params
-        )
-        session.commit()
+        if affected_customer_pricing_ids:
+            # now change the pricing_class_id in customer_pricing
+            # where the label was used
+            new_id = mod_obj.data.relationships.vendor_pricing_classes.data[0].id
+            params = dict(
+                new_pricing_class_id=new_id,
+                affected_ids=tuple(affected_customer_pricing_ids),
+            )
+            DB_V2.execute(
+                session,
+                queries.vendor_customer_pricing_class_patch_followup,
+                params=params,
+            )
+            session.commit()
         return ret
 
 
