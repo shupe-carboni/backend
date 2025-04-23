@@ -2,14 +2,18 @@ SELECT vc.id AS customer_id,
     vp.vendor_product_identifier AS part_number,
     vp.vendor_product_description AS description,
     vpa.value AS pkg_qty,
-    vpbc.price::float / 100 as preferred,
-    vpbc.price::float / 100 as standard
+    COALESCE(vpbc_fut.price, vpbc.price)::float / 100 as preferred,
+    COALESCE(vpbc_fut.price, vpbc.price)::float / 100 as standard
 FROM vendor_customers vc
 JOIN vendor_pricing_by_customer vpbc ON vpbc.vendor_customer_id = vc.id
 JOIN vendor_products vp ON vp.id = vpbc.product_id
 JOIN vendor_product_attrs vpa ON vpa.vendor_product_id = vp.id
 LEFT JOIN vendor_pricing_by_customer_attrs vpca
-    ON vpca.pricing_by_customer_id = vpbc.id and vpca.attr = 'sort_order'
+    ON vpca.pricing_by_customer_id = vpbc.id
+    AND vpca.attr = 'sort_order'
+LEFT JOIN vendor_pricing_by_customer_future vpbc_fut 
+    ON vpbc.id = vpbc_fut.price_id
+    AND vpbc_fut.effective_date <= :ed
 WHERE vc.id = :customer_id
     AND vpa.attr = 'pkg_qty'
     AND EXISTS (

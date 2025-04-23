@@ -120,10 +120,16 @@ def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.Dat
     return customer_attrs_df
 
 
-def pull_customer_parts_v2(session: Session, customer_id: int) -> pd.DataFrame:
+def pull_customer_parts_v2(
+    session: Session, customer_id: int, effective_date: datetime
+) -> pd.DataFrame:
     sql = queries.adp_customer_parts
     try:
-        result = DB_V2.execute(session, sql, {"customer_id": customer_id})
+        params = dict(
+            customer_id=customer_id,
+            ed=effective_date if effective_date else datetime.today(),
+        )
+        result = DB_V2.execute(session, sql, params)
     except Exception as e:
         logger.error(f"parts_query failure: {e}")
         raise e
@@ -153,9 +159,11 @@ def pull_customer_payment_terms(session: Session, customer_id: int) -> pd.DataFr
         return result
 
 
-def pull_customer_parts(session: Session, customer_id: int) -> pd.DataFrame:
+def pull_customer_parts(
+    session: Session, customer_id: int, effective_date: datetime
+) -> pd.DataFrame:
     try:
-        result = pull_customer_parts_v2(session, customer_id)
+        result = pull_customer_parts_v2(session, customer_id, effective_date)
     except Exception as e:
         logger.warning(f"v2 parts method failed: {e}")
         raise e
@@ -203,7 +211,7 @@ def add_customer_terms_parts_and_logo_path(
 ) -> CustomerProgram:
 
     footer = pull_customer_payment_terms(session, customer_id)
-    prog_parts = pull_customer_parts(session, customer_id)
+    prog_parts = pull_customer_parts(session, customer_id, effective_date)
     alias_mapping = pull_customer_alias_mapping(session)
     parent_accounts = pull_customer_parent_accounts(session)
 
@@ -239,6 +247,12 @@ def add_customer_terms_parts_and_logo_path(
         payment_terms = None
         pre_paid_freight = None
         effective_date = "1900-01-01 00:00:00"
+    try:
+        parsed_date = datetime.strptime(effective_date, r"%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        parsed_date = datetime.strptime(effective_date, r"%Y-%m-%d")
+    except Exception as e:
+        logger.error(f"Invalid effective_date format: {effective_date}")
     terms = {
         "Payment Terms": {
             "value": payment_terms,
@@ -256,7 +270,7 @@ def add_customer_terms_parts_and_logo_path(
             },
         },
         "Effective Date": {
-            "value": datetime.strptime(effective_date, r"%Y-%m-%d %H:%M:%S"),
+            "value": parsed_date,
             "style": {
                 "font": Font(bold=True),
                 "alignment": Alignment(horizontal="right"),
@@ -461,6 +475,7 @@ def generate_program(
 
         trace = tb.format_exc()
         logger.error("Error occurred while trying to generate programs")
+        logger.info(trace)
         raise HTTPException(status_code=404, detail="No program data to return")
     else:
         logger.info(f"transform time: {time()-start}")
