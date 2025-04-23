@@ -60,12 +60,13 @@ async def new_vendor_product(
                     case _:
                         logger.warning(
                             "Ignored custom attribute due to mismatch"
-                            f"between obj structure and expected structure. Got: {attr}"
+                            f"between obj structure and expected structure. Got: {attr_dict}"
                         )
             try:
                 DB_V2.execute(session, queries.insert_vendor_product_attrs, params)
             except Exception as e:
                 logger.error(e)
+                session.rollback()
             else:
                 session.commit()
             finally:
