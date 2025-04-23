@@ -299,7 +299,7 @@ PriceTemplateModels: dict[StrEnum, BaseModel] = {
 }
 
 VendorBasePriceClasses: dict[StrEnum, str] = {
-    VendorId.ADP: "ZERO_DISCOUNT_PRICE",
+    VendorId.ADP: "ZERO_DISCOUNT",
     VendorId.ATCO: "LIST_PRICE",
     VendorId.FRIEDRICH: None,
 }
