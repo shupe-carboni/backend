@@ -459,6 +459,9 @@ class VendorProduct(Base):
 
     # relationships
     vendors = relationship("Vendor", back_populates=__tablename__)
+    vendor_product_discounts = relationship(
+        "VendorProductDiscount", back_populates=__tablename__
+    )
     vendor_pricing_by_class = relationship(
         "VendorPricingByClass", back_populates=__tablename__
     )
@@ -741,6 +744,9 @@ class VendorCustomer(Base):
     vendor_product_class_discounts = relationship(
         "VendorProductClassDiscount", back_populates=__tablename__
     )
+    vendor_product_discounts = relationship(
+        "VendorProductDiscount", back_populates=__tablename__
+    )
     customer_location_mapping = relationship(
         "CustomerLocationMapping", back_populates=__tablename__
     )
@@ -894,6 +900,58 @@ class VendorProductClassDiscount(Base):
         )
 
 
+class VendorProductDiscount(Base):
+    __tablename__ = "vendor_product_discounts"
+    __jsonapi_type_override__ = __tablename__.replace("_", "-")
+    __modifiable_fields__ = ["discount", "effective_date", "deleted_at"]
+    __primary_ref__ = "vendor_customers"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("vendor_products.id"))
+    vendor_customer_id = Column(Integer, ForeignKey("vendor_customers.id"))
+    discount = Column(Float)
+    effective_date = Column(DateTime)
+    deleted_at = Column(DateTime)
+    base_price_class = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+    label_price_class = Column(Integer, ForeignKey("vendor_pricing_classes.id"))
+
+    # relationships
+    vendor_products = relationship("VendorProduct", back_populates=__tablename__)
+    vendor_customers = relationship("VendorCustomer", back_populates=__tablename__)
+    base_price_classes = relationship(
+        "VendorPricingClass",
+        back_populates="vendor_product_discounts_base_class",
+        foreign_keys=[base_price_class],
+    )
+    label_price_classes = relationship(
+        "VendorPricingClass",
+        back_populates="vendor_product_discounts_label_class",
+        foreign_keys=[label_price_class],
+    )
+
+    # GET request filtering
+    def apply_customer_location_filtering(q: Query, ids: set[int] = None) -> Query:
+        if not ids:
+            return q
+        vendor_customers = aliased(VendorCustomer)
+        customer_mapping = aliased(CustomerLocationMapping)
+        exists_query = exists().where(
+            vendor_customers.id == VendorProductDiscount.vendor_customer_id,
+            vendor_customers.id == customer_mapping.vendor_customer_id,
+            customer_mapping.customer_location_id.in_(ids),
+        )
+        return q.where(exists_query)
+
+    ## primary id lookup
+    def permitted_primary_resource_ids(
+        email: str, vendor_id: str
+    ) -> tuple[Column, QuerySet]:
+        return (
+            VendorProductDiscount.vendor_customer_id,
+            vendor_customer_primary_id_queries(email=email, vendor_id=vendor_id),
+        )
+
+
 class VendorPricingClass(Base):
     __tablename__ = "vendor_pricing_classes"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
@@ -931,6 +989,20 @@ class VendorPricingClass(Base):
         back_populates="label_price_classes",
         foreign_keys=[
             VendorProductClassDiscount.label_price_class,
+        ],
+    )
+    vendor_product_discounts_base_class = relationship(
+        "VendorProductDiscount",
+        back_populates="base_price_classes",
+        foreign_keys=[
+            VendorProductDiscount.base_price_class,
+        ],
+    )
+    vendor_product_discounts_label_class = relationship(
+        "VendorProductDiscount",
+        back_populates="label_price_classes",
+        foreign_keys=[
+            VendorProductDiscount.label_price_class,
         ],
     )
 
