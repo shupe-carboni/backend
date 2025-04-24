@@ -281,6 +281,7 @@ class ProductCategoryDiscount(BaseModel):
 
 class ProductDiscount(BaseModel):
     part_number: str
+    pricing_category: str
     discount: Discount
 
     def get_product_id(self, session: Session, vendor_id: VendorId) -> int:
@@ -291,6 +292,26 @@ class ProductDiscount(BaseModel):
             AND vendor_id = :vid
         """
         params = dict(pid=self.part_number, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
+    def get_label_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE name = :price_cat
+            AND vendor_id = :vid
+        """
+        params = dict(price_cat=self.pricing_category, vid=vendor_id.value)
+        return DB_V2.execute(session, sql, params).scalar_one()
+
+    def get_base_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
+        sql = """
+            SELECT id
+            FROM vendor_pricing_classes
+            WHERE name = :price_cat
+            AND vendor_id = :vid
+        """
+        params = dict(price_cat=VendorBasePriceClasses[vendor_id], vid=vendor_id.value)
         return DB_V2.execute(session, sql, params).scalar_one()
 
 
