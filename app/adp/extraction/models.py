@@ -184,11 +184,16 @@ def price_models_by_customer_discounts(
     else:
         snp_disc = 0
 
-    mat_group_price = no_disc_price * (1 - mat_group_disc / 100)
+    if mat_group_disc > 1:
+        mat_group_disc /= 100
+    if snp_disc > 1:
+        snp_disc /= 100
+
+    mat_group_price = no_disc_price * (1 - mat_group_disc)
     mat_group_price = int(math.floor(mat_group_price + 0.5))
     mat_group_price = 0 if mat_group_price == no_disc_price else mat_group_price
 
-    snp_price = no_disc_price * (1 - snp_disc / 100)
+    snp_price = no_disc_price * (1 - snp_disc)
     snp_price = int(math.floor(snp_price + 0.5))
     snp_price = 0 if snp_price == no_disc_price else snp_price
     result = {
