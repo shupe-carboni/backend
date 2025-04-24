@@ -3,12 +3,16 @@ INSERT INTO vendor_product_discounts (
 	vendor_customer_id,
 	discount,
 	effective_date
+	base_price_class,
+	label_price_class,
 )
-SELECT 
+SELECT DISTINCT
 	vp.id,
 	vc.id,
-	(1-(new.price::float / class_price.price::float))*100,
+	(1-(new.price::float / class_price.price::float)),
 	CURRENT_TIMESTAMP
+	1,	-- base_price_class = ZERO_DISCOUNT
+	2	-- label_price_class = STRATEGY_PRICING
 FROM adp_snps AS new
 JOIN vendor_customers vc
 	ON vc.name = new.customer
@@ -19,8 +23,14 @@ JOIN vendor_products vp
 JOIN vendor_pricing_by_class AS class_price
 	ON class_price.product_id = vp.id
 WHERE NOT EXISTS (
-	select 1
-	from vendor_product_discounts z
-	where z.product_id = vp.id
-	and z.vendor_customer_id = vc.id
-);
+	SELECT 1
+	FROM vendor_product_discounts z
+	WHERE z.product_id = vp.id
+	AND z.vendor_customer_id = vc.id
+) AND EXISTS (
+	SELECT 1
+	FROM vendor_pricing_classes price_class
+	WHERE price_class.vendor_id = 'adp'
+	AND price_class.id = class_price.pricing_class_id
+	AND price_class.name = 'ZERO_DISCOUNT'
+)
