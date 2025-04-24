@@ -41,7 +41,6 @@ async def new_vendor_product_class_discount(
     token: Token,
     session: NewSession,
     new_obj: NewVendorProductClassDiscount,
-    bg: BackgroundTasks,
 ) -> VendorProductClassDiscountResourceResp:
     vendor_customer_id = new_obj.data.relationships.vendor_customers.data[0].id
     vendor_id = new_obj.data.relationships.vendors.data[0].id
@@ -68,37 +67,7 @@ async def new_vendor_product_class_discount(
             )
         )
     except ValidationError as e:
-        ex_id_sql = """
-            SELECT id
-            FROM vendor_product_class_discounts
-            WHERE base_price_class = :bpc
-            AND label_price_class = :lpc
-            AND product_class_id = :pcid
-            AND vendor_customer_id = :vcid
-        """
-        params = dict(
-            bpc=ref_price_class_id,
-            lpc=new_price_class_id,
-            pcid=product_class_id,
-            vcid=vendor_customer_id,
-        )
-        existing_id = DB_V2.execute(session, ex_id_sql, params).scalar_one()
-
-        mod_obj = ModVendorProductClassDiscount(
-            data=ModVendorProductClassDiscountRObj(
-                id=existing_id,
-                type=new_obj.data.type,
-                attributes=new_obj.data.attributes,
-                relationships=new_obj.data.relationships,
-            )
-        )
-        return await mod_vendor_product_class_discount(
-            token,
-            session,
-            existing_id,
-            mod_obj,
-            bg,
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
     except Exception as e:
         raise e
     match VendorId(vendor_id):
@@ -110,15 +79,6 @@ async def new_vendor_product_class_discount(
             update_only = False
     new_id = ret["data"]["id"]
     if ret["data"]["attributes"]["deleted-at"] is None:
-        # bg.add_task(
-        #     calc_customer_pricing_from_product_class_discount,
-        #     new_id,
-        #     ref_price_class_id,
-        #     new_price_class_id,
-        #     effective_date,
-        #     sig,
-        #     update_only,
-        # )
         calc_customer_pricing_from_product_class_discount(
             new_id,
             ref_price_class_id,
@@ -141,7 +101,6 @@ async def mod_vendor_product_class_discount(
     session: NewSession,
     vendor_product_class_discount_id: int,
     mod_data: ModVendorProductClassDiscount,
-    bg: BackgroundTasks,
 ) -> VendorProductClassDiscountResourceResp:
     vendor_customer_id = mod_data.data.relationships.vendor_customers.data[0].id
     vendor_id = mod_data.data.relationships.vendors.data[0].id
@@ -174,16 +133,6 @@ async def mod_vendor_product_class_discount(
                 sig = ROUND_TO_CENT
                 update_only = False
         if ret["data"]["attributes"]["deleted-at"] is None:
-            # bg.add_task(
-            #     calc_customer_pricing_from_product_class_discount,
-            #     session,
-            #     vendor_product_class_discount_id,
-            #     ref_price_class_id,
-            #     new_price_class_id,
-            #     effective_date,
-            #     sig,
-            #     update_only,
-            # )
             calc_customer_pricing_from_product_class_discount(
                 vendor_product_class_discount_id,
                 ref_price_class_id,

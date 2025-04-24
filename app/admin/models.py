@@ -82,8 +82,15 @@ class Pricing(BaseModel):
     data: list[PriceItem]
 
 
+class PricingMeta(BaseModel):
+    errors: dict[str, list] = {}
+    updates: dict[str, list] = {}
+    inserts: dict[str, list] = {}
+
+
 class FullPricingWithLink(BaseModel):
     download_link: str
+    meta: PricingMeta = {}
     pricing: Optional[Pricing] = None
 
 
@@ -153,7 +160,6 @@ class ModelLookupGlasfloss(BaseModel):
 
 class PriceTemplateSheet(StrEnum):
     CUSTOMER_PRICING = "Customer Pricing"
-    CUSTOMER_PRICE_CATEGORY = "Customer Price Category"
     PRODUCT_CATEGORY_DISCOUNTS = "Product Category Discounts"
     PRODUCT_DISCOUNTS = "Product Discounts"
 
@@ -173,9 +179,6 @@ PriceTemplateSheetColumns = {
         PriceTemplateSheetColumn.PART_NUMBER,
         PriceTemplateSheetColumn.PRICING_CATEGORY,
         PriceTemplateSheetColumn.PRICE,
-    ],
-    PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: [
-        PriceTemplateSheetColumn.CATEGORIES,
     ],
     PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [
         PriceTemplateSheetColumn.PRODUCT_CATEGORY,
@@ -293,7 +296,6 @@ class ProductDiscount(BaseModel):
 
 PriceTemplateModels: dict[StrEnum, BaseModel] = {
     PriceTemplateSheet.CUSTOMER_PRICING: CustomerPrice,
-    PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: CustomerPriceCategory,
     PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: ProductCategoryDiscount,
     PriceTemplateSheet.PRODUCT_DISCOUNTS: ProductDiscount,
 }

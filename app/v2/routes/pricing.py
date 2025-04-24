@@ -15,6 +15,7 @@ from app.v2.models import *
 from app.v2.pricing import transform, fetch_pricing
 from app.v2.routes.vendor_product_class_discounts import (
     new_vendor_product_class_discount,
+    mod_vendor_product_class_discount,
 )
 from app.admin.models import (
     VendorId,
@@ -199,7 +200,7 @@ async def vendor_customer_pricing(
     response_model_exclude_none=True,
     tags=["vendor customers", "pricing"],
 )
-async def new_vendor_customer_pricing(
+async def upsert_vendor_customer_pricing_from_file(
     token: Token,
     session: NewSession,
     vendor_id: VendorId,
@@ -207,7 +208,7 @@ async def new_vendor_customer_pricing(
     templated_file: UploadFile,
     effective_date: date = datetime.today().date(),
 ) -> FullPricingWithLink:
-    """Add/update customer pricing for a vendor."""
+    """Upsert customer pricing for a vendor."""
     try:
         customer = (
             auth.VendorCustomerOperations(token, VendorCustomer, id=vendor_id)
@@ -220,89 +221,171 @@ async def new_vendor_customer_pricing(
         raise e
 
     file_data = BytesIO(await templated_file.read())
-    # TODO supply ids for price classes and product class
     parsed_data = parse_pricing_template(file_data)
+    errors: dict[str, list[dict[str, str]]] = {}
+    updates: dict[str, list[dict[str, str]]] = {}
+    inserts: dict[str, list[dict[str, str]]] = {}
     for record_type, records in parsed_data.items():
         match record_type:
-            case PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY:
-                record: CustomerPriceCategoryDTO
-                ...
             case PriceTemplateSheet.CUSTOMER_PRICING:
                 record: CustomerPriceDTO
+                errors.setdefault(record_type, [])
+                updates.setdefault(record_type, [])
+                inserts.setdefault(record_type, [])
                 ...
             case PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS:
-                errors = []
+                errors.setdefault(record_type, [])
+                updates.setdefault(record_type, [])
+                inserts.setdefault(record_type, [])
                 for record in records:
                     record_: ProductCategoryDiscountDTO = record
-                    data = NewVendorProductClassDiscountRObj(
-                        type="vendor-product-class-discounts",
-                        attributes=VendorProductClassDiscountAttrs(
-                            discount=record_.discount,
-                            effective_date=effective_date,
-                        ),
-                        relationships=VendorProductClassDiscountRels(
-                            vendors=JSONAPIRelationships(
-                                data=[
-                                    JSONAPIResourceIdentifier(
-                                        id=vendor_id.value, type="vendors"
-                                    )
-                                ]
-                            ),
-                            vendor_customers=JSONAPIRelationships(
-                                data=[
-                                    JSONAPIResourceIdentifier(
-                                        id=customer_id, type="vendor-customers"
-                                    )
-                                ]
-                            ),
-                            base_price_classes=JSONAPIRelationships(
-                                data=[
-                                    JSONAPIResourceIdentifier(
-                                        id=record_.get_base_price_category_id(
-                                            session, vendor_id
-                                        ),
-                                        type="base-price-classes",
-                                    )
-                                ]
-                            ),
-                            label_price_classes=JSONAPIRelationships(
-                                data=[
-                                    JSONAPIResourceIdentifier(
-                                        id=record_.get_label_price_category_id(
-                                            session, vendor_id
-                                        ),
-                                        type="label-price-classes",
-                                    )
-                                ]
-                            ),
-                            vendor_product_classes=JSONAPIRelationships(
-                                data=[
-                                    JSONAPIResourceIdentifier(
-                                        id=record_.get_product_category_id(
-                                            session, vendor_id
-                                        ),
-                                        type="vendor-product-classes",
-                                    )
-                                ]
-                            ),
-                        ),
-                    )
                     try:
-                        await new_vendor_product_class_discount(
+                        base_class_id = record_.get_base_price_category_id(
+                            session, vendor_id
+                        )
+                        label_class_id = record_.get_label_price_category_id(
+                            session, vendor_id
+                        )
+                        product_class_id = record_.get_product_category_id(
+                            session, vendor_id
+                        )
+                        data = NewVendorProductClassDiscountRObj(
+                            type="vendor-product-class-discounts",
+                            attributes=VendorProductClassDiscountAttrs(
+                                discount=record_.discount,
+                                effective_date=effective_date,
+                            ),
+                            relationships=VendorProductClassDiscountRels(
+                                vendors=JSONAPIRelationships(
+                                    data=[
+                                        JSONAPIResourceIdentifier(
+                                            id=vendor_id.value, type="vendors"
+                                        )
+                                    ]
+                                ),
+                                vendor_customers=JSONAPIRelationships(
+                                    data=[
+                                        JSONAPIResourceIdentifier(
+                                            id=customer_id, type="vendor-customers"
+                                        )
+                                    ]
+                                ),
+                                base_price_classes=JSONAPIRelationships(
+                                    data=[
+                                        JSONAPIResourceIdentifier(
+                                            id=base_class_id,
+                                            type="base-price-classes",
+                                        )
+                                    ]
+                                ),
+                                label_price_classes=JSONAPIRelationships(
+                                    data=[
+                                        JSONAPIResourceIdentifier(
+                                            id=label_class_id,
+                                            type="label-price-classes",
+                                        )
+                                    ]
+                                ),
+                                vendor_product_classes=JSONAPIRelationships(
+                                    data=[
+                                        JSONAPIResourceIdentifier(
+                                            id=product_class_id,
+                                            type="vendor-product-classes",
+                                        )
+                                    ]
+                                ),
+                            ),
+                        )
+                    except Exception as e:
+                        errors[record_type].append(
+                            {"record": record_.model_dump(), "error": e}
+                        )
+                        continue
+                    try:
+                        new_discount = await new_vendor_product_class_discount(
                             token,
                             session,
                             NewVendorProductClassDiscount(data=data),
-                            bg=BackgroundTasks(),
                         )
+                        new_discount = VendorProductClassDiscountResourceResp(
+                            **new_discount
+                        )
+                    except HTTPException as http_e:
+                        if http_e.status_code == 409:
+                            ex_id_sql = """
+                                SELECT id
+                                FROM vendor_product_class_discounts
+                                WHERE base_price_class = :bpc
+                                AND label_price_class = :lpc
+                                AND product_class_id = :pcid
+                                AND vendor_customer_id = :vcid
+                            """
+                            params = dict(
+                                bpc=base_class_id,
+                                lpc=label_class_id,
+                                pcid=product_class_id,
+                                vcid=customer_id,
+                            )
+                            existing_id = DB_V2.execute(
+                                session, ex_id_sql, params
+                            ).scalar_one()
+
+                            mod_obj = ModVendorProductClassDiscount(
+                                data=ModVendorProductClassDiscountRObj(
+                                    id=existing_id,
+                                    type=data.type,
+                                    attributes=data.attributes,
+                                    relationships=data.relationships,
+                                )
+                            )
+                            try:
+                                updated_record = (
+                                    await mod_vendor_product_class_discount(
+                                        token,
+                                        session,
+                                        existing_id,
+                                        mod_obj,
+                                    )
+                                )
+                                updated_record = VendorProductClassDiscountResourceResp(
+                                    **updated_record
+                                )
+                            except Exception as e:
+                                logger.error(f"Error updating product discount: {e}")
+                                errors[record_type].append(
+                                    {"record": record_.model_dump(), "error": e}
+                                )
+                                continue
+                            else:
+                                updates[record_type].append(
+                                    {
+                                        "record": record_.model_dump(),
+                                        "id": updated_record.data.id,
+                                    }
+                                )
+                                session.commit()
+                        else:
+                            raise e
                     except Exception as e:
                         logger.error(f"Error establishing product discount: {e}")
-                        errors.append(record)
+                        errors[record_type].append(
+                            {"record": record_.model_dump(), "error": e}
+                        )
+                        continue
                     else:
+                        inserts[record_type].append(
+                            {"record": record_.model_dump(), "id": new_discount.data.id}
+                        )
                         session.commit()
 
             case PriceTemplateSheet.PRODUCT_DISCOUNTS:
                 record: ProductDiscountDTO
-    return await vendor_customer_pricing(
+                errors.setdefault(record_type, [])
+                updates.setdefault(record_type, [])
+                inserts.setdefault(record_type, [])
+
+    new_meta = dict(errors=errors, updates=updates, inserts=inserts)
+    ret = await vendor_customer_pricing(
         token,
         session,
         vendor_id,
@@ -310,6 +393,8 @@ async def new_vendor_customer_pricing(
         None,
         ReturnType.JSON,
     )
+    ret.meta = new_meta
+    return ret
 
 
 @pricing.get(
@@ -343,12 +428,7 @@ async def download_price_file(
 def parse_pricing_template(data: BytesIO) -> dict[StrEnum, list[BaseModel]]:
     data.seek(0)
     wb = openpyxl.load_workbook(data, data_only=True)
-    ret = {
-        PriceTemplateSheet.CUSTOMER_PRICING: [],
-        PriceTemplateSheet.CUSTOMER_PRICE_CATEGORY: [],
-        PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [],
-        PriceTemplateSheet.PRODUCT_DISCOUNTS: [],
-    }
+    ret: dict[StrEnum, list] = {}
     try:
         sheet_names = set(wb.sheetnames)
         expected_sheets = set([sheet.value for sheet in PriceTemplateSheet])
@@ -394,6 +474,7 @@ def parse_pricing_template(data: BytesIO) -> dict[StrEnum, list[BaseModel]]:
                             data_model.model_fields.keys(), (cell.value for cell in row)
                         )
                     }
+                    ret.setdefault(template_sheet_enum, list())
                     ret[template_sheet_enum].append(data_model(**data_obj))
     except Exception as e:
         raise e
