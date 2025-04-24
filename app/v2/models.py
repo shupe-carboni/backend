@@ -1328,13 +1328,14 @@ class VendorPricingByCustomerQueryJSONAPI(
 class ModVendorPricingByCustomerAttrs(BaseModel):
     use_as_override: NullableBool = Field(default=None, alias="use-as-override")
     price: NullableInt = Field(default=None, alias="price")
+    effective_date: NullableDateTime = Field(default=None, alias="effective-date")
     deleted_at: NullableDateTime = Field(default=None, alias="deleted-at")
 
 
 class ModVendorPricingByCustomerRObj(BaseModel):
     id: int
     type: str = VendorPricingByCustomer.__jsonapi_type_override__
-    attributes: ModVendorPricingByCustomerAttrs
+    attributes: VendorPricingByCustomerAttrs
     relationships: VendorPricingByCustomerRels
 
 
