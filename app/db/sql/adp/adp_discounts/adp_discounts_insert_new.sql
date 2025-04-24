@@ -1,12 +1,19 @@
 INSERT INTO vendor_product_class_discounts (
-	product_class_id, vendor_customer_id, 
-	discount, effective_date)
-SELECT 
+	product_class_id, 
+	vendor_customer_id, 
+	discount, 
+	effective_date,
+	base_price_class,
+	label_price_class,
+)
+SELECT DISTINCT
 	vp_class.id,
 	vc.id,
 	new.discount,
-	CURRENT_TIMESTAMP
-FROM adp_mgds as new
+	CURRENT_TIMESTAMP,
+	1,	-- base_price_class = ZERO_DISCOUNT
+	2	-- label_price_class = STRATEGY_PRICING
+FROM adp_mgds AS new
 JOIN vendor_product_classes vp_class
 	ON vp_class.name = new.mg
 	AND vp_class.rank = 2
