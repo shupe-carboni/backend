@@ -53,47 +53,10 @@ async def new_vendor_pricing_by_customer(
             )
         )
     except ValidationError as e:
-        logger.warning(e)
-        try:
-            product_id = new_obj.data.relationships.vendor_products.data[0].id
-            pricing_class_id = new_obj.data.relationships.vendor_pricing_classes.data[
-                0
-            ].id
-            new_price = new_obj.data.attributes.price
-            sql = """
-                SELECT id
-                FROM vendor_pricing_by_customer
-                WHERE vendor_customer_id = :vc_id
-                AND product_id = :p_id
-                AND pricing_class_id = :pc_id;
-            """
-            (existing_id,) = DB_V2.execute(
-                session,
-                sql,
-                dict(
-                    vc_id=vendor_customer_id,
-                    p_id=product_id,
-                    pc_id=pricing_class_id,
-                ),
-            ).one()
-            data = {
-                "id": existing_id,
-                "type": "vendor-pricing-by-customer",
-                "attributes": {
-                    "deleted-at": None,
-                    "price": new_price,
-                },
-                "relationships": new_obj.data.relationships.model_dump(
-                    exclude_none=True
-                )
-                | {"vendors": {"data": [{"type": "vendors", "id": vendor_id}]}},
-            }
-            return await mod_vendor_pricing_by_customer(
-                token, session, existing_id, ModVendorPricingByCustomer(data=data)
-            )
-        except Exception as e:
-            logger.critical(e)
-            raise e
+        raise HTTPException(status.HTTP_409_CONFLICT)
+    except Exception as e:
+        logger.critical(e)
+        raise e
 
 
 @vendor_pricing_by_customer.patch(
@@ -120,7 +83,9 @@ async def mod_vendor_pricing_by_customer(
             .allow_dev()
             .patch(
                 session=session,
-                data=mod_data.model_dump(exclude_none=True, by_alias=True),
+                # changed arg from `exclude_none` to `exclude_unset`
+                # to allow deliberate un-deletion by patching deleted-at with None
+                data=mod_data.model_dump(exclude_unset=True, by_alias=True),
                 obj_id=vendor_pricing_by_customer_id,
                 primary_id=vendor_customer_id,
             )
