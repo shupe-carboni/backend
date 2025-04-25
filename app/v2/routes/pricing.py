@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, status, UploadFile, BackgroundTasks
 from fastapi.routing import APIRouter
 from enum import StrEnum
 import openpyxl
+from zipfile import BadZipFile
 
 from app import auth
 from app.admin.models import VendorId
@@ -458,7 +459,13 @@ async def upsert_vendor_customer_pricing_from_file(
         raise e
 
     file_data = BytesIO(await templated_file.read())
-    parsed_data = parse_pricing_template(file_data)
+    try:
+        parsed_data = parse_pricing_template(file_data)
+    except BadZipFile:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "The uploaded file is not loading correctly." "Expecting an Excel file.",
+        )
     MetaObj: TypeAlias = dict[str, list[dict[str, str]]]
     errors: MetaObj = {}
     updates: MetaObj = {}
