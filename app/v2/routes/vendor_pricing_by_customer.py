@@ -66,8 +66,8 @@ async def new_vendor_pricing_by_customer(
             p_id=rels.vendor_products.data[0].id,
             pc_id=rels.vendor_pricing_classes.data[0].id,
         )
-        existsing_id = DB_V2.execute(session, sql, params).scalar_one()
-        ret = {"data": {"id": existsing_id}}
+        existing_id = DB_V2.execute(session, sql, params).scalar_one()
+        ret = {"data": {"id": existing_id}}
         raise HTTPException(status.HTTP_409_CONFLICT, detail=ret)
     except Exception as e:
         logger.critical(e)
