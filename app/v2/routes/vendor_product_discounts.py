@@ -1,13 +1,12 @@
-
 from typing import Annotated
 from fastapi import Depends
 from fastapi.routing import APIRouter
 from app import auth
-from app.db import SCA_DB, Session
+from app.db import DB_V2, Session
 from app.jsonapi.core_models import convert_query
-#from app.RELATED_RESOURCE.models import 
 from app.v2.models import (
-    VendorProductDiscountResp,
+    VendorProductDiscountCollectionResp,
+    VendorProductDiscountResourceResp,
     VendorProductDiscountQuery,
     VendorProductDiscountQueryJSONAPI,
 )
@@ -16,37 +15,34 @@ from app.jsonapi.sqla_models import VendorProductDiscount
 PARENT_PREFIX = "/vendors/v2"
 VENDOR_PRODUCT_DISCOUNTS = VendorProductDiscount.__jsonapi_type_override__
 
-vendor_product_discounts = APIRouter(
-    prefix=f"/{VENDOR_PRODUCT_DISCOUNTS}", tags=["v2", ""]
-)
+vendor_product_discounts = APIRouter(prefix=f"/{VENDOR_PRODUCT_DISCOUNTS}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 converter = convert_query(VendorProductDiscountQueryJSONAPI)
 
 
 @vendor_product_discounts.get(
     "",
-    response_model=VendorProductDiscountResp,
+    response_model=VendorProductDiscountCollectionResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
 async def vendor_product_discount_collection(
     token: Token, session: NewSession, query: VendorProductDiscountQuery = Depends()
-) -> VendorProductDiscountResp:
+) -> VendorProductDiscountCollectionResp:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query))
     )
 
 
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}",
-    response_model=VendorProductDiscountResp,
+    response_model=VendorProductDiscountResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -55,13 +51,12 @@ async def vendor_product_discount_resource(
     session: NewSession,
     vendor_product_discount_id: int,
     query: VendorProductDiscountQuery = Depends(),
-) -> VendorProductDiscountResp:
+) -> VendorProductDiscountResourceResp:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query), vendor_product_discount_id)
     )
 
@@ -79,13 +74,13 @@ async def vendor_product_discount_related_vendor_products(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query), vendor_product_discount_id, "vendor-products")
     )
+
 
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/relationships/vendor-products",
@@ -100,15 +95,20 @@ async def vendor_product_discount_relationships_vendor_products(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "vendor-products", True)
+        .get(
+            session,
+            converter(query),
+            vendor_product_discount_id,
+            "vendor-products",
+            True,
+        )
     )
 
-    
+
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/vendor-customers",
     response_model=None,
@@ -122,13 +122,13 @@ async def vendor_product_discount_related_vendor_customers(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .get(session, converter(query), vendor_product_discount_id, "vendor-customers")
     )
+
 
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/relationships/vendor-customers",
@@ -143,15 +143,20 @@ async def vendor_product_discount_relationships_vendor_customers(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "vendor-customers", True)
+        .get(
+            session,
+            converter(query),
+            vendor_product_discount_id,
+            "vendor-customers",
+            True,
+        )
     )
 
-    
+
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/base-price-classes",
     response_model=None,
@@ -165,13 +170,15 @@ async def vendor_product_discount_related_base_price_classes(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "base-price-classes")
+        .get(
+            session, converter(query), vendor_product_discount_id, "base-price-classes"
+        )
     )
+
 
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/relationships/base-price-classes",
@@ -186,15 +193,20 @@ async def vendor_product_discount_relationships_base_price_classes(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "base-price-classes", True)
+        .get(
+            session,
+            converter(query),
+            vendor_product_discount_id,
+            "base-price-classes",
+            True,
+        )
     )
 
-    
+
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/label-price-classes",
     response_model=None,
@@ -208,13 +220,15 @@ async def vendor_product_discount_related_label_price_classes(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "label-price-classes")
+        .get(
+            session, converter(query), vendor_product_discount_id, "label-price-classes"
+        )
     )
+
 
 @vendor_product_discounts.get(
     "/{vendor_product_discount_id}/relationships/label-price-classes",
@@ -229,21 +243,28 @@ async def vendor_product_discount_relationships_label_price_classes(
     query: VendorProductDiscountQuery = Depends(),
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(token, VendorProductDiscount, PARENT_PREFIX)
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
-        .get(session, converter(query), vendor_product_discount_id, "label-price-classes", True)
+        .get(
+            session,
+            converter(query),
+            vendor_product_discount_id,
+            "label-price-classes",
+            True,
+        )
     )
 
-    
 
 from app.v2.models import ModVendorProductDiscount
 
+## TODO make a POST endpoint
+
+
 @vendor_product_discounts.patch(
     "/{vendor_product_discount_id}",
-    response_model=VendorProductDiscountResp,
+    response_model=VendorProductDiscountResourceResp,
     response_model_exclude_none=True,
     tags=["jsonapi"],
 )
@@ -252,22 +273,24 @@ async def mod_vendor_product_discount(
     session: NewSession,
     vendor_product_discount_id: int,
     mod_data: ModVendorProductDiscount,
-) -> VendorProductDiscountResp:
+) -> VendorProductDiscountResourceResp:
+    vendor_id = mod_data.data.relationships.vendors.data[0].id
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorProductDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
         .allow_dev()
-        .allow_customer("std")
         .patch(
             session=session,
-            data=mod_data.model_dump(exclude_none=True, by_alias=True),
+            data=mod_data.model_dump(exclude_unset=True, by_alias=True),
             obj_id=vendor_product_discount_id,
-                primary_id=mod_data.data.relationships.vendor_customers.data.id
-            )
+            primary_id=mod_data.data.relationships.vendor_customers.data[0].id,
         )
+    )
 
-        
+
 @vendor_product_discounts.delete(
     "/{vendor_product_discount_id}",
     tags=["jsonapi"],
@@ -277,13 +300,16 @@ async def del_vendor_product_discount(
     session: NewSession,
     vendor_product_discount_id: int,
     vendor_customer_id: int,
+    vendor_id: str,
 ) -> None:
     return (
-        auth.VOperations(token, VendorProductDiscount, PARENT_PREFIX)
+        auth.VendorCustomerOperations(
+            token, VendorProductDiscount, PARENT_PREFIX, vendor_id=vendor_id
+        )
         .allow_admin()
         .allow_sca()
-        .allow_dev()
         .allow_customer("std")
-        .delete(session, obj_id=vendor_product_discount_id, primary_id=vendor_customer_id)
+        .delete(
+            session, obj_id=vendor_product_discount_id, primary_id=vendor_customer_id
+        )
     )
-    

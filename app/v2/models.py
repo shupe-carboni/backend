@@ -3682,6 +3682,9 @@ class VendorProductDiscountAttrs(BaseModel):
 
 class VendorProductDiscountRels(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+    vendors: OptionalJSONAPIRelationships = Field(
+        default=None, alias="vendors", exclude=True
+    )
     vendor_products: OptionalJSONAPIRelationships = Field(
         default=None, alias="vendor-products"
     )
