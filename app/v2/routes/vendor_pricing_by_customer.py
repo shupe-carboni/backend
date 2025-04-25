@@ -36,9 +36,9 @@ async def new_vendor_pricing_by_customer(
     session: NewSession,
     new_obj: NewVendorPricingByCustomer,
 ) -> VendorPricingByCustomerResourceResp:
-    vendor_customer_id = new_obj.data.relationships.vendor_customers.data[0].id
-    vendor_id = new_obj.data.relationships.vendors.data[0].id
     try:
+        vendor_customer_id = new_obj.data.relationships.vendor_customers.data[0].id
+        vendor_id = new_obj.data.relationships.vendors.data[0].id
         return (
             auth.VendorCustomerOperations(
                 token, VendorPricingByCustomer, PARENT_PREFIX, vendor_id=vendor_id
@@ -53,7 +53,22 @@ async def new_vendor_pricing_by_customer(
             )
         )
     except ValidationError as e:
-        raise HTTPException(status.HTTP_409_CONFLICT)
+        sql = """
+            SELECT id
+            FROM vendor_pricing_by_customer
+            WHERE vendor_customer_id = :vc_id
+            AND product_id = :p_id
+            AND pricing_class_id = :pc_id
+        """
+        rels = new_obj.data.relationships
+        params = dict(
+            vc_id=vendor_customer_id,
+            p_id=rels.vendor_products.data[0].id,
+            pc_id=rels.vendor_pricing_classes.data[0].id,
+        )
+        existsing_id = DB_V2.execute(session, sql, params).scalar_one()
+        ret = {"data": {"id": existsing_id}}
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=ret)
     except Exception as e:
         logger.critical(e)
         raise e
