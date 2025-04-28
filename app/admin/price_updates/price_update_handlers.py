@@ -1,3 +1,4 @@
+from typing import Literal
 from datetime import datetime
 from logging import getLogger
 from pandas import DataFrame, concat
@@ -18,6 +19,97 @@ import app.admin.price_updates.price_sheet_parsers as parsers
 from app.adp.extraction.models import parse_model_string, ParsingModes
 
 logger = getLogger("uvicorn.info")
+
+## recalcs from discounts
+ROUND_TO_DOLLAR = 100
+ROUND_TO_CENT = 1
+
+
+def recalc(
+    discount_type: Literal["product_class", "product"],
+    vendor_id: VendorId,
+    ref_price_class_id: int,
+    new_price_class_id: int,
+    effective_date: datetime,
+    id_: int,
+    deleted: bool,
+) -> None:
+    match VendorId(vendor_id):
+        case VendorId.ADP:
+            sig = ROUND_TO_DOLLAR
+            update_only = True
+        case _:
+            sig = ROUND_TO_CENT
+            update_only = False
+    if not deleted:
+        calc_customer_pricing_from_discount(
+            discount_type,
+            id_,
+            ref_price_class_id,
+            new_price_class_id,
+            effective_date,
+            sig,
+            update_only,
+        )
+
+
+def calc_customer_pricing_from_discount(
+    discount_type: Literal["product_class", "product"],
+    discount_id: int,
+    ref_pricing_class_id: int,
+    new_pricing_class_id: int,
+    effective_date: datetime,
+    rounding_strategy: int,
+    update_only: bool = False,
+) -> None:
+    """
+    When a customer's pricing discount is changed, pricing reflected
+    in vendor_pricing_by_customer ought to be changed as well.
+
+    The reference pricing class id is used to identify the pricing in pricing_by_class
+    that can be used as the reference price against which to apply the new multiplier.
+    Rounding strategy is passed to the SQL statment to shift the truncation introduced
+    by ROUND, such that we can dynamically round to the nearest dollar or the nearest
+    cent.
+    """
+    logger.info(f"Calculating pricing related to the modified product class discount")
+    session = next(DB_V2.get_db())
+
+    update_query = queries.update_customer_pricing_current
+    update_futures_query = queries.update_customer_pricing_future
+    update_params = dict(
+        pricing_class_id=ref_pricing_class_id,
+        product_class_discount_id=discount_id,
+        effective_date=effective_date,
+        sig=rounding_strategy,
+        discount_type=discount_type,
+    )
+    new_query = queries.new_customer_pricing_current
+    new_futures_query = queries.new_customer_pricing_future
+    new_record_params = dict(
+        ref_pricing_class_id=ref_pricing_class_id,
+        new_price_class_id=new_pricing_class_id,
+        product_class_discount_id=discount_id,
+        effective_date=effective_date,
+        sig=rounding_strategy,
+        discount_type=discount_type,
+    )
+
+    session.begin()
+    try:
+        DB_V2.execute(session, sql=update_query, params=update_params)
+        DB_V2.execute(session, sql=update_futures_query, params=update_params)
+        if not update_only:
+            DB_V2.execute(session, sql=new_query, params=new_record_params)
+            DB_V2.execute(session, sql=new_futures_query, params=new_record_params)
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+    else:
+        logger.info("Update successful")
+        session.commit()
+    return
+
 
 ## Percentage Increases
 
@@ -281,24 +373,24 @@ def _adp_price_sheet_parsing_and_key_price_establishment(
     coils = False
     air_handlers = False
     parser_map = {
-        ADPProductSheet.B: parsers.adp_b_series_sheet,
-        ADPProductSheet.CP_A1: parsers.adp_cp_series_sheet,
-        ADPProductSheet.CP_A2L: parsers.adp_cp_series_sheet,
-        ADPProductSheet.F: parsers.adp_f_series_sheet,
-        ADPProductSheet.S: parsers.adp_s_series_sheet,
-        ADPProductSheet.AMH: parsers.adp_amh_series_sheet,
-        ADPProductSheet.HE: parsers.adp_he_series_sheet,
-        ADPProductSheet.HH: parsers.adp_hh_series_sheet,
-        ADPProductSheet.MH: parsers.adp_mh_series_sheet,
-        ADPProductSheet.V: parsers.adp_v_series_sheet,
-        ADPProductSheet.HD: parsers.adp_hd_series_sheet,
-        ADPProductSheet.SC: parsers.adp_sc_series_sheet,
+        ADPProductSheet.B: parsers.adp_ahs_b_sheet_parser,
+        ADPProductSheet.CP_A1: parsers.adp_ahs_cp_series_handler,
+        ADPProductSheet.CP_A2L: parsers.adp_ahs_cp_series_handler,
+        ADPProductSheet.F: parsers.adp_ahs_f_sheet_parser,
+        ADPProductSheet.S: parsers.adp_ahs_s_sheet_parser,
+        ADPProductSheet.AMH: parsers.adp_ahs_amh_sheet_parser,
+        ADPProductSheet.HE: parsers.adp_coils_he_sheet_parser,
+        ADPProductSheet.HH: parsers.adp_coils_hh_sheet_parser,
+        ADPProductSheet.MH: parsers.adp_coils_mh_sheet_parser,
+        ADPProductSheet.V: parsers.adp_coils_v_sheet_parser,
+        ADPProductSheet.HD: parsers.adp_coils_hd_sheet_parser,
+        ADPProductSheet.SC: parsers.adp_coils_sc_sheet_parser,
     }
     results = []
     for series, df in sheets.items():
         if series == ADPProductSheet.PARTS:
             # direct parsing
-            parsers.adp_parts_sheet(session, df, effective_date)
+            parsers.adp_parts_sheet_parser(session, df, effective_date)
             continue
         match ADPProductType[series.name].value:
             case ProductType.COILS if not coils:

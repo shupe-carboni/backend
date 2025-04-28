@@ -1,17 +1,17 @@
+from datetime import datetime
 from logging import getLogger
 from typing import Annotated
-from fastapi import Depends, HTTPException, status, BackgroundTasks
+from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from sqlalchemy_jsonapi.errors import ValidationError
 from app import auth
 from app.db import DB_V2, Session
 from app.admin.models import VendorId
-from app.v2.pricing import calc_customer_pricing_from_product_class_discount
+from app.admin.price_updates.price_update_handlers import recalc
 from app.v2.models import (
     VendorProductClassDiscountResourceResp,
     ModVendorProductClassDiscount,
     NewVendorProductClassDiscount,
-    ModVendorProductClassDiscountRObj,
 )
 from app.jsonapi.sqla_models import VendorProductClassDiscount
 
@@ -70,24 +70,19 @@ async def new_vendor_product_class_discount(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT)
     except Exception as e:
         raise e
-    match VendorId(vendor_id):
-        case VendorId.ADP:
-            sig = ROUND_TO_DOLLAR
-            update_only = True
-        case _:
-            sig = ROUND_TO_CENT
-            update_only = False
-    new_id = ret["data"]["id"]
-    if ret["data"]["attributes"]["deleted-at"] is None:
-        calc_customer_pricing_from_product_class_discount(
-            new_id,
+    else:
+        new_id = ret["data"]["id"]
+        deleted = ret["data"]["attributes"]["deleted-at"] is not None
+        recalc(
+            "product_class",
+            vendor_id,
             ref_price_class_id,
             new_price_class_id,
             effective_date,
-            sig,
-            update_only,
+            new_id,
+            deleted,
         )
-    return ret
+        return ret
 
 
 @vendor_product_class_discounts.patch(
@@ -125,22 +120,16 @@ async def mod_vendor_product_class_discount(
     except Exception as e:
         raise e
     else:
-        match VendorId(vendor_id):
-            case VendorId.ADP:
-                sig = ROUND_TO_DOLLAR
-                update_only = True
-            case _:
-                sig = ROUND_TO_CENT
-                update_only = False
-        if ret["data"]["attributes"]["deleted-at"] is None:
-            calc_customer_pricing_from_product_class_discount(
-                vendor_product_class_discount_id,
-                ref_price_class_id,
-                new_price_class_id,
-                effective_date,
-                sig,
-                update_only,
-            )
+        deleted = ret["data"]["attributes"]["deleted-at"] is not None
+        recalc(
+            "product_class",
+            vendor_id,
+            ref_price_class_id,
+            new_price_class_id,
+            effective_date,
+            vendor_product_class_discount_id,
+            deleted,
+        )
         return ret
 
 
@@ -153,7 +142,7 @@ async def del_vendor_product_class_discount(
     session: NewSession,
     vendor_product_class_discount_id: int,
     vendor_customer_id: int,
-    vendor_id: str,
+    vendor_id: VendorId,
 ) -> None:
     return (
         auth.VendorCustomerOperations(
