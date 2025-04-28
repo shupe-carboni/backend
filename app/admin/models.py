@@ -188,6 +188,7 @@ PriceTemplateSheetColumns = {
     ],
     PriceTemplateSheet.PRODUCT_DISCOUNTS: [
         PriceTemplateSheetColumn.PART_NUMBER,
+        PriceTemplateSheetColumn.PRICING_CATEGORY,
         PriceTemplateSheetColumn.DISCOUNT,
     ],
 }
@@ -220,20 +221,6 @@ class CustomerPrice(BaseModel):
             AND vendor_id = :vid
         """
         params = dict(pid=self.part_number, vid=vendor_id.value)
-        return DB_V2.execute(session, sql, params).scalar_one()
-
-
-class CustomerPriceCategory(BaseModel):
-    category: str
-
-    def get_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
-        sql = """
-            SELECT id
-            FROM vendor_pricing_classes
-            WHERE vendor_id = :vid
-            AND name = :cat
-        """
-        params = dict(cat=self.category, vid=vendor_id.value)
         return DB_V2.execute(session, sql, params).scalar_one()
 
 
