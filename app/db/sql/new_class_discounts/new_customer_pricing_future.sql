@@ -42,6 +42,47 @@ WHERE e.pricing_class_id = :ref_pricing_class_id
     AND a.id = :product_class_discount_id
     AND e.deleted_at IS NULL
     AND d.deleted_at IS NULL
+    AND :discount_type = "product_class"
+    AND g.use_as_override
+    AND NOT EXISTS (
+        SELECT 1
+        FROM vendor_pricing_by_customer_future ref_future
+        WHERE ref_future.price_id = g.id
+    )
+
+UNION ALL
+
+SELECT 
+    g.id,
+    CASE
+        WHEN a.discount < 1 THEN CAST((
+            ROUND((future.price::float * (1-a.discount))/:sig)*:sig
+        ) AS INT)
+        ELSE CAST((
+            ROUND((future.price::float * (1-a.discount/100))/:sig)*:sig
+        ) AS INT)
+    END as price,
+    future.effective_date as effective_date
+FROM vendor_product_discounts AS a
+JOIN vendor_products AS d
+    ON d.id = c.product_id
+-- map pricing by class
+JOIN vendor_pricing_by_class AS e
+    ON e.product_id = d.id
+-- map future ref class price
+JOIN vendor_pricing_by_class_future as future
+    ON future.price_id = e.id
+-- map customer
+JOIN vendor_customers AS f
+    ON f.id = a.vendor_customer_id
+JOIN vendor_pricing_by_customer AS g 
+    ON g.vendor_customer_id = f.id 
+    AND g.product_id = d.id
+WHERE e.pricing_class_id = :ref_pricing_class_id
+    AND a.id = :product_class_discount_id
+    AND e.deleted_at IS NULL
+    AND d.deleted_at IS NULL
+    AND :discount_type = "product"
     AND g.use_as_override
     AND NOT EXISTS (
         SELECT 1
