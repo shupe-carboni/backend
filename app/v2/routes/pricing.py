@@ -22,6 +22,10 @@ from app.v2.routes.vendor_pricing_by_customer import (
     mod_vendor_pricing_by_customer,
     new_vendor_pricing_by_customer,
 )
+from app.v2.routes.vendor_product_discounts import (
+    mod_vendor_product_discount,
+    new_vendor_product_discount,
+)
 
 # TODO complete and import routes for product discounts
 from app.admin.models import (
@@ -33,7 +37,6 @@ from app.admin.models import (
     ProductCategoryDiscount as ProductCategoryDiscountDTO,
     ProductDiscount as ProductDiscountDTO,
     CustomerPrice as CustomerPriceDTO,
-    CustomerPriceCategory as CustomerPriceCategoryDTO,
 )
 from app.downloads import (
     XLSXFileResponse,
@@ -338,7 +341,7 @@ def create_vendor_product_discount_body(
         label_class_id = record_pd.get_label_price_category_id(session, vendor_id)
         product_id = record_pd.get_product_id(session, vendor_id)
         data = NewVendorProductDiscountRObj(
-            type="vendor-product-class-discounts",
+            type="vendor-product-discounts",
             attributes=VendorProductDiscountAttrs(
                 discount=record_pd.discount,
                 effective_date=effective_date,
@@ -464,7 +467,7 @@ async def upsert_vendor_customer_pricing_from_file(
     except BadZipFile:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "The uploaded file is not loading correctly." "Expecting an Excel file.",
+            "The uploaded file is not loading correctly. Expecting an Excel file.",
         )
     MetaObj: TypeAlias = dict[str, list[dict[str, str]]]
     errors: MetaObj = {}
@@ -476,7 +479,7 @@ async def upsert_vendor_customer_pricing_from_file(
         PriceTemplateSheet.PRODUCT_DISCOUNTS,
         PriceTemplateSheet.CUSTOMER_PRICING,
     ]
-    parsed_data_ordered = {k: parsed_data[k] for k in run_order}
+    parsed_data_ordered = {k: parsed_data[k] for k in run_order if k in parsed_data}
     for record_type, records in parsed_data_ordered.items():
         # TODO the logic under each case is very similar
         # but I'm not sure if trying to abstract it is a good idea or not
@@ -681,7 +684,7 @@ async def upsert_vendor_customer_pricing_from_file(
                         new_product_discount, conflict = await perform_insert(
                             token,
                             session,
-                            ...,
+                            new_vendor_product_discount,
                             NewVendorProductDiscount(data=product_discount_data),
                             VendorProductDiscountResourceResp,
                         )
@@ -692,7 +695,7 @@ async def upsert_vendor_customer_pricing_from_file(
                                 FROM vendor_product_discounts
                                 WHERE vendor_customer_id = :vc_id
                                 AND product_id = :p_id
-                                AND base_price_class = :bpc_id;
+                                AND base_price_class = :bpc_id
                                 AND label_price_class = :lpc_id;
                             """
                             rels = product_discount_data.relationships
@@ -702,7 +705,7 @@ async def upsert_vendor_customer_pricing_from_file(
                                 bpc_id=rels.base_price_classes.data[0].id,
                                 lpc_id=rels.label_price_classes.data[0].id,
                             )
-                            mod_obj = VendorProductClassDiscountRObj(
+                            mod_obj = ModVendorProductDiscountRObj(
                                 id=0,
                                 type=product_discount_data.type,
                                 attributes=product_discount_data.attributes,
@@ -711,7 +714,7 @@ async def upsert_vendor_customer_pricing_from_file(
                             updated_record, error = await fallback_update(
                                 token,
                                 session,
-                                ...,
+                                mod_vendor_product_discount,
                                 ModVendorProductDiscount(data=mod_obj),
                                 VendorProductDiscountResourceResp,
                                 sql,
@@ -737,7 +740,7 @@ async def upsert_vendor_customer_pricing_from_file(
                                 }
                             )
                     except Exception as e:
-                        logger.error(f"Error establishing customer price: {e}")
+                        logger.error(f"Error establishing product discount: {e}")
                         errors[record_type].append(
                             {"record": record_pd.model_dump(), "error": e}
                         )
