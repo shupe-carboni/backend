@@ -1,19 +1,27 @@
+from datetime import datetime
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
+from sqlalchemy_jsonapi.errors import ValidationError
 from app import auth
 from app.db import DB_V2, Session
 from app.jsonapi.core_models import convert_query
+from app.admin.models import VendorId
+from app.admin.price_updates.price_update_handlers import recalc
 from app.v2.models import (
     VendorProductDiscountCollectionResp,
     VendorProductDiscountResourceResp,
     VendorProductDiscountQuery,
     VendorProductDiscountQueryJSONAPI,
+    NewVendorProductDiscount,
 )
 from app.jsonapi.sqla_models import VendorProductDiscount
 
 PARENT_PREFIX = "/vendors/v2"
 VENDOR_PRODUCT_DISCOUNTS = VendorProductDiscount.__jsonapi_type_override__
+
+ROUND_TO_DOLLAR = 100
+ROUND_TO_CENT = 1
 
 vendor_product_discounts = APIRouter(prefix=f"/{VENDOR_PRODUCT_DISCOUNTS}", tags=["v2"])
 
@@ -259,7 +267,51 @@ async def vendor_product_discount_relationships_label_price_classes(
 
 from app.v2.models import ModVendorProductDiscount
 
-## TODO make a POST endpoint
+
+@vendor_product_discounts.post(
+    "",
+    response_model=VendorProductDiscountResourceResp,
+    response_model_exclude_none=True,
+    tags=["jsonapi"],
+)
+async def new_vendor_product_discount(
+    token: Token,
+    session: NewSession,
+    new_data: NewVendorProductDiscount,
+) -> VendorProductDiscountResourceResp:
+    vendor_id = new_data.data.relationships.vendors.data[0].id
+    ref_price_class_id = new_data.data.relationships.base_price_classes.data[0].id
+    new_price_class_id = new_data.data.relationships.label_price_classes.data[0].id
+    effective_date = new_data.data.attributes.effective_date
+    try:
+        ret = (
+            auth.VendorCustomerOperations(
+                token, VendorProductDiscount, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .post(
+                session=session,
+                data=new_data.model_dump(exclude_none=True, by_alias=True),
+                primary_id=new_data.data.relationships.vendor_customers.data[0].id,
+            )
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+    except Exception as e:
+        raise e
+    else:
+        recalc(
+            "product",
+            vendor_id,
+            ref_price_class_id,
+            new_price_class_id,
+            effective_date,
+            ret["data"]["id"],
+            ret["data"]["attributes"]["deleted-at"] is not None,
+        )
+        return ret
 
 
 @vendor_product_discounts.patch(
@@ -275,20 +327,37 @@ async def mod_vendor_product_discount(
     mod_data: ModVendorProductDiscount,
 ) -> VendorProductDiscountResourceResp:
     vendor_id = mod_data.data.relationships.vendors.data[0].id
-    return (
-        auth.VendorCustomerOperations(
-            token, VendorProductDiscount, PARENT_PREFIX, vendor_id=vendor_id
+    ref_price_class_id = mod_data.data.relationships.base_price_classes.data[0].id
+    new_price_class_id = mod_data.data.relationships.label_price_classes.data[0].id
+    effective_date = mod_data.data.attributes.effective_date
+    try:
+        ret = (
+            auth.VendorCustomerOperations(
+                token, VendorProductDiscount, PARENT_PREFIX, vendor_id=vendor_id
+            )
+            .allow_admin()
+            .allow_sca()
+            .allow_dev()
+            .patch(
+                session=session,
+                data=mod_data.model_dump(exclude_unset=True, by_alias=True),
+                obj_id=vendor_product_discount_id,
+                primary_id=mod_data.data.relationships.vendor_customers.data[0].id,
+            )
         )
-        .allow_admin()
-        .allow_sca()
-        .allow_dev()
-        .patch(
-            session=session,
-            data=mod_data.model_dump(exclude_unset=True, by_alias=True),
-            obj_id=vendor_product_discount_id,
-            primary_id=mod_data.data.relationships.vendor_customers.data[0].id,
+    except Exception as e:
+        raise e
+    else:
+        recalc(
+            "product",
+            vendor_id,
+            ref_price_class_id,
+            new_price_class_id,
+            effective_date,
+            ret["data"]["id"],
+            ret["data"]["attributes"]["deleted-at"] is not None,
         )
-    )
+        return ret
 
 
 @vendor_product_discounts.delete(
