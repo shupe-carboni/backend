@@ -51,6 +51,12 @@ WHERE e.pricing_class_id = :ref_pricing_class_id
             AND ref_vpc.product_id = d.id
             AND ref_vpc.pricing_class_id = :new_price_class_id
     )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM vendor_product_discounts product_discounts
+        WHERE product_discounts.product_id = d.id
+        AND product_discounts.vendor_customer_id = f.id
+    )
 
 UNION ALL
 

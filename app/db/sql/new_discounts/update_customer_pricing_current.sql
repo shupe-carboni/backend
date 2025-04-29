@@ -40,6 +40,13 @@ FROM (
         AND g.use_as_override
         AND g.deleted_at IS NULL
         AND :discount_type = 'product_class'
+        -- prefer to keep product priced at a product discount alone
+        AND NOT EXISTS (
+            SELECT 1
+            FROM vendor_product_discounts product_discounts
+            WHERE product_discounts.product_id = d.id
+            AND product_discounts.vendor_customer_id = f.id
+        )
 
     UNION ALL
 
