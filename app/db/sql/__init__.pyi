@@ -17,10 +17,6 @@ class Queries(SimpleNamespace):
     class_pricing_update: str
     customer_product_discount_update: str
     rollback_price_increase: str
-    update_customer_pricing_future: str
-    new_customer_pricing_current: str
-    new_customer_pricing_future: str
-    update_customer_pricing_current: str
     product_series_pricing_with_override_dynamic: str
     product_series_pricing_reach_into_future: str
     glasfloss_standard_filter: str
@@ -36,6 +32,10 @@ class Queries(SimpleNamespace):
     get_product_discount_current: str
     get_product_discount_future: str
     get_class_discount_current: str
+    update_customer_pricing_future: str
+    new_customer_pricing_current: str
+    new_customer_pricing_future: str
+    update_customer_pricing_current: str
     adp_parts_establish_future: str
     adp_parts_insert_new_product: str
     adp_parts_new_product_pricing: str
