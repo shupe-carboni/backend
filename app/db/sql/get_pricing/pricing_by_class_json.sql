@@ -47,12 +47,18 @@ WITH product_attrs_agg AS (
             'name', vendor_pricing_classes.name
         )::jsonb as category,
         product_details.product,
+        -- allow optional masking/override behavior when multiple price classes are 
+        -- assigned to a customer
+        -- if priority values match, both records return
+        DENSE_RANK() OVER (
+            PARTITION BY vpc.product_id
+            ORDER BY vendor_pricing_classes.priority DESC
+        ) as price_rank,
         vpc.price,
         vpc.effective_date
     FROM vendor_pricing_by_class vpc
-    LEFT JOIN vendor_pricing_classes
+    JOIN vendor_pricing_classes
         ON vendor_pricing_classes.id = vpc.pricing_class_id
-        AND vendor_pricing_classes.vendor_id = :vendor_id
     LEFT JOIN product_details
         ON product_details.product_id = vpc.product_id
     WHERE EXISTS (
@@ -65,6 +71,7 @@ WITH product_attrs_agg AS (
             AND a.vendor_id = :vendor_id
             AND b.deleted_at IS NULL
     )
+    AND vendor_pricing_classes.vendor_id = :vendor_id
     AND vpc.deleted_at IS NULL
 ), with_future_price AS (
     SELECT
@@ -83,6 +90,7 @@ WITH product_attrs_agg AS (
         FROM formatted_pricing
         LEFT JOIN vendor_pricing_by_class_future as future
             ON future.price_id = formatted_pricing.id
+        WHERE formatted_pricing.price_rank = 1
 )
 SELECT 
     with_future_price.*,
