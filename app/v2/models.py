@@ -858,6 +858,7 @@ class VendorPricingClassAttrs(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     name: NullableStr = Field(default=None, alias="name")
     deleted_at: NullableDateTime = Field(default=None, alias="deleted-at")
+    priority: int = Field(default=0, ge=0, alias="priority")
 
 
 class VendorPricingClassRels(BaseModel):
@@ -959,15 +960,10 @@ class VendorPricingClassQueryJSONAPI(
     page_size: NullableInt = Field(default=None, alias="page[size]")
 
 
-class ModVendorPricingClassAttrs(BaseModel):
-    name: NullableStr = Field(default=None, alias="name")
-    deleted_at: NullableDateTime = Field(default=None, alias="deleted-at")
-
-
 class ModVendorPricingClassRObj(BaseModel):
     id: int
     type: str = VendorPricingClass.__jsonapi_type_override__
-    attributes: ModVendorPricingClassAttrs
+    attributes: VendorPricingClassAttrs
     relationships: VendorPricingClassRels
 
 

@@ -955,13 +955,14 @@ class VendorProductDiscount(Base):
 class VendorPricingClass(Base):
     __tablename__ = "vendor_pricing_classes"
     __jsonapi_type_override__ = __tablename__.replace("_", "-")
-    __modifiable_fields__ = ["name", "deleted_at"]
+    __modifiable_fields__ = ["name", "priority", "deleted_at"]
     __primary_ref__ = "vendors"
 
     id = Column(Integer, primary_key=True)
     vendor_id = Column(Integer, ForeignKey("vendors.id"))
     name = Column(String)
     deleted_at = Column(DateTime)
+    priority = Column(Integer, nullable=False, default=0)
 
     # relationships
     vendors = relationship("Vendor", back_populates=__tablename__)
