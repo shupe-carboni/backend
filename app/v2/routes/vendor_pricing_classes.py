@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.routing import APIRouter
 from app import auth
-from app.db import SCA_DB, Session
+from app.db import DB_V2, Session
 from app.v2.models import (
     VendorPricingClassResourceResp,
     ModVendorPricingClass,
@@ -16,7 +16,7 @@ VENDOR_PRICING_CLASSES = VendorPricingClass.__jsonapi_type_override__
 vendor_pricing_classes = APIRouter(prefix=f"/{VENDOR_PRICING_CLASSES}", tags=["v2"])
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 
 @vendor_pricing_classes.post(
