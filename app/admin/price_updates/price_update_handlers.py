@@ -452,9 +452,9 @@ def _adp_master_parsing_and_customer_price_updates(
                 df_records = df.to_dict(orient="records")
                 customers = df["customer"].str.strip().unique()
                 customer_records = [{"customer": c} for c in customers.tolist()]
-                # ADPs discounts are provided in 0.01-base
-                # ADPs discounts are stored in 0.01-base
-                # df["discount"] /= 100
+                # ADPs discounts are provided in this format: 25%
+                # ADPs discounts are stored in this format: 0.25
+                df["discount"] /= 100
                 setup_mg_update = SQL.queries.adp_discounts_temp_table
                 populate_mg_update = SQL.queries.adp_discounts_populate_temp
                 update_discounts = SQL.queries.adp_discounts_establish_future
