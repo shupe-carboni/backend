@@ -29,7 +29,7 @@ def adp_parts_sheet_parser(
     populate_parts_temp = SQL.adp_parts_populate_temp
     insert_new_parts = SQL.adp_parts_insert_new_product
     # expecting returned ids from prior insert for next queries
-    define_pkg_qtys_for_new_parts = SQL.adp_parts_setup_attrs_new_product
+    define_pkg_qtys_for_new_parts = SQL.adp_parts_insert_setup_attrs_new_product
     insert_new_prices = SQL.adp_parts_new_product_pricing
     establish_future_pricing = SQL.adp_parts_establish_future
     eff_date_param = dict(ed=effective_date)
