@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     PriceByCategoryAndKey,
     NoBasePrice,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -48,7 +48,7 @@ class CP(ModelSeries):
         self.cased = self.attributes.get("cased") == "C"
         dims_sql = """
             SELECT weight, width, depth, height
-            FROM cp_dims
+            FROM adp_cp_dims
             WHERE series = :series
             AND motor = :motor
             AND ton = :ton
@@ -61,9 +61,7 @@ class CP(ModelSeries):
             cased=self.cased,
         )
         specs = (
-            ADP_DB.execute(session=session, sql=dims_sql, params=params)
-            .mappings()
-            .one()
+            DB_V2.execute(session=session, sql=dims_sql, params=params).mappings().one()
         )
         self.width = specs["width"]
         self.depth = specs["depth"]

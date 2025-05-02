@@ -7,7 +7,7 @@ from app.adp.adp_models.model_series import (
     PriceByCategoryAndKey,
     NoBasePrice,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 logger = logging.getLogger("uvicorn.info")
@@ -74,12 +74,12 @@ class HE(ModelSeries):
         self.height = height + 0.5 if self.depth != 19.5 else height
         pallet_sql = f"""
             SELECT "{self.height}"
-            FROM he_pallet_qty
+            FROM adp_he_pallet_qty
             WHERE width = :width;
         """
         pallet_params = dict(width=self.width)
         try:
-            self.pallet_qty = ADP_DB.execute(
+            self.pallet_qty = DB_V2.execute(
                 session=session, sql=pallet_sql, params=pallet_params
             ).scalar_one()
         except:
@@ -89,7 +89,7 @@ class HE(ModelSeries):
         ]
         weights_sql = f"""
             SELECT "{material_orientation_col_mask}"
-            FROM he_weights
+            FROM adp_he_weights
             WHERE "SC_0" LIKE :mat
             AND "SC_1" = :scode;
         """
@@ -97,7 +97,7 @@ class HE(ModelSeries):
             mat=f"%{self.attributes['mat']}%", scode=self.attributes["scode"]
         )
         try:
-            self.weight = ADP_DB.execute(
+            self.weight = DB_V2.execute(
                 session=session, sql=weights_sql, params=weight_params
             ).scalar_one()
         except:
@@ -285,12 +285,12 @@ class HE(ModelSeries):
         pricing_, adders_ = self.load_pricing()
         core_configs_sql = """
             SELECT depth, hand
-            FROM he_core_configs
+            FROM adp_he_core_configs
             WHERE series = :series;
         """
         core_configs_params = dict(series=paint)
         core_configs = (
-            ADP_DB.execute(
+            DB_V2.execute(
                 session=self.session, sql=core_configs_sql, params=core_configs_params
             )
             .mappings()

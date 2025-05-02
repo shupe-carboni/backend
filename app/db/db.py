@@ -174,9 +174,6 @@ class Database:
         finally:
             session.close()
 
-    def full_table_name(self, table_name: str) -> str:
-        return f"""{self.PREFIX}{table_name.replace('-', '_')}"""
-
     def upload_df(
         self,
         session: Session,
@@ -195,6 +192,22 @@ class Database:
                     ADD COLUMN id SERIAL PRIMARY KEY;
             """
             session.execute(text(sql))
+
+    def full_table_name(self, table_name: str) -> str:
+        return table_name
+
+    def execute(
+        self,
+        session: Session,
+        sql: str,
+        params: Iterable[dict | str | int | None] = None,
+        **kwargs,
+    ) -> Result:
+        try:
+            start_ = time()
+            return session.execute(text(sql), params=params, **kwargs)
+        finally:
+            logger.info(f"Query Time: {time()-start_}s")
 
     def load_df(
         self,
@@ -218,50 +231,9 @@ class Database:
         sql += ";"
         return read_sql(sql, con=session.get_bind(), params=params)
 
-    def execute(
-        self,
-        session: Session,
-        sql: str,
-        params: Iterable[dict | str | int | None] = None,
-    ) -> Result:
-        ## add prefix to custom query table_name
-        substitution = lambda match: match.group(0).replace(
-            match.group(1), f"{self.PREFIX}{match.group(1)}"
-        )
-        sql = re.sub(
-            r"(?:FROM|UPDATE|INSERT INTO|TABLE)\s+([^\s,;]+)",
-            substitution,
-            sql,
-            count=1,
-        )
-        return session.execute(text(sql), params=params)
-
     def test(self, session: Session) -> str:
         with session.begin():
             return session.execute(text("SELECT version();")).fetchone()[0]
 
 
-class DatabaseV2(Database):
-    """Just use the given table names, no obfuscation of prefixs and hot-swapping
-    the table name."""
-
-    def full_table_name(self, table_name: str) -> str:
-        return table_name
-
-    def execute(
-        self,
-        session: Session,
-        sql: str,
-        params: Iterable[dict | str | int | None] = None,
-        **kwargs,
-    ) -> Result:
-        try:
-            start_ = time()
-            return session.execute(text(sql), params=params, **kwargs)
-        finally:
-            logger.info(f"Query Time: {time()-start_}s")
-
-
-ADP_DB = Database("adp")
-SCA_DB = Database("sca")
-DB_V2 = DatabaseV2()
+DB_V2 = Database()

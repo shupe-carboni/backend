@@ -16,7 +16,7 @@ from app.customers.locations.models import (
     NewLocation,
     ModLocation,
 )
-from app.db.db import SCA_DB
+from app.db.db import DB_V2
 from app.jsonapi.sqla_models import SCACustomerLocation
 from app.jsonapi.core_models import convert_query
 
@@ -26,7 +26,7 @@ customer_locations = APIRouter(prefix=f"/{API_TYPE}", tags=["customer-locations"
 logger = logging.getLogger("uvicorn.info")
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 converter = convert_query(LocationQueryJSONAPI)
 
 

@@ -1,7 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields
 from app.adp.utils.validator import Validator, ParsingModes
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 
 
 class CF(ModelSeries):
@@ -30,11 +30,11 @@ class CF(ModelSeries):
 
         model_mapping_sql = """
             SELECT model
-            FROM carrier_cf_label_mapping
+            FROM adp_carrier_cf_label_mapping
             WHERE model_alias = :alias;
         """
         params = dict(alias=model_alias)
-        actual_model = ADP_DB.execute(
+        actual_model = DB_V2.execute(
             session=session, sql=model_mapping_sql, params=params
         ).scalar_one()
         strat = (

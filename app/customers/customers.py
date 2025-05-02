@@ -21,7 +21,7 @@ from app.customers.models import (
     NewCMMSSNSCustomer,
     CMMSSNSCustomerResp,
 )
-from app.db.db import SCA_DB, S3, File
+from app.db.db import DB_V2, S3, File
 from app.jsonapi.sqla_models import SCACustomer
 from app.jsonapi.core_models import convert_query
 from app.cmmssns import CMMSSNSToken, CMMSSNS_URL
@@ -31,7 +31,7 @@ customers = APIRouter(prefix=f"/{API_TYPE}", tags=["customers"])
 logger = logging.getLogger("uvicorn.info")
 
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(SCA_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 converter = convert_query(CustomerQueryJSONAPI)
 
 
@@ -249,7 +249,7 @@ async def del_customer(session: NewSession, token: Token, customer_id: int) -> N
             WHERE id = :customer_id;
         """
         try:
-            SCA_DB.execute(session, del_customer, {"customer_id": customer_id})
+            DB_V2.execute(session, del_customer, {"customer_id": customer_id})
         except IntegrityError as e:
             session.rollback()
             logger.warning("Delete unsuccessful due to an integrity error.")

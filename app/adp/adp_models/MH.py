@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -26,11 +26,11 @@ class MH(ModelSeries):
         super().__init__(session, re_match, db, *args, **kwargs)
         spec_sql = """
             SELECT "HEIGHT", "WEIGHT", "PALLET_QTY"
-            FROM mh_pallet_weight_height
+            FROM adp_mh_pallet_weight_height
             WHERE "SC_1" = :slab;
         """
         specs = (
-            ADP_DB.execute(
+            DB_V2.execute(
                 session=self.session,
                 sql=spec_sql,
                 params=dict(slab=self.attributes["scode"]),

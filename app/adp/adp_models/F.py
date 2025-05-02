@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -32,12 +32,12 @@ class F(ModelSeries):
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT height, depth, width, weight
-            FROM f_dims
+            FROM adp_f_dims
             WHERE tonnage = :tonnage;
         """
         params = dict(tonnage=self.tonnage)
         specs = (
-            ADP_DB.execute(session=session, sql=specs_sql, params=params)
+            DB_V2.execute(session=session, sql=specs_sql, params=params)
             .mappings()
             .one()
         )

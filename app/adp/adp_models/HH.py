@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -31,12 +31,12 @@ class HH(ModelSeries):
         super().__init__(session, re_match, db, *args, **kwargs)
         specs_sql = """
             SELECT pallet_qty, "WEIGHT"
-            FROM hh_weights_pallet
+            FROM adp_hh_weights_pallet
             WHERE "SC_1" = :scode;
         """
         params = dict(scode=int(self.attributes["scode"]))
         specs = (
-            ADP_DB.execute(session=self.session, sql=specs_sql, params=params)
+            DB_V2.execute(session=self.session, sql=specs_sql, params=params)
             .mappings()
             .one()
         )

@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -26,13 +26,13 @@ class SC(ModelSeries):
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT cased, width, depth, height, weight, pallet_qty
-            FROM sc_all_features
+            FROM adp_sc_all_features
             WHERE ton = :ton
             AND :model ~ regex;
         """
         params = dict(ton=self.tonnage / 12, model=str(self))
         specs = (
-            ADP_DB.execute(session=session, sql=specs_sql, params=params)
+            DB_V2.execute(session=session, sql=specs_sql, params=params)
             .mappings()
             .one()
         )

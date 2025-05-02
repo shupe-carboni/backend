@@ -1,6 +1,6 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, PriceByCategoryAndKey
-from app.db import ADP_DB, Session, Database, CACHE
+from app.db import DB_V2, Session, Database, CACHE
 from app.db.sql import queries
 
 
@@ -43,11 +43,11 @@ class B(ModelSeries):
         if not specs:
             dims_sql = """
                 SELECT weight, height, depth, width
-                FROM b_dims
+                FROM adp_b_dims
                 WHERE tonnage = :tonnage;
             """
             specs = (
-                ADP_DB.execute(
+                DB_V2.execute(
                     session=session,
                     sql=dims_sql,
                     params={"tonnage": int(self.attributes["ton"])},

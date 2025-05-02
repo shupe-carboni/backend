@@ -14,7 +14,7 @@ from numpy import nan
 from fastapi.routing import APIRouter
 
 from app import auth
-from app.db import Session, ADP_DB
+from app.db import Session, DB_V2
 from app.adp.models import Rating, Ratings
 from app.adp.extraction.ratings import (
     update_ratings_reference,
@@ -25,7 +25,7 @@ from app.adp.extraction.ratings import (
 ratings_admin = APIRouter(prefix="/admin/adp", tags=["adp", "admin", "ratings"])
 logger = logging.getLogger("uvicorn.info")
 Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
-NewSession = Annotated[Session, Depends(ADP_DB.get_db)]
+NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -34,7 +34,6 @@ executor = ThreadPoolExecutor(max_workers=2)
 def update_ratings_ref(
     token: Token,
     session: NewSession,
-    # bg: BackgroundTasks
 ):
     """Update the rating reference table in the background
     Due to the size of the table being downloaded, this
@@ -45,7 +44,6 @@ def update_ratings_ref(
             "Sending to background"
         )
         executor.submit(update_ratings_reference, session=session)
-        # bg.add_task(update_ratings_reference, session=session)
         return Response(status_code=status.HTTP_202_ACCEPTED)
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -57,7 +55,7 @@ def update_unregistered_ratings(token: Token, session: NewSession, bg: Backgroun
     that haven't been found in the ratings reference"""
     if token.permissions >= auth.Permissions.sca_admin:
         logger.info(
-            "Update Request Received for ADP Program Ratings. " "Sending to background"
+            "Update Request Received for ADP Program Ratings. Sending to background"
         )
         bg.add_task(update_all_unregistered_program_ratings, session=session)
         return Response(status_code=status.HTTP_202_ACCEPTED)

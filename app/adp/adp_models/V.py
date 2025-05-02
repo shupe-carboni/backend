@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -30,12 +30,12 @@ class V(ModelSeries):
         weight_column = self.material_weight[self.attributes["mat"]]
         specs_sql = f"""
             SELECT length, pallet_qty, "{weight_column}"
-            FROM v_or_hd_len_pallet_weights
+            FROM adp_v_or_hd_len_pallet_weights
             WHERE "SC_1" = :scode;
         """
         params = dict(scode=self.attributes["scode"])
         specs = (
-            ADP_DB.execute(session=session, sql=specs_sql, params=params)
+            DB_V2.execute(session=session, sql=specs_sql, params=params)
             .mappings()
             .one()
         )

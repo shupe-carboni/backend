@@ -5,7 +5,7 @@ from app.adp.adp_models.model_series import (
     Cabinet,
     PriceByCategoryAndKey,
 )
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 from app.db.sql import queries
 
 
@@ -33,11 +33,11 @@ class HD(ModelSeries):
         specs_sql = f"""
             SELECT length, pallet_qty, "{self.material_weight[
                 self.attributes['mat']]}"
-            FROM v_or_hd_len_pallet_weights
+            FROM adp_v_or_hd_len_pallet_weights
             WHERE "SC_1" = :scode;
         """
         specs = (
-            ADP_DB.execute(
+            DB_V2.execute(
                 session=session,
                 sql=specs_sql,
                 params=dict(scode=int(self.attributes["scode"])),

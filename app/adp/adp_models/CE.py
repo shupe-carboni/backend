@@ -1,7 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, Cabinet
 from app.adp.utils.validator import Validator, ParsingModes
-from app.db import ADP_DB, Session, Database
+from app.db import DB_V2, Session, Database
 
 
 class CE(ModelSeries):
@@ -31,14 +31,12 @@ class CE(ModelSeries):
         dims_sql = """
             SELECT adp_model, width, depth, height, length, weight,
                 pallet_qty
-            FROM ce_dims
+            FROM adp_ce_dims
             WHERE model = :model ;
         """
         params = dict(model=str(self))
         specs = (
-            ADP_DB.execute(session=session, sql=dims_sql, params=params)
-            .mappings()
-            .one()
+            DB_V2.execute(session=session, sql=dims_sql, params=params).mappings().one()
         )
         specs = {k: v for k, v in specs.items() if v}
         self.configuration = self.ce_configurations[self.attributes["config"]]
