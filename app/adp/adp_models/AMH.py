@@ -55,14 +55,22 @@ class AMH(ModelSeries):
         value = "Manufactured Home Electric Furnace"
         match int(self.attributes["voltage"]):
             case 1:
-                value += "- 120 V"
+                value += " - 120 V"
             case 2:
-                value += "- 208/240 V"
+                value += " - 208/240 V"
         return value
 
     def calc_zero_disc_price(self) -> int:
+        model = str(self)
+        params = dict(
+            key_mode=self.KeyMode.EXACT.value,
+            key_param=[model],
+            series="AMH",
+            vendor_id="adp",
+            customer_id=self.customer_id,
+        )
         sql = self.pricing_sql
-        price = self.db.execute(self.session, sql, dict(model=str(self))).one_or_none()
+        price = self.db.execute(self.session, sql, params).one_or_none()
         if not price:
             raise NoBasePrice(
                 "No record found in the price table with this model number."
