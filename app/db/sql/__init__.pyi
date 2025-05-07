@@ -36,6 +36,7 @@ class Queries(SimpleNamespace):
     new_customer_pricing_current: str
     new_customer_pricing_future: str
     update_customer_pricing_current: str
+    adp_parts_model_lookup_price: str
     adp_parts_establish_future: str
     adp_parts_insert_new_product: str
     adp_parts_new_product_pricing: str

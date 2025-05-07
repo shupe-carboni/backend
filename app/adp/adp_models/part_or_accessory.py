@@ -1,6 +1,7 @@
 import re
 from app.adp.adp_models.model_series import ModelSeries, Fields, NoBasePrice
 from app.db import Session
+from app.db.sql import queries
 
 
 class PartOrAccessory(ModelSeries):
@@ -26,93 +27,29 @@ class PartOrAccessory(ModelSeries):
     def category(self) -> str:
         return "Parts & Accessories"
 
-    def calc_zero_disc_price(self) -> tuple[int, int]:
-        if self.use_future:
-            sql_std = """
-                SELECT 
-                    COALESCE(future.price, a.price) as price,
-                    COALESCE(future.effective_date, a.effective_date) as effective_date
-                FROM vendor_pricing_by_class a
-                LEFT JOIN vendor_pricing_by_class_future future
-                    ON a.id = future.price_id
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.id = product_id
-                    AND b.vendor_product_identifier = :part_number
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = pricing_class_id
-                    AND c.name = 'STANDARD_PARTS'
-                    AND c.vendor_id = 'adp'
-                );
-            """
-            sql_pref = """
-                SELECT 
-                    COALESCE(future.price, a.price) as price,
-                    COALESCE(future.effective_date, a.effective_date) as effective_date
-                FROM vendor_pricing_by_class a
-                LEFT JOIN vendor_pricing_by_class_future future
-                    ON a.id = future.price_id
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.id = product_id
-                    AND b.vendor_product_identifier = :part_number
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = pricing_class_id
-                    AND c.name = 'PREFERRED_PARTS'
-                    AND c.vendor_id = 'adp'
-                );
-            """
+    def calc_zero_disc_price(self) -> tuple[int, int | None]:
+        sql_parts = queries.adp_parts_model_lookup_price
+        params = dict(part_number=self.part_number, use_future=self.use_future)
+        # standard
+        if result := self.db.execute(
+            self.session,
+            sql_parts,
+            params | dict(pricing_class_name="STANDARD_PARTS"),
+        ).one_or_none():
+            price_std, self.eff_date = result
         else:
-            sql_std = """
-                SELECT price, effective_date
-                FROM vendor_pricing_by_class a
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.id = product_id
-                    AND b.vendor_product_identifier = :part_number
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = pricing_class_id
-                    AND c.name = 'STANDARD_PARTS'
-                    AND c.vendor_id = 'adp'
-                );
-            """
-            sql_pref = """
-                SELECT price, effective_date
-                FROM vendor_pricing_by_class a
-                WHERE EXISTS (
-                    SELECT 1
-                    FROM vendor_products b
-                    WHERE b.id = product_id
-                    AND b.vendor_product_identifier = :part_number
-                    AND b.vendor_id = 'adp'
-                ) AND EXISTS (
-                    SELECT 1
-                    FROM vendor_pricing_classes c
-                    WHERE c.id = pricing_class_id
-                    AND c.name = 'PREFERRED_PARTS'
-                    AND c.vendor_id = 'adp'
-                );
-            """
-        price_std, self.eff_date = self.db.execute(
-            self.session, sql_std, dict(part_number=self.part_number)
-        ).one_or_none()
-        price_pref, self.eff_date = self.db.execute(
-            self.session, sql_pref, dict(part_number=self.part_number)
-        ).one_or_none()
-        if not (price_std or price_pref):
             raise NoBasePrice(f"{self.part_number} not found in the pricing table")
+
+        # preferred
+        if result := self.db.execute(
+            self.session,
+            sql_parts,
+            params | dict(pricing_class_name="PREFERRED_PARTS"),
+        ).one_or_none():
+            price_pref, self.eff_date = result
+        else:
+            price_pref = None
+
         return (price_std, price_pref)
 
     def record(self) -> dict:
