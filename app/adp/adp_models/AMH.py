@@ -33,6 +33,10 @@ class AMH(ModelSeries):
         48: 85,
         60: 100,
     }
+    voltage_mapping = {
+        1: "120 V",
+        2: "208/240 V",
+    }
 
     def __init__(
         self, session: Session, re_match: re.Match, db: Session, *args, **kwargs
@@ -49,16 +53,11 @@ class AMH(ModelSeries):
         self.motor = self.motors[self.attributes["motor"]]
         mask = self.mat_grps["series"] == self.__series_name__()
         self.mat_grp = self.mat_grps.loc[mask, "mat_grp"].item()
+        self.voltage = self.voltage_mapping[int(self.attributes["voltage"])]
         self.zero_disc_price = self.calc_zero_disc_price() / 100
 
     def category(self) -> str:
-        value = "Manufactured Home Electric Furnace"
-        match int(self.attributes["voltage"]):
-            case 1:
-                value += " - 120 V"
-            case 2:
-                value += " - 208/240 V"
-        return value
+        return f"Manufactured Home Electric Furnace - {self.voltage}"
 
     def calc_zero_disc_price(self) -> int:
         model = str(self)
@@ -96,6 +95,7 @@ class AMH(ModelSeries):
             Fields.MOTOR.value: self.motor,
             Fields.HEAT.value: self.heat,
             Fields.CFM.value: self.cfm,
+            Fields.VOLTAGE.value: self.voltage,
             Fields.ZERO_DISCOUNT_PRICE.value: self.zero_disc_price,
         }
         model_record.update(values)

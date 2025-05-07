@@ -13,6 +13,7 @@ from app.adp.utils.models import AttrType, ProgramFile
 from app.adp.utils.programs import (
     CoilProgram,
     AirHandlerProgram,
+    MfurnaceProgram,
     CustomerProgram,
     EmptyProgram,
 )
@@ -93,6 +94,36 @@ def build_ah_program(
     ).drop_duplicates()
     program_data = program_data.drop(columns=[temp_heat_num_col])
     return AirHandlerProgram(program_data=program_data, ratings=prog_ratings)
+
+
+def build_furnace_program(
+    program_data: pd.DataFrame, ratings: pd.DataFrame
+) -> MfurnaceProgram:
+    prog_ratings = ratings.drop(columns=[Fields.CUSTOMER_ID.value])
+    if program_data.empty:
+        return MfurnaceProgram(program_data=program_data, ratings=prog_ratings)
+    program_data = program_data.drop(columns=["customer_id"])
+    temp_heat_num_col = "heat_num"
+    program_data[temp_heat_num_col] = (
+        program_data[Fields.HEAT.value]
+        .str.extract(r"(\d+|\d\.\d)\s*kW")
+        .fillna(0)
+        .astype(float)
+        .astype(int)
+    )
+    fill_sort_order_field(program_data)
+    program_data = program_data.sort_values(
+        by=[
+            Fields.SORT_ORDER,
+            Fields.CATEGORY.value,
+            Fields.SERIES.value,
+            Fields.TONNAGE.value,
+            Fields.WIDTH.value,
+            temp_heat_num_col,
+        ]
+    ).drop_duplicates()
+    program_data = program_data.drop(columns=[temp_heat_num_col])
+    return MfurnaceProgram(program_data=program_data, ratings=prog_ratings)
 
 
 def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.DataFrame:
@@ -207,6 +238,7 @@ def add_customer_terms_parts_and_logo_path(
     customer_id: int,
     coil_prog: CoilProgram,
     ah_prog: AirHandlerProgram,
+    furnace_prog: MfurnaceProgram,
     effective_date: datetime | None,
 ) -> CustomerProgram:
 
@@ -289,6 +321,7 @@ def add_customer_terms_parts_and_logo_path(
         customer_name=alias_name,
         coils=coil_prog,
         air_handlers=ah_prog,
+        furnaces=furnace_prog,
         parts=customer_parts,
         terms=terms,
         logo_path=full_logo_path,
@@ -445,13 +478,16 @@ def generate_program(
         coil_prog_table, ah_prog_table, ratings = pull_program_data(
             session, customer_id, effective_date
         )
+        amh_ah_mask = ah_prog_table[Fields.MODEL_NUMBER].str.startswith("AMH")
         coil_prog = build_coil_program(coil_prog_table, ratings)
-        ah_prog = build_ah_program(ah_prog_table, ratings)
+        ah_prog = build_ah_program(ah_prog_table[~amh_ah_mask], ratings)
+        furn_prog = build_furnace_program(ah_prog_table[amh_ah_mask], ratings)
         full_program = add_customer_terms_parts_and_logo_path(
             session=session,
             customer_id=customer_id,
             coil_prog=coil_prog,
             ah_prog=ah_prog,
+            furnace_prog=furn_prog,
             effective_date=effective_date,
         )
         logger.info(f"generating {full_program}")

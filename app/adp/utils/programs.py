@@ -167,6 +167,62 @@ class AirHandlerProgram(Program):
         return data
 
 
+class MfurnaceProgram(AirHandlerProgram):
+
+    def features(self):
+        return [
+            self.model_number,
+            self.pallet_or_min,
+            Fields.WIDTH.value,
+            Fields.DEPTH.value,
+            Fields.HEIGHT.value,
+            Fields.WEIGHT.value,
+            Fields.HEAT.value,
+            Fields.CFM.value,
+            Fields.NET_PRICE.value,
+            Fields.RATED.value,
+            Fields.SERIES.value,
+            Fields.STAGE.value,
+            Fields.PRICE_ID.value,
+        ]
+
+    def category_data(
+        self, category, customer_id: int, session: Session
+    ) -> pd.DataFrame:
+        data = self._data.loc[self._data[Fields.CATEGORY.value] == category, :]
+        ret = (
+            data.dropna(how="all", axis=1)
+            .drop(columns=[Fields.CATEGORY.value])
+            .sort_values(
+                [
+                    Fields.VOLTAGE.value,
+                    Fields.TONNAGE.value,
+                    Fields.WIDTH.value,
+                    Fields.HEIGHT.value,
+                ]
+            )
+        )
+        if Fields.WEIGHT.value not in ret.columns:
+            ret[Fields.WEIGHT.value] = "--"
+
+        if Fields.PRIVATE_LABEL.value in ret.columns:
+            self.model_number = Fields.PRIVATE_LABEL.value
+        else:
+            self.model_number = Fields.MODEL_NUMBER.value
+
+        if Fields.PALLET_QTY.value in ret.columns:
+            self.pallet_or_min = Fields.PALLET_QTY.value
+        else:
+            self.pallet_or_min = Fields.MIN_QTY.value
+
+        features = self.features()
+
+        ret = ret[features].rename(
+            columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
+        )
+        return ret
+
+
 class CustomerProgram:
     def __init__(
         self,
@@ -175,10 +231,11 @@ class CustomerProgram:
         logo_path: str,
         coils: CoilProgram = None,
         air_handlers: AirHandlerProgram = None,
+        furnaces: MfurnaceProgram = None,
         parts: pd.DataFrame = None,
         terms: dict[str, str | dict] = None,
     ) -> None:
-        if not (coils or air_handlers):
+        if not (coils or air_handlers or furnaces):
             raise Exception(
                 "Either a Coil Program or an Air Handler Strategy are required"
             )
@@ -186,7 +243,7 @@ class CustomerProgram:
         self.customer_id = customer_id
         self.customer_name = customer_name
         self.ratings = pd.DataFrame()
-        self.progs: list[Program] = [coils, air_handlers]
+        self.progs: list[Program] = [coils, air_handlers, furnaces]
         self.progs = [prog for prog in self.progs if not prog._data.empty]
         if not self.progs:
             raise EmptyProgram
@@ -287,7 +344,7 @@ class CustomerProgram:
                 prog._data["rated"] = False
 
     def sample_from_program(self, series: str) -> str:
-        series_prog_map: dict[str, CoilProgram | AirHandlerProgram]
+        series_prog_map: dict[str, CoilProgram | AirHandlerProgram | MfurnaceProgram]
         series_prog_map = {
             "S": AirHandlerProgram,
             "F": AirHandlerProgram,
@@ -302,6 +359,7 @@ class CustomerProgram:
             "V": CoilProgram,
             "SC": CoilProgram,
             "CE": CoilProgram,
+            "AMH": MfurnaceProgram,
         }
         for prog in self.progs:
             if not isinstance(prog, series_prog_map.get(series, type(None))):

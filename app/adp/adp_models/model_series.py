@@ -39,6 +39,7 @@ class Fields(StrEnum):
     MIN_QTY = auto()
     CABINET = auto()
     CFM = auto()
+    VOLTAGE = auto()
     LENGTH = auto()
     ZERO_DISCOUNT_PRICE = auto()
     STANDARD_PRICE = auto()
@@ -251,6 +252,7 @@ class ModelSeries:
             Fields.HEAT.value: None,
             Fields.CABINET.value: None,
             Fields.CFM.value: None,
+            Fields.VOLTAGE.value: None,
             Fields.ZERO_DISCOUNT_PRICE.value: None,
             Fields.STANDARD_PRICE.value: None,
             Fields.PREFERRED_PRICE.value: None,

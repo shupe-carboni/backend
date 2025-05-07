@@ -561,8 +561,12 @@ class PriceBook:
         for category, df in category_data.items():
             all_rated = df["rated"].all()
             all_unrated = (~df["rated"]).all()
-            new_category_rated = category + " - Rated"
-            new_category_unrated = category + " - Replacement"
+            if (df[Fields.SERIES.value] == "AMH").all():
+                new_category_rated = category
+                new_category_unrated = category
+            else:
+                new_category_rated = category + " - Rated"
+                new_category_unrated = category + " - Replacement"
             if all_rated:
                 result[new_category_rated] = df
             elif all_unrated:
