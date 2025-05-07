@@ -60,24 +60,34 @@ class Fields(StrEnum):
     SORT_ORDER = auto()
     PRICE_ID = auto()
     EFFECTIVE_DATE = auto()
+    CONFIGURATION = auto()
+    DOOR = auto()
+    ACCESSORY_TYPE = auto()
+    TOP = auto()
 
     def formatted(self):
-        if self.name == "ADP_ALIAS":
-            return self.name.lower()
-        elif self.name == "FLEXCOIL_MODEL":
-            return "A2L Model"
-        elif self.name == "FLEXCOIL_PRICE":
-            return "A2L Price"
-        result = self.name.replace("_", " ").title()
-        if result.startswith("Snp"):
-            result = "SNP" + result[3:]
-        elif result.endswith("Ac Txv"):
-            result = result.replace("Ac Txv", "AC TXV")
-        elif result.endswith("Hp Txv"):
-            result = result.replace("Hp Txv", "HP TXV")
-        elif result.endswith("Field Txv"):
-            result = result.replace("Field Txv", "Field TXV")
-        return result
+        match self:
+            case self.ADP_ALIAS:
+                return self.name.lower()
+            case self.FLEXCOIL_MODEL:
+                return "A2L Model"
+            case self.FLEXCOIL_PRICE:
+                return "A2L Price"
+            case self.SNP_PRICE | self.SNP_DISCOUNT:
+                return "SNP" + result[3:]
+            case self.RATINGS_AC_TXV:
+                result = self.name.replace("_", " ").title()
+                return result.replace("Ac Txv", "AC TXV")
+            case self.RATINGS_HP_TXV:
+                result = self.name.replace("_", " ").title()
+                return result.replace("Hp Txv", "HP TXV")
+            case self.RATINGS_FIELD_TXV:
+                result = self.name.replace("_", " ").title()
+                return result.replace("Field Txv", "Field TXV")
+            case self.CFM:
+                return "CFM"
+            case _:
+                return self.name.replace("_", " ").title()
 
 
 PriceAdderCategory = Literal[
@@ -231,41 +241,8 @@ class ModelSeries:
         pass
 
     def record(self) -> dict[StrEnum, Any]:
-        return {
-            Fields.EFFECTIVE_DATE.value: None,
-            Fields.CATEGORY.value: None,
-            Fields.DESCRIPTION.value: None,
-            Fields.MODEL_NUMBER.value: None,
-            Fields.PRIVATE_LABEL.value: None,
-            Fields.MPG.value: None,
-            Fields.SERIES.value: None,
-            Fields.TONNAGE.value: None,
-            Fields.PALLET_QTY.value: None,
-            Fields.MIN_QTY.value: None,
-            Fields.WIDTH.value: None,
-            Fields.DEPTH.value: None,
-            Fields.HEIGHT.value: None,
-            Fields.LENGTH.value: None,
-            Fields.WEIGHT.value: None,
-            Fields.METERING.value: None,
-            Fields.MOTOR.value: None,
-            Fields.HEAT.value: None,
-            Fields.CABINET.value: None,
-            Fields.CFM.value: None,
-            Fields.VOLTAGE.value: None,
-            Fields.ZERO_DISCOUNT_PRICE.value: None,
-            Fields.STANDARD_PRICE.value: None,
-            Fields.PREFERRED_PRICE.value: None,
-            Fields.MATERIAL_GROUP_DISCOUNT.value: None,
-            Fields.MATERIAL_GROUP_NET_PRICE.value: None,
-            Fields.SNP_DISCOUNT.value: None,
-            Fields.SNP_PRICE.value: None,
-            Fields.NET_PRICE.value: None,
-            Fields.RATINGS_AC_TXV.value: None,
-            Fields.RATINGS_HP_TXV.value: None,
-            Fields.RATINGS_PISTON.value: None,
-            Fields.RATINGS_FIELD_TXV.value: None,
-        }
+        """Initialize an empty record to be updated by the subclass"""
+        return {field.value: None for field in Fields.__members__.values()}
 
     def regex_match(self, pattern: str, ref: str = None) -> bool:
         reference = str(self) if not ref else ref

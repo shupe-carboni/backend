@@ -158,7 +158,11 @@ def price_models_by_customer_discounts(
         .fetchall()
     )
 
-    no_disc_price = int(model["zero_discount_price"])
+    try:
+        no_disc_price = int(model["zero_discount_price"])
+    except TypeError:
+        no_disc_price = int(model["standard_price"])
+
     mat_group: str = model["mpg"]
     if not mat_grp_discounts.empty:
         mat_group_disc: pd.Series = mat_grp_discounts.loc[
