@@ -53,6 +53,7 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
         "any_product_class_disc_future": queries.customer_product_class_discount_update,
         "any_product_disc_future": queries.customer_product_discount_update,
         "any_product_series_future": queries.product_series_update,
+        "any_product_series_overrides": queries.product_series_overrides_expired,
     }
 
     session.begin()

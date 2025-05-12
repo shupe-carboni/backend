@@ -13,6 +13,7 @@ class Queries(SimpleNamespace):
     customer_pricing_update: str
     apply_percentage_on_customer_price: str
     signal_updatable_futures: str
+    product_series_overrides_expired: str
     apply_percentage_on_class_price: str
     class_pricing_update: str
     customer_product_discount_update: str

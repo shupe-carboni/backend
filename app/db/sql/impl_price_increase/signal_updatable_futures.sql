@@ -25,4 +25,9 @@ SELECT
         SELECT 1
         FROM vendor_product_series_pricing_future
         WHERE effective_date <= :today_date
-    ) as any_product_series_future;
+    ) as any_product_series_future,
+    EXISTS (
+        SELECT 1
+        FROM vendor_product_series_pricing_customer_effective_date_overrides
+        WHERE effective_date <= :today_date
+    ) as any_product_series_overrides;
