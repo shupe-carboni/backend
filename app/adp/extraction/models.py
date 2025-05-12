@@ -161,7 +161,25 @@ def price_models_by_customer_discounts(
     try:
         no_disc_price = int(model["zero_discount_price"])
     except TypeError:
-        no_disc_price = int(model["standard_price"])
+        # assume we're dealing with a part that has a preferred and a standard price
+        # pick the right one!
+        sql_ = """
+            WITH preferred AS (
+                SELECT value::boolean
+                FROM vendor_customer_attrs 
+                WHERE attr = 'preferred_parts'
+                AND vendor_customer_id = :customer_id
+            )
+            SELECT COALESCE((SELECT value FROM preferred), false) as value;
+        """
+        is_preferred: bool = DB_V2.execute(
+            session, sql_, dict(customer_id=adp_customer_id)
+        ).scalar_one()
+        no_disc_price = (
+            int(model["standard_price"])
+            if not is_preferred
+            else int(model["preferred_price"])
+        )
 
     mat_group: str = model["mpg"]
     if not mat_grp_discounts.empty:
