@@ -8,7 +8,7 @@ logger = getLogger("uvicorn.info")
 def adp_ahs_amh_sheet_parser(
     df: DataFrame, series: ADPProductSheet
 ) -> tuple[DataFrame]:
-    product_rows, product_cols = ((10, 34), (2, 5))
+    product_rows, product_cols = ((10, 39), (2, 5))
     product = df.iloc[slice(*product_rows), slice(*product_cols)]
     product = (
         product.dropna(how="all", axis=0).dropna(how="all", axis=1).iloc[:, [0, 2]]
