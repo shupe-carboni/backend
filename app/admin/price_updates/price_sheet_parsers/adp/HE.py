@@ -54,5 +54,5 @@ def adp_coils_he_sheet_parser(
         result["vendor_id"] = VendorId.ADP.value
         result["series"] = series.name
         result["price"] *= 100
-    results.append(result)
+        results.append(result)
     return [*results, adders_result]
