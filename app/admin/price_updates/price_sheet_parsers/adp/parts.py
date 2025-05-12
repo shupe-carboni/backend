@@ -4,6 +4,7 @@ from pandas import DataFrame, to_numeric
 from numpy import nan
 from app.db.sql import queries as SQL
 from app.db import Session, DB_V2
+from decimal import Decimal, ROUND_HALF_UP
 
 logger = getLogger("uvicorn.info")
 
@@ -19,9 +20,18 @@ def adp_parts_sheet_parser(
         "preferred",
         "standard",
     ]
-    df.loc[:, "preferred"] = to_numeric(df["preferred"], errors="coerce") * 100
-    df.loc[:, "standard"] = to_numeric(df["standard"], errors="coerce") * 100
+    df.loc[:, "preferred"] = to_numeric(df["preferred"], errors="coerce").astype(float)
+    df.loc[:, "standard"] = to_numeric(df["standard"], errors="coerce").astype(float)
     df.dropna(subset="part_number", inplace=True)
+    df.replace({nan: None}, inplace=True)
+
+    def round_to_int(x: float | None) -> int | None:
+        if x is None or isinstance(x, float) and not isinstance(x, (int, float)):
+            return None
+        return int(Decimal(str(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) * 100
+
+    df.loc[:, "preferred"] = df["preferred"].apply(round_to_int)
+    df.loc[:, "standard"] = df["standard"].apply(round_to_int)
     df.replace({nan: None}, inplace=True)
     df_records = df.to_dict(orient="records")
 
