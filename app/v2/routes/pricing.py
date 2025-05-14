@@ -238,7 +238,7 @@ def create_vendor_pricing_by_customer_body(
         data = NewVendorPricingByCustomerRObj(
             type="vendor-pricing-by-customer",
             attributes=VendorPricingByCustomerAttrs(
-                price=record_cp.price * 100,
+                price=int(record_cp.price * 100),
                 effective_date=effective_date,
                 use_as_override=record_cp.is_override,
             ),
