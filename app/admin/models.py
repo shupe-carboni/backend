@@ -167,6 +167,7 @@ class PriceTemplateSheet(StrEnum):
 class PriceTemplateSheetColumn(StrEnum):
     PART_NUMBER = "Part Number"
     PRICING_CATEGORY = "Pricing Category"
+    IS_OVERRIDE = "Is Override"
     PRICE = "Price"
     CATEGORIES = "Categories"
     PRODUCT_CATEGORY = "Product Category"
@@ -178,6 +179,7 @@ PriceTemplateSheetColumns = {
     PriceTemplateSheet.CUSTOMER_PRICING: [
         PriceTemplateSheetColumn.PART_NUMBER,
         PriceTemplateSheetColumn.PRICING_CATEGORY,
+        PriceTemplateSheetColumn.IS_OVERRIDE,
         PriceTemplateSheetColumn.PRICE,
     ],
     PriceTemplateSheet.PRODUCT_CATEGORY_DISCOUNTS: [
@@ -199,8 +201,10 @@ Discount = Annotated[float, Field(gt=0, lt=1)]
 
 
 class CustomerPrice(BaseModel):
+    # NOTE order matters
     part_number: str
     pricing_category: str
+    is_override: bool = False
     price: PosFloat
 
     def get_price_category_id(self, session: Session, vendor_id: VendorId) -> int:
@@ -312,4 +316,5 @@ VendorBasePriceClasses: dict[StrEnum, str] = {
     VendorId.ADP: "ZERO_DISCOUNT",
     VendorId.ATCO: "LIST_PRICE",
     VendorId.FRIEDRICH: None,
+    VendorId.VYBOND: None,
 }
