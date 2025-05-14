@@ -22,7 +22,7 @@ def flatten(pricing: dict, effective_date: datetime | None) -> DataFrame:
             "description": price["product"]["description"],
         }
         product_attrs = {
-            item["attr"]: item["value"] for item in price["product"]["attrs"]
+            item["attr"]: item["value"] for item in price["product"].get("attrs", {})
         }
         product_categories = {
             f"category_{item['rank']}": item["name"]
@@ -111,7 +111,7 @@ def transform(
     pricing_df = flatten(pricing_dict, effective_date=effective_date).drop(
         columns="price_override"
     )
-    cols = list(pricing_df.columns)
+    cols: list[str] = list(pricing_df.columns)
     if pivot:
         # remove the ones going away
         cols.remove("Price Category")
@@ -126,7 +126,11 @@ def transform(
     else:
         # assumption is made that products are connected to AT LEAST one category to
         # sort on.
-        guarantee_first = ["part_id", "description", "Price Category", "category_1"]
+        category_cols = sorted(
+            [col for col in cols if col.startswith("category_")],
+            key=lambda k: int(k.split("_")[-1]),
+        )
+        guarantee_first = ["part_id", "description", "Price Category"] + category_cols
         guarantee_last = ["effective_date", "price", "notes"]
         other_cols = [
             col for col in cols if col not in set(guarantee_first + guarantee_last)
