@@ -27,7 +27,6 @@ from app.v2.routes.vendor_product_discounts import (
     new_vendor_product_discount,
 )
 
-# TODO complete and import routes for product discounts
 from app.admin.models import (
     VendorId,
     FullPricingWithLink,
@@ -198,7 +197,7 @@ async def vendor_customer_pricing(
             pivot = False
             cb = partial(transform_, pricing, remove_cols, pivot)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
-            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+            return FullPricingWithLink(download_link=dl_link)
 
         case _:
             raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
