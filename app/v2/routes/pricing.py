@@ -240,23 +240,28 @@ def create_vendor_pricing_by_customer_body(
             attributes=VendorPricingByCustomerAttrs(
                 price=record_cp.price * 100,
                 effective_date=effective_date,
+                use_as_override=record_cp.is_override,
             ),
             relationships=VendorPricingByCustomerRels(
                 vendors=JSONAPIRelationships(
-                    data=JSONAPIResourceIdentifier(id=vendor_id.value, type="vendors")
+                    data=[JSONAPIResourceIdentifier(id=vendor_id.value, type="vendors")]
                 ),
                 vendor_customers=JSONAPIRelationships(
-                    data=JSONAPIResourceIdentifier(
-                        id=customer_id, type="vendor-customers"
-                    )
+                    data=[
+                        JSONAPIResourceIdentifier(
+                            id=customer_id, type="vendor-customers"
+                        )
+                    ]
                 ),
                 vendor_products=JSONAPIRelationships(
-                    data=JSONAPIResourceIdentifier(id=product, type="vendor-products")
+                    data=[JSONAPIResourceIdentifier(id=product, type="vendor-products")]
                 ),
                 vendor_pricing_classes=JSONAPIRelationships(
-                    data=JSONAPIResourceIdentifier(
-                        id=price_category, type="vendor-pricing-classes"
-                    )
+                    data=[
+                        JSONAPIResourceIdentifier(
+                            id=price_category, type="vendor-pricing-classes"
+                        )
+                    ]
                 ),
             ),
         )
@@ -527,7 +532,7 @@ async def upsert_vendor_customer_pricing_from_file(
                                 p_id=rels.vendor_products.data[0].id,
                                 pc_id=rels.vendor_pricing_classes.data[0].id,
                             )
-                            mod_obj = VendorProductClassDiscountRObj(
+                            mod_obj = ModVendorPricingByCustomerRObj(
                                 id=0,
                                 type=customer_pricing_data.type,
                                 attributes=customer_pricing_data.attributes,
@@ -543,28 +548,28 @@ async def upsert_vendor_customer_pricing_from_file(
                                 params,
                             )
                             if error:
-                                logger.error(f"Error updating product discount: {e}")
+                                logger.error(f"Error updating customer price: {e}")
                                 errors[record_type].append(updated_record)
                                 continue
                             else:
                                 updated_record: VendorPricingByCustomerResourceResp
                                 updates[record_type].append(
                                     {
-                                        "record": record_pcd.model_dump(),
+                                        "record": record_cp.model_dump(),
                                         "id": updated_record.data.id,
                                     }
                                 )
                         else:
                             inserts[record_type].append(
                                 {
-                                    "record": record_pcd.model_dump(),
+                                    "record": record_cp.model_dump(),
                                     "id": new_price.data.id,
                                 }
                             )
                     except Exception as e:
                         logger.error(f"Error establishing customer price: {e}")
                         errors[record_type].append(
-                            {"record": record_pcd.model_dump(), "error": e}
+                            {"record": record_cp.model_dump(), "error": e}
                         )
                         continue
 
