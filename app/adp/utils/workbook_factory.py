@@ -478,10 +478,15 @@ def generate_program(
         coil_prog_table, ah_prog_table, ratings = pull_program_data(
             session, customer_id, effective_date
         )
-        amh_ah_mask = ah_prog_table[Fields.MODEL_NUMBER].str.startswith("AMH")
+        if not ah_prog_table.empty:
+            amh_ah_mask = ah_prog_table[Fields.MODEL_NUMBER].str.startswith("AMH")
+            ah_prog = build_ah_program(ah_prog_table[~amh_ah_mask], ratings)
+            furn_prog = build_furnace_program(ah_prog_table[amh_ah_mask], ratings)
+        else:
+            # produces empty program objects
+            ah_prog = build_ah_program(ah_prog_table, ratings)
+            furn_prog = build_furnace_program(ah_prog_table, ratings)
         coil_prog = build_coil_program(coil_prog_table, ratings)
-        ah_prog = build_ah_program(ah_prog_table[~amh_ah_mask], ratings)
-        furn_prog = build_furnace_program(ah_prog_table[amh_ah_mask], ratings)
         full_program = add_customer_terms_parts_and_logo_path(
             session=session,
             customer_id=customer_id,
