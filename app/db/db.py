@@ -204,10 +204,11 @@ class Database:
         **kwargs,
     ) -> Result:
         try:
-            start_ = time()
+            # start_ = time()
             return session.execute(text(sql), params=params, **kwargs)
         finally:
-            logger.info(f"Query Time: {time()-start_}s")
+            pass
+            # logger.info(f"Query Time: {time()-start_}s")
 
     def load_df(
         self,
