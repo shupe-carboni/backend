@@ -2,17 +2,17 @@ INSERT INTO vendor_product_discounts (
 	product_id, 
 	vendor_customer_id,
 	discount,
-	effective_date
+	effective_date,
 	base_price_class,
-	label_price_class,
+	label_price_class
 )
 SELECT DISTINCT
-	vp.id,
-	vc.id,
-	(1-(new.price::float / class_price.price::float)),
-	CURRENT_TIMESTAMP
-	1,	-- base_price_class = ZERO_DISCOUNT
-	2	-- label_price_class = STRATEGY_PRICING
+	vp.id product_id,
+	vc.id vendor_customer_id,
+	(1-(new.price::float / class_price.price::float)) discount,
+	CURRENT_TIMESTAMP effective_date,
+	1 base_price_class,	-- == ZERO_DISCOUNT
+	2 label_price_class	-- == STRATEGY_PRICING
 FROM adp_snps AS new
 JOIN vendor_customers vc
 	ON vc.name = new.customer
