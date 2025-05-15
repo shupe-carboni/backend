@@ -168,16 +168,20 @@ async def vendor_customer_pricing(
             return FullPricingWithLink(download_link=dl_link)
 
         case VendorId.VYBOND, ReturnType.JSON:
+            keys_to_override = ["KEY", "STATE_CPD"]
             remove_cols = ["ucc", "upc"]
-            pricing = price_fetch(mode="both", override_key="STATE_CPD")
+            pricing = price_fetch(mode="both", categories_to_override=keys_to_override)
             pivot = False
             cb = partial(transform_, pricing, remove_cols, pivot)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
         case VendorId.VYBOND, ReturnType.CSV:
+            keys_to_override = ["KEY", "STATE_CPD"]
             remove_cols = ["ucc", "upc"]
-            pricing = partial(price_fetch, mode="both", override_key="STATE_CPD")
+            pricing = partial(
+                price_fetch, mode="both", categories_to_override=keys_to_override
+            )
             pivot = False
             cb = partial(transform_, pricing, remove_cols, pivot)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)

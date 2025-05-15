@@ -1,6 +1,6 @@
 from io import StringIO
 from time import time
-from typing import Callable, TypeAlias, Literal
+from typing import Callable, TypeAlias, Literal, Sequence
 from datetime import datetime, timedelta
 from logging import getLogger
 from pandas import DataFrame, concat
@@ -172,7 +172,7 @@ def fetch_pricing(
     vendor_id: VendorId,
     customer_id: int,
     mode: FetchMode,
-    override_key: str = None,
+    categories_to_override: Sequence[str] = None,
 ) -> Pricing:
     """
     Fetch either category-based pricing, customer-specific pricing, or both.
@@ -199,13 +199,25 @@ def fetch_pricing(
                     .mappings()
                     .fetchall()
                 )
+                if categories_to_override:
+                    match categories_to_override:
+                        case str():
+                            categories_to_override = set((categories_to_override,))
+                        case _ if isinstance(categories_to_override, Sequence):
+                            # Sequence can't be used like "case Sequence(): ..."
+                            categories_to_override = set(categories_to_override)
+                        case _:
+                            raise Exception(
+                                "invalid input for categories_to_override: "
+                                f"{categories_to_override}"
+                            )
                 pricing_list = []
                 for price in customer_class_pricing:
                     prod_id = price["product"]["id"]
                     category = price["category"]["name"]
                     cond = prod_id in override_product_ids
-                    if override_key:
-                        cond = cond and category == override_key
+                    if categories_to_override:
+                        cond = cond and category in categories_to_override
                     if not cond:
                         pricing_list.append(price)
 
