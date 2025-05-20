@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Annotated
 from fastapi import (
     HTTPException,
@@ -35,7 +35,7 @@ logger = logging.getLogger("uvicorn.info")
 
 
 @price_updates.post("/implement")
-async def establish_current_from_current_futures(session: NewSession, token: Token):
+async def establish_current_pricing_using_future(session: NewSession, token: Token):
     """
     Check whether any of the futures tables contains any data with an effective_date
     on or before the current system date. The check query returns a mapping to booleans
@@ -79,7 +79,7 @@ async def establish_current_from_current_futures(session: NewSession, token: Tok
 
 
 @price_updates.post("/{vendor_id}")
-async def new_pricing(
+async def new_future_pricing(
     bg: BackgroundTasks,
     session: NewSession,
     token: Token,
@@ -88,7 +88,10 @@ async def new_pricing(
     file: UploadFile = None,
     increase_pct: int | float = 0,
 ) -> None:
-    """Take files as-is, assuming only one file, and parse it for a whole-catalog
+    """
+    Establish future pricing for a bulk price adjustment potenatially across all customers
+
+    Take files as-is, assuming only one file, and parse it for a whole-catalog
     pricing update.
 
     The following method is highly coupled to vendor file structure & pricing structure,
@@ -167,7 +170,7 @@ async def rollback_an_implemented_update(
     current_effective_date: datetime,
     new_effective_date: datetime,
 ):
-    """If an increase has already been implemented (current date went beyond effective
+    """If an increase/bulk-adjustment has already been implemented (current date went beyond effective
     date), this rolls back that action and sets a new effective_date.
         - Assume pricing is in effect now
             (vendor_pricing_by_class, vendor_pricing_by_customer,
@@ -231,6 +234,7 @@ async def rollback_an_implemented_update(
     tags=["templates", "pricing", "download"],
 )
 async def download_price_file_update_template() -> XLSXFileResponse:
+    """Download the template file for bulk-uploading of customer pricing"""
     try:
         return XLSXFileResponse(
             content=templates.pricing_update, filename="upload-template"
@@ -240,3 +244,67 @@ async def download_price_file_update_template() -> XLSXFileResponse:
             raise e
         else:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@price_updates.post("/{vendor_id}/delay")
+async def delay_effective_date_on_future_pricing_not_yet_implemented(
+    session: NewSession,
+    token: Token,
+    vendor_id: VendorId,
+    current_effective_date: date,
+    new_effective_date: date,
+):
+    """Change the effective dates on all future pricing/discounts for a given vendor
+    Runs updates on all *_future tables where vendor_id and effective date match.
+    """
+
+    if token.permissions < auth.Permissions.sca_admin:
+        logger.info("Insufficient permissions")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    futures_update_check_by_table = queries.delay_signal_eligible_tables
+
+    futures_update_queries = {
+        "any_class_pricing_future": queries.delay_pricing_by_class,
+        "any_customer_pricing_future": queries.delay_pricing_by_customer,
+        "any_product_class_disc_future": queries.delay_product_class_discounts,
+        "any_product_disc_future": queries.delay_product_discounts,
+        "any_product_series_future": queries.delay_product_series_pricing,
+    }
+    futures_update_ret_names = {
+        "any_class_pricing_future": "Class Pricing",
+        "any_customer_pricing_future": "Customer Pricing",
+        "any_product_class_disc_future": "Product Class Discounts",
+        "any_product_disc_future": "Product Discounts",
+        "any_product_series_future": "Product Series Pricing",
+    }
+    session.begin()
+    try:
+        update_status = {"updated": [], "not_updated": []}
+        params = dict(
+            vendor_id=vendor_id.value,
+            curr_eff_date=current_effective_date,
+            new_eff_date=new_effective_date,
+        )
+        to_update_map = (
+            DB_V2.execute(session, futures_update_check_by_table, params)
+            .mappings()
+            .fetchone()
+        )
+        for q in futures_update_queries:
+            q_ret_name = futures_update_ret_names[q]
+            if to_update_map[q]:
+                DB_V2.execute(session, futures_update_queries[q], params)
+                update_status["updated"].append(q_ret_name)
+            else:
+                update_status["not_updated"].append(q_ret_name)
+
+    except Exception as e:
+        logger.critical(e)
+        session.rollback()
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        session.commit()
+        return update_status
+    finally:
+        session.close()

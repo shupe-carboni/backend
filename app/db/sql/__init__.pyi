@@ -25,6 +25,12 @@ class Queries(SimpleNamespace):
     glasfloss_filter_features: str
     glasfloss_mto_lookup: str
     glasfloss_customer_product_class_multiplier: str
+    delay_product_discounts: str
+    delay_product_series_pricing: str
+    delay_signal_eligible_tables: str
+    delay_pricing_by_class: str
+    delay_pricing_by_customer: str
+    delay_product_class_discounts: str
     pricing_by_class_json: str
     pricing_by_customer_json: str
     vendor_customer_pricing_class_preflight: str
