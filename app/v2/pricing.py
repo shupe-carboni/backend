@@ -1,4 +1,4 @@
-from io import StringIO
+from io import StringIO, BytesIO
 from time import time
 from typing import Callable, TypeAlias, Literal, Sequence
 from datetime import datetime, timedelta
@@ -6,7 +6,7 @@ from logging import getLogger
 from pandas import DataFrame, concat
 from fastapi import HTTPException
 from app.admin.models import VendorId, Pricing
-from app.downloads import FileResponse
+from app.downloads import FileResponse, XLSXFileResponse
 from app.db import DB_V2, Session
 from app.db.sql import queries
 
@@ -100,6 +100,7 @@ def transform(
     remove_cols: list[str] = None,
     pivot: bool = False,
     effective_date: datetime = None,
+    file_type: Literal["csv", "xlsx"] = "csv",
 ) -> FileResponse:
     """
     Takes pricing and formats into a CSV for return as a file to the client.
@@ -145,9 +146,6 @@ def transform(
         except:
             pass
     result.columns = list(result.columns.str.replace("_", " ").str.title())
-    buffer = StringIO()
-    result.to_csv(buffer, index=False)
-    buffer.seek(0)
 
     customer_name = customer["data"]["attributes"]["name"]
     vendor_name = vendor_id.value.title()
@@ -155,13 +153,26 @@ def transform(
         str(datetime.today().date()) if not effective_date else effective_date.date()
     )
     filename = f"{customer_name} {vendor_name} Pricing {file_date}"
-    logger.info(f"transform: {time() - start}")
-    return FileResponse(
-        content=buffer,
-        status_code=200,
-        media_type="text/csv",
-        filename=f"{filename}.csv",
-    )
+    try:
+        if file_type == "csv":
+            buffer = StringIO()
+            result.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return FileResponse(
+                content=buffer,
+                status_code=200,
+                media_type="text/csv",
+                filename=f"{filename}.csv",
+            )
+        elif file_type == "xlsx":
+            buffer = BytesIO()
+            result.to_excel(buffer, index=False)
+            buffer.seek(0)
+            return XLSXFileResponse(content=buffer, filename=filename)
+        else:
+            raise HTTPException(404, f"Invalid file type given for return: {file_type}")
+    finally:
+        logger.info(f"transform: {time() - start}")
 
 
 FetchMode: TypeAlias = Literal["both", "customer", "class"]

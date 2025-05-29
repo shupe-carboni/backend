@@ -134,10 +134,10 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
-        case VendorId.ATCO, ReturnType.CSV:
+        case VendorId.ATCO, (ReturnType.CSV | ReturnType.XLSX):
             remove_cols = ["fp_ean", "upc_code"]
             pricing = partial(price_fetch, mode="both")
-            cb = partial(transform_, pricing, remove_cols)
+            cb = partial(transform_, pricing, remove_cols, file_type=return_type.value)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
@@ -176,14 +176,14 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
-        case VendorId.VYBOND, ReturnType.CSV:
+        case VendorId.VYBOND, (ReturnType.CSV | ReturnType.XLSX):
             keys_to_override = ["KEY", "STATE_CPD"]
             remove_cols = ["ucc", "upc"]
             pricing = partial(
                 price_fetch, mode="both", categories_to_override=keys_to_override
             )
             pivot = False
-            cb = partial(transform_, pricing, remove_cols, pivot)
+            cb = partial(transform_, pricing, remove_cols, pivot, file_type=return_type)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
@@ -195,11 +195,11 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link, pricing=pricing)
 
-        case VendorId.FRIEDRICH, ReturnType.CSV:
+        case VendorId.FRIEDRICH, (ReturnType.CSV | ReturnType.XLSX):
             remove_cols = None
             pricing = partial(price_fetch, mode="both")
             pivot = False
-            cb = partial(transform_, pricing, remove_cols, pivot)
+            cb = partial(transform_, pricing, remove_cols, pivot, file_type=return_type)
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
