@@ -42,6 +42,7 @@ class AMH(ModelSeries):
         self, session: Session, re_match: re.Match, db: Session, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Air Handlers"  # NOTE matches DB class rank 1
         self.tonnage = int(self.attributes["tonnage"]) * 12
         self.cfm = self.cfm_mapping[self.tonnage]
         self.heat = self.kw_heat[int(self.attributes["heat"])]
@@ -85,6 +86,7 @@ class AMH(ModelSeries):
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.TONNAGE.value: self.tonnage,
             Fields.PALLET_QTY.value: self.pallet_qty,

@@ -38,6 +38,7 @@ class MH(ModelSeries):
             .mappings()
             .one()
         )
+        self.top_level_category = "Coils"  # NOTE matches DB class rank 1
         self.cabinet_config = Cabinet.UNCASED
         self.width = 18
         self.depth = 19.5
@@ -144,6 +145,7 @@ class MH(ModelSeries):
             Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.SERIES.value: self.__series_name__(),
             Fields.TONNAGE.value: self.tonnage,

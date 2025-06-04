@@ -27,6 +27,7 @@ class V(ModelSeries):
         self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Coils"  # NOTE matches DB class rank 1
         weight_column = self.material_weight[self.attributes["mat"]]
         specs_sql = f"""
             SELECT length, pallet_qty, "{weight_column}"
@@ -210,6 +211,7 @@ class V(ModelSeries):
             Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.SERIES.value: self.__series_name__(),
             Fields.TONNAGE.value: self.tonnage,

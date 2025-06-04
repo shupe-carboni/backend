@@ -6,7 +6,7 @@ from app.db import Session
 class MHCAB(ModelSeries):
     """Special Model series that is techincally classified as an accessory
     but it has features like a full product. For this reason, the material group
-    is hard-coded to the Air Handler Accessories matieral group code."""
+    is hard-coded to the Air Handler Accessories material group code."""
 
     text_len = (8,)
     regex = r"""
@@ -40,6 +40,7 @@ class MHCAB(ModelSeries):
         self, session: Session, re_match: re.Match, db: Session, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Accessory"  # NOTE matches DB class rank 1
         self.width = 19.8
         self.pallet_qty = 4
         height = int(self.attributes["height"])
@@ -85,6 +86,7 @@ class MHCAB(ModelSeries):
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.PALLET_QTY.value: self.pallet_qty,
             Fields.WIDTH.value: self.width,

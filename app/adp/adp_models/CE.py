@@ -125,6 +125,7 @@ class CE(ModelSeries):
             Fields.CATEGORY.value: self.real_model_obj.category(),
             Fields.SERIES.value: self.real_model_obj.__series_name__(),
             Fields.TONNAGE.value: self.tonnage,
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.PALLET_QTY.value: self.pallet_qty,
             Fields.WIDTH.value: self.width,

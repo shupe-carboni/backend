@@ -25,6 +25,7 @@ class Fields(StrEnum):
     CATEGORY = auto()
     MODEL_NUMBER = auto()
     PRIVATE_LABEL = auto()
+    TOP_LEVEL_CLASS = auto()
     MPG = auto()
     SERIES = auto()
     TONNAGE = auto()

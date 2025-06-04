@@ -37,6 +37,7 @@ class B(ModelSeries):
         self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Air Handlers"  # NOTE matches DB class rank 1
         self.min_qty = 4
         cache_key = f'adp_b_specs_{self.attributes["ton"]}'
         specs = CACHE.get(cache_key)
@@ -185,6 +186,7 @@ class B(ModelSeries):
             Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.SERIES.value: self.__series_name__(),
             Fields.TONNAGE.value: self.tonnage,

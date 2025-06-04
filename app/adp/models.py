@@ -19,6 +19,7 @@ class ProgAttrs(BaseModel):
     description: Optional[str] = None
     model_number: Optional[str] = Field(default=None, alias="model-number")
     private_label: Optional[str] = Field(default=None, alias="private-label")
+    top_level_class: Optional[str] = None
     mpg: Optional[str] = None
     series: Optional[str] = None
     tonnage: Optional[int] = None

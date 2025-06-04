@@ -44,6 +44,7 @@ class CP(ModelSeries):
         self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Air Handlers"  # NOTE matches DB class rank 1
         self.pallet_qty = 8
         self.cased = self.attributes.get("cased") == "C"
         dims_sql = """
@@ -155,6 +156,7 @@ class CP(ModelSeries):
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),
             Fields.MPG.value: self.mat_grp,
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.TONNAGE.value: self.tonnage,
             Fields.PALLET_QTY.value: self.pallet_qty,
             Fields.WIDTH.value: self.width,

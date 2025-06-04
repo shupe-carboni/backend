@@ -50,6 +50,7 @@ class HD(ModelSeries):
         else:
             self.cabinet_config = Cabinet.PAINTED
         # NOTE width is in the depth slot of the HE-style nomenclature
+        self.top_level_category = "Coils"  # NOTE matches DB class rank 1
         self.width = self.coil_depth_mapping[self.attributes["width"]]
         self.height = int(self.attributes["height"]) / 10
         self.length = int(self.attributes["length"]) + 0.5
@@ -204,6 +205,7 @@ class HD(ModelSeries):
         values = {
             Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.CATEGORY.value: self.category(),
             Fields.SERIES.value: self.__series_name__(),
             Fields.MPG.value: self.mat_grp,

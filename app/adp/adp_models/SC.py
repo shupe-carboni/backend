@@ -23,6 +23,7 @@ class SC(ModelSeries):
         self, session: Session, re_match: re.Match, db: Database, *args, **kwargs
     ):
         super().__init__(session, re_match, db, *args, **kwargs)
+        self.top_level_category = "Coils"  # NOTE matches DB class rank 1
         self.tonnage = int(self.attributes["ton"])
         specs_sql = """
             SELECT cased, width, depth, height, weight, pallet_qty
@@ -112,6 +113,7 @@ class SC(ModelSeries):
             Fields.EFFECTIVE_DATE.value: str(self.eff_date),
             Fields.MODEL_NUMBER.value: str(self),
             Fields.CATEGORY.value: self.category(),
+            Fields.TOP_LEVEL_CLASS.value: self.top_level_category,
             Fields.MPG.value: self.mat_grp,
             Fields.SERIES.value: self.__series_name__(),
             Fields.TONNAGE.value: self.tonnage,
