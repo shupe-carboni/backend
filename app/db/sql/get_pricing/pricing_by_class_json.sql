@@ -11,6 +11,7 @@ WITH product_attrs_agg AS (
             )
         )::jsonb as attrs
         FROM vendor_product_attrs
+        WHERE deleted_at IS NULL
         GROUP BY vendor_product_id
 ), product_details as (
     SELECT 
@@ -59,7 +60,7 @@ WITH product_attrs_agg AS (
     FROM vendor_pricing_by_class vpc
     JOIN vendor_pricing_classes
         ON vendor_pricing_classes.id = vpc.pricing_class_id
-    LEFT JOIN product_details
+    JOIN product_details
         ON product_details.product_id = vpc.product_id
     WHERE EXISTS (
         SELECT 1
