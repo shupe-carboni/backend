@@ -2,8 +2,8 @@
 
 API Features unique to ADP
 * Product Strategy File Generation
-* Building new models for entry into *vendor_products* and *vendor_product_attrs* tables
-* Validating Model numbers against specification constraints
+* Building new models
+* Validating Model numbers against specification constraints (not implemented)
 
 ## Product Strategy File Generation
 ADP specifies a specific format to use for delivering product information and pricing to
@@ -17,17 +17,9 @@ model listing
 Templates are contained in `/app/adp/templates`.  
 
 ## Building New Models
-ADP's products are custom built. There is no current list of every product that could
-possibly be made. I could make one, which would product about 140,000 records, but
-this would ultimately be a waste of space, as most of them would never be used.
-
-With this reality, there needs to be a way to add new models to the vendor's product
-listing efficiently, including features in the attributes table. The same functionality
-used in V1 can be used here. However, the data will be saved differently. In V1, 
-products were listed by-customer and included features in the table schema. In V2,
-products and attributes are stored separately, and Strategy products are defined by
-which entries exist in the table *vendor_pricing_by_customer*
-(vendor_customer_id, vendor_product_id, price).
+ADP's products are custom built. There is no current list of every product that can
+be made. Most product configurations are not likely to ever be used (i.e. coil cabinet
+paint colors with refrigerant connections on the same side as the OEM's furnace flue).
 
 ## Validating Model Numbers
 This functionality has not been implemented yet. Product contraints have been loaded
