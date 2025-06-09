@@ -20,6 +20,7 @@ from app.admin.price_updates.price_update_handlers import (
     atco_price_update,
     adp_price_update,
     apply_percentage,
+    friedrich_price_update,
 )
 from app.db.sql import queries
 from app.admin.templates import templates
@@ -150,7 +151,7 @@ async def new_future_pricing(
                 effective_date=effective_date,
             )
         case VendorId.FRIEDRICH:
-            raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
+            friedrich_price_update(session, file_df_collection, effective_date)
         case VendorId.GLASFLOSS:
             raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
         case VendorId.MILWAUKEE:

@@ -599,3 +599,103 @@ def adp_price_update(
         _adp_master_parsing_and_customer_price_updates(
             session, customer_reference_sheets, effective_date, bg
         )
+
+
+## FRIEDRICH
+def friedrich_price_update(
+    session: Session, dfs: dict[str, DataFrame], effective_date: datetime
+) -> None:
+    """
+    One file, one tab. The Price Guide book contains a flat table in which
+    special customer pricing is listed by-field in conjuntion with the price groups
+    (i.e. Baker, Stocking, Non-stocking ...).
+
+    The approach here will be to map the customer names and pricing classes in the
+    columns in a hard coded fashion and then update all existing pricing.
+
+    Notably, new products or customers will not be addressed. There is no product
+    data in this table, and new customers, or existing customers with new special pricing
+    ought to be dealt with elsewhere.
+    """
+    _, pricing = dfs.popitem()
+    pricing.columns = [c.strip() for c in pricing.columns]
+    pricing.rename(columns={"Model": "model"}, inplace=True)
+
+    customer_name_to_id: dict[str, int] = {
+        "BAKER": 78,
+        "GEMAIRE": 93,
+        "WITTICHEN": 118,
+        "WITTICHEN / BENOIST": 118,
+        "MCCALLS": 102,
+        "CARRIER ENTERPRISE": 268,
+    }
+    price_class_to_id: dict[str, int] = {
+        "STOCKING": 6,
+        "STANDARD": 5,
+        "NON STOCKING": 7,
+    }
+    model_col = pricing.columns[0]
+    customer_cols = [
+        col for col in customer_name_to_id.keys() if col in pricing.columns
+    ]
+
+    # CUSTOMER
+    customer_pricing = pricing[[model_col, *customer_cols]].melt(
+        id_vars=model_col,
+        value_vars=customer_cols,
+        var_name="customer",
+        value_name="price",
+    )
+    customer_pricing["customer_id"] = customer_pricing["customer"].map(
+        customer_name_to_id
+    )
+    customer_pricing.dropna(inplace=True)
+
+    # PRICE CLASS
+    class_pricing = pricing[[model_col, *price_class_to_id.keys()]].melt(
+        id_vars=model_col,
+        value_vars=price_class_to_id.keys(),
+        var_name="price_class",
+        value_name="price",
+    )
+    class_pricing["price_class_id"] = class_pricing["price_class"].map(
+        price_class_to_id
+    )
+    class_pricing.dropna(inplace=True)
+    params = {
+        "customer_pricing": customer_pricing.to_dict(orient="records"),
+        "class_pricing": class_pricing.to_dict(orient="records"),
+        "effective_date": {"ed": effective_date},
+    }
+
+    session.begin()
+    try:
+        DB_V2.execute(session, queries.friedrich_price_update_temp_tables)
+        DB_V2.execute(
+            session,
+            queries.friedrich_price_update_pop_class,
+            params["class_pricing"],
+        )
+        DB_V2.execute(
+            session,
+            queries.friedrich_price_update_pop_cust,
+            params["customer_pricing"],
+        )
+        DB_V2.execute(
+            session,
+            queries.friedrich_price_update_est_fut_class,
+            params["effective_date"],
+        )
+        DB_V2.execute(
+            session,
+            queries.friedrich_price_update_est_fut_cust,
+            params["effective_date"],
+        )
+        DB_V2.execute(session, queries.friedrich_price_update_teardown)
+    except Exception as e:
+        logger.error(e)
+        session.rollback()
+    else:
+        session.commit()
+    finally:
+        session.close()

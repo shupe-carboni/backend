@@ -8,6 +8,12 @@ class Queries(SimpleNamespace):
     atco_mults_pop_temp: str
     atco_teardown: str
     atco_pricing_temp_setup: str
+    friedrich_price_update_est_fut_cust: str
+    friedrich_price_update_pop_class: str
+    friedrich_price_update_est_fut_class: str
+    friedrich_price_update_pop_cust: str
+    friedrich_price_update_temp_tables: str
+    friedrich_price_update_teardown: str
     product_series_update: str
     customer_product_class_discount_update: str
     customer_pricing_update: str
