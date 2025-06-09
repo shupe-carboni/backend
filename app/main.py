@@ -152,9 +152,9 @@ for route, prefix, target in routes:
         logger.critical(
             f"resource {resource_path} encountered an error when attempting to register"
         )
-    else:
-        name = target.prefix if hasattr(target, "prefix") else target.__class__.__name__
-        logger.info(f"registered {resource_path} to {name}")
+    # else:
+    #     name = target.prefix if hasattr(target, "prefix") else target.__class__.__name__
+    #     logger.info(f"registered {resource_path} to {name}")
 
 
 @app.get("/")
