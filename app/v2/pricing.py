@@ -250,6 +250,10 @@ def fetch_pricing(
                     .fetchall()
                 )
                 pricing = Pricing(data=customer_class_pricing)
+    except Exception as e:
+        logger.critical(f"Error occured during price fetch and dynamic overrides: {e}")
+        session.rollback()
+        raise e
     finally:
         session.close()
     logger.info(f"query execution: {time() - start}")
