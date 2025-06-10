@@ -6,7 +6,6 @@ from sqlalchemy_jsonapi.errors import ValidationError
 from app import auth
 from app.db import DB_V2, Session
 from app.jsonapi.core_models import convert_query
-from app.admin.models import VendorId
 from app.admin.price_updates.price_update_handlers import recalc
 from app.v2.models import (
     VendorProductDiscountCollectionResp,
