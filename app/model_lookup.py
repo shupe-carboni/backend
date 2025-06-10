@@ -54,6 +54,24 @@ def parse_model_and_pricing(
             return glasfloss_parse_model(session, token, **params).model_dump(
                 exclude_none=True
             )
+        case _:
+            allowed_vendors = {
+                "implemented_vendors": [VendorId.ADP, VendorId.GLASFLOSS],
+                "examples": {
+                    VendorId.ADP: {"model_number": "HE48160D245B2705AP"},
+                    VendorId.GLASFLOSS: {
+                        "model_number": "ZLPSP12H12H4E",
+                        "or_": {
+                            "series": "ZLP",
+                            "width": 12.5,
+                            "height": 12.5,
+                            "depth": 12.5,
+                            "exact": True,
+                        },
+                    },
+                },
+            }
+            raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, detail=allowed_vendors)
 
 
 def adp_parse_full_model_number(
