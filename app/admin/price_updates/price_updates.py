@@ -108,9 +108,14 @@ async def new_future_pricing(
     Good Luck.
     """
     logger.info("Price Update request recieved")
-    if token.permissions < auth.Permissions.sca_admin:
+    if token.permissions == auth.Permissions.developer:
+        msg = "Setting new future pricing is not currently supported for development testing."
+        logger.warning(msg)
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
+    elif token.permissions < auth.Permissions.sca_admin:
         logger.info("Insufficient permissions. Rejected.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
     if file and increase_pct:
         detail = "Expecting either a file *or* a percentage to apply, not both."
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, detail=detail)
@@ -157,8 +162,9 @@ async def new_future_pricing(
         case VendorId.MILWAUKEE:
             raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
         case _:
-            logger.info(f"vendor {vendor_id} unable to be routed")
-            raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED)
+            msg = f"vendor {vendor_id} unable to be routed"
+            logger.info(msg)
+            raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -186,7 +192,11 @@ async def rollback_an_implemented_update(
         - joining current with history, update current with the most recently timestamped
             record with an effective date closest to the current_effective_date.
     """
-    if token.permissions < auth.Permissions.sca_admin:
+    if token.permissions == auth.Permissions.developer:
+        msg = "Rollback of implemented pricing is not currently supported for development testing."
+        logger.warning(msg)
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
+    elif token.permissions < auth.Permissions.sca_admin:
         logger.info("Insufficient permissions. Rejected.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     elif (
@@ -259,7 +269,11 @@ async def delay_effective_date_on_future_pricing_not_yet_implemented(
     Runs updates on all *_future tables where vendor_id and effective date match.
     """
 
-    if token.permissions < auth.Permissions.sca_admin:
+    if token.permissions == auth.Permissions.developer:
+        msg = "Delay of future pricing is not currently supported for development testing."
+        logger.warning(msg)
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
+    elif token.permissions < auth.Permissions.sca_admin:
         logger.info("Insufficient permissions")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
