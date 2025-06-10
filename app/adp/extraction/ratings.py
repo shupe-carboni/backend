@@ -180,17 +180,21 @@ def find_ratings_in_reference_and_update_file(
 ) -> None:
     temp_table_name = "adp_temp_ratings"
     with session.begin():
-        ratings_df: pd.DataFrame = find_ratings_in_reference(
-            session=session, ratings=ratings
-        )
-        DB_V2.upload_df(
-            session=session,
-            data=ratings_df,
-            table_name="adp_program_ratings",
-            primary_key=False,
-            if_exists="append",
-        )
-        DB_V2.execute(session=session, sql=f"DROP TABLE {temp_table_name};")
+        try:
+            ratings_df: pd.DataFrame = find_ratings_in_reference(
+                session=session, ratings=ratings
+            )
+            DB_V2.upload_df(
+                session=session,
+                data=ratings_df,
+                table_name="adp_program_ratings",
+                primary_key=False,
+                if_exists="append",
+            )
+            DB_V2.execute(session=session, sql=f"DROP TABLE {temp_table_name};")
+        except Exception as e:
+            logger.critical(e)
+            raise e
     return
 
 
