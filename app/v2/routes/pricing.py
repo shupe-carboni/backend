@@ -203,8 +203,25 @@ async def vendor_customer_pricing(
             dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
             return FullPricingWithLink(download_link=dl_link)
 
+        case VendorId.TEST, ReturnType.JSON:
+            remove_cols = None
+            pricing = price_fetch(mode="both")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link, pricing=pricing)
+
+        case VendorId.TEST, (ReturnType.CSV | ReturnType.XLSX):
+            remove_cols = None
+            pricing = partial(price_fetch, mode="both")
+            pivot = False
+            cb = partial(transform_, pricing, remove_cols, pivot, file_type=return_type)
+            dl_link = generate_pricing_dl_link(vendor_id, customer_id, cb)
+            return FullPricingWithLink(download_link=dl_link)
+
         case _:
-            raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED)
+            msg = f"return type {return_type} not valid for vendor {vendor_id}"
+            raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, detail=msg)
 
 
 def create_api_body_from_DTO(
