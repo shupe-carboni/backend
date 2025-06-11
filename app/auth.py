@@ -11,7 +11,7 @@ from logging import getLogger
 
 load_dotenv()
 from pydantic import BaseModel, field_validator
-from fastapi import Depends, HTTPException, status, Response
+from fastapi import Depends, HTTPException, status, Response, Header
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from jose.jwt import get_unverified_header, decode
@@ -97,6 +97,7 @@ class VerifiedToken(BaseModel):
     token: str
     exp: int
     permissions: IntEnum
+    sim_permissions: IntEnum = Permissions.customer_admin
     nickname: str
     name: str
     email: str
@@ -110,6 +111,41 @@ class VerifiedToken(BaseModel):
         token_b = value.encode("utf-8")
         token_256 = sha256(token_b)
         return token_256.hexdigest()
+
+    def set_simulated_permissions(self, perm: int) -> None:
+        top_range = Permissions.customer_admin
+        bottom_range = Permissions.customer_std
+        out_of_range = not (bottom_range <= perm <= top_range)
+        if out_of_range:
+            min_ = max(p for p in Permissions if p < bottom_range)
+            max_ = min(p for p in Permissions if p >= top_range)
+            range_ = f"Simulated permission range = [{min_}, {max_}]"
+            available_perms = [repr(p) for p in Permissions if min_ < p < max_]
+            raise HTTPException(
+                400,
+                detail={
+                    "simulated_permissions": {
+                        "range": range_,
+                        "defined": available_perms,
+                    }
+                },
+            )
+
+        if not self.permissions == Permissions.developer:
+            raise HTTPException(
+                400, "Cannot set simulated permissions unless you are a developer."
+            )
+        try:
+            perm = Permissions(perm)
+        except Exception:
+            # set at the nearest permission lower than target value given
+            perm = max(
+                (p for p in Permissions if p.value < perm),
+                key=lambda k: Permissions(k).value,
+                default=Permissions.customer_std,
+            )
+        if perm != Permissions.developer:
+            self.sim_permissions = perm
 
 
 class LocalTokenStore:
@@ -133,6 +169,7 @@ class LocalTokenStore:
                     return verified_tok
                 else:
                     cls.tokens.pop(verified_tok.token)
+                    return
             return
 
 
@@ -173,10 +210,13 @@ def set_permissions(permissions: list[str]) -> IntEnum:
 
 async def authenticate_auth0_token(
     token: HTTPAuthorizationCredentials = Depends(token_auth_scheme),
+    x_dev_permission_level: int = Header(20),
 ) -> VerifiedToken:
     error = None
     start_ = time.time()
     if verified_token := LocalTokenStore.get(token.credentials):
+        if verified_token.permissions == Permissions.developer:
+            verified_token.set_simulated_permissions(x_dev_permission_level)
         logger.info(f"Auth(cached): {time.time() - start_}s")
         return verified_token
     jwks = requests.get(AUTH0_DOMAIN + "/.well-known/jwks.json").json()
@@ -212,13 +252,6 @@ async def authenticate_auth0_token(
                             email="",
                             email_verified=True,
                         )
-                    case TUI.DEVELOPER.value:
-                        user_info = dict(
-                            nickname="Developer TUI",
-                            name="Developer TUI",
-                            email=os.getenv("TEST_USER_EMAIL"),
-                            email_verified=True,
-                        )
                     case TUI.MS_POWER_AUTOMATE.value:
                         user_info = dict(
                             nickname="MS Power Automate",
@@ -234,6 +267,8 @@ async def authenticate_auth0_token(
                     permissions=set_permissions(payload["permissions"]),
                     **user_info,
                 )
+                if verified_token.permissions == Permissions.developer:
+                    verified_token.set_simulated_permissions(x_dev_permission_level)
                 LocalTokenStore.add_token(new_token=verified_token)
                 logger.info(f"Auth(verified): {time.time() - start_}s")
                 return verified_token
@@ -397,15 +432,22 @@ class SecOp(ABC):
         sql_sca_admin: str,
         **filters,
     ) -> set[int]:
+        """Run queries provided by SQL Alchemy models that return a set of integer IDs
+        used for gating and filtering. Used for both customer locations and object
+        association tests"""
         queries_by_user = {
             UserTypes.customer_std: sql_user_only,
             UserTypes.customer_manager: sql_manager,
             UserTypes.customer_admin: sql_admin,
             UserTypes.sca_employee: sql_sca_employee,
             UserTypes.sca_admin: sql_sca_admin,
-            UserTypes.developer: sql_admin,
+            # UserTypes.developer: sql_admin,
         }
-        query = queries_by_user[UserTypes[self.token.permissions.name]]
+        if self.token.permissions == Permissions.developer:
+            user_type = UserTypes[self.token.sim_permissions.name]
+        else:
+            user_type = UserTypes[self.token.permissions.name]
+        query = queries_by_user[user_type]
         filters_suffixed = {k + "_1": v for k, v in filters.items()}
         result = session.scalars(
             text(query), dict(email_1=self.token.email, **filters_suffixed)

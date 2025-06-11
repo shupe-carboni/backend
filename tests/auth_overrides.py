@@ -1,4 +1,4 @@
-from app.auth import Permissions
+from app.auth import Permissions, VerifiedToken
 from dotenv import load_dotenv
 from app.customers.models import NewCMMSSNSCustomer, CMMSSNSCustomerResp
 
@@ -9,6 +9,7 @@ from random import randint
 
 class Token:
     permissions: Permissions
+    sim_permissions: Permissions
     email_verified: bool
     email: str
 
@@ -27,8 +28,26 @@ class SCAEmployeeToken(Token):
 
 class DeveloperToken(Token):
     permissions = Permissions.developer
+    sim_permissions = Permissions.customer_admin
     email_verified = True
     email = getenv("TEST_USER_EMAIL")
+
+    def __init__(self, sim_perm: int = 0) -> None:
+        if sim_perm:
+            self.set_sim_permissions(sim_perm)
+
+    def set_sim_permissions(self, perm):
+        temp_tok = VerifiedToken(
+            token="",
+            exp=0,
+            permissions=self.permissions,
+            email=self.email,
+            email_verified=self.email_verified,
+            nickname="",
+            name="",
+        )
+        temp_tok.set_simulated_permissions(perm)
+        self.sim_permissions = temp_tok.sim_permissions
 
 
 class CustomerAdminToken(Token):
