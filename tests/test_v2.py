@@ -349,14 +349,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(attr="test_attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         patch=Data(
             id="{0}",
             attributes=Attributes(value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         delete={"vendor_id": "adp"},
@@ -370,14 +370,14 @@ post_patch_delete_outline = [
                 vendor_product_description="test_desc",
             ),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         patch=Data(
             id="{0}",
             attributes=Attributes(vendor_product_description="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         delete={"vendor_id": "adp"},
@@ -388,14 +388,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(name="class {0}", rank=1),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         patch=Data(
             id="{0}",
             attributes=Attributes(rank=2),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         delete={"vendor_id": "adp"},
@@ -406,14 +406,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(name="class {0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         patch=Data(
             id="{0}",
             attributes=Attributes(name="class {0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         delete={"vendor_id": "adp"},
@@ -424,14 +424,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(name="customer {0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         patch=Data(
             id="{0}",
             attributes=Attributes(name="customer {0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}}
+                vendors={"data": [{"id": "adp", "type": "vendors"}]}
             ),
         ),
         delete={"vendor_id": "adp"},
@@ -442,12 +442,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(vendor_quote_number="quote {0}", status="active"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": TEST_VENDOR_CUSTOMER_1_ID,
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": TEST_VENDOR_CUSTOMER_1_ID,
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -455,12 +457,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(status="rejected"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": TEST_VENDOR_CUSTOMER_1_ID,
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": TEST_VENDOR_CUSTOMER_1_ID,
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -472,9 +476,9 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(attr="test_attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_quotes={
-                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                    "data": [{"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}]
                 },
             ),
         ),
@@ -482,9 +486,9 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_quotes={
-                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                    "data": [{"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}]
                 },
             ),
         ),
@@ -496,9 +500,9 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(tag="test_product {0}", qty="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_quotes={
-                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                    "data": [{"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}]
                 },
             ),
         ),
@@ -506,9 +510,9 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(qty="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_quotes={
-                    "data": {"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}
+                    "data": [{"id": TEST_VENDOR_QUOTE_ID, "type": "vendor-quotes"}]
                 },
             ),
         ),
@@ -519,15 +523,19 @@ post_patch_delete_outline = [
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_products={
-                    "data": {"id": int(TEST_VENDOR_PRODUCT), "type": "vendor-products"}
+                    "data": [
+                        {"id": int(TEST_VENDOR_PRODUCT), "type": "vendor-products"}
+                    ]
                 },
                 vendor_product_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
-                        "type": "vendor-product-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                            "type": "vendor-product-classes",
+                        }
+                    ]
                 },
             ),
         ),
@@ -539,30 +547,38 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(discount="{0}", effective_date=str(FUTURE_DATE)),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
                 vendor_product_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
-                        "type": "vendor-product-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                            "type": "vendor-product-classes",
+                        }
+                    ]
                 },
                 base_price_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
                 label_price_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
             ),
         ),
@@ -570,30 +586,38 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(discount="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
                 vendor_product_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT_CLASS),
-                        "type": "vendor-product-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT_CLASS),
+                            "type": "vendor-product-classes",
+                        }
+                    ]
                 },
                 base_price_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
                 label_price_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
             ),
         ),
@@ -605,12 +629,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(attr="attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_products={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT),
-                        "type": "vendor-products",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT),
+                            "type": "vendor-products",
+                        }
+                    ]
                 },
             ),
         ),
@@ -618,12 +644,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_products={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT),
-                        "type": "vendor-products",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT),
+                            "type": "vendor-products",
+                        }
+                    ]
                 },
             ),
         ),
@@ -637,24 +665,30 @@ post_patch_delete_outline = [
                 use_as_override=False, price="{0}", effective_date=str(FUTURE_DATE)
             ),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
                 vendor_products={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT),
-                        "type": "vendor-products",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT),
+                            "type": "vendor-products",
+                        }
+                    ]
                 },
                 vendor_pricing_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
             ),
         ),
@@ -662,12 +696,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(use_as_override=True),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -679,12 +715,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_pricing_by_customer={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
-                        "type": "vendor-pricing-by-customer",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                            "type": "vendor-pricing-by-customer",
+                        }
+                    ]
                 },
             ),
         ),
@@ -692,12 +730,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_pricing_by_customer={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
-                        "type": "vendor-pricing-by-customer",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                            "type": "vendor-pricing-by-customer",
+                        }
+                    ]
                 },
             ),
         ),
@@ -712,18 +752,22 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(price="{0}", effective_date=str(datetime.today())),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_pricing_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
                 vendor_products={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRODUCT),
-                        "type": "vendor-products",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRODUCT),
+                            "type": "vendor-products",
+                        }
+                    ]
                 },
             ),
         ),
@@ -731,12 +775,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(price="{0}", effective_date=str(FUTURE_DATE)),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_pricing_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
             ),
         ),
@@ -751,18 +797,22 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(price="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_pricing_classes={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_CLASS),
-                        "type": "vendor-pricing-classes",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_CLASS),
+                            "type": "vendor-pricing-classes",
+                        }
+                    ]
                 },
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -777,12 +827,14 @@ post_patch_delete_outline = [
         post=Data(
             attributes=Attributes(name="attr {0}", type="INTEGER", value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -790,12 +842,14 @@ post_patch_delete_outline = [
             id="{0}",
             attributes=Attributes(value="{0}"),
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
             ),
         ),
@@ -809,13 +863,15 @@ post_patch_delete_outline = [
         status_codes=(ALL_ALLOWED, ALL_ALLOWED),
         post=Data(
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
-                users={"data": {"id": int(TEST_USER_ID), "type": "users"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
+                users={"data": [{"id": int(TEST_USER_ID), "type": "users"}]},
                 vendor_pricing_by_customer={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
-                        "type": "vendor-pricing-by-customer",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_BY_CUSTOMER),
+                            "type": "vendor-pricing-by-customer",
+                        }
+                    ]
                 },
             ),
         ),
@@ -829,13 +885,15 @@ post_patch_delete_outline = [
         status_codes=(ALL_ALLOWED, ALL_ALLOWED),
         post=Data(
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
-                users={"data": {"id": int(TEST_USER_ID), "type": "users"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
+                users={"data": [{"id": int(TEST_USER_ID), "type": "users"}]},
                 vendor_pricing_by_class={
-                    "data": {
-                        "id": int(TEST_VENDOR_PRICING_BY_CLASS),
-                        "type": "vendor-pricing-by-class",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_PRICING_BY_CLASS),
+                            "type": "vendor-pricing-by-class",
+                        }
+                    ]
                 },
             ),
         ),
@@ -849,18 +907,22 @@ post_patch_delete_outline = [
         status_codes=(SCA_ONLY, SCA_ONLY),
         post=Data(
             relationships=Relationships(
-                vendors={"data": {"id": "adp", "type": "vendors"}},
+                vendors={"data": [{"id": "adp", "type": "vendors"}]},
                 vendor_customers={
-                    "data": {
-                        "id": int(TEST_VENDOR_CUSTOMER_1_ID),
-                        "type": "vendor-customers",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_VENDOR_CUSTOMER_1_ID),
+                            "type": "vendor-customers",
+                        }
+                    ]
                 },
                 customer_locations={
-                    "data": {
-                        "id": int(TEST_CUSTOMER_LOCATION),
-                        "type": "customer-locations",
-                    }
+                    "data": [
+                        {
+                            "id": int(TEST_CUSTOMER_LOCATION),
+                            "type": "customer-locations",
+                        }
+                    ]
                 },
             ),
         ),
