@@ -117,10 +117,10 @@ class VerifiedToken(BaseModel):
         bottom_range = Permissions.customer_std
         out_of_range = not (bottom_range <= perm <= top_range)
         if out_of_range:
-            min_ = max(p for p in Permissions if p < bottom_range)
-            max_ = min(p for p in Permissions if p >= top_range)
-            range_ = f"Simulated permission range = [{min_}, {max_}]"
-            available_perms = [repr(p) for p in Permissions if min_ < p < max_]
+            range_ = f"Simulated permission range = [{bottom_range}, {top_range}]"
+            available_perms = [
+                repr(p) for p in Permissions if bottom_range <= p <= top_range
+            ]
             raise HTTPException(
                 400,
                 detail={
