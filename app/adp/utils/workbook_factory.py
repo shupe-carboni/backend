@@ -14,6 +14,7 @@ from app.adp.utils.programs import (
     CoilProgram,
     AirHandlerProgram,
     MfurnaceProgram,
+    CoilCabinetProgram,
     CustomerProgram,
     EmptyProgram,
 )
@@ -124,6 +125,14 @@ def build_furnace_program(
     ).drop_duplicates()
     program_data = program_data.drop(columns=[temp_heat_num_col])
     return MfurnaceProgram(program_data=program_data, ratings=prog_ratings)
+
+
+def build_accesories_program(program_data: pd.DataFrame) -> CoilCabinetProgram:
+    if program_data.empty:
+        return CoilCabinetProgram(program_data=program_data)
+    program_data = program_data.drop(columns=["customer_id"])
+    fill_sort_order_field(program_data)
+    return CoilCabinetProgram(program_data=program_data)
 
 
 def pull_customer_payment_terms_v2(session: Session, customer_id: int) -> pd.DataFrame:
@@ -239,6 +248,7 @@ def add_customer_terms_parts_and_logo_path(
     coil_prog: CoilProgram,
     ah_prog: AirHandlerProgram,
     furnace_prog: MfurnaceProgram,
+    cabinets_prog: CoilCabinetProgram,
     effective_date: datetime | None,
 ) -> CustomerProgram:
 
@@ -322,6 +332,7 @@ def add_customer_terms_parts_and_logo_path(
         coils=coil_prog,
         air_handlers=ah_prog,
         furnaces=furnace_prog,
+        cabinets=cabinets_prog,
         parts=customer_parts,
         terms=terms,
         logo_path=full_logo_path,
@@ -420,7 +431,7 @@ def pull_program_data_v2(
 
     customer_strategy_detailed["stage"] = "ACTIVE"
     customer_strategy_detailed["net_price"] /= 100
-
+    ## COILS
     coils = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Coils"
     ].dropna(how="all", axis=1)
@@ -443,6 +454,7 @@ def pull_program_data_v2(
     except Exception as e:
         logger.info(f"Unable to convert num cols: {e}")
 
+    ## AIR HANDLERS
     ahs = customer_strategy_detailed[
         customer_strategy_detailed["cat_1"] == "Air Handlers"
     ].dropna(how="all", axis=1)
@@ -453,8 +465,17 @@ def pull_program_data_v2(
         ahs = ahs.astype(num_cols_trimmed, errors="ignore")
     except Exception as e:
         logger.info(f"Unable to convert num cols: {e}")
+
+    ## RATINGS
     ratings = DB_V2.load_df(session, "adp_program_ratings", customer_id)
-    return coils, ahs, ratings
+    ## CABINETS
+    cabinets = customer_strategy_detailed[
+        customer_strategy_detailed["cat_1"] == "Accessory"
+    ].dropna(how="all", axis=1)
+    if Fields.PRIVATE_LABEL.value not in cabinets.columns:
+        cabinets[Fields.PRIVATE_LABEL.value] = None
+
+    return coils, ahs, ratings, cabinets
 
 
 def pull_program_data(
@@ -475,7 +496,7 @@ def generate_program(
 ) -> XLSXFileResponse:
     start = time()
     try:
-        coil_prog_table, ah_prog_table, ratings = pull_program_data(
+        coil_prog_table, ah_prog_table, ratings, cabinets_table = pull_program_data(
             session, customer_id, effective_date
         )
         if not ah_prog_table.empty:
@@ -487,12 +508,14 @@ def generate_program(
             ah_prog = build_ah_program(ah_prog_table, ratings)
             furn_prog = build_furnace_program(ah_prog_table, ratings)
         coil_prog = build_coil_program(coil_prog_table, ratings)
+        mh_coil_cabinets = build_accesories_program(cabinets_table)
         full_program = add_customer_terms_parts_and_logo_path(
             session=session,
             customer_id=customer_id,
             coil_prog=coil_prog,
             ah_prog=ah_prog,
             furnace_prog=furn_prog,
+            cabinets_prog=mh_coil_cabinets,
             effective_date=effective_date,
         )
         logger.info(f"generating {full_program}")
