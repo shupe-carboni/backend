@@ -248,6 +248,7 @@ class ModelSeries:
     def regex_match(self, pattern: str, ref: str = None) -> bool:
         reference = str(self) if not ref else ref
         try:
+            print("herheree")
             return re.search(pattern, reference) is not None
         except re.error:
             return False
