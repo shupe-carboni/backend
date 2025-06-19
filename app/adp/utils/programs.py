@@ -67,6 +67,8 @@ class Program:
             )
         )
 
+    def features(self) -> list[str]: ...
+
 
 class CoilProgram(Program):
 
@@ -78,7 +80,7 @@ class CoilProgram(Program):
     def __str__(self) -> str:
         return "Coils"
 
-    def features(self):
+    def features(self) -> list[str]:
         return [
             self.model_number,
             Fields.PALLET_QTY.value,
@@ -125,7 +127,7 @@ class AirHandlerProgram(Program):
     def __str__(self) -> str:
         return "Air Handlers"
 
-    def features(self):
+    def features(self) -> list[str]:
         return [
             self.model_number,
             self.pallet_or_min,
@@ -169,7 +171,7 @@ class AirHandlerProgram(Program):
 
 class MfurnaceProgram(AirHandlerProgram):
 
-    def features(self):
+    def features(self) -> list[str]:
         return [
             self.model_number,
             self.pallet_or_min,
@@ -223,6 +225,65 @@ class MfurnaceProgram(AirHandlerProgram):
         return ret
 
 
+class CoilCabinetProgram(Program):
+
+    def __init__(self, program_data: pd.DataFrame) -> None:
+        super().__init__(program_data, pd.DataFrame())
+        self.model_number = (Fields.MODEL_NUMBER.value,)
+
+    def category_data(self, category):
+        return super().category_data(category)
+
+    def features(self):
+        return [
+            self.model_number,
+            Fields.CONFIGURATION.value,
+            Fields.DOOR.value,
+            Fields.TOP.value,
+            Fields.WIDTH.value,
+            Fields.DEPTH.value,
+            Fields.HEIGHT.value,
+            Fields.ACCESSORY_TYPE.value,
+            Fields.NET_PRICE.value,
+            Fields.RATED.value,
+            Fields.SERIES.value,
+            Fields.STAGE.value,
+            Fields.PRICE_ID.value,
+        ]
+
+    def category_data(
+        self, category, customer_id: int, session: Session
+    ) -> pd.DataFrame:
+        data = self._data.loc[self._data[Fields.CATEGORY.value] == category, :]
+        ret = (
+            data.dropna(how="all", axis=1)
+            .drop(columns=[Fields.CATEGORY.value])
+            .sort_values(
+                [
+                    Fields.CONFIGURATION.value,
+                    Fields.DOOR.value,
+                    Fields.TOP.value,
+                    Fields.WIDTH.value,
+                    Fields.DEPTH.value,
+                    Fields.HEIGHT.value,
+                    Fields.ACCESSORY_TYPE.value,
+                ]
+            )
+        )
+
+        if Fields.PRIVATE_LABEL.value in ret.columns:
+            self.model_number = Fields.PRIVATE_LABEL.value
+        else:
+            self.model_number = Fields.MODEL_NUMBER.value
+
+        features = self.features()
+
+        ret = ret[features].rename(
+            columns={Fields.PRIVATE_LABEL.value: Fields.MODEL_NUMBER.value}
+        )
+        return ret
+
+
 class CustomerProgram:
     def __init__(
         self,
@@ -232,10 +293,11 @@ class CustomerProgram:
         coils: CoilProgram = None,
         air_handlers: AirHandlerProgram = None,
         furnaces: MfurnaceProgram = None,
+        cabinets: CoilCabinetProgram = None,
         parts: pd.DataFrame = None,
         terms: dict[str, str | dict] = None,
     ) -> None:
-        if not (coils or air_handlers or furnaces):
+        if not (coils or air_handlers or furnaces or cabinets):
             raise Exception(
                 "Either a Coil Program or an Air Handler Strategy are required"
             )
@@ -243,7 +305,7 @@ class CustomerProgram:
         self.customer_id = customer_id
         self.customer_name = customer_name
         self.ratings = pd.DataFrame()
-        self.progs: list[Program] = [coils, air_handlers, furnaces]
+        self.progs: list[Program] = [coils, air_handlers, furnaces, cabinets]
         self.progs = [prog for prog in self.progs if not prog._data.empty]
         if not self.progs:
             raise EmptyProgram
