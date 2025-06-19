@@ -388,7 +388,12 @@ class PriceBook:
     def insert_nomenclature_block(
         self, series: str, offset: tuple[int, int] = (0, 0)
     ) -> "PriceBook":
-        nomenclature_sheet: Worksheet = self.nomenclatures[series]
+        try:
+            nomenclature_sheet: Worksheet = self.nomenclatures[series]
+        except KeyError:
+            logger.warning(f"nomenclature sheet for {series} is missing from template")
+            return self
+
         (model_type,) = tuple([e for e in MODELS if e.__name__ == series])
         model_example = self.program.sample_from_program(series=series)
         pl_remapping: dict[ModelSeries, ModelSeries] = {
@@ -561,7 +566,7 @@ class PriceBook:
         for category, df in category_data.items():
             all_rated = df["rated"].all()
             all_unrated = (~df["rated"]).all()
-            if (df[Fields.SERIES.value] == "AMH").all():
+            if (df[Fields.SERIES.value].isin(["AMH", "MHCAB"])).all():
                 new_category_rated = category
                 new_category_unrated = category
             else:
