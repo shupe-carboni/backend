@@ -1,0 +1,2 @@
+# Friedrich
+## Quote Sync

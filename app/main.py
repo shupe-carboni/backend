@@ -16,6 +16,7 @@ from starlette.routing import Match, Route
 
 ## Routers ##
 from app.hardcast import hardcast
+from app.friedrich import friedrich
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import ratings_admin
@@ -139,6 +140,7 @@ app_misc_routes = [
     (customers, "", app),
     (places, "", app),
     (hardcast, "", app),
+    (friedrich, "/vendors", app),
     (price_updates, "", app),
     (model_lookup, "/vendors", app),
 ]
