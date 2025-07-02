@@ -18,8 +18,7 @@ from fastapi.routing import APIRouter
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from hashlib import sha256
-from random import randint
-from bs4 import BeautifulSoup as bs
+from app.friedrich.models import *
 
 load_dotenv()
 
@@ -40,52 +39,9 @@ NewSession = Annotated[Session, Depends(DB_V2.get_db)]
 SECRET = sha256(getenv("FRIEDRICH_QUOTE_SYNC_SECRET").encode("utf-8")).hexdigest()
 SecretValid = Annotated[None, Depends(validate_secret)]
 
-
-class Action:
-
-    def __init__(self) -> None:
-        self.domain: str = getenv("FRIEDRICH_QUOTE_PORTAL_DOMAIN")
-        self.contact_id: str = getenv("FRIEDRICH_CONTACT_ID")
-        self.path: str
-        self.params: dict[str, str | int]
-
-    def _set_cache(self) -> int:
-        return randint(0, 99999)
-
-    def __str__(self) -> str:
-        """build the url with parameters"""
-        params = self.params
-        params["Cache"] = self._set_cache()
-        endpoint = self.domain + self.path
-        return f"{endpoint}?{'&'.join([f'{k}={v}' for k,v in params.items()])}"
-
-
-class Login(Action):
-    def __init__(self) -> None:
-        super().__init__()
-        self.path: str = "Ajax_ValidateSignOn.aspx"
-        self.params = {
-            "EmailAddress": getenv("FRIEDRICH_LOGIN_NAME"),
-            "Password": getenv("FRIEDRICH_LOGIN_PASSWORD"),
-        }
-
-
-class GetQuotes(Action):
-    def __init__(self) -> None:
-        super().__init__()
-        self.path: str = "Ajax_DashboardV2_LoadQuotes.aspx"
-        self.params = {"ContactID": self.contact_id}
-
-
-Cookies = dict[str, str]
-__cookies: Cookies = dict()
-
-
-def cookies(new_cookies: Cookies = None) -> Cookies:
-    global __cookies
-    if new_cookies:
-        __cookies = new_cookies
-    return __cookies
+# initialize cookies with a portal login
+with requests.Session() as req_session:
+    Login(req_session).make_request()
 
 
 @friedrich.get("/sync/status")
@@ -106,12 +62,9 @@ def update_friedrich_quotes_from_quote_portal(
             - make updates to the DB as needed
     """
     with requests.Session() as req_session:
-        # for cookie in cookies():
-        #     req_session.cookies.set(**cookie)
-        get_quotes = GetQuotes()
-        quotes = bs(req_session.get(url=str(get_quotes)).text)
-
-    return Response(content=quotes.prettify(), status_code=status.HTTP_200_OK)
+        quotes = GetQuotes(req_session=req_session).make_request().format_resp()
+        # return Response(content=None, status_code=status.HTTP_200_OK)
+        return quotes
 
 
 @friedrich.post("/sync/local/quotes")
