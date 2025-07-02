@@ -1,14 +1,3 @@
-"""
-* Ajax_ValidateSignOn.aspx -- authentication
-    * if the cookie is stored and still valid, potentially avoidable for most syncs
-* Ajax_DashboardV2_LoadQuotes.aspx -- list of quotes
-* CreateNewQuote.aspx -- quote project details by quote id
-* Ajax_CreateQuoteManageLineItems.aspx -- quote line items
-
-Capturing data will require various combinations of query parameters in GET requests
-and parsing of HTML responses to the simulated AJAX calls
-"""
-
 import logging
 from os import getenv
 from typing import Annotated
@@ -42,6 +31,7 @@ SecretValid = Annotated[None, Depends(validate_secret)]
 # initialize cookies with a portal login
 with requests.Session() as req_session:
     Login(req_session).make_request()
+    logger.info("Retrieved Friedrich Session Cookies")
 
 
 @friedrich.get("/sync/status")
