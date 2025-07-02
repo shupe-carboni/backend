@@ -1,5 +1,4 @@
-__version__ = "2.4.22"
-
+from app.version import VERSION as __version__
 from dotenv import load_dotenv
 
 load_dotenv()
