@@ -1,3 +1,17 @@
+"""
+* Ajax_ValidateSignOn.aspx -- authentication
+    * if the cookie is stored and still valid, potentially avoidable for most syncs
+* Ajax_DashboardV2_LoadQuotes.aspx -- list of quotes
+* CreateNewQuote.aspx -- Quote Contact Info in the HTML
+* Ajax_CreateQuoteLoadSelectedQuote.aspx -- get an opportunity ID from raw response
+* Ajax_CreateQuoteLoadSelectedProject.aspx -- get additional project details
+    using opportunity ID
+* Ajax_CreateQuoteManageLineItems.aspx -- quote line items
+
+Capturing data will require various combinations of query parameters in GET requests
+and parsing of HTML responses to the simulated AJAX calls
+"""
+
 import requests
 import re
 from datetime import date, datetime
@@ -27,15 +41,29 @@ STATUS_MAPPING = {
 }
 
 
+class QuoteProjectContacts(BaseModel):
+    contact_name: str
+    contact_email: str
+    submitter_name: str
+    submitter_email: str
+
+
+class QuoteProjectDetails(BaseModel):
+    market_type: str
+    city: str
+    state: str
+
+
 class Quote(BaseModel):
     guid: str
     quote_name: str
     account_name: str
     approval_status: QuoteStatus
     quote_number: int
-    project_name: str
     created_date: date
     expiration_date: date
+    project_details: QuoteProjectDetails
+    project_contacts: QuoteProjectContacts
 
     @field_validator("created_date", "expiration_date", mode="before")
     @classmethod
@@ -73,6 +101,7 @@ class Action:
         self.path: str
         self.params: dict[str, str | int]
         self.resp: bs = None
+        self.resp_raw: requests.Response = None
 
     @staticmethod
     def _gen_cache() -> int:
@@ -114,9 +143,10 @@ class Action:
             return self.make_request()
         Action._cookies(new_cookies=resp.cookies)
         self.resp = bs(resp.text, "html.parser")
+        self.resp_raw = resp
         return self
 
-    def format_resp(self) -> BaseModel:
+    def format_resp(self) -> BaseModel | list[BaseModel] | str:
         """implemeted by subclass"""
         ...
 
@@ -148,7 +178,8 @@ class GetQuotes(Action):
         grid_rows = self.resp.find_all("td", class_=gridrow_classes)
 
         # The following loop was auto-generated feeding the raw HTML to Grok 3
-        for row in grid_rows:
+        for i, row in enumerate(grid_rows):
+            print(f"processing quote {i+1} of {len(grid_rows)}")
             # Extract GUID from viewQuote or extendOptions onclick attribute
             td = row.find(
                 "td", onclick=re.compile(r'(viewQuote|extendOptions)\("([^"]+)"')
@@ -213,12 +244,6 @@ class GetQuotes(Action):
                 and second_table_first_row_cells[1].find("b")
                 else None
             )
-            project_name = (
-                second_table_first_row_cells[1].find("b").get_text(strip=True)
-                if len(second_table_first_row_cells) > 1
-                and second_table_first_row_cells[1].find("b")
-                else ""
-            )
             created_date = (
                 second_table_first_row_cells[2].find("b").get_text(strip=True)
                 if len(second_table_first_row_cells) > 2
@@ -234,6 +259,16 @@ class GetQuotes(Action):
                 else ""
             )
 
+            # make another request for the project details
+            project_details = (
+                GetQuoteProjectDetails(self.req_session, guid)
+                .make_request()
+                .format_resp()
+            )
+            contact_info = (
+                GetQuoteContacts(self.req_session, guid).make_request().format_resp()
+            )
+
             try:
                 quote = Quote(
                     guid=guid,
@@ -241,9 +276,10 @@ class GetQuotes(Action):
                     account_name=account_name,
                     approval_status=approval_status,
                     quote_number=quote_number,
-                    project_name=project_name,
                     created_date=created_date,
                     expiration_date=expires_date,
+                    project_details=project_details,
+                    project_contacts=contact_info,
                 )
             except Exception as e:
                 print("--- quote ---")
@@ -253,9 +289,117 @@ class GetQuotes(Action):
                 print("\t", account_name)
                 print("\t", approval_status)
                 print("\t", quote_number)
-                print("\t", project_name)
                 print("\t", created_date)
                 print("\t", expires_date)
             else:
                 quotes.append(quote)
         return quotes
+
+
+class GetQuoteOpportunityInfo(Action):
+    def __init__(self, req_session: requests.Session, quote_id) -> None:
+        super().__init__(req_session)
+        self.path: str = "Ajax_CreateQuoteLoadSelectedQuote.aspx"
+        self.params = {"QuoteID": quote_id}
+
+    def format_resp(self) -> str:
+        opportunity_id = self.resp_raw.text.split("^")[0]
+        return opportunity_id
+
+
+class GetQuoteContacts(Action):
+    def __init__(self, req_session: requests.Session, quote_id) -> None:
+        super().__init__(req_session)
+        self.path: str = "CreateNewQuote.aspx"
+        self.params = {"QuoteID": quote_id}
+
+    def format_resp(self) -> QuoteProjectContacts:
+        project_section = self.resp.find("span", id="spanProjects")
+        contact_name = (
+            project_section.find("input", id="QuoContactName")["value"]
+            if project_section and project_section.find("input", id="QuoContactName")
+            else ""
+        )
+        contact_email = (
+            project_section.find("input", id="QuoContactEmail")["value"]
+            if project_section and project_section.find("input", id="QuoContactEmail")
+            else ""
+        )
+        submitter_name = (
+            project_section.find("input", id="SubmitByName")["value"]
+            if project_section and project_section.find("input", id="SubmitByName")
+            else ""
+        )
+        submitter_email = (
+            project_section.find("input", id="SubmitByEmail")["value"]
+            if project_section and project_section.find("input", id="SubmitByEmail")
+            else ""
+        )
+        return QuoteProjectContacts(
+            contact_name=contact_name,
+            contact_email=contact_email,
+            submitter_name=submitter_name,
+            submitter_email=submitter_email,
+        )
+
+
+class GetQuoteProjectDetails(Action):
+    def __init__(self, req_session: requests.Session, quote_id) -> None:
+        super().__init__(req_session)
+        self.path: str = "Ajax_CreateQuoteLoadSelectedProject.aspx"
+        opp_id = (
+            GetQuoteOpportunityInfo(req_session, quote_id).make_request().format_resp()
+        )
+        self.params = {"OpportunityID": opp_id}
+
+    def format_resp(self) -> QuoteProjectDetails:
+        """
+        //do processing of incoming data
+            var ajaxResponse = xmlHttp.responseText;
+            var arrResponse = ajaxResponse.split("^");
+
+        //set form values
+            document.getElementById("OpportunityID").value = arrResponse[0];
+            document.getElementById("spnProjectTitle").innerHTML = arrResponse[2];
+
+        //need to split out arrResponse[2] amongst the 3 fields
+            var oppNameSplit = arrResponse[2].split(" - ");
+            document.getElementById("OpportunityName").value = oppNameSplit[0];
+
+            var oppNameSplit2 = oppNameSplit[1].split(", ");
+            document.getElementById("OpportunityCity").value = oppNameSplit2[0];
+            document.getElementById("OpportunityState").value = oppNameSplit2[1];
+
+            adjustStateFields();
+
+            document.getElementById("MarketType").value = arrResponse[29];
+            document.getElementById("QuotingTo").value = arrResponse[30];
+
+            document.getElementById("AccountChanged").value = "false";
+            document.getElementById("OpportunityChanged").value = "false";
+        """
+        if not self.resp:
+            raise Exception("No request made or the request call failed")
+
+        try:
+            resp_arr = self.resp_raw.text.split("^")
+            """
+            BUG Frierich allows hypens in the project name
+                As such the following approach will fail on unpacking the second split
+                if the project name contains a hyphen.
+
+            city, state = resp_arr[2].split(" - ")[1].split(", ")
+
+            """
+            city, state = resp_arr[2].split(" - ")[-1].split(", ")
+            market_type = resp_arr[29]
+        except Exception as e:
+            for i, arr_e in enumerate(resp_arr):
+                print(i, "\t", arr_e)
+            raise e
+
+        return QuoteProjectDetails(
+            market_type=market_type,
+            city=city,
+            state=state,
+        )
