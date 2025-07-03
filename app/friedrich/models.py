@@ -18,6 +18,12 @@ STATUS_MAPPING = {
 }
 
 
+class QuoteProduct(BaseModel):
+    product_name: str
+    quantity: int
+    unit_price: float | None = None
+
+
 class QuoteProjectContacts(BaseModel):
     contact_name: str
     contact_email: str
@@ -78,3 +84,4 @@ class Quote(BaseModel):
     guid: str
     quote_attributes: QuoteProjectAttributes
     quote_contacts: QuoteProjectContacts
+    quote_products: list[QuoteProduct] = []

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from hashlib import sha256
 from app.friedrich.requests import Login, GetQuotes
+from app.friedrich.models import Quote
 
 load_dotenv()
 
@@ -43,7 +44,7 @@ def check_friedrich_quote_sync_status(): ...
 @friedrich.patch("/sync/local/quotes")
 async def update_friedrich_quotes_from_quote_portal(
     session: NewSession, secret: SecretValid
-) -> None:
+) -> list[Quote]:
     """
     Make requests to the Friedrich Portal to
         - load all quotes and check the ones we have records for
@@ -57,7 +58,6 @@ async def update_friedrich_quotes_from_quote_portal(
         quotes: GetQuotes = await GetQuotes(req_session=req_session).make_request()
         await quotes.format_resp().collect_addnl_details()
         return quotes.ret()
-        # return Response(content=None, status_code=status.HTTP_200_OK)
 
 
 @friedrich.post("/sync/local/quotes")
