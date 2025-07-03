@@ -7,6 +7,7 @@ import logging
 from random import randint
 from time import time
 from asyncio import sleep
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -16,12 +17,14 @@ from starlette.routing import Match, Route
 ## Routers ##
 from app.hardcast import hardcast
 from app.friedrich import friedrich
+from app.friedrich.routes import initialize_cookies as friedrich_portal_cookies
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
 from app.adp import ratings_admin
 from app.admin import price_updates
 from app.model_lookup import model_lookup
 import app.v2 as v2
+
 
 logger = logging.getLogger("uvicorn.info")
 
@@ -63,9 +66,21 @@ class BotTarpit(BaseHTTPMiddleware):
 with open("README.md", "r") as read_me:
     description = read_me.read()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await friedrich_portal_cookies()
+    yield
+
+
 app = FastAPI(
-    title="Shupe Carboni Backend API", version=__version__, description=description
+    title="Shupe Carboni Backend API",
+    version=__version__,
+    description=description,
+    lifespan=lifespan,
 )
+
+
 ORIGINS = os.getenv("ORIGINS")
 ORIGINS_REGEX = os.getenv("ORIGINS_REGEX")
 
