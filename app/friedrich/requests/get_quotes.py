@@ -52,6 +52,8 @@ class GetQuotes(Action):
             addnl_project_details_data = addnl_project_details.format_resp().ret()
             contact_info_data = contact_info.ret()
 
+            QUOTE_NOTES = addnl_project_details.opp_info.quote_notes
+
             products = await GetQuoteProductLineItems(
                 self.req_session,
                 project_account_id=contact_info.project_account_id,
@@ -61,16 +63,17 @@ class GetQuotes(Action):
                 tax_exempt=addnl_project_details.opp_info.tax_exempt,
                 price_id=addnl_project_details.opp_info.price_level_id,
                 quote_shipments=addnl_project_details.opp_info.quote_shipments,
-                quote_notes=addnl_project_details.opp_info.quote_shipments,
+                quote_notes=QUOTE_NOTES,
             ).chain()
             products_data = products.ret()
 
-            logger.info(f"({time()}) Quote: {guid} - done")
+            logger.info(f"Quote: {quote.quote_number} - done")
             return Quote(
                 guid=guid,
                 quote_attributes=QuoteProjectAttributes(
                     **quote.model_dump(),
                     **addnl_project_details_data.model_dump(),
+                    notes=QUOTE_NOTES,
                 ),
                 quote_contacts=contact_info_data,
                 quote_products=products_data,

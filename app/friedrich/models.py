@@ -78,6 +78,7 @@ class QuoteProjectAttributes(BaseModel):
     market_type: str
     city: str
     state: str
+    notes: str | None = None
 
 
 class Quote(BaseModel):
