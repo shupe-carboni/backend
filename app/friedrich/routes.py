@@ -10,25 +10,18 @@ from dotenv import load_dotenv
 from hashlib import sha256
 from app.friedrich.requests import Login, GetQuotes
 from app.friedrich.models import Quote
+from app import auth
 
 load_dotenv()
 
 from app.db import DB_V2
 
 
-def validate_secret(secret: str) -> None:
-    """not the best but it is the simplest"""
-    if sha256(secret.encode("utf-8")).hexdigest() != SECRET:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-
-
 friedrich = APIRouter(prefix="/friedrich", tags=["friedrich"])
 logger = logging.getLogger("uvicorn.info")
 
 NewSession = Annotated[Session, Depends(DB_V2.get_db)]
-
-SECRET = sha256(getenv("FRIEDRICH_QUOTE_SYNC_SECRET").encode("utf-8")).hexdigest()
-SecretValid = Annotated[None, Depends(validate_secret)]
+Token = Annotated[auth.VerifiedToken, Depends(auth.authenticate_auth0_token)]
 
 
 async def initialize_cookies() -> None:
@@ -59,7 +52,7 @@ def check_friedrich_quote_sync_status():
 
 @friedrich.post("/sync/local/quotes")
 async def update_friedrich_quotes_from_quote_portal(
-    session: NewSession, secret: SecretValid
+    session: NewSession, token: Token
 ) -> list[Quote]:
     """
     Make requests to the Friedrich Portal to
@@ -84,7 +77,7 @@ async def update_friedrich_quotes_from_quote_portal(
 
 
 @friedrich.post("/sync/remote/quotes")
-def create_new_friedrich_quotes(session: NewSession, secret: SecretValid) -> None:
+def create_new_friedrich_quotes(session: NewSession, token: Token) -> None:
     not_imp = (
         "Syncing locally created quotes with the quote portal"
         " is currently not supported.\n"
