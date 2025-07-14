@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from hashlib import sha256
 from app.friedrich.requests import Login, GetQuotes
-from app.friedrich.models import Quote
+from app.friedrich.models import Quote, QuotePresets
 from app import auth
 
 load_dotenv()
@@ -110,3 +110,17 @@ def cross_reference_competitor_product(session: NewSession, competitor_model: st
         session, sql, params=dict(competitor_model=competitor_model)
     ).scalar_one_or_none()
     return {"model_number": result}
+
+
+@friedrich.get("/quote-presets", response_model=QuotePresets)
+def friedrich_quote_presets(session: NewSession, token: Token) -> QuotePresets:
+    if token.permissions < auth.Permissions.sca_employee:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
+    sql = """
+        SELECT vendor_id, task, key, preset
+        FROM vendor_task_presets
+        WHERE vendor_id = 'friedrich'
+        AND task = 'quotes';
+    """
+    return QuotePresets(data=DB_V2.execute(session, sql).mappings().fetchall())

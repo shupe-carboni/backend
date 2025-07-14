@@ -86,3 +86,20 @@ class Quote(BaseModel):
     quote_attributes: QuoteProjectAttributes
     quote_contacts: QuoteProjectContacts
     quote_products: list[QuoteProduct] = []
+
+
+class Preset(BaseModel):
+    products_required: list[str]
+    products_optional: list[str]
+    notes: str
+
+
+class QuotePreset(BaseModel):
+    vendor_id: str
+    task: str
+    key: str
+    preset: Preset
+
+
+class QuotePresets(BaseModel):
+    data: list[QuotePreset]
