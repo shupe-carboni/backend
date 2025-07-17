@@ -1,13 +1,6 @@
 import logging
 from typing import Annotated
-from fastapi import (
-    HTTPException,
-    Depends,
-    status,
-    BackgroundTasks,
-    Response,
-    UploadFile,
-)
+from fastapi import Depends, status, Response
 from fastapi.routing import APIRouter
 
 from app import auth
