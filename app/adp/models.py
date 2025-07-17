@@ -87,8 +87,8 @@ class RatingExpanded(BaseModel):
     FurnaceModel: Optional[str] = Field(default=None, alias="furnace-model")
     OEMName: Optional[str] = Field(default=None, alias="oem-name")
     oem_name_2: Optional[str] = Field(default=None, alias="oem-name-1")
-    m1: Optional[str] = None
-    status: Optional[str] = None
+    m1: Optional[str] = Field(default=None, alias="M1")
+    status: Optional[str] = Field(default=None, alias="Status")
     oem_series: Optional[str] = Field(default=None, alias="OEM Series")
     adp_series: Optional[str] = Field(default=None, alias="ADP Series")
     model_number: Optional[str] = Field(default=None, alias="Model Number")
@@ -96,9 +96,9 @@ class RatingExpanded(BaseModel):
     furnace_model_number: Optional[str] = Field(
         default=None, alias="Furnace Model Number"
     )
-    seer: Optional[float] = None
-    eer: Optional[float] = None
-    capacity: Optional[float] = None
+    seer: Optional[float] = Field(default=None, alias="SEER")
+    eer: Optional[float] = Field(default=None, alias="EER")
+    capacity: Optional[float] = Field(default=None, alias="Capacity")
     four_seven_o: Optional[float] = Field(
         default=None, alias="-47o", serialization_alias="47o"
     )
@@ -106,18 +106,18 @@ class RatingExpanded(BaseModel):
         default=None, alias="-17o", serialization_alias="17o"
     )
     hspf: Optional[float] = None
-    seer2: Optional[float] = None
-    eer2: Optional[float] = None
-    capacity2: Optional[float] = None
+    seer2: Optional[float] = Field(default=None, alias="SEER2")
+    eer2: Optional[float] = Field(default=None, alias="EER2")
+    capacity2: Optional[float] = Field(default=None, alias="Capacity2")
     four_seven_o2: Optional[float] = Field(
         default=None, alias="-47o2", serialization_alias="47o2"
     )
     one_seven_o2: Optional[float] = Field(
         default=None, alias="-17o2", serialization_alias="17o2"
     )
-    hspf2: Optional[float] = None
+    hspf2: Optional[float] = Field(default=None, alias="HSPF2")
     ahri_ref_number: Optional[int] = Field(default=None, alias="AHRI Ref Number")
-    region: Optional[str] = None
+    region: Optional[str] = Field(default=None, alias="Region")
     effective_date: str = Field(alias="effective-date")
     seer2_as_submitted: Optional[float] = Field(alias="seer2-as-submitted")
     eer95f2_as_submitted: Optional[float] = Field(alias="eer95f2-as-submitted")
