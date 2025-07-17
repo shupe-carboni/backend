@@ -86,7 +86,7 @@ class RatingExpanded(BaseModel):
     IndoorModel: Optional[str] = Field(default=None, alias="indoor-model")
     FurnaceModel: Optional[str] = Field(default=None, alias="furnace-model")
     OEMName: Optional[str] = Field(default=None, alias="oem-name")
-    oem_name_2: Optional[str] = Field(default=None, alias="oem-name-1")
+    oem_name_1: Optional[str] = Field(default=None, alias="OEM Name")
     m1: Optional[str] = Field(default=None, alias="M1")
     status: Optional[str] = Field(default=None, alias="Status")
     oem_series: Optional[str] = Field(default=None, alias="OEM Series")
