@@ -20,7 +20,7 @@ from app.friedrich import friedrich
 from app.friedrich.routes import initialize_cookies as friedrich_portal_cookies
 from app.customers import customers, customer_rel, customer_locations
 from app.places import places
-from app.adp import ratings_admin
+from app.adp import ratings_admin, ratings
 from app.admin import price_updates
 from app.model_lookup import model_lookup
 import app.v2 as v2
@@ -99,7 +99,7 @@ app.add_middleware(
 ##          their parent resources helps with
 ##          ordering paths correctly
 customer_sub_routes = [(customer_rel, "", customers)]
-adp_sub_routes = [(ratings_admin, "/vendors", app)]
+adp_sub_routes = [(ratings_admin, "/vendors", app), (ratings, "/vendors", app)]
 v2_routes = [
     (v2.vendors.vendors, "/v2", app),
     (v2.pricing.pricing, "/v2/vendors", app),
